@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ClipboardList, Database, PlusCircle } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, PlusCircle } from 'lucide-react';
 import type { Observation } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { SubmitObservationDialog } from './submit-observation-dialog';
@@ -16,7 +16,7 @@ export function BottomNavBar({ onAddObservation }: BottomNavBarProps) {
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 z-50 w-full h-16 bg-card border-t">
-      <div className="grid h-full grid-cols-4 mx-auto">
+      <div className="grid h-full grid-cols-3 mx-auto">
         <Link
           href="/"
           className={cn(
@@ -27,16 +27,7 @@ export function BottomNavBar({ onAddObservation }: BottomNavBarProps) {
           <LayoutDashboard className="w-6 h-6 mb-1" />
           <span className="text-xs">Dashboard</span>
         </Link>
-        <Link
-          href="/tasks"
-          className={cn(
-            'inline-flex flex-col items-center justify-center font-medium px-5 hover:bg-muted',
-             pathname === '/tasks' ? 'text-primary' : 'text-muted-foreground'
-          )}
-        >
-          <ClipboardList className="w-6 h-6 mb-1" />
-          <span className="text-xs">Tugas</span>
-        </Link>
+        
         <div className="flex items-center justify-center">
           <SubmitObservationDialog onAddObservation={onAddObservation}>
             <button
@@ -47,15 +38,16 @@ export function BottomNavBar({ onAddObservation }: BottomNavBarProps) {
             </button>
           </SubmitObservationDialog>
         </div>
+
         <Link
-          href="/database"
+          href="/tasks"
           className={cn(
             'inline-flex flex-col items-center justify-center font-medium px-5 hover:bg-muted',
-            pathname === '/database' ? 'text-primary' : 'text-muted-foreground'
+             pathname === '/tasks' ? 'text-primary' : 'text-muted-foreground'
           )}
         >
-          <Database className="w-6 h-6 mb-1" />
-          <span className="text-xs">Database</span>
+          <ClipboardList className="w-6 h-6 mb-1" />
+          <span className="text-xs">Tugas</span>
         </Link>
       </div>
     </nav>
