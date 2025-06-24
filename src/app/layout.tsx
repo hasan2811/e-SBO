@@ -5,8 +5,8 @@ import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/contexts/auth-context';
 
 export const metadata: Metadata = {
-  title: 'InspectWise Dashboard',
-  description: 'Dashboard for viewing and managing inspection data.',
+  title: 'e-Observation Dashboard',
+  description: 'Dashboard for viewing and managing observation data.',
   manifest: '/manifest.json',
 };
 
@@ -22,7 +22,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet" />
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#29ABE2" />
+        <meta name="theme-color" content="#4A90E2" />
       </head>
       <body className={cn("font-body antialiased")}>
         <AuthProvider>

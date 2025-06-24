@@ -72,23 +72,14 @@ export default function RegisterPage() {
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
+                <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" />
                 <path
-                  d="M24 4C12.9543 4 4 12.9543 4 24C4 35.0457 12.9543 44 24 44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4Z"
+                  d="M32 24C32 28.4183 28.4183 32 24 32C19.5817 32 16 28.4183 16 24"
                   stroke="currentColor"
                   strokeWidth="4"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M24 4V44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4Z"
-                  fill="currentColor"
-                />
-                <path
-                  d="M16 24L22 30L34 18"
-                  stroke="white"
-                  strokeWidth="4"
                   strokeLinecap="round"
-                  strokeLinejoin="round"
                 />
+                <path d="M16 24H30" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
               </svg>
             </div>
           <CardTitle className="text-2xl font-bold">Create an Account</CardTitle>
