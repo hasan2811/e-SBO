@@ -52,6 +52,7 @@ export function SubmitInspectionDialog({ children, onAddInspection }: SubmitInsp
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const formId = React.useId();
 
 
   const form = useForm<FormValues>({
@@ -63,6 +64,14 @@ export function SubmitInspectionDialog({ children, onAddInspection }: SubmitInsp
       category: 'General',
     },
   });
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      form.reset();
+      setPhotoPreview(null);
+    }
+    setIsOpen(open);
+  };
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -101,131 +110,131 @@ export function SubmitInspectionDialog({ children, onAddInspection }: SubmitInsp
       description: 'New inspection has been submitted.',
     });
     setIsOpen(false);
-    form.reset();
-    setPhotoPreview(null);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[525px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[525px] p-0 flex flex-col max-h-[90dvh]">
+        <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>Submit New Inspection</DialogTitle>
           <DialogDescription>
             Fill in the details below to add a new inspection report.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Main Boiler Room" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="submittedBy"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Submitted By</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., John Doe" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-             <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category</FormLabel>
-                   <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an inspection category" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Structural">Structural</SelectItem>
-                      <SelectItem value="Electrical">Electrical</SelectItem>
-                      <SelectItem value="Plumbing">Plumbing</SelectItem>
-                      <SelectItem value="General">General</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="findings"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Findings</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Describe the inspection findings in detail."
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="photo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Upload Photo</FormLabel>
-                  <FormControl>
-                    <>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={handlePhotoChange}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        {photoPreview ? 'Change Photo' : 'Select Photo'}
-                      </Button>
-                    </>
-                  </FormControl>
-                  {photoPreview && (
-                    <div className="mt-4 relative w-full h-48 rounded-md overflow-hidden border">
-                      <Image src={photoPreview} alt="Photo preview" fill className="object-cover" data-ai-hint="leaking pipe" />
-                    </div>
+        <div className="flex-1 overflow-y-auto">
+          <Form {...form}>
+            <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Main Boiler Room" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-              <Button type="submit">Submit Report</Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                />
+                <FormField
+                  control={form.control}
+                  name="submittedBy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Submitted By</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., John Doe" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an inspection category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Structural">Structural</SelectItem>
+                        <SelectItem value="Electrical">Electrical</SelectItem>
+                        <SelectItem value="Plumbing">Plumbing</SelectItem>
+                        <SelectItem value="General">General</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="findings"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Findings</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Describe the inspection findings in detail."
+                        className="resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="photo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Upload Photo</FormLabel>
+                    <FormControl>
+                      <>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          ref={fileInputRef}
+                          onChange={handlePhotoChange}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          {photoPreview ? 'Change Photo' : 'Select Photo'}
+                        </Button>
+                      </>
+                    </FormControl>
+                    {photoPreview && (
+                      <div className="mt-4 relative w-full h-48 rounded-md overflow-hidden border">
+                        <Image src={photoPreview} alt="Photo preview" fill className="object-cover" data-ai-hint="leaking pipe" />
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </form>
+          </Form>
+        </div>
+        <DialogFooter className="p-6 pt-4 border-t">
+          <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+          <Button type="submit" form={formId}>Submit Report</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
