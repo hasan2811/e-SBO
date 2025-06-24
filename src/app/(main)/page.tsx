@@ -1,2 +1,3 @@
-// This file is no longer needed as the (main) route group has been removed to simplify routing.
-// The main dashboard page is now located at /src/app/page.tsx.
+// This file is deprecated and no longer in use to prevent route conflicts.
+// The active page is now at /src/app/page.tsx.
+export {};

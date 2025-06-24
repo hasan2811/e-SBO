@@ -1,2 +1,3 @@
-// This file has been moved to /src/app/tasks/page.tsx to simplify routing.
-// This file is no longer in use.
+// This file is deprecated and no longer in use to prevent route conflicts.
+// The active page is now at /src/app/tasks/page.tsx.
+export {};
