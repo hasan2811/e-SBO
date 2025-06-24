@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import Image from 'next/image';
-import { MoreHorizontal, Eye, Download, Bot, Loader2 } from 'lucide-react';
+import { MoreHorizontal, Eye, Download, Bot, Loader2, ClipboardCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,11 +23,13 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import type { Observation, RiskLevel } from '@/lib/types';
+import type { Observation, RiskLevel, ObservationStatus } from '@/lib/types';
 import { getAiSummary } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import type { SummarizeObservationDataOutput } from '@/ai/flows/summarize-observation-data';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { useObservations } from '@/contexts/observation-context';
+import { TakeActionDialog } from '../take-action-dialog';
 
 const StatusBadge = ({ status }: { status: Observation['status'] }) => {
   const variant: 'default' | 'secondary' | 'outline' =
@@ -52,11 +54,18 @@ const RiskBadge = ({ riskLevel }: { riskLevel: Observation['riskLevel'] }) => {
 
 const ActionsCell = ({ row }: { row: { original: Observation } }) => {
   const observation = row.original;
+  const { updateObservation } = useObservations();
   const [isPhotoViewerOpen, setPhotoViewerOpen] = useState(false);
   const [isAiSummaryOpen, setAiSummaryOpen] = useState(false);
+  const [isActionDialogOpen, setActionDialogOpen] = useState(false);
   const [aiSummary, setAiSummary] = useState<SummarizeObservationDataOutput | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  
+  const handleUpdate = (id: string, data: Partial<Observation>) => {
+    updateObservation(id, data);
+    setActionDialogOpen(false);
+  };
 
   const handleDownloadReport = () => {
     const reportContent = `
@@ -117,6 +126,12 @@ const ActionsCell = ({ row }: { row: { original: Observation } }) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
+           {observation.status !== 'Completed' && (
+            <DropdownMenuItem onClick={() => setActionDialogOpen(true)}>
+              <ClipboardCheck className="mr-2 h-4 w-4" />
+              <span>Take Action</span>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={handleGetAiSummary}>
             <Bot className="mr-2 h-4 w-4" />
             <span>Get AI Summary</span>
@@ -155,6 +170,14 @@ const ActionsCell = ({ row }: { row: { original: Observation } }) => {
             </DialogContent>
           </Dialog>
       )}
+      
+      {/* Take Action Dialog */}
+      <TakeActionDialog
+        isOpen={isActionDialogOpen}
+        onOpenChange={setActionDialogOpen}
+        observation={observation}
+        onUpdate={handleUpdate}
+      />
 
       {/* AI Summary Dialog */}
       <Dialog open={isAiSummaryOpen} onOpenChange={setAiSummaryOpen}>
@@ -208,6 +231,10 @@ export const columns: ColumnDef<Observation>[] = [
     accessorKey: 'location',
     header: 'Location',
     cell: ({ row }) => <div className="font-medium">{row.original.location}</div>,
+  },
+    {
+    accessorKey: 'submittedBy',
+    header: 'Submitted By',
   },
   {
     accessorKey: 'findings',

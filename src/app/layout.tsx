@@ -3,6 +3,7 @@ import '@/app/globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/contexts/auth-context';
+import { ObservationProvider } from '@/contexts/observation-context';
 
 export const metadata: Metadata = {
   title: 'e-Observation Dashboard',
@@ -26,8 +27,10 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased")}>
         <AuthProvider>
-          {children}
-          <Toaster />
+          <ObservationProvider>
+            {children}
+            <Toaster />
+          </ObservationProvider>
         </AuthProvider>
       </body>
     </html>

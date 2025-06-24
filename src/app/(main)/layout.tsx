@@ -1,0 +1,41 @@
+'use client';
+
+import * as React from 'react';
+import { useObservations } from '@/contexts/observation-context';
+import { DashboardHeader } from '@/components/dashboard-header';
+import { BottomNavBar } from '@/components/bottom-nav-bar';
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+
+export default function MainAppLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
+  const { addObservation } = useObservations();
+  const router = useRouter();
+  
+  React.useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <DashboardHeader onAddObservation={addObservation} />
+      <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
+        <div className="max-w-7xl mx-auto">
+          {children}
+        </div>
+      </main>
+      <BottomNavBar onAddObservation={addObservation} />
+    </div>
+  );
+}

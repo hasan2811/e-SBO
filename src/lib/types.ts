@@ -17,4 +17,6 @@ export type Observation = {
   company: Company;
   photoUrl?: string;
   photoPreview?: string;
+  actionTakenDescription?: string;
+  actionTakenPhotoUrl?: string;
 };
