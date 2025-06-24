@@ -1,2 +1,3 @@
 // This file is disabled to resolve a route conflict.
-export {};
+// It must not have a default export that is a React component.
+export const disabled = true;
