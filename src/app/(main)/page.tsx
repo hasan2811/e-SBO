@@ -1,3 +1,3 @@
 // This file is intentionally disabled to resolve a Next.js route conflict.
-// It is not a page and must not have a default export.
+// It must not have a default export, which prevents it from becoming a page.
 export {};
