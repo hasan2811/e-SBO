@@ -41,12 +41,14 @@ export function DashboardHeader({ onAddInspection }: DashboardHeaderProps) {
             </svg>
             <h1 className="text-2xl font-bold ml-3 text-foreground">InspectWise</h1>
           </div>
-          <SubmitInspectionDialog onAddInspection={onAddInspection}>
-            <Button>
-              <FilePlus2 className="mr-2" />
-              New Inspection
-            </Button>
-          </SubmitInspectionDialog>
+          <div className="hidden md:block">
+            <SubmitInspectionDialog onAddInspection={onAddInspection}>
+              <Button>
+                <FilePlus2 className="mr-2" />
+                New Inspection
+              </Button>
+            </SubmitInspectionDialog>
+          </div>
         </div>
       </div>
     </header>

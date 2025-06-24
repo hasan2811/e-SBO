@@ -197,7 +197,7 @@ export const columns: ColumnDef<Inspection>[] = [
     accessorKey: 'findings',
     header: 'Findings',
     cell: ({ row }) => (
-      <div className="max-w-[400px] truncate">{row.original.findings}</div>
+      <div className="max-w-xs whitespace-nowrap overflow-hidden text-ellipsis">{row.original.findings}</div>
     ),
   },
   {

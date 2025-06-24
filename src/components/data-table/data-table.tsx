@@ -17,6 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -33,6 +34,14 @@ export function DataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   });
+  
+  const columnClassNames: Record<string, string> = {
+    id: 'hidden lg:table-cell',
+    findings: 'hidden md:table-cell',
+    category: 'hidden md:table-cell',
+    date: 'hidden lg:table-cell',
+    submittedBy: 'hidden lg:table-cell',
+  };
 
   return (
     <div>
@@ -43,7 +52,7 @@ export function DataTable<TData, TValue>({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map(header => {
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead key={header.id} className={cn(columnClassNames[header.column.id])}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -64,7 +73,7 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && 'selected'}
                 >
                   {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className={cn(columnClassNames[cell.column.id])}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
