@@ -1,15 +1,19 @@
-export type InspectionStatus = 'Pending' | 'In Progress' | 'Completed';
-export type InspectionCategory = 'Structural' | 'Electrical' | 'Plumbing' | 'General';
+export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed';
+export type ObservationCategory = 'Structural' | 'Electrical' | 'Plumbing' | 'General';
 export type Company = 'Perusahaan A' | 'Perusahaan B' | 'Perusahaan C' | 'Perusahaan D';
+export type Location = 'Location A' | 'Location B' | 'Location C' | 'Location D';
+export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 
-export type Inspection = {
+export type Observation = {
   id: string;
-  location: string;
+  location: Location;
   submittedBy: string;
   date: string;
   findings: string;
-  status: InspectionStatus;
-  category: InspectionCategory;
+  recommendation: string;
+  riskLevel: RiskLevel;
+  status: ObservationStatus;
+  category: ObservationCategory;
   company: Company;
   photoUrl?: string;
   photoPreview?: string;

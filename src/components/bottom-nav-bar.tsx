@@ -4,15 +4,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, ClipboardList, Database, PlusCircle } from 'lucide-react';
 
-import { SubmitInspectionDialog } from './submit-inspection-dialog';
-import type { Inspection } from '@/lib/types';
+import { SubmitObservationDialog } from './submit-observation-dialog';
+import type { Observation } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface BottomNavBarProps {
-  onAddInspection: (inspection: Inspection) => void;
+  onAddObservation: (observation: Observation) => void;
 }
 
-export function BottomNavBar({ onAddInspection }: BottomNavBarProps) {
+export function BottomNavBar({ onAddObservation }: BottomNavBarProps) {
   const pathname = usePathname();
 
   const navItems = [
@@ -44,7 +44,7 @@ export function BottomNavBar({ onAddInspection }: BottomNavBarProps) {
           <ClipboardList className="w-6 h-6 mb-1" />
           <span className="text-xs">Tugas</span>
         </Link>
-        <SubmitInspectionDialog onAddInspection={onAddInspection}>
+        <SubmitObservationDialog onAddObservation={onAddObservation}>
           <button
             type="button"
             className="inline-flex flex-col items-center justify-center font-medium px-5 hover:bg-muted text-primary"
@@ -52,7 +52,7 @@ export function BottomNavBar({ onAddInspection }: BottomNavBarProps) {
             <PlusCircle className="w-8 h-8 mb-1" />
             <span className="text-xs">Add</span>
           </button>
-        </SubmitInspectionDialog>
+        </SubmitObservationDialog>
         <Link
           href="#"
           className={cn(

@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-import type { Inspection, InspectionCategory, InspectionStatus } from '@/lib/types';
+import type { Observation, ObservationCategory, ObservationStatus } from '@/lib/types';
 import { DataTable } from '@/components/data-table/data-table';
 import { columns } from '@/components/data-table/columns';
 import { DashboardHeader } from './dashboard-header';
@@ -17,31 +17,32 @@ import { useAuth } from '@/hooks/use-auth';
 export function DashboardClient() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [inspections, setInspections] = React.useState<Inspection[]>([]);
+  const [observations, setObservations] = React.useState<Observation[]>([]);
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [statusFilter, setStatusFilter] = React.useState<InspectionStatus | 'all'>('all');
-  const [categoryFilter, setCategoryFilter] = React.useState<InspectionCategory | 'all'>('all');
+  const [statusFilter, setStatusFilter] = React.useState<ObservationStatus | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = React.useState<ObservationCategory | 'all'>('all');
 
-  const handleAddInspection = (newInspection: Inspection) => {
-    setInspections(prev => [newInspection, ...prev]);
+  const handleAddObservation = (newObservation: Observation) => {
+    setObservations(prev => [newObservation, ...prev]);
   };
 
-  const filteredInspections = React.useMemo(() => {
-    return inspections
-      .filter(inspection => statusFilter === 'all' || inspection.status === statusFilter)
-      .filter(inspection => categoryFilter === 'all' || inspection.category === categoryFilter)
-      .filter(inspection => {
+  const filteredObservations = React.useMemo(() => {
+    return observations
+      .filter(observation => statusFilter === 'all' || observation.status === statusFilter)
+      .filter(observation => categoryFilter === 'all' || observation.category === categoryFilter)
+      .filter(observation => {
         const lowerCaseSearch = searchTerm.toLowerCase();
         return (
-          inspection.id.toLowerCase().includes(lowerCaseSearch) ||
-          inspection.location.toLowerCase().includes(lowerCaseSearch) ||
-          inspection.findings.toLowerCase().includes(lowerCaseSearch)
+          observation.id.toLowerCase().includes(lowerCaseSearch) ||
+          observation.location.toLowerCase().includes(lowerCaseSearch) ||
+          observation.findings.toLowerCase().includes(lowerCaseSearch) ||
+          observation.recommendation.toLowerCase().includes(lowerCaseSearch)
         );
       });
-  }, [inspections, searchTerm, statusFilter, categoryFilter]);
+  }, [observations, searchTerm, statusFilter, categoryFilter]);
   
-  const statusOptions: (InspectionStatus | 'all')[] = ['all', 'Pending', 'In Progress', 'Completed'];
-  const categoryOptions: (InspectionCategory | 'all')[] = ['all', 'Structural', 'Electrical', 'Plumbing', 'General'];
+  const statusOptions: (ObservationStatus | 'all')[] = ['all', 'Pending', 'In Progress', 'Completed'];
+  const categoryOptions: (ObservationCategory | 'all')[] = ['all', 'Structural', 'Electrical', 'Plumbing', 'General'];
   
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -59,19 +60,19 @@ export function DashboardClient() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <DashboardHeader onAddInspection={handleAddInspection} />
+      <DashboardHeader onAddObservation={handleAddObservation} />
       <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
         <div className="max-w-7xl mx-auto">
           <Card>
             <CardContent className="p-6">
               <div className="grid gap-4 grid-cols-1 md:grid-cols-3 mb-6">
                 <Input
-                  placeholder="Search by ID, location, or findings..."
+                  placeholder="Search by ID, location, findings..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   className="md:col-span-1"
                 />
-                <Select value={statusFilter} onValueChange={(value: InspectionStatus | 'all') => setStatusFilter(value)}>
+                <Select value={statusFilter} onValueChange={(value: ObservationStatus | 'all') => setStatusFilter(value)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
@@ -81,7 +82,7 @@ export function DashboardClient() {
                     ))}
                   </SelectContent>
                 </Select>
-                 <Select value={categoryFilter} onValueChange={(value: InspectionCategory | 'all') => setCategoryFilter(value)}>
+                 <Select value={categoryFilter} onValueChange={(value: ObservationCategory | 'all') => setCategoryFilter(value)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Filter by category" />
                   </SelectTrigger>
@@ -92,12 +93,12 @@ export function DashboardClient() {
                   </SelectContent>
                 </Select>
               </div>
-              <DataTable columns={columns} data={filteredInspections} />
+              <DataTable columns={columns} data={filteredObservations} />
             </CardContent>
           </Card>
         </div>
       </main>
-      <BottomNavBar onAddInspection={handleAddInspection} />
+      <BottomNavBar onAddObservation={handleAddObservation} />
     </div>
   );
 }

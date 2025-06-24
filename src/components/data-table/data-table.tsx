@@ -40,7 +40,7 @@ export function DataTable<TData, TValue>({
     findings: 'hidden md:table-cell',
     category: 'hidden md:table-cell',
     date: 'hidden lg:table-cell',
-    submittedBy: 'hidden lg:table-cell',
+    company: 'hidden md:table-cell',
   };
 
   return (

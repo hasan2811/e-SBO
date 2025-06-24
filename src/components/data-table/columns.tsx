@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import Image from 'next/image';
 import { MoreHorizontal, Eye, Download, Bot, Loader2 } from 'lucide-react';
-
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,13 +23,13 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import type { Inspection } from '@/lib/types';
+import type { Observation, RiskLevel } from '@/lib/types';
 import { getAiSummary } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
-import type { SummarizeInspectionDataOutput } from '@/ai/flows/summarize-inspection-data';
+import type { SummarizeObservationDataOutput } from '@/ai/flows/summarize-observation-data';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
-const StatusBadge = ({ status }: { status: Inspection['status'] }) => {
+const StatusBadge = ({ status }: { status: Observation['status'] }) => {
   const variant: 'default' | 'secondary' | 'outline' =
     status === 'Completed'
       ? 'default'
@@ -39,33 +39,48 @@ const StatusBadge = ({ status }: { status: Inspection['status'] }) => {
   return <Badge variant={variant}>{status}</Badge>;
 };
 
-const ActionsCell = ({ row }: { row: { original: Inspection } }) => {
-  const inspection = row.original;
+const RiskBadge = ({ riskLevel }: { riskLevel: Observation['riskLevel'] }) => {
+  const riskStyles: Record<RiskLevel, string> = {
+    Low: 'bg-chart-2 border-transparent text-primary-foreground hover:bg-chart-2/80',
+    Medium: 'bg-chart-4 border-transparent text-secondary-foreground hover:bg-chart-4/80',
+    High: 'bg-chart-5 border-transparent text-secondary-foreground hover:bg-chart-5/80',
+    Critical: 'bg-destructive border-transparent text-destructive-foreground hover:bg-destructive/80',
+  };
+
+  return <Badge className={cn(riskStyles[riskLevel])}>{riskLevel}</Badge>;
+};
+
+const ActionsCell = ({ row }: { row: { original: Observation } }) => {
+  const observation = row.original;
   const [isPhotoViewerOpen, setPhotoViewerOpen] = useState(false);
   const [isAiSummaryOpen, setAiSummaryOpen] = useState(false);
-  const [aiSummary, setAiSummary] = useState<SummarizeInspectionDataOutput | null>(null);
+  const [aiSummary, setAiSummary] = useState<SummarizeObservationDataOutput | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
   const handleDownloadReport = () => {
     const reportContent = `
-      Inspection Report: ${inspection.id}
+      Observation Report: ${observation.id}
       ---------------------------------
-      Date: ${new Date(inspection.date).toLocaleString()}
-      Location: ${inspection.location}
-      Company: ${inspection.company}
-      Submitted By: ${inspection.submittedBy}
-      Status: ${inspection.status}
-      Category: ${inspection.category}
+      Date: ${new Date(observation.date).toLocaleString()}
+      Location: ${observation.location}
+      Company: ${observation.company}
+      Submitted By: ${observation.submittedBy}
+      Status: ${observation.status}
+      Category: ${observation.category}
+      Risk Level: ${observation.riskLevel}
       
       Findings:
-      ${inspection.findings}
+      ${observation.findings}
+
+      Recommendation:
+      ${observation.recommendation}
     `;
     const blob = new Blob([reportContent.trim()], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `inspection-report-${inspection.id}.txt`;
+    a.download = `observation-report-${observation.id}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -77,7 +92,7 @@ const ActionsCell = ({ row }: { row: { original: Inspection } }) => {
     if (!aiSummary) {
       startTransition(async () => {
         try {
-          const result = await getAiSummary(inspection);
+          const result = await getAiSummary(observation);
           setAiSummary(result);
         } catch (error) {
           setAiSummaryOpen(false);
@@ -106,7 +121,7 @@ const ActionsCell = ({ row }: { row: { original: Inspection } }) => {
             <Bot className="mr-2 h-4 w-4" />
             <span>Get AI Summary</span>
           </DropdownMenuItem>
-          {inspection.photoUrl && (
+          {observation.photoUrl && (
             <DropdownMenuItem onClick={() => setPhotoViewerOpen(true)}>
               <Eye className="mr-2 h-4 w-4" />
               <span>View Photo</span>
@@ -121,17 +136,17 @@ const ActionsCell = ({ row }: { row: { original: Inspection } }) => {
       </DropdownMenu>
 
       {/* Photo Viewer Dialog */}
-      {inspection.photoUrl && (
+      {observation.photoUrl && (
          <Dialog open={isPhotoViewerOpen} onOpenChange={setPhotoViewerOpen}>
             <DialogContent className="max-w-3xl">
               <DialogHeader>
-                <DialogTitle>Photo for {inspection.id}</DialogTitle>
-                <DialogDescription>{inspection.location}</DialogDescription>
+                <DialogTitle>Photo for {observation.id}</DialogTitle>
+                <DialogDescription>{observation.location}</DialogDescription>
               </DialogHeader>
               <div className="relative aspect-video w-full">
                 <Image
-                  src={inspection.photoUrl}
-                  alt={`Inspection at ${inspection.location}`}
+                  src={observation.photoUrl}
+                  alt={`Observation at ${observation.location}`}
                   fill
                   className="object-contain rounded-md"
                   data-ai-hint="construction site"
@@ -145,7 +160,7 @@ const ActionsCell = ({ row }: { row: { original: Inspection } }) => {
       <Dialog open={isAiSummaryOpen} onOpenChange={setAiSummaryOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>AI-Powered Summary for {inspection.id}</DialogTitle>
+            <DialogTitle>AI-Powered Summary for {observation.id}</DialogTitle>
             <DialogDescription>
               This summary is generated by AI and should be reviewed for accuracy.
             </DialogDescription>
@@ -184,7 +199,7 @@ const ActionsCell = ({ row }: { row: { original: Inspection } }) => {
   );
 };
 
-export const columns: ColumnDef<Inspection>[] = [
+export const columns: ColumnDef<Observation>[] = [
   {
     accessorKey: 'id',
     header: 'ID',
@@ -202,16 +217,13 @@ export const columns: ColumnDef<Inspection>[] = [
     ),
   },
   {
-    accessorKey: 'submittedBy',
-    header: 'Submitted By',
+    accessorKey: 'riskLevel',
+    header: 'Risk Level',
+    cell: ({ row }) => <RiskBadge riskLevel={row.original.riskLevel} />,
   },
   {
     accessorKey: 'company',
     header: 'Company',
-  },
-  {
-    accessorKey: 'category',
-    header: 'Category',
   },
   {
     accessorKey: 'status',

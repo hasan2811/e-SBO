@@ -1,4 +1,4 @@
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/summarize-inspection-data.ts';
+import '@/ai/flows/summarize-observation-data.ts';

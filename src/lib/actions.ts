@@ -1,21 +1,23 @@
 'use server';
 
-import { summarizeInspectionData, SummarizeInspectionDataOutput } from '@/ai/flows/summarize-inspection-data';
-import type { Inspection } from './types';
+import { summarizeObservationData, SummarizeObservationDataOutput } from '@/ai/flows/summarize-observation-data';
+import type { Observation } from './types';
 
-export async function getAiSummary(inspection: Inspection): Promise<SummarizeInspectionDataOutput> {
-  const inspectionData = `
-    Location: ${inspection.location}
-    Company: ${inspection.company}
-    Category: ${inspection.category}
-    Status: ${inspection.status}
-    Submitted By: ${inspection.submittedBy}
-    Date: ${new Date(inspection.date).toLocaleString()}
-    Findings: ${inspection.findings}
+export async function getAiSummary(observation: Observation): Promise<SummarizeObservationDataOutput> {
+  const observationData = `
+    Location: ${observation.location}
+    Company: ${observation.company}
+    Category: ${observation.category}
+    Status: ${observation.status}
+    Risk Level: ${observation.riskLevel}
+    Submitted By: ${observation.submittedBy}
+    Date: ${new Date(observation.date).toLocaleString()}
+    Findings: ${observation.findings}
+    Recommendation: ${observation.recommendation}
   `;
 
   try {
-    const result = await summarizeInspectionData({ inspectionData });
+    const result = await summarizeObservationData({ observationData });
     return result;
   } catch (error) {
     console.error('Error getting AI summary:', error);
