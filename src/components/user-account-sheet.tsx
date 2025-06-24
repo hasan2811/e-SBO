@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import {
   Sheet,
   SheetContent,
@@ -16,7 +17,19 @@ import { LogIn, LogOut, UserCircle, Loader2 } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 
 export function UserAccountSheet() {
-  const { user, loading, signInWithGoogle, logout } = useAuth();
+  const { user, loading: authLoading, signInWithGoogle, logout } = useAuth();
+  const [isSigningIn, setIsSigningIn] = React.useState(false);
+
+  const handleSignIn = async () => {
+    setIsSigningIn(true);
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      console.error("Sign in failed from sheet", error);
+      setIsSigningIn(false);
+    }
+  };
+
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
@@ -38,7 +51,7 @@ export function UserAccountSheet() {
                 data-ai-hint="user avatar"
               />
               <AvatarFallback>
-                {loading ? <Loader2 className="animate-spin" /> : <UserCircle />}
+                {authLoading ? <Loader2 className="animate-spin" /> : <UserCircle />}
               </AvatarFallback>
             </Avatar>
         </Button>
@@ -51,7 +64,7 @@ export function UserAccountSheet() {
           </SheetDescription>
         </SheetHeader>
         <div className="py-8">
-          {loading ? (
+          {authLoading ? (
              <div className="flex items-center space-x-4">
                 <Skeleton className="h-12 w-12 rounded-full" />
                 <div className="space-y-2">
@@ -85,13 +98,13 @@ export function UserAccountSheet() {
                 Sign Out
               </Button>
             ) : (
-               <Button onClick={signInWithGoogle} className="w-full" disabled={loading}>
-                {loading ? (
+               <Button onClick={handleSignIn} className="w-full" disabled={isSigningIn || authLoading}>
+                {isSigningIn ? (
                     <Loader2 className="mr-2 animate-spin" />
                 ) : (
                     <LogIn className="mr-2" />
                 )}
-                Sign In with Google
+                {isSigningIn ? 'Signing In...' : 'Sign In with Google'}
               </Button>
             )}
         </SheetFooter>
