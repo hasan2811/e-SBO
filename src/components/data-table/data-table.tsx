@@ -6,6 +6,10 @@ import {
   getCoreRowModel,
   useReactTable,
   getPaginationRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  type SortingState,
+  type ColumnFiltersState,
 } from '@tanstack/react-table';
 
 import {
@@ -18,6 +22,8 @@ import {
 } from '@/components/ui/table';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
+import * as React from 'react';
+import { Input } from '../ui/input';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -28,23 +34,43 @@ export function DataTable<TData, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    onColumnFiltersChange: setColumnFilters,
+    getFilteredRowModel: getFilteredRowModel(),
+    state: {
+      sorting,
+      columnFilters,
+    },
   });
   
   const columnClassNames: Record<string, string> = {
     id: 'hidden lg:table-cell',
     findings: 'hidden md:table-cell',
-    category: 'hidden md:table-cell',
-    date: 'hidden lg:table-cell',
+    submittedBy: 'hidden lg:table-cell',
     company: 'hidden md:table-cell',
   };
 
   return (
-    <div>
+    <div className="space-y-4">
+        <div className="flex items-center">
+        <Input
+          placeholder="Filter by location..."
+          value={(table.getColumn('location')?.getFilterValue() as string) ?? ''}
+          onChange={(event) =>
+            table.getColumn('location')?.setFilterValue(event.target.value)
+          }
+          className="max-w-sm"
+        />
+      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -95,7 +121,7 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
+      <div className="flex items-center justify-end space-x-2">
         <Button
           variant="outline"
           size="sm"

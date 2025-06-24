@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import { AppLogo } from '@/components/app-logo';
 
 export default function LoginPage() {
   const { signInWithEmailAndPassword, signInWithGoogle, user, loading } = useAuth();
@@ -83,21 +84,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm p-4 shadow-xl">
         <CardHeader className="text-center p-2">
            <div className="flex justify-center mb-4">
-              <svg
-                className="h-12 w-auto text-primary"
-                viewBox="0 0 48 48"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" />
-                <path
-                  d="M32 24C32 28.4183 28.4183 32 24 32C19.5817 32 16 28.4183 16 24"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                />
-                <path d="M16 24H30" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-              </svg>
+              <AppLogo className="h-12 w-12" />
             </div>
           <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
           <CardDescription>Enter your credentials to access your account</CardDescription>
