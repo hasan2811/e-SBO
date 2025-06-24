@@ -38,8 +38,8 @@ const TaskCard = ({ observation }: { observation: Observation }) => {
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isViewDialogOpen, setViewDialogOpen] = React.useState(false);
 
-  const handleUpdate = (id: string, data: Partial<Observation>) => {
-    updateObservation(id, data);
+  const handleUpdate = async (id: string, data: Partial<Observation>) => {
+    await updateObservation(id, data);
     setActionDialogOpen(false); // Close dialog on update
   };
 

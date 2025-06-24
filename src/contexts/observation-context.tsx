@@ -1,84 +1,57 @@
 'use client';
 
 import * as React from 'react';
+import { collection, doc, onSnapshot, query, setDoc, updateDoc, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import type { Observation } from '@/lib/types';
-import { subDays } from 'date-fns';
-
-const initialObservations: Observation[] = [
-    {
-      id: 'OBS-5281',
-      location: 'Location A',
-      submittedBy: 'Budi Cahyono',
-      date: subDays(new Date(), 2).toISOString(),
-      findings: 'Minor water leak from ceiling pipe in the main corridor. No immediate structural damage observed.',
-      recommendation: 'Seal the pipe joint and monitor for further leakage. Schedule a full check-up within the month.',
-      riskLevel: 'Low',
-      status: 'Pending',
-      category: 'Plumbing',
-      company: 'Perusahaan A',
-      photoUrl: 'https://placehold.co/600x400.png',
-    },
-    {
-      id: 'OBS-9374',
-      location: 'Location B',
-      submittedBy: 'Siti Aminah',
-      date: subDays(new Date(), 15).toISOString(),
-      findings: 'Several electrical outlets are not working in the west wing. Breaker trips frequently.',
-      recommendation: 'Immediate inspection by a certified electrician is required. Do not use affected outlets.',
-      riskLevel: 'High',
-      status: 'In Progress',
-      category: 'Electrical',
-      company: 'Perusahaan B',
-    },
-    {
-      id: 'OBS-1029',
-      location: 'Location C',
-      submittedBy: 'Agus Santoso',
-      date: subDays(new Date(), 35).toISOString(),
-      findings: 'Cracks found on the support beam on the 3rd floor. Requires structural assessment.',
-      recommendation: 'Action has been taken. The beam was reinforced and certified by an engineer.',
-      riskLevel: 'Critical',
-      status: 'Completed',
-      category: 'Structural',
-      company: 'Perusahaan C',
-      actionTakenDescription: 'Support beam was reinforced with steel plates and concrete filling. Certified safe.',
-      closedBy: 'Agus Santoso',
-    },
-    {
-      id: 'OBS-4826',
-      location: 'Location A',
-      submittedBy: 'Dewi Lestari',
-      date: subDays(new Date(), 5).toISOString(),
-      findings: 'Emergency exit light on the 2nd floor is not functioning.',
-      recommendation: 'Replace the bulb and test the battery backup system immediately.',
-      riskLevel: 'Medium',
-      status: 'Pending',
-      category: 'Electrical',
-      company: 'Perusahaan A',
-      photoUrl: 'https://placehold.co/600x400.png',
-    },
-];
-
 
 interface ObservationContextType {
   observations: Observation[];
-  addObservation: (observation: Observation) => void;
-  updateObservation: (id: string, updatedData: Partial<Observation>) => void;
+  addObservation: (observation: Observation) => Promise<void>;
+  updateObservation: (id: string, updatedData: Partial<Observation>) => Promise<void>;
 }
 
 const ObservationContext = React.createContext<ObservationContextType | undefined>(undefined);
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
-  const [observations, setObservations] = React.useState<Observation[]>(initialObservations);
+  const [observations, setObservations] = React.useState<Observation[]>([]);
 
-  const addObservation = (newObservation: Observation) => {
-    setObservations(prev => [newObservation, ...prev]);
+  React.useEffect(() => {
+    const observationCollection = collection(db, 'observations');
+    const q = query(observationCollection, orderBy('date', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const obsData = querySnapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id,
+      } as Observation));
+      setObservations(obsData);
+    }, (error) => {
+      console.error("Error fetching observations from Firestore: ", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const addObservation = async (newObservation: Observation) => {
+    try {
+      // Use the custom ID from the observation object as the document ID
+      const observationDocRef = doc(db, 'observations', newObservation.id);
+      await setDoc(observationDocRef, newObservation);
+    } catch (error) {
+      console.error("Error adding document to Firestore: ", error);
+      throw error;
+    }
   };
 
-  const updateObservation = (id: string, updatedData: Partial<Observation>) => {
-    setObservations(prev =>
-      prev.map(obs => (obs.id === id ? { ...obs, ...updatedData } : obs))
-    );
+  const updateObservation = async (id: string, updatedData: Partial<Observation>) => {
+    try {
+      const observationDocRef = doc(db, 'observations', id);
+      await updateDoc(observationDocRef, updatedData);
+    } catch (error) {
+      console.error("Error updating document in Firestore: ", error);
+      throw error;
+    }
   };
 
   const value = { observations, addObservation, updateObservation };

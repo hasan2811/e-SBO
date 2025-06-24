@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { SubmitObservationDialog } from './submit-observation-dialog';
 
 interface BottomNavBarProps {
-  onAddObservation: (observation: Observation) => void;
+  onAddObservation: (observation: Observation) => Promise<void>;
 }
 
 export function BottomNavBar({ onAddObservation }: BottomNavBarProps) {

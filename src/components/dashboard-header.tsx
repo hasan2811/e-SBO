@@ -8,7 +8,7 @@ import { UserAccountSheet } from './user-account-sheet';
 import { AppLogo } from './app-logo';
 
 interface DashboardHeaderProps {
-  onAddObservation: (observation: Observation) => void;
+  onAddObservation: (observation: Observation) => Promise<void>;
 }
 
 export function DashboardHeader({ onAddObservation }: DashboardHeaderProps) {

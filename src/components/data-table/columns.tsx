@@ -62,8 +62,8 @@ const ActionsCell = ({ row }: { row: { original: Observation } }) => {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
-  const handleUpdate = (id: string, data: Partial<Observation>) => {
-    updateObservation(id, data);
+  const handleUpdate = async (id: string, data: Partial<Observation>) => {
+    await updateObservation(id, data);
     setActionDialogOpen(false);
   };
 

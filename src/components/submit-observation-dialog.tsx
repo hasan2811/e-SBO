@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
+import { Loader2, Upload } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -29,8 +30,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel } from '@/lib/types';
-import { Upload } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const formSchema = z.object({
   location: z.enum(['Location A', 'Location B', 'Location C', 'Location D']),
@@ -46,11 +48,12 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface SubmitObservationDialogProps {
   children: React.ReactNode;
-  onAddObservation: (observation: Observation) => void;
+  onAddObservation: (observation: Observation) => Promise<void>;
 }
 
 export function SubmitObservationDialog({ children, onAddObservation }: SubmitObservationDialogProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -97,28 +100,54 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
     }
   };
 
-  const onSubmit = (values: FormValues) => {
-    const newObservation: Observation = {
-      id: `OBS-${String(Date.now()).slice(-4)}`,
-      date: new Date().toISOString(),
-      status: 'Pending' as ObservationStatus,
-      photoUrl: values.photo ? 'https://placehold.co/600x400.png' : undefined,
-      photoPreview: photoPreview || undefined,
-      submittedBy: user?.displayName || 'Anonymous User',
-      location: values.location as Location,
-      findings: values.findings,
-      recommendation: values.recommendation,
-      riskLevel: values.riskLevel as RiskLevel,
-      category: values.category as ObservationCategory,
-      company: values.company as Company,
-    };
+  const onSubmit = async (values: FormValues) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to submit an observation.' });
+        return;
+    }
+    setIsSubmitting(true);
+    let photoUrl: string | undefined = undefined;
 
-    onAddObservation(newObservation);
-    toast({
-      title: 'Success!',
-      description: 'New observation has been submitted.',
-    });
-    setIsOpen(false);
+    try {
+        if (values.photo) {
+            const file = values.photo as File;
+            const storageRef = ref(storage, `observations/${Date.now()}-${file.name}`);
+            const snapshot = await uploadBytes(storageRef, file);
+            photoUrl = await getDownloadURL(snapshot.ref);
+        }
+
+        const newObservation: Observation = {
+            id: `OBS-${String(Date.now()).slice(-6)}`,
+            date: new Date().toISOString(),
+            status: 'Pending' as ObservationStatus,
+            photoUrl: photoUrl,
+            submittedBy: user.displayName || 'Anonymous User',
+            location: values.location as Location,
+            findings: values.findings,
+            recommendation: values.recommendation,
+            riskLevel: values.riskLevel as RiskLevel,
+            category: values.category as ObservationCategory,
+            company: values.company as Company,
+        };
+        
+        await onAddObservation(newObservation);
+
+        toast({
+            title: 'Success!',
+            description: 'New observation has been submitted.',
+        });
+        setIsOpen(false);
+
+    } catch (error) {
+        console.error("Submission failed: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Submission Failed',
+            description: 'Could not save the observation. Please try again.',
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   return (
@@ -305,8 +334,11 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
           </Form>
         </div>
         <DialogFooter className="p-6 pt-4 border-t">
-          <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-          <Button type="submit" form={formId}>Submit Report</Button>
+          <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} disabled={isSubmitting}>Cancel</Button>
+          <Button type="submit" form={formId} disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting ? 'Submitting...' : 'Submit Report'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

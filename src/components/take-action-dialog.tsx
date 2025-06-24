@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
-import { Upload } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
 
 import type { Observation } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(10, 'Description must be at least 10 characters.'),
@@ -41,7 +43,7 @@ interface TakeActionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   observation: Observation;
-  onUpdate: (id: string, data: Partial<Observation>) => void;
+  onUpdate: (id: string, data: Partial<Observation>) => Promise<void>;
 }
 
 export function TakeActionDialog({
@@ -50,6 +52,7 @@ export function TakeActionDialog({
   observation,
   onUpdate,
 }: TakeActionDialogProps) {
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -91,19 +94,47 @@ export function TakeActionDialog({
     }
   };
 
-  const onSubmit = (values: FormValues) => {
-    const updatedData: Partial<Observation> = {
-      status: 'Completed',
-      actionTakenDescription: values.actionTakenDescription,
-      actionTakenPhotoUrl: values.actionTakenPhoto ? 'https://placehold.co/600x400.png' : undefined,
-      closedBy: user?.displayName || 'Anonymous User',
-    };
-    onUpdate(observation.id, updatedData);
-    toast({
-      title: 'Success!',
-      description: `Observation ${observation.id} has been marked as completed.`,
-    });
-    handleOpenChange(false);
+  const onSubmit = async (values: FormValues) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to update an observation.' });
+        return;
+    }
+    setIsSubmitting(true);
+    
+    try {
+        let actionTakenPhotoUrl: string | undefined = undefined;
+        if (values.actionTakenPhoto) {
+            const file = values.actionTakenPhoto as File;
+            const storageRef = ref(storage, `actions/${observation.id}-${Date.now()}-${file.name}`);
+            const snapshot = await uploadBytes(storageRef, file);
+            actionTakenPhotoUrl = await getDownloadURL(snapshot.ref);
+        }
+
+        const updatedData: Partial<Observation> = {
+            status: 'Completed',
+            actionTakenDescription: values.actionTakenDescription,
+            actionTakenPhotoUrl: actionTakenPhotoUrl,
+            closedBy: user.displayName || 'Anonymous User',
+        };
+
+        await onUpdate(observation.id, updatedData);
+        
+        toast({
+            title: 'Success!',
+            description: `Observation ${observation.id} has been marked as completed.`,
+        });
+        handleOpenChange(false);
+
+    } catch (error) {
+        console.error("Failed to update observation: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: 'Could not update the observation. Please try again.',
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   return (
@@ -173,11 +204,12 @@ export function TakeActionDialog({
           </form>
         </Form>
         <DialogFooter>
-          <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
+          <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" form={formId}>
-            Mark as Completed
+          <Button type="submit" form={formId} disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting ? 'Submitting...' : 'Mark as Completed'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -16,7 +16,6 @@ export type Observation = {
   category: ObservationCategory;
   company: Company;
   photoUrl?: string;
-  photoPreview?: string;
   actionTakenDescription?: string;
   actionTakenPhotoUrl?: string;
   closedBy?: string;
