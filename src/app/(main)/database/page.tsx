@@ -1,3 +1,3 @@
-// This file is intentionally left empty to resolve a routing conflict.
-// By not exporting a default React component, Next.js will not treat this as a page.
+// This file has been disabled to resolve a build error caused by duplicate routes.
+// The active page is located at /src/app/database/page.tsx.
 export {};
