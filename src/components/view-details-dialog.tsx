@@ -62,7 +62,7 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
                   src={observation.photoUrl}
                   alt={`Observation at ${observation.location}`}
                   fill
-                  className="object-cover"
+                  className="object-contain"
                   data-ai-hint="construction site"
                 />
               </div>
@@ -104,7 +104,7 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
                       src={observation.actionTakenPhotoUrl}
                       alt="Action taken photo"
                       fill
-                      className="object-cover"
+                      className="object-contain"
                       data-ai-hint="fixed pipe"
                     />
                   </div>

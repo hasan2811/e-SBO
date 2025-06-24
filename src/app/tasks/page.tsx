@@ -49,24 +49,13 @@ const TaskCard = ({ observation }: { observation: Observation }) => {
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-lg">{observation.location}</CardTitle>
-              <CardDescription>{observation.company}</CardDescription>
+              <CardTitle className="text-lg">{observation.company}</CardTitle>
+              <CardDescription>{observation.location}</CardDescription>
             </div>
              <RiskBadge riskLevel={observation.riskLevel} />
           </div>
         </CardHeader>
         <CardContent className="flex-grow space-y-3">
-          {observation.photoUrl && (
-            <div className="relative w-full h-40 rounded-md overflow-hidden">
-               <Image
-                  src={observation.photoUrl}
-                  alt={`Observation at ${observation.location}`}
-                  fill
-                  className="object-cover"
-                  data-ai-hint="construction site"
-                />
-            </div>
-          )}
           <p className="text-sm text-muted-foreground line-clamp-3">
             <strong>Findings:</strong> {observation.findings}
           </p>
