@@ -1,2 +1,1 @@
-// This layout is intentionally disabled.
-export const disabled = true;
+// This layout is intentionally disabled to prevent build conflicts.

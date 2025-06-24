@@ -1,2 +1,1 @@
-// This route is intentionally disabled.
-export const disabled = true;
+// This route is intentionally disabled to prevent build conflicts.
