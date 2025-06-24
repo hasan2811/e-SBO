@@ -10,13 +10,6 @@ import { cn } from '@/lib/utils';
 import type { Observation, RiskLevel } from '@/lib/types';
 import { TakeActionDialog } from '@/components/take-action-dialog';
 import { ClipboardCheck } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 const RiskBadge = ({ riskLevel }: { riskLevel: RiskLevel }) => {
   const riskStyles: Record<RiskLevel, string> = {
@@ -107,40 +100,23 @@ const TaskCard = ({ observation }: { observation: Observation }) => {
 
 export default function TasksPage() {
   const { observations } = useObservations();
-   const [filter, setFilter] = React.useState<'all' | 'pending'>('pending');
-
-  const filteredObservations = React.useMemo(() => {
-    if (filter === 'pending') {
-      return observations.filter(obs => obs.status !== 'Completed');
-    }
-    return observations;
-  }, [observations, filter]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <h2 className="text-2xl font-bold tracking-tight">Tugas Observasi</h2>
-         <Select value={filter} onValueChange={(value: 'all' | 'pending') => setFilter(value)}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter tugas" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="pending">Tugas Tertunda</SelectItem>
-                <SelectItem value="all">Semua Tugas</SelectItem>
-            </SelectContent>
-        </Select>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold tracking-tight">Semua Temuan</h2>
       </div>
 
-       {filteredObservations.length > 0 ? (
+       {observations.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredObservations.map(obs => (
+            {observations.map(obs => (
                 <TaskCard key={obs.id} observation={obs} />
             ))}
         </div>
       ) : (
          <div className="text-center py-16">
-            <h3 className="text-xl font-semibold">Tidak ada tugas tertunda</h3>
-            <p className="text-muted-foreground mt-2">Semua observasi sudah diselesaikan. Kerja bagus!</p>
+            <h3 className="text-xl font-semibold">Belum Ada Temuan</h3>
+            <p className="text-muted-foreground mt-2">Belum ada observasi yang disubmit. Coba buat satu!</p>
         </div>
       )}
     </div>
