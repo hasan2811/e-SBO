@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -47,7 +48,7 @@ export function BottomNavBar({ onAddObservation }: BottomNavBarProps) {
           )}
         >
           <ClipboardList className="w-6 h-6 mb-1" />
-          <span className="text-xs">Tugas</span>
+          <span className="text-xs">Tasks</span>
         </Link>
       </div>
     </nav>

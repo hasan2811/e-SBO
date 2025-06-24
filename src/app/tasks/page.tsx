@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -103,7 +104,7 @@ export default function TasksPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold tracking-tight">Tugas</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Tasks</h2>
       </div>
 
        {observations.length > 0 ? (
@@ -114,8 +115,8 @@ export default function TasksPage() {
         </div>
       ) : (
          <div className="text-center py-16">
-            <h3 className="text-xl font-semibold">Belum Ada Temuan</h3>
-            <p className="text-muted-foreground mt-2">Belum ada observasi yang disubmit. Coba buat satu!</p>
+            <h3 className="text-xl font-semibold">No Findings Yet</h3>
+            <p className="text-muted-foreground mt-2">No observations have been submitted yet. Try creating one!</p>
         </div>
       )}
     </div>
