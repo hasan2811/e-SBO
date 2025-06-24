@@ -42,6 +42,7 @@ const initialObservations: Observation[] = [
       category: 'Structural',
       company: 'Perusahaan C',
       actionTakenDescription: 'Support beam was reinforced with steel plates and concrete filling. Certified safe.',
+      closedBy: 'Agus Santoso',
     },
     {
       id: 'OBS-4826',

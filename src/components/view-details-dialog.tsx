@@ -47,14 +47,14 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl p-0">
+      <DialogContent className="sm:max-w-2xl p-0 flex flex-col max-h-[90vh]">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>Observation Details: {observation.id}</DialogTitle>
           <DialogDescription>
-            {observation.location} - {new Date(observation.date).toLocaleDateString()}
+            {observation.company} - {observation.location}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[70vh]">
+        <ScrollArea className="flex-1 overflow-y-auto">
           <div className="space-y-4 px-6 py-4">
             {observation.photoUrl && (
               <div className="relative w-full aspect-video rounded-md overflow-hidden border">
@@ -68,8 +68,8 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
               </div>
             )}
             <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-center">
-              <div className="font-semibold text-muted-foreground">Company</div>
-              <div>{observation.company}</div>
+              <div className="font-semibold text-muted-foreground">Date</div>
+              <div>{new Date(observation.date).toLocaleDateString()}</div>
 
               <div className="font-semibold text-muted-foreground">Submitted By</div>
               <div>{observation.submittedBy}</div>
@@ -94,10 +94,17 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
               <p className="text-sm text-muted-foreground">{observation.recommendation}</p>
             </div>
 
-            {observation.status === 'Completed' && observation.actionTakenDescription && (
-              <div className="space-y-2 pt-4 border-t mt-4">
+            {observation.status === 'Completed' && (
+              <div className="space-y-4 pt-4 border-t mt-4">
                 <h4 className="font-semibold text-base">Action Taken</h4>
-                <p className="text-sm text-muted-foreground">{observation.actionTakenDescription}</p>
+                 <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-start">
+                   <div className="font-semibold text-muted-foreground">Description</div>
+                   <div className="text-muted-foreground">{observation.actionTakenDescription || '-'}</div>
+                   
+                   <div className="font-semibold text-muted-foreground">Closed By</div>
+                   <div className="text-muted-foreground">{observation.closedBy || '-'}</div>
+                 </div>
+                
                 {observation.actionTakenPhotoUrl && (
                   <div className="relative w-full aspect-video rounded-md overflow-hidden border mt-2">
                     <Image

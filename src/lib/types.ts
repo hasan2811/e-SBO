@@ -19,4 +19,5 @@ export type Observation = {
   photoPreview?: string;
   actionTakenDescription?: string;
   actionTakenPhotoUrl?: string;
+  closedBy?: string;
 };

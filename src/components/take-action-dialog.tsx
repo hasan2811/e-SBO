@@ -28,6 +28,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(10, 'Description must be at least 10 characters.'),
@@ -51,6 +52,7 @@ export function TakeActionDialog({
 }: TakeActionDialogProps) {
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
 
@@ -94,6 +96,7 @@ export function TakeActionDialog({
       status: 'Completed',
       actionTakenDescription: values.actionTakenDescription,
       actionTakenPhotoUrl: values.actionTakenPhoto ? 'https://placehold.co/600x400.png' : undefined,
+      closedBy: user?.displayName || 'Anonymous User',
     };
     onUpdate(observation.id, updatedData);
     toast({
