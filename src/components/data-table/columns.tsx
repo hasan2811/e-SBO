@@ -1,2 +1,2 @@
-// This component is not currently used and has been disabled to clean up the project.
+// This component is not currently used and has been disabled.
 export {};

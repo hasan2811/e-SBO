@@ -1,3 +1,2 @@
-// This file has been disabled to resolve a build error caused by duplicate routes.
-// The active page is located at /src/app/page.tsx.
+// This file is disabled to prevent route conflicts. The active page is at /src/app/page.tsx.
 export {};
