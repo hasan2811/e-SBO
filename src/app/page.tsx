@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { format, subDays } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { BarChart, Calendar as CalendarIcon, PieChart } from 'lucide-react';
+import { Calendar as CalendarIcon, PieChart, BarChart2 } from 'lucide-react';
 
 import type { Observation } from '@/lib/types';
 import { useObservations } from '@/contexts/observation-context';
@@ -17,13 +17,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent
-} from '@/components/ui/chart';
 
 export default function DashboardPage() {
   const { observations } = useObservations();
@@ -57,33 +50,6 @@ export default function DashboardPage() {
       return acc;
     }, [] as { status: Observation['status']; count: number }[]);
   }, [filteredObservations]);
-
-  const riskData = React.useMemo(() => {
-    return filteredObservations.reduce((acc, obs) => {
-      const existing = acc.find(item => item.riskLevel === obs.riskLevel);
-      if (existing) {
-        existing.count++;
-      } else {
-        acc.push({ riskLevel: obs.riskLevel, count: 1 });
-      }
-      return acc;
-    }, [] as { riskLevel: Observation['riskLevel']; count: number }[]);
-  }, [filteredObservations]);
-
-  const statusChartConfig = {
-    count: { label: 'Observations' },
-    Pending: { label: 'Pending', color: 'hsl(var(--chart-3))' },
-    'In Progress': { label: 'In Progress', color: 'hsl(var(--chart-4))' },
-    Completed: { label: 'Completed', color: 'hsl(var(--chart-2))' },
-  };
-
-  const riskChartConfig = {
-    count: { label: 'Count' },
-    Low: { label: 'Low', color: 'hsl(var(--chart-2))' },
-    Medium: { label: 'Medium', color: 'hsl(var(--chart-4))' },
-    High: { label: 'High', color: 'hsl(var(--chart-5))' },
-    Critical: { label: 'Critical', color: 'hsl(var(--destructive))' },
-  };
 
   return (
     <div className="space-y-6">
@@ -168,28 +134,22 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Observations by Status</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={statusChartConfig} className="min-h-[250px] w-full">
-              <PieChart data={statusData} nameKey="status" dataKey="count">
-                 <ChartTooltip
-                    content={<ChartTooltipContent nameKey="count" hideLabel />}
-                  />
-                  <ChartLegend content={<ChartLegendContent nameKey="status" />} />
-              </PieChart>
-            </ChartContainer>
+          <CardContent className="flex items-center justify-center min-h-[250px] text-center text-muted-foreground">
+             <div className="space-y-2">
+                <PieChart className="h-10 w-10 mx-auto" />
+                <p>Chart functionality will be available soon.</p>
+             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
             <CardTitle>Observations by Risk Level</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={riskChartConfig} className="min-h-[250px] w-full">
-              <BarChart data={riskData} accessibilityLayer>
-                 <ChartTooltip content={<ChartTooltipContent />} />
-                 <ChartLegend />
-              </BarChart>
-            </ChartContainer>
+          <CardContent className="flex items-center justify-center min-h-[250px] text-center text-muted-foreground">
+             <div className="space-y-2">
+                <BarChart2 className="h-10 w-10 mx-auto" />
+                <p>Chart functionality will be available soon.</p>
+             </div>
           </CardContent>
         </Card>
       </div>

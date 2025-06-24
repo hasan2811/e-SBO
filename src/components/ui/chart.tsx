@@ -524,7 +524,7 @@ const BarChart = createChart<"bar">(BarChartPrimitive)
 const LineChart = createChart<"line">(LineChartPrimitive)
 const PieChart = createChart<"pie">(PieChartPrimitive)
 const RadarChart = createChart<"radar">(RadarChartPrimitive)
-const RadialBarChart = create-chart<"radialBar">(RadialBarChartPrimitive)
+const RadialBarChart = createChart<"radialBar">(RadialBarChartPrimitive)
 // #endregion
 
 // #region Chart Components
