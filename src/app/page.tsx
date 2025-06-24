@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   ChartContainer,
   ChartTooltip,
@@ -44,6 +44,14 @@ const riskLevelColors: Record<RiskLevel, string> = {
   High: 'hsl(var(--chart-5))',
   Critical: 'hsl(var(--destructive))',
 };
+
+const genericChartColors = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+];
 
 export default function DashboardPage() {
   const { observations } = useObservations();
@@ -73,7 +81,7 @@ export default function DashboardPage() {
     }, {} as Record<Observation['status'], number>);
     
     return Object.entries(counts).map(([status, count]) => ({
-      status: status,
+      name: status,
       count: count,
       fill: statusColors[status as Observation['status']],
     }));
@@ -86,18 +94,58 @@ export default function DashboardPage() {
     }, {} as Record<RiskLevel, number>);
 
     return Object.entries(counts).map(([riskLevel, count]) => ({
-      riskLevel: riskLevel,
+      name: riskLevel,
       count: count,
       fill: riskLevelColors[riskLevel as RiskLevel],
     }));
   }, [filteredObservations]);
 
-  const chartConfig = (data: { label: string, color: string }[]) => ({
+  const categoryData = React.useMemo(() => {
+    const counts = filteredObservations.reduce((acc, obs) => {
+      acc[obs.category] = (acc[obs.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counts).map(([name, count], index) => ({
+      name,
+      count,
+      fill: genericChartColors[index % genericChartColors.length],
+    }));
+  }, [filteredObservations]);
+
+  const companyData = React.useMemo(() => {
+    const counts = filteredObservations.reduce((acc, obs) => {
+      acc[obs.company] = (acc[obs.company] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counts).map(([name, count], index) => ({
+      name,
+      count,
+      fill: genericChartColors[index % genericChartColors.length],
+    }));
+  }, [filteredObservations]);
+
+  const locationData = React.useMemo(() => {
+    const counts = filteredObservations.reduce((acc, obs) => {
+      acc[obs.location] = (acc[obs.location] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counts).map(([name, count], index) => ({
+      name,
+      count,
+      fill: genericChartColors[index % genericChartColors.length],
+    }));
+  }, [filteredObservations]);
+
+
+  const chartConfig = (data: { name: string, fill: string }[]) => ({
     count: {
       label: 'Observations',
     },
     ...data.reduce((acc, item) => {
-      acc[item.label] = { label: item.label, color: item.color };
+      acc[item.name] = { label: item.name, color: item.fill };
       return acc;
     }, {} as any)
   });
@@ -180,22 +228,22 @@ export default function DashboardPage() {
            </CardContent>
          </Card>
       </div>
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Observations by Status</CardTitle>
           </CardHeader>
           <CardContent className="min-h-[300px] flex items-center justify-center">
             {statusData.length > 0 ? (
-                 <ChartContainer config={chartConfig(statusData.map(d => ({label: d.status, color: d.fill})))} className="min-h-[250px] w-full">
+                 <ChartContainer config={chartConfig(statusData.map(d => ({name: d.name, fill: d.fill})))} className="min-h-[250px] w-full">
                     <PieChart>
-                      <ChartTooltip content={<ChartTooltipContent nameKey="status" />} />
-                      <ChartPie data={statusData} dataKey="count" nameKey="status" innerRadius={60}>
+                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                      <ChartPie data={statusData} dataKey="count" nameKey="name" innerRadius={60}>
                          {statusData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.fill} />
                         ))}
                       </ChartPie>
-                      <ChartLegend content={<ChartLegendContent nameKey="status"/>} />
+                      <ChartLegend content={<ChartLegendContent nameKey="name"/>} />
                     </PieChart>
                   </ChartContainer>
             ) : (
@@ -211,10 +259,10 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="min-h-[300px] flex items-center justify-center">
              {riskLevelData.length > 0 ? (
-                <ChartContainer config={chartConfig(riskLevelData.map(d => ({label: d.riskLevel, color: d.fill})))} className="min-h-[250px] w-full">
+                <ChartContainer config={chartConfig(riskLevelData.map(d => ({name: d.name, fill: d.fill})))} className="min-h-[250px] w-full">
                   <BarChart data={riskLevelData} layout="vertical" margin={{ left: 20 }}>
                     <ChartYAxis
-                      dataKey="riskLevel"
+                      dataKey="name"
                       type="category"
                       tickLine={false}
                       axisLine={false}
@@ -222,11 +270,105 @@ export default function DashboardPage() {
                     <ChartXAxis dataKey="count" type="number" hide />
                      <ChartTooltip
                         cursor={false}
-                        content={<ChartTooltipContent indicator="line" nameKey="riskLevel" />}
+                        content={<ChartTooltipContent indicator="line" nameKey="name" />}
                       />
                     <ChartBar dataKey="count" radius={4} layout="vertical">
                        {riskLevelData.map((entry) => (
-                        <Cell key={entry.riskLevel} fill={entry.fill} />
+                        <Cell key={entry.name} fill={entry.fill} />
+                      ))}
+                    </ChartBar>
+                  </BarChart>
+                </ChartContainer>
+             ) : (
+                 <div className="text-center text-muted-foreground">
+                    <p>No data to display for the selected period.</p>
+                </div>
+             )}
+          </CardContent>
+        </Card>
+         <Card>
+          <CardHeader>
+            <CardTitle>Observations by Category</CardTitle>
+          </CardHeader>
+          <CardContent className="min-h-[300px] flex items-center justify-center">
+            {categoryData.length > 0 ? (
+                 <ChartContainer config={chartConfig(categoryData)} className="min-h-[250px] w-full">
+                    <PieChart>
+                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                      <ChartPie data={categoryData} dataKey="count" nameKey="name" innerRadius={60}>
+                         {categoryData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </ChartPie>
+                      <ChartLegend content={<ChartLegendContent nameKey="name"/>} />
+                    </PieChart>
+                  </ChartContainer>
+            ) : (
+                <div className="text-center text-muted-foreground">
+                    <p>No data to display for the selected period.</p>
+                </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Observations by Company</CardTitle>
+            <CardDescription>Horizontal bar chart showing findings per company.</CardDescription>
+          </CardHeader>
+          <CardContent className="min-h-[300px] flex items-center justify-center">
+             {companyData.length > 0 ? (
+                <ChartContainer config={chartConfig(companyData)} className="min-h-[250px] w-full">
+                  <BarChart data={companyData} layout="vertical" margin={{ left: 20 }}>
+                    <ChartYAxis
+                      dataKey="name"
+                      type="category"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={10}
+                      width={100}
+                    />
+                    <ChartXAxis dataKey="count" type="number" hide />
+                     <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent indicator="line" nameKey="name" />}
+                      />
+                    <ChartBar dataKey="count" radius={4} layout="vertical">
+                       {companyData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.fill} />
+                      ))}
+                    </ChartBar>
+                  </BarChart>
+                </ChartContainer>
+             ) : (
+                 <div className="text-center text-muted-foreground">
+                    <p>No data to display for the selected period.</p>
+                </div>
+             )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Observations by Location</CardTitle>
+            <CardDescription>Vertical bar chart showing findings per location.</CardDescription>
+          </CardHeader>
+          <CardContent className="min-h-[300px] flex items-center justify-center">
+             {locationData.length > 0 ? (
+                <ChartContainer config={chartConfig(locationData)} className="min-h-[250px] w-full">
+                  <BarChart data={locationData} margin={{ top: 20 }}>
+                    <ChartXAxis
+                      dataKey="name"
+                      type="category"
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <ChartYAxis dataKey="count" type="number" hide />
+                     <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent indicator="dot" nameKey="name" />}
+                      />
+                    <ChartBar dataKey="count" radius={4}>
+                       {locationData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.fill} />
                       ))}
                     </ChartBar>
                   </BarChart>

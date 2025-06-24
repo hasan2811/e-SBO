@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { Observation, RiskLevel } from '@/lib/types';
 import { TakeActionDialog } from '@/components/take-action-dialog';
-import { ClipboardCheck } from 'lucide-react';
+import { ViewDetailsDialog } from '@/components/view-details-dialog';
+import { ClipboardCheck, Eye } from 'lucide-react';
 
 const RiskBadge = ({ riskLevel }: { riskLevel: RiskLevel }) => {
   const riskStyles: Record<RiskLevel, string> = {
@@ -35,6 +36,7 @@ const StatusBadge = ({ status }: { status: Observation['status'] }) => {
 const TaskCard = ({ observation }: { observation: Observation }) => {
   const { updateObservation } = useObservations();
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
+  const [isViewDialogOpen, setViewDialogOpen] = React.useState(false);
 
   const handleUpdate = (id: string, data: Partial<Observation>) => {
     updateObservation(id, data);
@@ -48,7 +50,7 @@ const TaskCard = ({ observation }: { observation: Observation }) => {
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="text-lg">{observation.location}</CardTitle>
-              <CardDescription>{observation.id}</CardDescription>
+              <CardDescription>{observation.company}</CardDescription>
             </div>
              <RiskBadge riskLevel={observation.riskLevel} />
           </div>
@@ -73,18 +75,21 @@ const TaskCard = ({ observation }: { observation: Observation }) => {
             <span>{new Date(observation.date).toLocaleDateString()}</span>
           </div>
         </CardContent>
-        <CardFooter>
-          {observation.status !== 'Completed' && (
-            <Button className="w-full" onClick={() => setActionDialogOpen(true)}>
-                <ClipboardCheck className="mr-2" />
-                Take Action
+        <CardFooter className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={() => setViewDialogOpen(true)}>
+                <Eye className="mr-2 h-4 w-4" />
+                View
             </Button>
-          )}
-          {observation.status === 'Completed' && (
-             <Button className="w-full" variant="secondary" disabled>
-                Completed
-            </Button>
-          )}
+            {observation.status !== 'Completed' ? (
+                <Button onClick={() => setActionDialogOpen(true)}>
+                    <ClipboardCheck className="mr-2 h-4 w-4" />
+                    Take Action
+                </Button>
+            ) : (
+                <Button variant="secondary" disabled>
+                    Completed
+                </Button>
+            )}
         </CardFooter>
       </Card>
       <TakeActionDialog
@@ -92,6 +97,11 @@ const TaskCard = ({ observation }: { observation: Observation }) => {
         onOpenChange={setActionDialogOpen}
         observation={observation}
         onUpdate={handleUpdate}
+      />
+      <ViewDetailsDialog
+        isOpen={isViewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        observation={observation}
       />
     </>
   );
