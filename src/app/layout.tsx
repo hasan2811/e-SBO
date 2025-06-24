@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import '@/app/globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from '@/lib/utils';
+import { AuthProvider } from '@/contexts/auth-context';
 
 export const metadata: Metadata = {
   title: 'InspectWise Dashboard',
@@ -24,8 +25,10 @@ export default function RootLayout({
         <meta name="theme-color" content="#29ABE2" />
       </head>
       <body className={cn("font-body antialiased")}>
-        {children}
-        <Toaster />
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

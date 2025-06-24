@@ -1,14 +1,18 @@
 'use client';
 
 import * as React from 'react';
+import { Loader2, LogIn } from 'lucide-react';
+
 import type { Inspection, InspectionCategory, InspectionStatus } from '@/lib/types';
 import { DataTable } from '@/components/data-table/data-table';
 import { columns } from '@/components/data-table/columns';
 import { DashboardHeader } from './dashboard-header';
-import { Card, CardContent } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { BottomNavBar } from './bottom-nav-bar';
+import { useAuth } from '@/hooks/use-auth';
+import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
 const initialInspections: Inspection[] = [
   {
@@ -63,6 +67,7 @@ const initialInspections: Inspection[] = [
 ];
 
 export function DashboardClient() {
+  const { user, loading } = useAuth();
   const [inspections, setInspections] = React.useState<Inspection[]>(initialInspections);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<InspectionStatus | 'all'>('all');
@@ -88,6 +93,31 @@ export function DashboardClient() {
   
   const statusOptions: (InspectionStatus | 'all')[] = ['all', 'Pending', 'In Progress', 'Completed'];
   const categoryOptions: (InspectionCategory | 'all')[] = ['all', 'Structural', 'Electrical', 'Plumbing', 'General'];
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <DashboardHeader onAddInspection={() => {}} />
+        <main className="flex-1 flex items-center justify-center p-4">
+            <Alert className="max-w-md text-center">
+              <LogIn className="h-4 w-4" />
+              <AlertTitle>Welcome to InspectWise!</AlertTitle>
+              <AlertDescription>
+                Please sign in to view and manage your inspections. Click the user icon in the top right corner to get started.
+              </AlertDescription>
+            </Alert>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">

@@ -4,6 +4,7 @@ import { FilePlus2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { SubmitInspectionDialog } from './submit-inspection-dialog';
 import type { Inspection } from '@/lib/types';
+import { UserAccountSheet } from './user-account-sheet';
 
 interface DashboardHeaderProps {
   onAddInspection: (inspection: Inspection) => void;
@@ -41,13 +42,16 @@ export function DashboardHeader({ onAddInspection }: DashboardHeaderProps) {
             </svg>
             <h1 className="text-2xl font-bold ml-3 text-foreground">InspectWise</h1>
           </div>
-          <div className="hidden md:block">
-            <SubmitInspectionDialog onAddInspection={onAddInspection}>
-              <Button>
-                <FilePlus2 className="mr-2" />
-                New Inspection
-              </Button>
-            </SubmitInspectionDialog>
+          <div className="flex items-center gap-4">
+             <div className="hidden md:block">
+                <SubmitInspectionDialog onAddInspection={onAddInspection}>
+                  <Button>
+                    <FilePlus2 className="mr-2" />
+                    New Inspection
+                  </Button>
+                </SubmitInspectionDialog>
+              </div>
+            <UserAccountSheet />
           </div>
         </div>
       </div>
