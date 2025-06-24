@@ -1,2 +1,2 @@
-// This file is part of an obsolete route group and has been intentionally
-// replaced with this comment to prevent build errors from route conflicts.
+// This file is part of an obsolete route group and is intentionally disabled to prevent build errors.
+export {};
