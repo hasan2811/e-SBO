@@ -8,6 +8,7 @@ import { DashboardHeader } from './dashboard-header';
 import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { BottomNavBar } from './bottom-nav-bar';
 
 const initialInspections: Inspection[] = [
   {
@@ -91,7 +92,7 @@ export function DashboardClient() {
   return (
     <div className="flex flex-col min-h-screen">
       <DashboardHeader onAddInspection={handleAddInspection} />
-      <main className="flex-1 p-4 md:p-8">
+      <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
         <div className="max-w-7xl mx-auto">
           <Card>
             <CardContent className="p-6">
@@ -128,6 +129,7 @@ export function DashboardClient() {
           </Card>
         </div>
       </main>
+      <BottomNavBar onAddInspection={handleAddInspection} />
     </div>
   );
 }
