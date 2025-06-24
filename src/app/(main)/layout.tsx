@@ -1,1 +1,2 @@
-export default null;
+// This layout is intentionally disabled.
+export const disabled = true;

@@ -1,1 +1,2 @@
-export default null;
+// This route is intentionally disabled.
+export const disabled = true;
