@@ -35,32 +35,34 @@ export default function DatabasePage() {
   const categoryOptions: (ObservationCategory | 'all')[] = ['all', 'Structural', 'Electrical', 'Plumbing', 'General'];
 
   return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold tracking-tight">Database Observasi</h2>
       <Card>
         <CardContent className="p-6">
           <div className="grid gap-4 grid-cols-1 md:grid-cols-3 mb-6">
             <Input
-              placeholder="Search by ID, location, findings..."
+              placeholder="Cari berdasarkan ID, lokasi, temuan..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="md:col-span-1"
             />
             <Select value={statusFilter} onValueChange={(value: ObservationStatus | 'all') => setStatusFilter(value)}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Filter by status" />
+                <SelectValue placeholder="Filter berdasarkan status" />
               </SelectTrigger>
               <SelectContent>
                 {statusOptions.map(option => (
-                  <SelectItem key={option} value={option}>{option === 'all' ? 'All Statuses' : option}</SelectItem>
+                  <SelectItem key={option} value={option}>{option === 'all' ? 'Semua Status' : option}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
              <Select value={categoryFilter} onValueChange={(value: ObservationCategory | 'all') => setCategoryFilter(value)}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Filter by category" />
+                <SelectValue placeholder="Filter berdasarkan kategori" />
               </SelectTrigger>
               <SelectContent>
                 {categoryOptions.map(option => (
-                  <SelectItem key={option} value={option}>{option === 'all' ? 'All Categories' : option}</SelectItem>
+                  <SelectItem key={option} value={option}>{option === 'all' ? 'Semua Kategori' : option}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -68,5 +70,6 @@ export default function DatabasePage() {
           <DataTable columns={columns} data={filteredObservations} />
         </CardContent>
       </Card>
+    </div>
   );
 }
