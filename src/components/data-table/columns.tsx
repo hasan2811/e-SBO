@@ -51,8 +51,9 @@ const ActionsCell = ({ row }: { row: { original: Inspection } }) => {
     const reportContent = `
       Inspection Report: ${inspection.id}
       ---------------------------------
-      Date: ${inspection.date}
+      Date: ${new Date(inspection.date).toLocaleString()}
       Location: ${inspection.location}
+      Company: ${inspection.company}
       Submitted By: ${inspection.submittedBy}
       Status: ${inspection.status}
       Category: ${inspection.category}
@@ -60,7 +61,7 @@ const ActionsCell = ({ row }: { row: { original: Inspection } }) => {
       Findings:
       ${inspection.findings}
     `;
-    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const blob = new Blob([reportContent.trim()], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -201,6 +202,14 @@ export const columns: ColumnDef<Inspection>[] = [
     ),
   },
   {
+    accessorKey: 'submittedBy',
+    header: 'Submitted By',
+  },
+  {
+    accessorKey: 'company',
+    header: 'Company',
+  },
+  {
     accessorKey: 'category',
     header: 'Category',
   },
@@ -212,6 +221,7 @@ export const columns: ColumnDef<Inspection>[] = [
   {
     accessorKey: 'date',
     header: 'Date',
+    cell: ({ row }) => <div className="text-sm">{new Date(row.original.date).toLocaleString()}</div>
   },
   {
     id: 'actions',

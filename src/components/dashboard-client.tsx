@@ -14,62 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { BottomNavBar } from './bottom-nav-bar';
 import { useAuth } from '@/hooks/use-auth';
 
-const initialInspections: Inspection[] = [
-  {
-    id: 'INS-001',
-    location: 'Main Boiler Room',
-    submittedBy: 'John Doe',
-    date: '2024-07-28',
-    findings: 'Minor leak detected at the base of boiler unit 3. Pressure readings are slightly below normal.',
-    status: 'Pending',
-    category: 'Plumbing',
-    photoUrl: 'https://placehold.co/600x400.png',
-  },
-  {
-    id: 'INS-002',
-    location: 'East Wing - 3rd Floor',
-    submittedBy: 'Jane Smith',
-    date: '2024-07-27',
-    findings: 'Exposed wiring found in ceiling panel above office 305. Immediate fire hazard.',
-    status: 'In Progress',
-    category: 'Electrical',
-    photoUrl: 'https://placehold.co/600x400.png',
-  },
-  {
-    id: 'INS-003',
-    location: 'Foundation - West Corner',
-    submittedBy: 'Sam Wilson',
-    date: '2024-07-26',
-    findings: 'Visible stress cracks on the concrete foundation. Requires further structural analysis.',
-    status: 'Completed',
-    category: 'Structural',
-    photoUrl: 'https://placehold.co/600x400.png',
-  },
-  {
-    id: 'INS-004',
-    location: 'Rooftop HVAC Unit #2',
-    submittedBy: 'John Doe',
-    date: '2024-07-25',
-    findings: 'Unusual noise coming from the compressor. Filter appears to be clogged.',
-    status: 'Pending',
-    category: 'General',
-    photoUrl: 'https://placehold.co/600x400.png',
-  },
-  {
-    id: 'INS-005',
-    location: 'Server Room',
-    submittedBy: 'Jane Smith',
-    date: '2024-07-24',
-    findings: 'Main power backup (UPS) failed a self-test. Battery replacement recommended.',
-    status: 'In Progress',
-    category: 'Electrical',
-  },
-];
-
 export function DashboardClient() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [inspections, setInspections] = React.useState<Inspection[]>(initialInspections);
+  const [inspections, setInspections] = React.useState<Inspection[]>([]);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<InspectionStatus | 'all'>('all');
   const [categoryFilter, setCategoryFilter] = React.useState<InspectionCategory | 'all'>('all');

@@ -4,7 +4,6 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format } from 'date-fns';
 import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
@@ -29,14 +28,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { Inspection, InspectionCategory, InspectionStatus } from '@/lib/types';
+import type { Inspection, InspectionCategory, InspectionStatus, Company } from '@/lib/types';
 import { Upload } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   location: z.string().min(3, 'Location must be at least 3 characters.'),
-  submittedBy: z.string().min(2, 'Submitter name is required.'),
   findings: z.string().min(10, 'Findings must be at least 10 characters.'),
   category: z.enum(['Structural', 'Electrical', 'Plumbing', 'General']),
+  company: z.enum(['Perusahaan A', 'Perusahaan B', 'Perusahaan C', 'Perusahaan D']),
   photo: z.any().optional(),
 });
 
@@ -51,17 +51,17 @@ export function SubmitInspectionDialog({ children, onAddInspection }: SubmitInsp
   const [isOpen, setIsOpen] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
-
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       location: '',
-      submittedBy: '',
       findings: '',
       category: 'General',
+      company: 'Perusahaan A',
     },
   });
 
@@ -96,12 +96,15 @@ export function SubmitInspectionDialog({ children, onAddInspection }: SubmitInsp
   const onSubmit = (values: FormValues) => {
     const newInspection: Inspection = {
       id: `INS-${String(Date.now()).slice(-4)}`,
-      date: format(new Date(), 'yyyy-MM-dd'),
+      date: new Date().toISOString(),
       status: 'Pending' as InspectionStatus,
       photoUrl: values.photo ? 'https://placehold.co/600x400.png' : undefined,
       photoPreview: photoPreview || undefined,
-      ...values,
-      category: values.category as InspectionCategory
+      submittedBy: user?.displayName || 'Anonymous User',
+      location: values.location,
+      findings: values.findings,
+      category: values.category as InspectionCategory,
+      company: values.company as Company,
     };
 
     onAddInspection(newInspection);
@@ -125,8 +128,7 @@ export function SubmitInspectionDialog({ children, onAddInspection }: SubmitInsp
         <div className="flex-1 overflow-y-auto">
           <Form {...form}>
             <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6 py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
+               <FormField
                   control={form.control}
                   name="location"
                   render={({ field }) => (
@@ -139,43 +141,54 @@ export function SubmitInspectionDialog({ children, onAddInspection }: SubmitInsp
                     </FormItem>
                   )}
                 />
-                <FormField
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <FormField
                   control={form.control}
-                  name="submittedBy"
+                  name="company"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Submitted By</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., John Doe" {...field} />
-                      </FormControl>
+                      <FormLabel>Company</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a company" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Perusahaan A">Perusahaan A</SelectItem>
+                          <SelectItem value="Perusahaan B">Perusahaan B</SelectItem>
+                          <SelectItem value="Perusahaan C">Perusahaan C</SelectItem>
+                          <SelectItem value="Perusahaan D">Perusahaan D</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an inspection category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Structural">Structural</SelectItem>
+                          <SelectItem value="Electrical">Electrical</SelectItem>
+                          <SelectItem value="Plumbing">Plumbing</SelectItem>
+                          <SelectItem value="General">General</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an inspection category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Structural">Structural</SelectItem>
-                        <SelectItem value="Electrical">Electrical</SelectItem>
-                        <SelectItem value="Plumbing">Plumbing</SelectItem>
-                        <SelectItem value="General">General</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="findings"

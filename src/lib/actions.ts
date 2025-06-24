@@ -6,10 +6,11 @@ import type { Inspection } from './types';
 export async function getAiSummary(inspection: Inspection): Promise<SummarizeInspectionDataOutput> {
   const inspectionData = `
     Location: ${inspection.location}
+    Company: ${inspection.company}
     Category: ${inspection.category}
     Status: ${inspection.status}
     Submitted By: ${inspection.submittedBy}
-    Date: ${inspection.date}
+    Date: ${new Date(inspection.date).toLocaleString()}
     Findings: ${inspection.findings}
   `;
 
