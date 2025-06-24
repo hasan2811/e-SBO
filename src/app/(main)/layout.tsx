@@ -1,3 +1,3 @@
-// This file is disabled to resolve a route conflict.
-// It must not have a default export that is a React component.
-export const disabled = true;
+// This file is intentionally disabled to resolve a Next.js route conflict.
+// It is not a layout and must not have a default export.
+export {};
