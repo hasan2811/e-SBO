@@ -150,9 +150,12 @@ export function TakeActionDialog({
         const updatedData: Partial<Observation> = {
             status: 'Completed',
             actionTakenDescription: values.actionTakenDescription,
-            actionTakenPhotoUrl: actionTakenPhotoUrl,
             closedBy: user.displayName || 'Anonymous User',
         };
+        
+        if (actionTakenPhotoUrl) {
+          updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
+        }
 
         await onUpdate(observation.id, updatedData);
         

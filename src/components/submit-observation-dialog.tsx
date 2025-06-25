@@ -145,19 +145,18 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
     }
     setIsSubmitting(true);
     setUploadProgress(null);
-    let photoUrl: string | undefined = undefined;
-
+    
     try {
+        let photoUrl: string | undefined = undefined;
         if (values.photo) {
             const file = values.photo as File;
             photoUrl = await uploadFile(file, user.uid, setUploadProgress);
         }
 
-        const newObservation: Observation = {
+        const newObservation: Omit<Observation, 'photoUrl'> & { photoUrl?: string } = {
             id: `OBS-${String(Date.now()).slice(-6)}`,
             date: new Date().toISOString(),
             status: 'Pending' as ObservationStatus,
-            photoUrl: photoUrl,
             submittedBy: user.displayName || 'Anonymous User',
             location: values.location as Location,
             findings: values.findings,
@@ -167,7 +166,11 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
             company: values.company as Company,
         };
         
-        await onAddObservation(newObservation);
+        if (photoUrl) {
+            newObservation.photoUrl = photoUrl;
+        }
+        
+        await onAddObservation(newObservation as Observation);
 
         toast({
             title: 'Success!',
