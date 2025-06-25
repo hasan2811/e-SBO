@@ -48,8 +48,8 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
               </div>
             )}
             <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-center">
-              <div className="font-semibold text-muted-foreground">Date</div>
-              <div>{new Date(observation.date).toLocaleDateString()}</div>
+              <div className="font-semibold text-muted-foreground">Submitted On</div>
+              <div>{new Date(observation.date).toLocaleString()}</div>
 
               <div className="font-semibold text-muted-foreground">Submitted By</div>
               <div>{observation.submittedBy}</div>
@@ -111,6 +111,13 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
                    <div className="font-semibold text-muted-foreground">Description</div>
                    <div className="text-muted-foreground">{observation.actionTakenDescription || '-'}</div>
                    
+                   {observation.closedDate && (
+                    <>
+                      <div className="font-semibold text-muted-foreground">Closed On</div>
+                      <div className="text-muted-foreground">{new Date(observation.closedDate).toLocaleString()}</div>
+                    </>
+                   )}
+
                    <div className="font-semibold text-muted-foreground">Closed By</div>
                    <div className="text-muted-foreground">{observation.closedBy || '-'}</div>
                  </div>

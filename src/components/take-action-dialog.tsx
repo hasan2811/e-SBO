@@ -145,6 +145,7 @@ export function TakeActionDialog({
             status: 'Completed',
             actionTakenDescription: values.actionTakenDescription,
             closedBy: user.displayName || 'Anonymous User',
+            closedDate: new Date().toISOString(),
         };
         
         if (values.actionTakenPhoto) {

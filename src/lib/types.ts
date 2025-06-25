@@ -19,6 +19,7 @@ export type Observation = {
   actionTakenDescription?: string;
   actionTakenPhotoUrl?: string;
   closedBy?: string;
+  closedDate?: string;
   aiSummary?: string;
   aiRisks?: string;
   aiSuggestedActions?: string;
