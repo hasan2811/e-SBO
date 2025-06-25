@@ -74,33 +74,6 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
               <p className="text-sm text-muted-foreground">{observation.recommendation}</p>
             </div>
 
-            {(observation.aiSummary || observation.aiRisks || observation.aiSuggestedActions) && (
-              <div className="space-y-4 pt-4 border-t mt-4 bg-secondary/50 p-4 rounded-lg">
-                <h4 className="font-semibold text-base flex items-center text-primary">
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  AI-Generated Summary
-                </h4>
-                {observation.aiSummary && (
-                  <div className="space-y-1">
-                    <h5 className="font-semibold">Summary</h5>
-                    <p className="text-sm text-muted-foreground">{observation.aiSummary}</p>
-                  </div>
-                )}
-                {observation.aiRisks && (
-                  <div className="space-y-1">
-                    <h5 className="font-semibold">Potential Risks</h5>
-                    <p className="text-sm text-muted-foreground">{observation.aiRisks}</p>
-                  </div>
-                )}
-                {observation.aiSuggestedActions && (
-                  <div className="space-y-1">
-                    <h5 className="font-semibold">Suggested Actions</h5>
-                    <p className="text-sm text-muted-foreground">{observation.aiSuggestedActions}</p>
-                  </div>
-                )}
-              </div>
-            )}
-
             {observation.status === 'Completed' && (
               <div className="space-y-4 pt-4 border-t mt-4">
                 <h4 className="font-semibold text-base">Action Taken</h4>

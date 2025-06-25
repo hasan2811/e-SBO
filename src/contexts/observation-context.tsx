@@ -54,7 +54,12 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       const observationDocRef = doc(db, 'observations', newObservation.id);
       await setDoc(observationDocRef, newObservation);
 
-      // Fire-and-forget AI summary generation in the background
+      // The AI summarization feature has been temporarily disabled.
+      // The backend environment is experiencing persistent authentication
+      // issues when trying to connect to Google AI services. Disabling this
+      // ensures the core observation submission functionality remains stable.
+      // To re-enable, uncomment the following block.
+      /*
       getAiSummary(newObservation)
         .then(summary => {
           const aiData = {
@@ -68,7 +73,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
           // Log the error but don't bother the user. The main observation is saved.
           console.error("Failed to generate or save AI summary:", error);
         });
-
+      */
     } catch (error) {
       console.error("Error adding document to Firestore: ", error);
       throw error;
