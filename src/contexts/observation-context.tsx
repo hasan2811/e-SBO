@@ -22,13 +22,17 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     // Only fetch data if the user is logged in
     if (user) {
       const observationCollection = collection(db, 'observations');
-      const q = query(observationCollection, orderBy('date', 'desc'));
+      // NOTE: The orderBy clause was removed to prevent an error on projects that
+      // do not have the required composite index in Firestore.
+      const q = query(observationCollection);
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const obsData = querySnapshot.docs.map(doc => ({
           ...doc.data(),
           id: doc.id,
         } as Observation));
+        // Manual sort on the client-side as a fallback
+        obsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setObservations(obsData);
       }, (error) => {
         console.error("Error fetching observations from Firestore: ", error);
