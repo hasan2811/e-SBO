@@ -1,5 +1,2 @@
-// This page has been moved to /src/app/(app)/page.tsx to support the app layout.
-// This file is now disabled to prevent route conflicts.
-export default function DisabledPage() {
-  return null;
-}
+// This file's content has been removed to permanently resolve a routing conflict.
+export {};

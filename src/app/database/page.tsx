@@ -1,4 +1,2 @@
-// This page has been disabled as per user request to focus on core functionality.
-export default function DisabledPage() {
-  return null;
-}
+// This file's content has been removed to permanently resolve a routing conflict.
+export {};
