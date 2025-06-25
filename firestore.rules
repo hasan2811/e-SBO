@@ -1,17 +1,12 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Rules for the 'users' collection
-    match /users/{userId} {
-      // Users can read, create, and update their own profile document.
-      // They cannot delete it or view other users' profiles.
-      allow read, create, update: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Rules for the 'observations' collection
-    match /observations/{observationId} {
-      // Any authenticated user can read, create, update, and delete observations.
+    // Allow read/write access to all documents for any authenticated user.
+    // This is a simple rule for development; you might want to make it
+    // more granular for production.
+    match /{document=**} {
       allow read, write: if request.auth != null;
     }
   }
