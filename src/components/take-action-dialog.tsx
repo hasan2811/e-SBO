@@ -133,7 +133,7 @@ export function TakeActionDialog({
   };
 
   const onSubmit = async (values: FormValues) => {
-    if (!user) {
+    if (!user || !userProfile) {
         toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to update an observation.' });
         return;
     }
@@ -141,9 +141,7 @@ export function TakeActionDialog({
     setUploadProgress(null);
     
     try {
-        const closerName = userProfile
-          ? `${userProfile.displayName} (${userProfile.position || 'N/A'})`
-          : (user.displayName || 'Anonymous User');
+        const closerName = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
 
         const updatedData: Partial<Observation> = {
             status: 'Completed',

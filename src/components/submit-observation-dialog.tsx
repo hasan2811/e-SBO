@@ -139,7 +139,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
   };
 
   const onSubmit = async (values: FormValues) => {
-    if (!user) {
+    if (!user || !userProfile) {
         toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to submit an observation.' });
         return;
     }
@@ -147,9 +147,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
     setUploadProgress(null);
     
     try {
-        const submitterName = userProfile 
-            ? `${userProfile.displayName} (${userProfile.position || 'N/A'})` 
-            : (user.displayName || 'Anonymous User');
+        const submitterName = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
 
         const newObservation: Omit<Observation, 'photoUrl'> & { photoUrl?: string } = {
             id: `OBS-${String(Date.now()).slice(-6)}`,

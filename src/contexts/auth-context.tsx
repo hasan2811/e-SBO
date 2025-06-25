@@ -52,19 +52,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoading(true);
       if (user) {
-        // User is authenticated, fetch their profile from Firestore.
         const userDocRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(userDocRef);
 
         if (docSnap.exists()) {
           setUserProfile(docSnap.data() as UserProfile);
         } else {
-          // Fallback for users in Auth but not Firestore (e.g., legacy users).
-          const newUserProfile: UserProfile = {
+          // This case handles users created via Google Sign-In for the first time
+          // or legacy users. A profile is created for them.
+           const newUserProfile: UserProfile = {
             uid: user.uid,
             email: user.email!,
-            displayName: user.displayName || 'Anonymous User',
+            displayName: user.displayName || 'New User',
             position: 'Not Set',
           };
           await setDoc(userDocRef, newUserProfile);
@@ -72,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setUser(user);
       } else {
-        // User is signed out.
         setUser(null);
         setUserProfile(null);
       }
@@ -87,7 +87,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      // Ensure user profile exists in Firestore after Google sign-in.
       const userDocRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(userDocRef);
       if (!docSnap.exists()) {
@@ -98,8 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             position: 'Not Set',
           };
         await setDoc(userDocRef, newUserProfile);
+        // The onAuthStateChanged listener will then pick this up.
       }
-      // The onAuthStateChanged listener will handle setting the state.
     } catch (error) {
       console.error('Error signing in with Google: ', error);
       throw error;
@@ -111,10 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Update the Auth profile directly.
       await updateProfile(user, { displayName });
 
-      // Explicitly create the user document in Firestore.
       const userDocRef = doc(db, 'users', user.uid);
       const newUserProfile: UserProfile = {
         uid: user.uid,
@@ -123,8 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         position: 'Not Set',
       };
       await setDoc(userDocRef, newUserProfile);
-
-      // The onAuthStateChanged listener will handle setting the state.
+       // The onAuthStateChanged listener will then pick this up.
     } catch (error) {
       console.error('Error signing up: ', error);
       throw error;
@@ -175,5 +171,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 }
