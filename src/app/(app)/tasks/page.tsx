@@ -2,37 +2,14 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import { useObservations } from '@/contexts/observation-context';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import type { Observation, RiskLevel } from '@/lib/types';
+import type { Observation } from '@/lib/types';
 import { TakeActionDialog } from '@/components/take-action-dialog';
 import { ViewDetailsDialog } from '@/components/view-details-dialog';
 import { ClipboardCheck, Eye } from 'lucide-react';
-
-const RiskBadge = ({ riskLevel }: { riskLevel: RiskLevel }) => {
-  const riskStyles: Record<RiskLevel, string> = {
-    Low: 'bg-chart-2 border-transparent text-primary-foreground hover:bg-chart-2/80',
-    Medium: 'bg-chart-4 border-transparent text-secondary-foreground hover:bg-chart-4/80',
-    High: 'bg-chart-5 border-transparent text-secondary-foreground hover:bg-chart-5/80',
-    Critical: 'bg-destructive border-transparent text-destructive-foreground hover:bg-destructive/80',
-  };
-  return <Badge className={cn(riskStyles[riskLevel])}>{riskLevel}</Badge>;
-};
-
-const StatusBadge = ({ status }: { status: Observation['status'] }) => {
-  const variant: 'default' | 'secondary' | 'outline' =
-    status === 'Completed'
-      ? 'default'
-      : status === 'In Progress'
-      ? 'secondary'
-      : 'outline';
-  return <Badge variant={variant}>{status}</Badge>;
-};
-
+import { RiskBadge, StatusBadge } from '@/components/status-badges';
 
 const TaskCard = ({ observation }: { observation: Observation }) => {
   const { updateObservation } = useObservations();

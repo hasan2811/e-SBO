@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -12,29 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import type { Observation, RiskLevel } from '@/lib/types';
-
-const RiskBadge = ({ riskLevel }: { riskLevel: RiskLevel }) => {
-  const riskStyles: Record<RiskLevel, string> = {
-    Low: 'bg-chart-2 border-transparent text-primary-foreground hover:bg-chart-2/80',
-    Medium: 'bg-chart-4 border-transparent text-secondary-foreground hover:bg-chart-4/80',
-    High: 'bg-chart-5 border-transparent text-secondary-foreground hover:bg-chart-5/80',
-    Critical: 'bg-destructive border-transparent text-destructive-foreground hover:bg-destructive/80',
-  };
-  return <Badge className={cn(riskStyles[riskLevel])}>{riskLevel}</Badge>;
-};
-
-const StatusBadge = ({ status }: { status: Observation['status'] }) => {
-  const variant: 'default' | 'secondary' | 'outline' =
-    status === 'Completed'
-      ? 'default'
-      : status === 'In Progress'
-      ? 'secondary'
-      : 'outline';
-  return <Badge variant={variant}>{status}</Badge>;
-};
+import type { Observation } from '@/lib/types';
+import { RiskBadge, StatusBadge } from './status-badges';
 
 interface ViewDetailsDialogProps {
   isOpen: boolean;
