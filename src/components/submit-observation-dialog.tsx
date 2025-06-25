@@ -29,11 +29,11 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { Progress } from './ui/progress';
+import { Progress } from '@/components/ui/progress';
 
 const formSchema = z.object({
   location: z.enum(['Location A', 'Location B', 'Location C', 'Location D']),
