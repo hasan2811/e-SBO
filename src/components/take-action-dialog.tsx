@@ -6,8 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload } from 'lucide-react';
-import { uploadFileFromBrowser } from '@/lib/actions';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
+import { storage as clientStorage } from '@/lib/firebase';
 import type { Observation } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +38,23 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+async function uploadFileToStorage(file: File, folder: string): Promise<string> {
+  if (!file) {
+    throw new Error('You must select a file to upload.');
+  }
+
+  const storageRef = ref(clientStorage, `${folder}/${Date.now()}-${file.name}`);
+  
+  try {
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    return downloadURL;
+  } catch (error) {
+    console.error("Firebase Storage upload error:", error);
+    throw new Error("Could not upload file to Firebase Storage.");
+  }
+}
 
 interface TakeActionDialogProps {
   isOpen: boolean;
@@ -104,16 +122,7 @@ export function TakeActionDialog({
         let actionTakenPhotoUrl: string | undefined = undefined;
         if (values.actionTakenPhoto) {
             const file = values.actionTakenPhoto as File;
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('folder', 'action-photos');
-
-            const result = await uploadFileFromBrowser(formData);
-
-            if ('error' in result) {
-              throw new Error(result.error);
-            }
-            actionTakenPhotoUrl = result.url;
+            actionTakenPhotoUrl = await uploadFileToStorage(file, 'action-photos');
         }
 
         const updatedData: Partial<Observation> = {
