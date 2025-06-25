@@ -31,8 +31,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useToast } from '@/hooks/use-toast';
 import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getSecureUploadUrl } from '@/lib/actions';
+
 
 const formSchema = z.object({
   location: z.enum(['Location A', 'Location B', 'Location C', 'Location D']),
@@ -111,9 +111,24 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
     try {
         if (values.photo) {
             const file = values.photo as File;
-            const storageRef = ref(storage, `e-SBO/observations/${Date.now()}-${file.name}`);
-            const snapshot = await uploadBytes(storageRef, file);
-            photoUrl = await getDownloadURL(snapshot.ref);
+            const filePath = `e-SBO/observations/${Date.now()}-${file.name.replace(/\s/g, '_')}`;
+            
+            // 1. Get a secure URL from our server action
+            const { signedUrl, publicUrl } = await getSecureUploadUrl(filePath, file.type);
+            
+            // 2. Upload the file to Firebase Storage using the signed URL
+            const uploadResponse = await fetch(signedUrl, {
+              method: 'PUT',
+              body: file,
+              headers: { 'Content-Type': file.type },
+            });
+
+            if (!uploadResponse.ok) {
+              throw new Error('Photo upload failed.');
+            }
+            
+            // 3. Use the public URL for the database record
+            photoUrl = publicUrl;
         }
 
         const newObservation: Observation = {

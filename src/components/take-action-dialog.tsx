@@ -29,8 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getSecureUploadUrl } from '@/lib/actions';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(10, 'Description must be at least 10 characters.'),
@@ -105,9 +104,24 @@ export function TakeActionDialog({
         let actionTakenPhotoUrl: string | undefined = undefined;
         if (values.actionTakenPhoto) {
             const file = values.actionTakenPhoto as File;
-            const storageRef = ref(storage, `e-SBO/actions/${observation.id}-${Date.now()}-${file.name}`);
-            const snapshot = await uploadBytes(storageRef, file);
-            actionTakenPhotoUrl = await getDownloadURL(snapshot.ref);
+            const filePath = `e-SBO/actions/${observation.id}-${Date.now()}-${file.name.replace(/\s/g, '_')}`;
+
+            // 1. Get a secure URL from our server action
+            const { signedUrl, publicUrl } = await getSecureUploadUrl(filePath, file.type);
+            
+            // 2. Upload the file to Firebase Storage using the signed URL
+            const uploadResponse = await fetch(signedUrl, {
+              method: 'PUT',
+              body: file,
+              headers: { 'Content-Type': file.type },
+            });
+
+            if (!uploadResponse.ok) {
+              throw new Error('Photo upload failed.');
+            }
+            
+            // 3. Use the public URL for the database record
+            actionTakenPhotoUrl = publicUrl;
         }
 
         const updatedData: Partial<Observation> = {
