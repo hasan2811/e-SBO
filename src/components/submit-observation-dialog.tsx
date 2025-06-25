@@ -6,6 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -31,7 +33,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useToast } from '@/hooks/use-toast';
 import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { getSecureUploadUrl } from '@/lib/actions';
 
 const formSchema = z.object({
   location: z.enum(['Location A', 'Location B', 'Location C', 'Location D']),
@@ -53,22 +54,10 @@ interface SubmitObservationDialogProps {
 async function uploadFile(file: File): Promise<{ url: string }> {
   try {
     const filePath = `observations/${Date.now()}-${file.name}`;
-    const { signedUrl, publicUrl } = await getSecureUploadUrl(filePath, file.type);
-
-    const uploadResponse = await fetch(signedUrl, {
-      method: 'PUT',
-      body: file,
-      headers: {
-        'Content-Type': file.type,
-      },
-    });
-
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      throw new Error(`Upload failed: ${uploadResponse.statusText} - ${errorText}`);
-    }
-
-    return { url: publicUrl };
+    const storageRef = ref(storage, filePath);
+    await uploadBytes(storageRef, file);
+    const downloadUrl = await getDownloadURL(storageRef);
+    return { url: downloadUrl };
   } catch (error) {
     console.error('File upload process failed:', error);
     throw new Error('Could not upload file.');
