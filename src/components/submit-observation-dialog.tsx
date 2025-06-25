@@ -236,7 +236,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a company" />
-                            </SelectTrigger>
+                            </Trigger>
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="Perusahaan A">Perusahaan A</SelectItem>
@@ -261,7 +261,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a category" />
-                            </SelectTrigger>
+                            </Trigger>
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="Structural">Structural</SelectItem>
@@ -284,7 +284,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a risk level" />
-                            </SelectTrigger>
+                            </Trigger>
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="Low">Low</SelectItem>

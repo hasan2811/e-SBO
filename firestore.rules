@@ -1,18 +1,10 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users to read and write to the observations collection
-    match /observations/{observationId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Allow users to read and update their own profile.
-    // Allow any authenticated user to create their profile for the first time.
-    match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+    // By default, deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
