@@ -1,10 +1,6 @@
 [
   {
-    "origin": [
-      "https://6000-firebase-studio-1750769582664.cluster-l6vkdperq5ebaqo3qy4ksvoqom.cloudworkstations.dev",
-      "http://localhost:3000",
-      "http://localhost:6000"
-    ],
+    "origin": ["*"],
     "method": [
       "GET",
       "POST",
