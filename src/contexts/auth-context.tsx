@@ -53,27 +53,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setUser(user);
+        // User is authenticated, fetch their profile from Firestore.
         const userDocRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(userDocRef);
 
         if (docSnap.exists()) {
           setUserProfile(docSnap.data() as UserProfile);
         } else {
-          // Create profile for new user
+          // Fallback for users in Auth but not Firestore (e.g., legacy users).
           const newUserProfile: UserProfile = {
             uid: user.uid,
             email: user.email!,
-            displayName: user.displayName || 'New User',
+            displayName: user.displayName || 'Anonymous User',
             position: 'Not Set',
           };
           await setDoc(userDocRef, newUserProfile);
-          if (!user.displayName) {
-             await updateProfile(user, { displayName: 'New User' });
-          }
           setUserProfile(newUserProfile);
         }
+        setUser(user);
       } else {
+        // User is signed out.
         setUser(null);
         setUserProfile(null);
       }
@@ -85,29 +84,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Ensure user profile exists in Firestore after Google sign-in.
+      const userDocRef = doc(db, 'users', user.uid);
+      const docSnap = await getDoc(userDocRef);
+      if (!docSnap.exists()) {
+        const newUserProfile: UserProfile = {
+            uid: user.uid,
+            email: user.email!,
+            displayName: user.displayName || 'New User',
+            position: 'Not Set',
+          };
+        await setDoc(userDocRef, newUserProfile);
+      }
+      // The onAuthStateChanged listener will handle setting the state.
     } catch (error) {
       console.error('Error signing in with Google: ', error);
       throw error;
     }
   };
 
-  const handleSignUp = async ({ email, password, displayName }: SignUpInput) => {
+  const signUpWithEmailAndPasswordHandler = async ({ email, password, displayName }: SignUpInput) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      if (userCredential.user) {
-        // The onAuthStateChanged listener will handle creating the Firestore doc.
-        // We just need to update the auth profile immediately.
-        await updateProfile(userCredential.user, { displayName });
-        setUser({ ...userCredential.user, displayName });
-      }
+      const user = userCredential.user;
+      
+      // Update the Auth profile directly.
+      await updateProfile(user, { displayName });
+
+      // Explicitly create the user document in Firestore.
+      const userDocRef = doc(db, 'users', user.uid);
+      const newUserProfile: UserProfile = {
+        uid: user.uid,
+        email: user.email!,
+        displayName: displayName,
+        position: 'Not Set',
+      };
+      await setDoc(userDocRef, newUserProfile);
+
+      // The onAuthStateChanged listener will handle setting the state.
     } catch (error) {
       console.error('Error signing up: ', error);
       throw error;
     }
   };
 
-  const handleSignIn = async ({ email, password }: SignInInput) => {
+  const signInWithEmailAndPasswordHandler = async ({ email, password }: SignInInput) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
@@ -132,7 +156,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserProfile(prev => prev ? { ...prev, ...data } as UserProfile : null);
   };
 
-
   const logout = async () => {
     try {
       await signOut(auth);
@@ -146,8 +169,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userProfile,
     loading,
     signInWithGoogle,
-    signUpWithEmailAndPassword: handleSignUp,
-    signInWithEmailAndPassword: handleSignIn,
+    signUpWithEmailAndPassword: signUpWithEmailAndPasswordHandler,
+    signInWithEmailAndPassword: signInWithEmailAndPasswordHandler,
     updateUserProfile: handleUpdateUserProfile,
     logout,
   };
