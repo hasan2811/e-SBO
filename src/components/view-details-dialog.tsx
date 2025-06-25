@@ -35,7 +35,7 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="flex-1 overflow-y-auto">
-          <div className="space-y-4 px-6 py-4">
+          <div className="space-y-6 px-6 py-4">
             {observation.photoUrl && (
               <div className="relative w-full aspect-video rounded-md overflow-hidden border">
                 <Image
@@ -64,15 +64,45 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
               <div><RiskBadge riskLevel={observation.riskLevel} /></div>
             </div>
 
-            <div className="space-y-1 pt-2">
+            <div className="space-y-1">
               <h4 className="font-semibold">Findings</h4>
               <p className="text-sm text-muted-foreground">{observation.findings}</p>
             </div>
 
-            <div className="space-y-1 pt-2">
+            <div className="space-y-1">
               <h4 className="font-semibold">Recommendation</h4>
               <p className="text-sm text-muted-foreground">{observation.recommendation}</p>
             </div>
+
+            {(observation.aiSummary || observation.aiRisks || observation.aiSuggestedActions) && (
+              <div className="space-y-4 pt-4 mt-4 border-t">
+                 <div className="bg-primary/5 p-4 rounded-lg border-l-4 border-primary space-y-4">
+                    <h4 className="font-semibold text-base flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      AI-Generated Analysis
+                    </h4>
+                    {observation.aiSummary && (
+                      <div className="space-y-1">
+                        <h5 className="font-semibold text-sm">Summary</h5>
+                        <p className="text-sm text-muted-foreground">{observation.aiSummary}</p>
+                      </div>
+                    )}
+                    {observation.aiRisks && (
+                      <div className="space-y-1">
+                        <h5 className="font-semibold text-sm">Potential Risks</h5>
+                        <p className="text-sm text-muted-foreground">{observation.aiRisks}</p>
+                      </div>
+                    )}
+                     {observation.aiSuggestedActions && (
+                      <div className="space-y-1">
+                        <h5 className="font-semibold text-sm">Suggested Actions</h5>
+                        <p className="text-sm text-muted-foreground">{observation.aiSuggestedActions}</p>
+                      </div>
+                    )}
+                 </div>
+              </div>
+            )}
+
 
             {observation.status === 'Completed' && (
               <div className="space-y-4 pt-4 border-t mt-4">

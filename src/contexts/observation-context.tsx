@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import type { Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { getAiSummary } from '@/lib/actions';
+import { useToast } from '@/hooks/use-toast';
 
 interface ObservationContextType {
   observations: Observation[];
@@ -18,62 +19,58 @@ const ObservationContext = React.createContext<ObservationContextType | undefine
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
   const [observations, setObservations] = React.useState<Observation[]>([]);
   const { user } = useAuth();
+  const { toast } = useToast();
 
   React.useEffect(() => {
-    // Only fetch data if the user is logged in
     if (user) {
       const observationCollection = collection(db, 'observations');
-      // NOTE: The orderBy clause was removed to prevent an error on projects that
-      // do not have the required composite index in Firestore.
-      const q = query(observationCollection);
+      const q = query(observationCollection, orderBy('date', 'desc'));
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const obsData = querySnapshot.docs.map(doc => ({
           ...doc.data(),
           id: doc.id,
         } as Observation));
-        // Manual sort on the client-side as a fallback
-        obsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setObservations(obsData);
       }, (error) => {
         console.error("Error fetching observations from Firestore: ", error);
+         toast({
+          variant: 'destructive',
+          title: 'Error Fetching Data',
+          description: 'Could not fetch observations from the database.',
+        });
       });
 
-      // Cleanup subscription on component unmount or when user logs out
       return () => unsubscribe();
     } else {
-      // If user is not logged in, clear any existing observations
       setObservations([]);
     }
-  }, [user]); // Rerun the effect when the user's auth state changes
+  }, [user, toast]);
 
 
   const addObservation = async (newObservation: Observation) => {
     try {
-      // Use the custom ID from the observation object as the document ID
       const observationDocRef = doc(db, 'observations', newObservation.id);
       await setDoc(observationDocRef, newObservation);
 
-      // The AI summarization feature has been temporarily disabled.
-      // The backend environment is experiencing persistent authentication
-      // issues when trying to connect to Google AI services. Disabling this
-      // ensures the core observation submission functionality remains stable.
-      // To re-enable, uncomment the following block.
-      /*
+      // Asynchronously get AI summary and update the document.
+      // This runs in the background and does not block the UI.
       getAiSummary(newObservation)
         .then(summary => {
-          const aiData = {
-            aiSummary: summary.summary,
-            aiRisks: summary.risks,
-            aiSuggestedActions: summary.suggestedActions,
-          };
-          updateDoc(observationDocRef, aiData);
+          if (summary) {
+            const aiData = {
+              aiSummary: summary.summary,
+              aiRisks: summary.risks,
+              aiSuggestedActions: summary.suggestedActions,
+            };
+            updateDoc(observationDocRef, aiData);
+          }
         })
         .catch(error => {
           // Log the error but don't bother the user. The main observation is saved.
           console.error("Failed to generate or save AI summary:", error);
         });
-      */
+
     } catch (error) {
       console.error("Error adding document to Firestore: ", error);
       throw error;
