@@ -1,5 +1,3 @@
-'use server';
-
 export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed';
 export type ObservationCategory = 'Structural' | 'Electrical' | 'Plumbing' | 'General';
 export type Company = 'Perusahaan A' | 'Perusahaan B' | 'Perusahaan C' | 'Perusahaan D';
