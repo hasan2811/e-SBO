@@ -1,8 +1,10 @@
-
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow read/write access to any file for authenticated users
+    // Allow read/write access to any file for authenticated users.
+    // For more fine-grained control, you might want to restrict this further,
+    // for example, to match /e-SBO/{userId}/{allPaths=**}
+    // and check if request.auth.uid == userId
     match /{allPaths=**} {
       allow read, write: if request.auth != null;
     }
