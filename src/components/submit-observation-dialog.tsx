@@ -6,9 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload } from 'lucide-react';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-import { storage as clientStorage } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -46,20 +44,30 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-async function uploadFileToStorage(file: File, folder: string): Promise<string> {
-  if (!file) {
-    throw new Error('You must select a file to upload.');
-  }
+// Fungsi untuk meng-upload file ke Cloud Function
+async function uploadFileViaCloudFunction(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('photo', file);
 
-  const storageRef = ref(clientStorage, `${folder}/${Date.now()}-${file.name}`);
-  
+  // Ganti dengan URL Cloud Function Anda
+  const functionUrl = 'https://us-central1-hssetech-e1710.cloudfunctions.net/uploadPhoto';
+
   try {
-    const snapshot = await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(`Upload failed with status ${response.status}: ${errorBody.message || 'Unknown error'}`);
+    }
+
+    const result = await response.json();
+    return result.downloadUrl;
   } catch (error) {
-    console.error("Firebase Storage upload error:", error);
-    throw new Error("Could not upload file to Firebase Storage.");
+    console.error("Cloud Function upload error:", error);
+    throw new Error("Could not upload file via Cloud Function.");
   }
 }
 
@@ -100,11 +108,11 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if(file.size > 4 * 1024 * 1024) { // 4MB limit
+      if(file.size > 10 * 1024 * 1024) { // 10MB limit
         toast({
           variant: 'destructive',
           title: 'File too large',
-          description: 'Please upload an image smaller than 4MB.',
+          description: 'Please upload an image smaller than 10MB.',
         });
         return;
       }
@@ -128,7 +136,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
     try {
         if (values.photo) {
             const file = values.photo as File;
-            photoUrl = await uploadFileToStorage(file, 'observations');
+            photoUrl = await uploadFileViaCloudFunction(file);
         }
 
         const newObservation: Observation = {
