@@ -4,6 +4,7 @@ import * as React from 'react';
 import { collection, doc, onSnapshot, query, setDoc, updateDoc, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation } from '@/lib/types';
+import { useAuth } from '@/hooks/use-auth';
 
 interface ObservationContextType {
   observations: Observation[];
@@ -15,23 +16,32 @@ const ObservationContext = React.createContext<ObservationContextType | undefine
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
   const [observations, setObservations] = React.useState<Observation[]>([]);
+  const { user } = useAuth();
 
   React.useEffect(() => {
-    const observationCollection = collection(db, 'observations');
-    const q = query(observationCollection, orderBy('date', 'desc'));
+    // Only fetch data if the user is logged in
+    if (user) {
+      const observationCollection = collection(db, 'observations');
+      const q = query(observationCollection, orderBy('date', 'desc'));
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const obsData = querySnapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id,
-      } as Observation));
-      setObservations(obsData);
-    }, (error) => {
-      console.error("Error fetching observations from Firestore: ", error);
-    });
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const obsData = querySnapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id,
+        } as Observation));
+        setObservations(obsData);
+      }, (error) => {
+        console.error("Error fetching observations from Firestore: ", error);
+      });
 
-    return () => unsubscribe();
-  }, []);
+      // Cleanup subscription on component unmount or when user logs out
+      return () => unsubscribe();
+    } else {
+      // If user is not logged in, clear any existing observations
+      setObservations([]);
+    }
+  }, [user]); // Rerun the effect when the user's auth state changes
+
 
   const addObservation = async (newObservation: Observation) => {
     try {
