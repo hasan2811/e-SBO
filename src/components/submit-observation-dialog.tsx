@@ -6,8 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload } from 'lucide-react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
+import { uploadFileFromBrowser } from '@/lib/actions';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -49,19 +48,6 @@ type FormValues = z.infer<typeof formSchema>;
 interface SubmitObservationDialogProps {
   children: React.ReactNode;
   onAddObservation: (observation: Observation) => Promise<void>;
-}
-
-async function uploadFile(file: File): Promise<{ url: string }> {
-  try {
-    const filePath = `observations/${Date.now()}-${file.name}`;
-    const storageRef = ref(storage, filePath);
-    await uploadBytes(storageRef, file);
-    const downloadUrl = await getDownloadURL(storageRef);
-    return { url: downloadUrl };
-  } catch (error) {
-    console.error('File upload process failed:', error);
-    throw new Error('Could not upload file.');
-  }
 }
 
 export function SubmitObservationDialog({ children, onAddObservation }: SubmitObservationDialogProps) {
@@ -124,7 +110,15 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
     try {
         if (values.photo) {
             const file = values.photo as File;
-            const result = await uploadFile(file);
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('folder', 'observations');
+            
+            const result = await uploadFileFromBrowser(formData);
+
+            if ('error' in result) {
+              throw new Error(result.error);
+            }
             photoUrl = result.url;
         }
 
@@ -155,7 +149,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
         toast({
             variant: 'destructive',
             title: 'Submission Failed',
-            description: 'Could not save the observation. Please try again.',
+            description: error instanceof Error ? error.message : 'Could not save the observation. Please try again.',
         });
     } finally {
         setIsSubmitting(false);

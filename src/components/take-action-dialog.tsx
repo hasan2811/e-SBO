@@ -6,8 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload } from 'lucide-react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
+import { uploadFileFromBrowser } from '@/lib/actions';
 
 import type { Observation } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -44,19 +43,6 @@ interface TakeActionDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   observation: Observation;
   onUpdate: (id: string, data: Partial<Observation>) => Promise<void>;
-}
-
-async function uploadFile(file: File): Promise<{ url: string }> {
-  try {
-    const filePath = `action-photos/${Date.now()}-${file.name}`;
-    const storageRef = ref(storage, filePath);
-    await uploadBytes(storageRef, file);
-    const downloadUrl = await getDownloadURL(storageRef);
-    return { url: downloadUrl };
-  } catch (error) {
-    console.error('File upload process failed:', error);
-    throw new Error('Could not upload file.');
-  }
 }
 
 export function TakeActionDialog({
@@ -118,7 +104,15 @@ export function TakeActionDialog({
         let actionTakenPhotoUrl: string | undefined = undefined;
         if (values.actionTakenPhoto) {
             const file = values.actionTakenPhoto as File;
-            const result = await uploadFile(file);
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('folder', 'action-photos');
+
+            const result = await uploadFileFromBrowser(formData);
+
+            if ('error' in result) {
+              throw new Error(result.error);
+            }
             actionTakenPhotoUrl = result.url;
         }
 
@@ -142,7 +136,7 @@ export function TakeActionDialog({
         toast({
             variant: 'destructive',
             title: 'Update Failed',
-            description: 'Could not update the observation. Please try again.',
+            description: error instanceof Error ? error.message : 'Could not update the observation. Please try again.',
         });
     } finally {
         setIsSubmitting(false);

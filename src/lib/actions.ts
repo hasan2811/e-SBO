@@ -3,6 +3,10 @@
 import { summarizeObservationData, SummarizeObservationDataOutput } from '@/ai/flows/summarize-observation-data';
 import type { Observation } from './types';
 import { storage } from '@/lib/firebase-admin';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs/promises';
+
 
 export async function getAiSummary(observation: Observation): Promise<SummarizeObservationDataOutput> {
   const observationData = `
@@ -25,6 +29,56 @@ export async function getAiSummary(observation: Observation): Promise<SummarizeO
     throw new Error('Failed to generate AI summary.');
   }
 }
+
+/**
+ * Receives file data from a browser form and uploads it to Firebase Storage.
+ * @param formData The FormData object containing the file and folder name.
+ * @returns An object with the public URL of the uploaded file or an error message.
+ */
+export async function uploadFileFromBrowser(formData: FormData): Promise<{url: string} | {error: string}> {
+  try {
+    const file = formData.get('file') as File | null;
+    const folder = formData.get('folder') as string | null;
+
+    if (!file || !folder) {
+      return { error: 'File or folder not provided in FormData.' };
+    }
+
+    // Get file buffer from the File object
+    const buffer = Buffer.from(await file.arrayBuffer());
+    
+    // Write the buffer to a temporary file on the server's local filesystem
+    const tempFilePath = path.join(os.tmpdir(), file.name);
+    await fs.writeFile(tempFilePath, buffer);
+    
+    // Upload the temporary file to Firebase Storage using the Admin SDK
+    const bucket = storage.bucket();
+    const destination = `${folder}/${Date.now()}-${file.name}`;
+    
+    const [uploadedFile] = await bucket.upload(tempFilePath, {
+      destination: destination,
+      metadata: {
+        contentType: file.type,
+      },
+    });
+
+    // Clean up the temporary file from the server
+    await fs.unlink(tempFilePath);
+
+    // Construct the public, permanent URL for the file
+    const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(uploadedFile.name)}?alt=media`;
+
+    return { url: publicUrl };
+
+  } catch (error) {
+    console.error('Upload failed in server action:', error);
+    if (error instanceof Error) {
+       return { error: `Upload failed on the server: ${error.message}` };
+    }
+    return { error: 'An unknown error occurred during upload.' };
+  }
+}
+
 
 /**
  * Generates a secure, short-lived URL for uploading a file to Firebase Storage.
