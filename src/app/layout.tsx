@@ -10,6 +10,7 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'e-Observation Dashboard',
   description: 'Dashboard for viewing and managing observation data.',
+  manifest: '/manifest.json',
   themeColor: '#4A90E2',
 };
 
