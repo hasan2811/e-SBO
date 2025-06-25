@@ -1,9 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users to read and write to the observations collection
+    // This rule allows anyone to read and write to the observations collection.
+    // This is insecure and should be restricted in a production environment.
     match /observations/{observationId} {
-      allow read, write: if request.auth != null;
+      allow read, create, update, delete: if true;
     }
   }
 }
