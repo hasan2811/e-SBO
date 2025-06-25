@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { getSecureUploadUrl } from '@/lib/actions';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(10, 'Description must be at least 10 characters.'),
@@ -45,27 +46,28 @@ interface TakeActionDialogProps {
 }
 
 async function uploadFile(file: File): Promise<{ url: string }> {
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  if (!projectId) {
-    throw new Error('Firebase project ID is not configured.');
+  try {
+    const filePath = `action-photos/${Date.now()}-${file.name}`;
+    const { signedUrl, publicUrl } = await getSecureUploadUrl(filePath, file.type);
+
+    const uploadResponse = await fetch(signedUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type,
+      },
+    });
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      throw new Error(`Upload failed: ${uploadResponse.statusText} - ${errorText}`);
+    }
+    
+    return { url: publicUrl };
+  } catch (error) {
+    console.error('File upload process failed:', error);
+    throw new Error('Could not upload file.');
   }
-  const functionUrl = `https://us-central1-${projectId}.cloudfunctions.net/uploadPhoto`;
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const response = await fetch(functionUrl, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error("Upload failed with status:", response.status, "Body:", errorBody);
-    throw new Error('File upload failed. Please check the logs.');
-  }
-
-  return response.json();
 }
 
 export function TakeActionDialog({
