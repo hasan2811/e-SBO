@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload } from 'lucide-react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 
 import { storage } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useToast } from '@/hooks/use-toast';
 import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
+import { Progress } from './ui/progress';
 
 const formSchema = z.object({
   location: z.enum(['Location A', 'Location B', 'Location C', 'Location D']),
@@ -46,22 +47,40 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-async function uploadFile(file: File, userId: string): Promise<string> {
-  if (!file || !userId) {
-    throw new Error('File or user ID is missing.');
-  }
-  const storageRef = ref(storage, `observations/${userId}/${Date.now()}-${file.name}`);
-  
-  try {
-    const snapshot = await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
-  } catch (error) {
-    console.error("Firebase Storage upload error:", error);
-    throw new Error("Could not upload file to Firebase Storage.");
-  }
-}
+function uploadFile(
+  file: File,
+  userId: string,
+  onProgress: (progress: number) => void
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file || !userId) {
+      return reject(new Error('File or user ID is missing.'));
+    }
+    const storageRef = ref(storage, `observations/${userId}/${Date.now()}-${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
 
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        onProgress(progress);
+      },
+      (error) => {
+        console.error('Firebase Storage upload error:', error);
+        reject(new Error('Could not upload file to Firebase Storage.'));
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadURL);
+        } catch (error) {
+          console.error('Firebase Storage get URL error:', error);
+          reject(new Error('Could not get download URL.'));
+        }
+      }
+    );
+  });
+}
 
 interface SubmitObservationDialogProps {
   children: React.ReactNode;
@@ -72,6 +91,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
   const [isOpen, setIsOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -93,6 +113,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
     if (!open) {
       form.reset();
       setPhotoPreview(null);
+      setUploadProgress(null);
     }
     setIsOpen(open);
   };
@@ -123,12 +144,13 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
         return;
     }
     setIsSubmitting(true);
+    setUploadProgress(null);
     let photoUrl: string | undefined = undefined;
 
     try {
         if (values.photo) {
             const file = values.photo as File;
-            photoUrl = await uploadFile(file, user.uid);
+            photoUrl = await uploadFile(file, user.uid, setUploadProgress);
         }
 
         const newObservation: Observation = {
@@ -162,6 +184,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
         });
     } finally {
         setIsSubmitting(false);
+        setUploadProgress(null);
     }
   };
 
@@ -324,12 +347,14 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
                           className="hidden"
                           ref={fileInputRef}
                           onChange={handlePhotoChange}
+                          disabled={isSubmitting}
                         />
                         <Button
                           type="button"
                           variant="outline"
                           className="w-full"
                           onClick={() => fileInputRef.current?.click()}
+                          disabled={isSubmitting}
                         >
                           <Upload className="mr-2 h-4 w-4" />
                           {photoPreview ? 'Change Photo' : 'Select Photo'}
@@ -348,12 +373,21 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
             </form>
           </Form>
         </div>
-        <DialogFooter className="p-6 pt-4 border-t">
-          <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} disabled={isSubmitting}>Cancel</Button>
-          <Button type="submit" form={formId} disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isSubmitting ? 'Submitting...' : 'Submit Report'}
-          </Button>
+        <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
+          {isSubmitting && uploadProgress !== null && (
+            <div className="w-full">
+              <Progress value={uploadProgress} />
+            </div>
+          )}
+          <div className="flex w-full justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button type="submit" form={formId} disabled={isSubmitting}>
+              {isSubmitting && uploadProgress === null && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? (uploadProgress !== null ? `Uploading...` : 'Saving...') : 'Submit Report'}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
