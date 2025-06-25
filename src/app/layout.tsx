@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { cn } from '@/lib/utils';
-import { AuthProvider } from '@/contexts/auth-context';
-import { ObservationProvider } from '@/contexts/observation-context';
-import { Toaster } from "@/components/ui/toaster";
+import { AppProviders } from '@/components/app-providers';
 
 import '@/app/globals.css';
 
@@ -23,12 +21,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={cn(inter.className, "antialiased")}>
-        <AuthProvider>
-          <ObservationProvider>
-            {children}
-            <Toaster />
-          </ObservationProvider>
-        </AuthProvider>
+        <AppProviders>
+          {children}
+        </AppProviders>
       </body>
     </html>
   );
