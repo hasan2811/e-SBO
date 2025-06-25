@@ -31,8 +31,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useToast } from '@/hooks/use-toast';
 import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { getSecureUploadUrl } from '@/lib/actions';
-
 
 const formSchema = z.object({
   location: z.enum(['Location A', 'Location B', 'Location C', 'Location D']),
@@ -50,6 +48,32 @@ interface SubmitObservationDialogProps {
   children: React.ReactNode;
   onAddObservation: (observation: Observation) => Promise<void>;
 }
+
+async function uploadFile(file: File): Promise<{ url: string }> {
+  // Construct the function URL dynamically. Assumes 'us-central1' region.
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) {
+    throw new Error('Firebase project ID is not configured.');
+  }
+  const functionUrl = `https://us-central1-${projectId}.cloudfunctions.net/uploadPhoto`;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(functionUrl, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error("Upload failed with status:", response.status, "Body:", errorBody);
+    throw new Error('File upload failed. Please check the logs.');
+  }
+
+  return response.json();
+}
+
 
 export function SubmitObservationDialog({ children, onAddObservation }: SubmitObservationDialogProps) {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -111,24 +135,8 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
     try {
         if (values.photo) {
             const file = values.photo as File;
-            const filePath = `e-SBO/observations/${Date.now()}-${file.name.replace(/\s/g, '_')}`;
-            
-            // 1. Get a secure URL from our server action
-            const { signedUrl, publicUrl } = await getSecureUploadUrl(filePath, file.type);
-            
-            // 2. Upload the file to Firebase Storage using the signed URL
-            const uploadResponse = await fetch(signedUrl, {
-              method: 'PUT',
-              body: file,
-              headers: { 'Content-Type': file.type },
-            });
-
-            if (!uploadResponse.ok) {
-              throw new Error('Photo upload failed.');
-            }
-            
-            // 3. Use the public URL for the database record
-            photoUrl = publicUrl;
+            const result = await uploadFile(file);
+            photoUrl = result.url;
         }
 
         const newObservation: Observation = {
