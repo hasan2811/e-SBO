@@ -5,6 +5,7 @@ import { collection, doc, onSnapshot, query, setDoc, updateDoc, orderBy } from '
 import { db } from '@/lib/firebase';
 import type { Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
+import { getAiSummary } from '@/lib/actions';
 
 interface ObservationContextType {
   observations: Observation[];
@@ -52,6 +53,22 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       // Use the custom ID from the observation object as the document ID
       const observationDocRef = doc(db, 'observations', newObservation.id);
       await setDoc(observationDocRef, newObservation);
+
+      // Fire-and-forget AI summary generation in the background
+      getAiSummary(newObservation)
+        .then(summary => {
+          const aiData = {
+            aiSummary: summary.summary,
+            aiRisks: summary.risks,
+            aiSuggestedActions: summary.suggestedActions,
+          };
+          updateDoc(observationDocRef, aiData);
+        })
+        .catch(error => {
+          // Log the error but don't bother the user. The main observation is saved.
+          console.error("Failed to generate or save AI summary:", error);
+        });
+
     } catch (error) {
       console.error("Error adding document to Firestore: ", error);
       throw error;

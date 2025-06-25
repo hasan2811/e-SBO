@@ -19,4 +19,7 @@ export type Observation = {
   actionTakenDescription?: string;
   actionTakenPhotoUrl?: string;
   closedBy?: string;
+  aiSummary?: string;
+  aiRisks?: string;
+  aiSuggestedActions?: string;
 };

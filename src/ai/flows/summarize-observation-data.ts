@@ -31,14 +31,11 @@ const summarizeObservationDataPrompt = ai.definePrompt({
   input: {schema: SummarizeObservationDataInputSchema},
   output: {schema: SummarizeObservationDataOutputSchema},
   prompt: `You are an AI assistant specializing in summarizing observation data from safety reports.
-  Given the following observation data, provide a concise summary of the findings, identify potential risks based on findings and risk level, and suggest actionable steps based on the provided recommendation.
+Analyze the following observation data and generate a JSON object containing a concise summary of the findings, potential risks identified based on findings and risk level, and suggested actionable steps based on the provided recommendation.
 
-  Observation Data:
-  {{{observationData}}}
-  
-  Summary:
-  Risks:
-  Suggested Actions:`,
+Observation Data:
+{{{observationData}}}
+`,
 });
 
 const summarizeObservationDataFlow = ai.defineFlow(
