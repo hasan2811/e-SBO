@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -9,6 +10,10 @@ import { Loader2, Upload } from 'lucide-react';
 import { ref, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 
 import { storage } from '@/lib/firebase';
+import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel } from '@/lib/types';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,7 +22,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -30,10 +34,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel } from '@/lib/types';
-import { useAuth } from '@/hooks/use-auth';
 import { Progress } from '@/components/ui/progress';
+
 
 const formSchema = z.object({
   location: z.enum(['Location A', 'Location B', 'Location C', 'Location D']),
@@ -83,12 +85,12 @@ function uploadFile(
 }
 
 interface SubmitObservationDialogProps {
-  children: React.ReactNode;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   onAddObservation: (observation: Observation) => Promise<void>;
 }
 
-export function SubmitObservationDialog({ children, onAddObservation }: SubmitObservationDialogProps) {
-  const [isOpen, setIsOpen] = React.useState(false);
+export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation }: SubmitObservationDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
@@ -115,7 +117,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
       setPhotoPreview(null);
       setUploadProgress(null);
     }
-    setIsOpen(open);
+    onOpenChange(open);
   };
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,7 +176,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
             title: 'Success!',
             description: 'New observation has been submitted.',
         });
-        setIsOpen(false);
+        handleOpenChange(false);
 
     } catch (error) {
         console.error("Submission failed: ", error);
@@ -191,7 +193,6 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[525px] p-0 flex flex-col max-h-[90dvh]">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>Submit New Observation</DialogTitle>
@@ -382,7 +383,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
             </div>
           )}
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button type="submit" form={formId} disabled={isSubmitting}>

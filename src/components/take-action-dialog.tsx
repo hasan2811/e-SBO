@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -10,6 +11,9 @@ import { ref, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 
 import { storage } from '@/lib/firebase';
 import type { Observation } from '@/lib/types';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -29,9 +33,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
-import { Progress } from './ui/progress';
+import { Progress } from '@/components/ui/progress';
+
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(10, 'Description must be at least 10 characters.'),
