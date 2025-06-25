@@ -36,7 +36,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 
-
 const formSchema = z.object({
   location: z.enum(['Location A', 'Location B', 'Location C', 'Location D']),
   findings: z.string().min(10, 'Findings must be at least 10 characters.'),
