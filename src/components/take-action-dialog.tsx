@@ -105,7 +105,7 @@ export function TakeActionDialog({
         let actionTakenPhotoUrl: string | undefined = undefined;
         if (values.actionTakenPhoto) {
             const file = values.actionTakenPhoto as File;
-            const storageRef = ref(storage, `actions/${observation.id}-${Date.now()}-${file.name}`);
+            const storageRef = ref(storage, `e-SBO/actions/${observation.id}-${Date.now()}-${file.name}`);
             const snapshot = await uploadBytes(storageRef, file);
             actionTakenPhotoUrl = await getDownloadURL(snapshot.ref);
         }

@@ -111,7 +111,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
     try {
         if (values.photo) {
             const file = values.photo as File;
-            const storageRef = ref(storage, `observations/${Date.now()}-${file.name}`);
+            const storageRef = ref(storage, `e-SBO/observations/${Date.now()}-${file.name}`);
             const snapshot = await uploadBytes(storageRef, file);
             photoUrl = await getDownloadURL(snapshot.ref);
         }
