@@ -3,10 +3,6 @@
 import { summarizeObservationData, SummarizeObservationDataOutput } from '@/ai/flows/summarize-observation-data';
 import type { Observation } from './types';
 import { storage } from '@/lib/firebase-admin';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs/promises';
-
 
 export async function getAiSummary(observation: Observation): Promise<SummarizeObservationDataOutput> {
   const observationData = `
@@ -32,6 +28,7 @@ export async function getAiSummary(observation: Observation): Promise<SummarizeO
 
 /**
  * Receives file data from a browser form and uploads it to Firebase Storage.
+ * This function now uploads the file buffer directly to avoid file system operations.
  * @param formData The FormData object containing the file and folder name.
  * @returns An object with the public URL of the uploaded file or an error message.
  */
@@ -44,29 +41,21 @@ export async function uploadFileFromBrowser(formData: FormData): Promise<{url: s
       return { error: 'File or folder not provided in FormData.' };
     }
 
-    // Get file buffer from the File object
     const buffer = Buffer.from(await file.arrayBuffer());
     
-    // Write the buffer to a temporary file on the server's local filesystem
-    const tempFilePath = path.join(os.tmpdir(), file.name);
-    await fs.writeFile(tempFilePath, buffer);
-    
-    // Upload the temporary file to Firebase Storage using the Admin SDK
     const bucket = storage.bucket();
     const destination = `${folder}/${Date.now()}-${file.name}`;
+    const fileInBucket = bucket.file(destination);
     
-    const [uploadedFile] = await bucket.upload(tempFilePath, {
-      destination: destination,
+    // Upload the buffer directly to the file in the bucket
+    await fileInBucket.save(buffer, {
       metadata: {
         contentType: file.type,
       },
     });
 
-    // Clean up the temporary file from the server
-    await fs.unlink(tempFilePath);
-
     // Construct the public, permanent URL for the file
-    const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(uploadedFile.name)}?alt=media`;
+    const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(destination)}?alt=media`;
 
     return { url: publicUrl };
 
