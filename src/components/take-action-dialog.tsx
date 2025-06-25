@@ -6,7 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
+import { storage } from '@/lib/firebase';
 import type { Observation } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,30 +39,19 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-// Fungsi untuk meng-upload file ke Cloud Function
-async function uploadFileViaCloudFunction(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append('photo', file);
-
-  // Ganti dengan URL Cloud Function Anda
-  const functionUrl = 'https://us-central1-hssetech-e1710.cloudfunctions.net/uploadPhoto';
-
+async function uploadFile(file: File, userId: string): Promise<string> {
+  if (!file || !userId) {
+    throw new Error('File or user ID is missing.');
+  }
+  const storageRef = ref(storage, `actions/${userId}/${Date.now()}-${file.name}`);
+  
   try {
-    const response = await fetch(functionUrl, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json();
-      throw new Error(`Upload failed with status ${response.status}: ${errorBody.message || 'Unknown error'}`);
-    }
-
-    const result = await response.json();
-    return result.downloadUrl;
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    return downloadURL;
   } catch (error) {
-    console.error("Cloud Function upload error:", error);
-    throw new Error("Could not upload file via Cloud Function.");
+    console.error("Firebase Storage upload error:", error);
+    throw new Error("Could not upload file to Firebase Storage.");
   }
 }
 
@@ -130,7 +121,7 @@ export function TakeActionDialog({
         let actionTakenPhotoUrl: string | undefined = undefined;
         if (values.actionTakenPhoto) {
             const file = values.actionTakenPhoto as File;
-            actionTakenPhotoUrl = await uploadFileViaCloudFunction(file);
+            actionTakenPhotoUrl = await uploadFile(file, user.uid);
         }
 
         const updatedData: Partial<Observation> = {
