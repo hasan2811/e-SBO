@@ -11,7 +11,6 @@ admin.initializeApp();
 const storage = admin.storage();
 
 exports.uploadPhoto = functions.https.onRequest((req, res) => {
-  // Gunakan middleware cors untuk menangani pre-flight requests (OPTIONS)
   cors(req, res, () => {
     if (req.method !== "POST") {
       return res.status(405).json({
@@ -72,7 +71,7 @@ exports.uploadPhoto = functions.https.onRequest((req, res) => {
       }
     });
     
-    // Kirimkan request ke busboy
-    busboy.end(req.rawBody);
+    // Menyalurkan request stream ke busboy. Ini adalah baris kunci yang benar.
+    req.pipe(busboy);
   });
 });
