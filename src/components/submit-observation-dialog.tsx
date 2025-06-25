@@ -147,12 +147,6 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
     setUploadProgress(null);
     
     try {
-        let photoUrl: string | undefined = undefined;
-        if (values.photo) {
-            const file = values.photo as File;
-            photoUrl = await uploadFile(file, user.uid, setUploadProgress);
-        }
-
         const newObservation: Omit<Observation, 'photoUrl'> & { photoUrl?: string } = {
             id: `OBS-${String(Date.now()).slice(-6)}`,
             date: new Date().toISOString(),
@@ -166,7 +160,9 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
             company: values.company as Company,
         };
         
-        if (photoUrl) {
+        if (values.photo) {
+            const file = values.photo as File;
+            const photoUrl = await uploadFile(file, user.uid, setUploadProgress);
             newObservation.photoUrl = photoUrl;
         }
         
@@ -380,6 +376,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
           {isSubmitting && uploadProgress !== null && (
             <div className="w-full">
               <Progress value={uploadProgress} />
+              <p className="text-center text-xs mt-1 text-muted-foreground">Uploading: {Math.round(uploadProgress)}%</p>
             </div>
           )}
           <div className="flex w-full justify-end gap-2">
@@ -387,8 +384,8 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
               Cancel
             </Button>
             <Button type="submit" form={formId} disabled={isSubmitting}>
-              {isSubmitting && uploadProgress === null && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSubmitting ? (uploadProgress !== null ? `Uploading...` : 'Saving...') : 'Submit Report'}
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Submitting...' : 'Submit Report'}
             </Button>
           </div>
         </DialogFooter>

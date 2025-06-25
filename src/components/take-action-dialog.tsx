@@ -141,20 +141,16 @@ export function TakeActionDialog({
     setUploadProgress(null);
     
     try {
-        let actionTakenPhotoUrl: string | undefined = undefined;
-        if (values.actionTakenPhoto) {
-            const file = values.actionTakenPhoto as File;
-            actionTakenPhotoUrl = await uploadFile(file, user.uid, setUploadProgress);
-        }
-
         const updatedData: Partial<Observation> = {
             status: 'Completed',
             actionTakenDescription: values.actionTakenDescription,
             closedBy: user.displayName || 'Anonymous User',
         };
         
-        if (actionTakenPhotoUrl) {
-          updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
+        if (values.actionTakenPhoto) {
+            const file = values.actionTakenPhoto as File;
+            const actionTakenPhotoUrl = await uploadFile(file, user.uid, setUploadProgress);
+            updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
         }
 
         await onUpdate(observation.id, updatedData);
@@ -250,6 +246,7 @@ export function TakeActionDialog({
           {isSubmitting && uploadProgress !== null && (
             <div className="w-full">
               <Progress value={uploadProgress} />
+              <p className="text-center text-xs mt-1 text-muted-foreground">Uploading: {Math.round(uploadProgress)}%</p>
             </div>
           )}
           <div className="flex w-full justify-end gap-2">
@@ -257,8 +254,8 @@ export function TakeActionDialog({
               Cancel
             </Button>
             <Button type="submit" form={formId} disabled={isSubmitting}>
-              {isSubmitting && uploadProgress === null && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSubmitting ? (uploadProgress !== null ? `Uploading...` : 'Saving...') : 'Mark as Completed'}
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Submitting...' : 'Mark as Completed'}
             </Button>
           </div>
         </DialogFooter>
