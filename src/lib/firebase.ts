@@ -1,5 +1,3 @@
-
-
 import { initializeApp, getApps, getApp, type FirebaseOptions } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
@@ -16,14 +14,18 @@ const firebaseConfig: FirebaseOptions = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Check for missing Firebase config and throw a clear error
-if (
-  !firebaseConfig.apiKey ||
-  !firebaseConfig.authDomain ||
-  !firebaseConfig.projectId
-) {
+// Comprehensive check for all required Firebase config variables
+// This helps pinpoint exactly which environment variables are missing.
+const missingConfigKeys = Object.entries(firebaseConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => key);
+
+if (missingConfigKeys.length > 0) {
+  const variableNames = missingConfigKeys.map(key => 
+    `NEXT_PUBLIC_FIREBASE_${key.replace(/([A-Z])/g, '_$1').toUpperCase()}`
+  );
   throw new Error(
-    'Firebase config is missing or incomplete in your .env.local file. Please add all NEXT_PUBLIC_FIREBASE_* variables.'
+    `Firebase config is missing or incomplete. Please ensure the following environment variables are set: ${variableNames.join(', ')}`
   );
 }
 
