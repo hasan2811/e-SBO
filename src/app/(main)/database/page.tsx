@@ -1,2 +1,4 @@
 // This file is disabled as it is not part of the core functionality.
-export {};
+export default function DisabledPage() {
+  return null;
+}

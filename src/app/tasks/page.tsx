@@ -1,3 +1,5 @@
 // This page has been moved to /src/app/(app)/tasks/page.tsx to support the new layout structure.
 // This file is now disabled to prevent route conflicts.
-export {};
+export default function DisabledPage() {
+  return null;
+}
