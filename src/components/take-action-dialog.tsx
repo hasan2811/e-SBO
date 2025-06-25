@@ -92,7 +92,7 @@ export function TakeActionDialog({
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
 
@@ -141,10 +141,14 @@ export function TakeActionDialog({
     setUploadProgress(null);
     
     try {
+        const closerName = userProfile
+          ? `${userProfile.displayName} (${userProfile.position || 'N/A'})`
+          : (user.displayName || 'Anonymous User');
+
         const updatedData: Partial<Observation> = {
             status: 'Completed',
             actionTakenDescription: values.actionTakenDescription,
-            closedBy: user.displayName || 'Anonymous User',
+            closedBy: closerName,
             closedDate: new Date().toISOString(),
         };
         

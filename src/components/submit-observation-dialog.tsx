@@ -93,7 +93,7 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
 
@@ -147,11 +147,15 @@ export function SubmitObservationDialog({ children, onAddObservation }: SubmitOb
     setUploadProgress(null);
     
     try {
+        const submitterName = userProfile 
+            ? `${userProfile.displayName} (${userProfile.position || 'N/A'})` 
+            : (user.displayName || 'Anonymous User');
+
         const newObservation: Omit<Observation, 'photoUrl'> & { photoUrl?: string } = {
             id: `OBS-${String(Date.now()).slice(-6)}`,
             date: new Date().toISOString(),
             status: 'Pending' as ObservationStatus,
-            submittedBy: user.displayName || 'Anonymous User',
+            submittedBy: submitterName,
             location: values.location as Location,
             findings: values.findings,
             recommendation: values.recommendation,

@@ -13,12 +13,30 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { useAuth } from '@/hooks/use-auth';
-import { LogIn, LogOut, UserCircle, Loader2 } from 'lucide-react';
+import { LogIn, LogOut, UserCircle, Loader2, Edit } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
+import { Label } from './ui/label';
+import { Input } from './ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 export function UserAccountSheet() {
-  const { user, loading: authLoading, signInWithGoogle, logout } = useAuth();
+  const { user, userProfile, loading: authLoading, signInWithGoogle, logout, updateUserProfile } = useAuth();
+  const { toast } = useToast();
+  
   const [isSigningIn, setIsSigningIn] = React.useState(false);
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  const [displayName, setDisplayName] = React.useState('');
+  const [position, setPosition] = React.useState('');
+
+  React.useEffect(() => {
+    if (userProfile) {
+      setDisplayName(userProfile.displayName);
+      setPosition(userProfile.position);
+    }
+  }, [userProfile, isEditing]);
+
 
   const handleSignIn = async () => {
     setIsSigningIn(true);
@@ -26,10 +44,25 @@ export function UserAccountSheet() {
       await signInWithGoogle();
     } catch (error) {
       console.error("Sign in failed from sheet", error);
+    } finally {
       setIsSigningIn(false);
     }
   };
 
+  const handleSave = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      await updateUserProfile(user.uid, { displayName, position });
+      toast({ title: 'Profile Updated', description: 'Your information has been saved.' });
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to update profile", error);
+      toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not save your profile.' });
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
@@ -41,7 +74,7 @@ export function UserAccountSheet() {
   };
 
   return (
-    <Sheet>
+    <Sheet onOpenChange={(open) => !open && setIsEditing(false)}>
       <SheetTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-9 w-9">
@@ -72,18 +105,45 @@ export function UserAccountSheet() {
                   <Skeleton className="h-4 w-[150px]" />
                 </div>
               </div>
-          ) : user ? (
-            <div className="flex flex-col items-center text-center gap-4">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={user.photoURL || undefined} alt={user.displayName ?? ''} data-ai-hint="user avatar" />
-                <AvatarFallback className="text-2xl">
-                  {getInitials(user.displayName)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-semibold text-lg">{user.displayName}</p>
-                <p className="text-sm text-muted-foreground">{user.email}</p>
+          ) : user && userProfile ? (
+            <div className="flex flex-col gap-6">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={user.photoURL || undefined} alt={user.displayName ?? ''} data-ai-hint="user avatar" />
+                  <AvatarFallback className="text-2xl">
+                    {getInitials(userProfile.displayName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="font-semibold text-lg">{userProfile.displayName}</p>
+                  <p className="text-sm text-muted-foreground">{userProfile.position}</p>
+                </div>
               </div>
+
+              {isEditing ? (
+                <div className="space-y-4">
+                  <div className='space-y-1'>
+                    <Label htmlFor="displayName">Display Name</Label>
+                    <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+                  </div>
+                  <div className='space-y-1'>
+                    <Label htmlFor="position">Position / Jabatan</Label>
+                    <Input id="position" value={position} onChange={(e) => setPosition(e.target.value)} />
+                  </div>
+                   <div className="flex justify-end gap-2 pt-2">
+                      <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancel</Button>
+                      <Button onClick={handleSave} disabled={isSaving}>
+                          {isSaving && <Loader2 className="mr-2 animate-spin" />}
+                          Save
+                      </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="outline" className="w-full" onClick={() => setIsEditing(true)}>
+                  <Edit className="mr-2" />
+                  Edit Profile
+                </Button>
+              )}
             </div>
           ) : (
             <div className="text-center">
@@ -93,7 +153,7 @@ export function UserAccountSheet() {
         </div>
         <SheetFooter className="mt-auto">
             {user ? (
-              <Button onClick={logout} className="w-full">
+              <Button onClick={logout} className="w-full" variant="outline">
                 <LogOut className="mr-2" />
                 Sign Out
               </Button>
