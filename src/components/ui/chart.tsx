@@ -85,7 +85,7 @@ const ChartContainer = React.forwardRef<
         data-chart={id}
         data-active-chart={activeChart}
         className={cn(
-          "flex justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer:focus-visible]:outline-none [&_.recharts-polar-axis-tick_text]:fill-muted-foreground [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-radial-bar-sector]:stroke-border [&_.recharts-reference-line_line]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-none",
+          "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer:focus-visible]:outline-none [&_.recharts-polar-axis-tick_text]:fill-muted-foreground [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-radial-bar-sector]:stroke-border [&_.recharts-reference-line_line]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-none",
           className
         )}
         style={
@@ -149,8 +149,7 @@ const ChartLegendContent = React.forwardRef<
       <ul
         ref={ref}
         className={cn(
-          "flex items-center justify-center gap-4",
-          verticalAlign === "top" ? "flex-wrap" : "",
+          "flex items-center justify-center gap-x-6 gap-y-1.5 text-sm flex-wrap",
           className
         )}
         onMouseLeave={() => {
@@ -173,31 +172,22 @@ const ChartLegendContent = React.forwardRef<
               data-chart-legend-item
               data-chart-legend-item-name={key}
               className={cn(
-                "flex items-center gap-1.5 [&>svg]:size-3 [&>svg]:text-muted-foreground",
+                "flex items-center gap-1.5",
                 item.inactive
-                  ? "has-[:disabled]:text-muted-foreground"
+                  ? "text-muted-foreground"
                   : "cursor-pointer"
               )}
               onMouseEnter={() => {
                 setActiveChart(key as string)
               }}
             >
-              <button
-                aria-label={`Toggle ${name}`}
-                data-color={color}
-                className={cn(
-                  "flex size-3 shrink-0 items-center justify-center rounded-[2px] border-[2px] data-[color]:border-[var(--color)] [&:not(:has(>*:not([hidden])))_]:data-[color]:bg-[var(--color)]",
-                  item.inactive
-                    ? "[&>*]:hidden"
-                    : "text-background data-[color]:text-[var(--color)]"
-                )}
-                disabled={item.inactive}
-              >
-                <div className="size-1.5 shrink-0 rounded-[1px] bg-current" />
-              </button>
-              <label className={cn(item.inactive && "text-muted-foreground")}>
+               <div
+                className="size-3 shrink-0 rounded-sm"
+                style={{ backgroundColor: color }}
+              />
+              <div className="flex-1 truncate">
                 {label ?? name}
-              </label>
+              </div>
             </li>
           )
         })}
