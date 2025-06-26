@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useObservations } from '@/contexts/observation-context';
 import type { Observation } from '@/lib/types';
 import { RiskBadge } from '@/components/status-badges';
-import { format, subDays, addDays, isToday, isFuture } from 'date-fns';
+import { format, subDays, addDays, isToday, isYesterday, isFuture } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { FileText, ChevronRight, ChevronLeft, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -48,7 +48,7 @@ export default function JurnalPage() {
   };
 
   const handleNextDay = () => {
-    if (!isToday(selectedDate) && !isFuture(addDays(selectedDate, 1))) {
+    if (!isToday(selectedDate)) {
        setSelectedDate(addDays(selectedDate, 1));
     }
   };
@@ -75,6 +75,12 @@ export default function JurnalPage() {
       return obsDate >= startOfDay && obsDate <= endOfDay;
     });
   }, [observations, selectedDate]);
+  
+  const formatDateDisplay = (date: Date): string => {
+    if (isToday(date)) return "Hari ini";
+    if (isYesterday(date)) return "Kemarin";
+    return format(date, "d MMMM yyyy", { locale: id });
+  };
 
   return (
     <div className="space-y-6">
@@ -82,15 +88,19 @@ export default function JurnalPage() {
         <h2 className="text-2xl font-bold tracking-tight">
           Jurnal Observasi
         </h2>
-        <div className="flex items-center gap-2 border rounded-lg p-1 bg-card shadow-sm w-full sm:w-auto">
+        <div className="flex items-center gap-1 border rounded-lg p-1 bg-card shadow-sm w-full sm:w-auto">
             <Button variant="ghost" size="icon" onClick={handlePreviousDay} className="h-9 w-9">
               <ChevronLeft className="h-5 w-5" />
             </Button>
+            
             <Popover open={isPopoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-center text-center font-semibold">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(selectedDate, "d MMMM yyyy", { locale: id })}
+                <Button
+                  variant="ghost"
+                  className="w-full justify-center text-center font-semibold flex-1 min-w-[150px] gap-2"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  {formatDateDisplay(selectedDate)}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -103,6 +113,7 @@ export default function JurnalPage() {
                 />
               </PopoverContent>
             </Popover>
+
             <Button variant="ghost" size="icon" onClick={handleNextDay} disabled={isToday(selectedDate)} className="h-9 w-9">
               <ChevronRight className="h-5 w-5" />
             </Button>
