@@ -67,10 +67,10 @@ export default function JurnalPage() {
   }, [observations, selectedDate]);
   
   const formatDateDisplay = (date: Date): string => {
-    const dateString = format(date, "d MMMM yyyy", { locale: id });
-    if (isToday(date)) return `Hari ini, ${dateString}`;
-    if (isYesterday(date)) return `Kemarin, ${dateString}`;
-    return format(date, "eeee, d MMMM yyyy", { locale: id });
+    const dayAndDateString = format(date, "eeee, d MMMM yyyy", { locale: id });
+    if (isToday(date)) return `Hari ini, ${dayAndDateString}`;
+    if (isYesterday(date)) return `Kemarin, ${dayAndDateString}`;
+    return dayAndDateString;
   };
 
   return (
