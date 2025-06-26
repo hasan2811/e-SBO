@@ -11,8 +11,8 @@ export function BottomNavBar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/tasks', label: 'Jurnal', icon: ClipboardList },
+    { href: '/', label: 'Jurnal', icon: ClipboardList },
+    { href: '/tasks', label: 'Dashboard', icon: LayoutDashboard },
   ];
 
   return (
