@@ -5,12 +5,10 @@ import Link from 'next/link';
 import { useObservations } from '@/contexts/observation-context';
 import type { Observation } from '@/lib/types';
 import { RiskBadge } from '@/components/status-badges';
-import { format, subDays, addDays, isToday, isYesterday, isFuture } from 'date-fns';
+import { format, subDays, addDays, isToday, isYesterday } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { FileText, ChevronRight, ChevronLeft, Calendar as CalendarIcon } from 'lucide-react';
+import { FileText, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ObservationListItem = ({ observation }: { observation: Observation }) => {
@@ -41,7 +39,6 @@ const ObservationListItem = ({ observation }: { observation: Observation }) => {
 export default function JurnalPage() {
   const { observations, loading } = useObservations();
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
-  const [isPopoverOpen, setPopoverOpen] = React.useState(false);
 
   const handlePreviousDay = () => {
     setSelectedDate(subDays(selectedDate, 1));
@@ -50,13 +47,6 @@ export default function JurnalPage() {
   const handleNextDay = () => {
     if (!isToday(selectedDate)) {
        setSelectedDate(addDays(selectedDate, 1));
-    }
-  };
-  
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date && !isFuture(date)) {
-      setSelectedDate(date);
-      setPopoverOpen(false);
     }
   };
 
@@ -77,9 +67,10 @@ export default function JurnalPage() {
   }, [observations, selectedDate]);
   
   const formatDateDisplay = (date: Date): string => {
-    if (isToday(date)) return "Hari ini";
-    if (isYesterday(date)) return "Kemarin";
-    return format(date, "d MMMM yyyy", { locale: id });
+    const dateString = format(date, "d MMMM yyyy", { locale: id });
+    if (isToday(date)) return `Hari ini, ${dateString}`;
+    if (isYesterday(date)) return `Kemarin, ${dateString}`;
+    return format(date, "eeee, d MMMM yyyy", { locale: id });
   };
 
   return (
@@ -89,32 +80,17 @@ export default function JurnalPage() {
           Jurnal Observasi
         </h2>
         <div className="flex items-center gap-1 border rounded-lg p-1 bg-card shadow-sm w-full sm:w-auto">
-            <Button variant="ghost" size="icon" onClick={handlePreviousDay} className="h-9 w-9">
+            <Button variant="ghost" size="icon" onClick={handlePreviousDay} className="h-9 w-9 flex-shrink-0" aria-label="Previous Day">
               <ChevronLeft className="h-5 w-5" />
             </Button>
             
-            <Popover open={isPopoverOpen} onOpenChange={setPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-center text-center font-semibold flex-1 min-w-[150px] gap-2"
-                >
-                  <CalendarIcon className="h-4 w-4" />
-                  {formatDateDisplay(selectedDate)}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  disabled={(date) => date > new Date() || date < new Date("2020-01-01")}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <div
+              className="flex items-center justify-center h-9 w-full flex-1 px-2 text-center font-semibold text-sm whitespace-nowrap"
+            >
+              {formatDateDisplay(selectedDate)}
+            </div>
 
-            <Button variant="ghost" size="icon" onClick={handleNextDay} disabled={isToday(selectedDate)} className="h-9 w-9">
+            <Button variant="ghost" size="icon" onClick={handleNextDay} disabled={isToday(selectedDate)} className="h-9 w-9 flex-shrink-0" aria-label="Next Day">
               <ChevronRight className="h-5 w-5" />
             </Button>
         </div>
