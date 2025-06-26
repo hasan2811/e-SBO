@@ -1,15 +1,17 @@
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can manage their own profile
+    // Users can only manage their own profile
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    // Authenticated users can perform all actions on observations
+
+    // Observations can be created and updated by any authenticated user.
+    // They can be read by any authenticated user.
     match /observations/{observationId} {
-       allow read, create, update, delete: if request.auth != null;
+       allow get, list, create, update: if request.auth != null;
+       allow delete: if false; // Generally, don't allow deletion from client
     }
   }
 }
