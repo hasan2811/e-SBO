@@ -36,7 +36,7 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation, onTakeAct
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl p-0 flex flex-col max-h-[90vh]">
+      <DialogContent className="sm:max-w-2xl p-0 flex flex-col max-h-[90vh] bg-card">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>Observation Details: {observation.referenceId || observation.id}</DialogTitle>
           <DialogDescription>
@@ -193,9 +193,6 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation, onTakeAct
           </div>
         </ScrollArea>
         <DialogFooter className="p-6 pt-4 border-t">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
           {observation.status !== 'Completed' && (
             <Button type="button" onClick={onTakeAction}>
               <Gavel className="mr-2 h-4 w-4" />
