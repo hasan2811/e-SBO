@@ -140,7 +140,7 @@ export default function DashboardPage() {
       }, {} as Record<ObservationCategory, number>);
 
       return (['Structural', 'Electrical', 'Plumbing', 'General'] as ObservationCategory[]).map((category) => ({
-        name: category,
+        name: category.toLowerCase(),
         value: categoryCounts[category] || 0,
         fill: `var(--color-${category.toLowerCase()})`,
       })).filter(item => item.value > 0);
@@ -266,18 +266,18 @@ export default function DashboardPage() {
                     className="mx-auto aspect-square max-h-[250px]"
                 >
                     <PieChart>
-                    <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                    <ChartPie
-                        data={categoryDistributionData}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={60}
-                        strokeWidth={5}
-                    />
-                     <ChartLegend
-                        content={<ChartLegendContent nameKey="name" />}
-                        className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
-                    />
+                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                      <ChartPie
+                          data={categoryDistributionData}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={60}
+                          strokeWidth={5}
+                      />
+                      <ChartLegend
+                          content={<ChartLegendContent nameKey="name" />}
+                          className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
+                      />
                     </PieChart>
                 </ChartContainer>
                }
