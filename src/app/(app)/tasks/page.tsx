@@ -42,18 +42,6 @@ const riskLevelConfig: Record<RiskLevel, { color: string, className: string }> =
   Critical: { color: 'hsl(var(--destructive))', className: 'bg-destructive' },
 };
 
-const dailyChartConfig = {
-    pending: { label: "Pending", color: "hsl(var(--chart-4))" },
-    completed: { label: "Completed", color: "hsl(var(--chart-1))" },
-};
-  
-const categoryChartConfig = {
-    Structural: { label: "Structural", color: "hsl(var(--chart-1))" },
-    Electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
-    Plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
-    General: { label: "General", color: "hsl(var(--chart-4))" },
-};
-
 const companyChartConfig = {
     value: { label: "Observations", color: "hsl(var(--chart-1))" },
 };
@@ -169,6 +157,19 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
 
 export default function DashboardPage() {
   const { observations, loading } = useObservations();
+  
+  const dailyChartConfig = {
+    pending: { label: "Pending", color: "hsl(var(--chart-4))" },
+    completed: { label: "Completed", color: "hsl(var(--chart-1))" },
+  };
+  
+  const categoryChartConfig = {
+    Structural: { label: "Structural", color: "hsl(var(--chart-1))" },
+    Electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
+    Plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
+    General: { label: "General", color: "hsl(var(--chart-4))" },
+  };
+
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: subDays(new Date(), 6),
     to: new Date(),
@@ -288,7 +289,7 @@ export default function DashboardPage() {
   const renderCustomizedLabel = (props: any) => {
     const { cx, cy, midAngle, outerRadius, percent, name } = props;
     const RADIAN = Math.PI / 180;
-    const radius = outerRadius + 25; // Position labels outside the pie
+    const radius = outerRadius + 20; // Position labels outside the pie
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
@@ -362,8 +363,8 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Distribusi Kategori</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="h-[250px]">
+            <CardContent className="flex items-center justify-center">
+              <div className="h-[250px] w-full">
                {loading ? (
                   <Skeleton className="h-full w-full rounded-full" />
                 ) : categoryDistributionData.length > 0 ? (
@@ -371,15 +372,15 @@ export default function DashboardPage() {
                       config={categoryChartConfig}
                       className="h-full w-full"
                   >
-                      <PieChart margin={{ top: 30, right: 40, bottom: 30, left: 40 }}>
+                      <PieChart>
                         <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
                         <ChartPie
                             data={categoryDistributionData}
                             dataKey="value"
                             nameKey="name"
-                            innerRadius={60}
-                            outerRadius={80}
-                            strokeWidth={5}
+                            innerRadius={50}
+                            outerRadius={90}
+                            strokeWidth={2}
                             labelLine
                             label={renderCustomizedLabel}
                         />
