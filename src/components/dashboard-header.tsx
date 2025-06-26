@@ -4,18 +4,14 @@
 import * as React from 'react';
 import { FilePlus2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SubmitObservationDialog } from '@/components/submit-observation-dialog';
-import type { Observation } from '@/lib/types';
 import { UserAccountSheet } from '@/components/user-account-sheet';
 import { AppLogo } from '@/components/app-logo';
 
 interface DashboardHeaderProps {
-  onAddObservation: (observation: Observation) => Promise<void>;
+  onAddNew: () => void;
 }
 
-export function DashboardHeader({ onAddObservation }: DashboardHeaderProps) {
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-
+export function DashboardHeader({ onAddNew }: DashboardHeaderProps) {
   return (
     <>
       <header className="bg-card border-b sticky top-0 z-10">
@@ -27,7 +23,7 @@ export function DashboardHeader({ onAddObservation }: DashboardHeaderProps) {
             </div>
             <div className="flex items-center gap-4">
                <div className="hidden md:block">
-                  <Button onClick={() => setIsDialogOpen(true)}>
+                  <Button onClick={onAddNew}>
                     <FilePlus2 className="mr-2" />
                     New Observation
                   </Button>
@@ -37,11 +33,6 @@ export function DashboardHeader({ onAddObservation }: DashboardHeaderProps) {
           </div>
         </div>
       </header>
-      <SubmitObservationDialog
-        isOpen={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        onAddObservation={onAddObservation}
-      />
     </>
   );
 }

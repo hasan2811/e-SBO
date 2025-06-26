@@ -5,10 +5,9 @@ import Link from 'next/link';
 import { useObservations } from '@/contexts/observation-context';
 import type { Observation } from '@/lib/types';
 import { RiskBadge } from '@/components/status-badges';
-import { SubmitObservationDialog } from '@/components/submit-observation-dialog';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Plus, FileText, ChevronRight } from 'lucide-react';
+import { FileText, ChevronRight } from 'lucide-react';
 
 const ObservationListItem = ({ observation }: { observation: Observation }) => {
   return (
@@ -36,8 +35,7 @@ const ObservationListItem = ({ observation }: { observation: Observation }) => {
 };
 
 export default function JurnalPage() {
-  const { observations, addObservation } = useObservations();
-  const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
+  const { observations } = useObservations();
 
   const groupedObservations = React.useMemo(() => {
     return observations.reduce((acc, obs) => {
@@ -80,22 +78,6 @@ export default function JurnalPage() {
           </div>
         )}
       </div>
-
-      {/* Floating Action Button */}
-      <button
-        onClick={() => setAddDialogOpen(true)}
-        className="fixed bottom-24 right-6 md:hidden h-14 w-14 bg-primary rounded-full flex items-center justify-center text-primary-foreground shadow-lg hover:bg-primary/90 transition-transform active:scale-95 z-40"
-        aria-label="Tambah Observasi Baru"
-      >
-        <Plus className="h-7 w-7" />
-      </button>
-
-      {/* Dialogs */}
-      <SubmitObservationDialog
-        isOpen={isAddDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        onAddObservation={addObservation}
-      />
     </>
   );
 }

@@ -2,11 +2,13 @@
 
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useObservations } from '@/contexts/observation-context';
 import { DashboardHeader } from '@/components/dashboard-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
+import { SubmitObservationDialog } from '@/components/submit-observation-dialog';
+import type { Observation } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -14,6 +16,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { addObservation } = useObservations();
   const router = useRouter();
   const pathname = usePathname();
+  const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
 
   const isDetailPage = pathname.startsWith('/observation/');
 
@@ -36,28 +39,51 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     animate: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: -20 },
   };
+  
+  const handleAddObservation = async (observation: Omit<Observation, 'id'>) => {
+    await addObservation(observation);
+  };
+
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {!isDetailPage && <DashboardHeader onAddObservation={addObservation} />}
-      <main className={`flex-1 ${isDetailPage ? 'p-4 sm:p-6 lg:p-8' : 'p-4 sm:p-6 lg:p-8 pb-28 md:pb-8'} overflow-y-auto`}>
-        <div className={isDetailPage ? 'max-w-4xl mx-auto h-full' : 'max-w-4xl mx-auto'}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              variants={variants}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className={isDetailPage ? 'h-full' : ''}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </main>
-      {!isDetailPage && <BottomNavBar />}
-    </div>
+    <>
+      <div className="flex flex-col min-h-screen">
+        {!isDetailPage && <DashboardHeader onAddNew={() => setAddDialogOpen(true)} />}
+        <main className={`flex-1 p-4 sm:p-6 lg:p-8 ${!isDetailPage ? 'pb-28 md:pb-8' : ''} overflow-y-auto`}>
+          <div className="max-w-4xl mx-auto h-full">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pathname}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                variants={variants}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className={isDetailPage ? 'h-full' : ''}
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </main>
+        {!isDetailPage && <BottomNavBar />}
+      </div>
+
+      {!isDetailPage && (
+        <button
+          onClick={() => setAddDialogOpen(true)}
+          className="fixed bottom-24 right-6 md:hidden h-14 w-14 bg-primary rounded-full flex items-center justify-center text-primary-foreground shadow-lg hover:bg-primary/90 transition-transform active:scale-95 z-40"
+          aria-label="Tambah Observasi Baru"
+        >
+          <Plus className="h-7 w-7" />
+        </button>
+      )}
+
+      <SubmitObservationDialog
+        isOpen={isAddDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onAddObservation={handleAddObservation}
+      />
+    </>
   );
 }
