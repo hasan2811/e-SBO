@@ -14,7 +14,8 @@ export type UserProfile = {
 
 export type Observation = {
   id: string;
-  userId: string; // Added to link observation to a user
+  referenceId?: string; // Professional, user-facing ID
+  userId: string;
   location: Location;
   submittedBy: string;
   date: string;

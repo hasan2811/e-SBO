@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -29,7 +30,7 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl p-0 flex flex-col max-h-[90vh]">
         <DialogHeader className="p-6 pb-4 border-b">
-          <DialogTitle>Observation Details: {observation.id}</DialogTitle>
+          <DialogTitle>Observation Details: {observation.referenceId || observation.id}</DialogTitle>
           <DialogDescription>
             {observation.company} - {observation.location}
           </DialogDescription>

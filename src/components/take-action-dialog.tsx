@@ -163,7 +163,7 @@ export function TakeActionDialog({
         
         toast({
             title: 'Success!',
-            description: `Observation ${observation.id} has been marked as completed.`,
+            description: `Observation ${observation.referenceId || observation.id} has been marked as completed.`,
         });
         handleOpenChange(false);
 
@@ -184,7 +184,7 @@ export function TakeActionDialog({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Take Action for {observation.id}</DialogTitle>
+          <DialogTitle>Take Action for {observation.referenceId || observation.id}</DialogTitle>
           <DialogDescription>
             Provide details of the action taken to resolve this observation.
           </DialogDescription>

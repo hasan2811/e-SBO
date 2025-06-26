@@ -8,10 +8,11 @@ import type { Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { getAiSummary } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 interface ObservationContextType {
   observations: Observation[];
-  addObservation: (observation: Omit<Observation, 'id'>) => Promise<void>;
+  addObservation: (observation: Omit<Observation, 'id' | 'referenceId'>) => Promise<void>;
   updateObservation: (id: string, updatedData: Partial<Observation>) => Promise<void>;
 }
 
@@ -49,16 +50,20 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, [user, toast]);
 
 
-  const addObservation = async (newObservation: Omit<Observation, 'id'>) => {
+  const addObservation = async (newObservation: Omit<Observation, 'id' | 'referenceId'>) => {
     try {
+      // Generate a professional, user-friendly reference ID
+      const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      
+      const observationToSave = { ...newObservation, referenceId };
+
       // Use addDoc to let Firestore generate the ID.
       const observationCollection = collection(db, 'observations');
-      const observationDocRef = await addDoc(observationCollection, newObservation);
+      const observationDocRef = await addDoc(observationCollection, observationToSave);
 
       // Asynchronously get AI summary and update the document.
       // This runs in the background and does not block the UI.
-      // We pass the full new data including the generated ID.
-      const fullObservationData = { ...newObservation, id: observationDocRef.id };
+      const fullObservationData = { ...observationToSave, id: observationDocRef.id };
       
       getAiSummary(fullObservationData)
         .then(summary => {
@@ -109,5 +114,3 @@ export function useObservations() {
   }
   return context;
 }
-
-    
