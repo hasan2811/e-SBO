@@ -20,9 +20,11 @@ export function AppLogo({ className }: AppLogoProps) {
       className={cn('h-8 w-8 text-primary', className)}
     >
       <title>InspectWise Logo</title>
-      <path d="M2 18a1 1 0 0 0 .8 1.6l5.2.8 1.2 2.4a1 1 0 0 0 1.6 0l1.2-2.4 5.2-.8A1 1 0 0 0 18 18h-1.8a1 1 0 0 0-.9-.6l-4.6-1.2a1 1 0 0 0-1.4 0L4.7 17.4a1 1 0 0 0-.9.6H2Z"/>
-      <path d="M10 10.5V14h4v-3.5a2 2 0 0 0-4 0Z"/>
-      <path d="M12 2a5 5 0 0 0-5 5v1.5a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V7a5 5 0 0 0-5-5Z"/>
+      {/* A single path for a gear shape */}
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+      {/* Magnifying glass */}
+      <circle cx="12" cy="12" r="4" />
+      <path d="m15 15 3 3" />
     </svg>
   );
 }
