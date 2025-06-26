@@ -16,7 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   ChartContainer,
   ChartTooltip,
@@ -64,8 +64,8 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
       <CardHeader className="items-center pb-2">
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 pb-0">
-        <div className="relative mx-auto aspect-square h-full max-h-[250px]">
+      <CardContent className="pb-4">
+        <div className="relative mx-auto aspect-square h-full max-h-[200px]">
             <ChartContainer
               config={chartConfig}
               className="h-full w-full"
@@ -88,23 +88,22 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
               </RadialBarChart>
             </ChartContainer>
             <div
-              className="absolute inset-0 flex flex-col items-center justify-center"
+              className="absolute inset-0 flex flex-col items-center justify-center gap-1"
               aria-hidden="true"
             >
               <span className="text-3xl font-bold sm:text-4xl" style={{ color }}>
                 {value}%
               </span>
+              <span className="text-sm text-muted-foreground">
+                ({count} Laporan)
+              </span>
             </div>
         </div>
       </CardContent>
-      <CardFooter className="flex-col items-center text-sm pt-4">
-        <div className="leading-none text-muted-foreground">
-          ({count} Laporan)
-        </div>
-      </CardFooter>
     </Card>
   );
 };
+
 
 const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, nameKey, color }: { loading: boolean; title: string; data: any[]; chartConfig: any; dataKey: string; nameKey: string; color: string; }) => {
   const chartHeight = React.useMemo(() => Math.max(150, data.length * 40), [data.length]);
@@ -128,7 +127,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                   axisLine={false}
                   tickMargin={10}
                   className="text-xs"
-                  width={100}
+                  width={120}
                 />
                 <ChartXAxis dataKey={dataKey} type="number" hide />
                 <ChartTooltip
@@ -393,7 +392,7 @@ export default function DashboardPage() {
                   config={categoryChartConfig}
                   className="h-full w-full"
               >
-                  <PieChart margin={{left: 40, right: 40}}>
+                  <PieChart>
                     <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
                     <ChartPie
                         data={categoryDistributionData}
@@ -439,24 +438,26 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
       
-      <HorizontalBarChartCard
-        loading={loading}
-        title="Observasi per Perusahaan"
-        data={companyDistributionData}
-        chartConfig={companyChartConfig}
-        dataKey="value"
-        nameKey="name"
-        color="hsl(var(--chart-1))"
-      />
-      <HorizontalBarChartCard
-        loading={loading}
-        title="Observasi per Lokasi"
-        data={locationDistributionData}
-        chartConfig={locationChartConfig}
-        dataKey="value"
-        nameKey="name"
-        color="hsl(var(--chart-2))"
-      />
+      <div className="grid grid-cols-1 gap-6">
+        <HorizontalBarChartCard
+          loading={loading}
+          title="Observasi per Perusahaan"
+          data={companyDistributionData}
+          chartConfig={companyChartConfig}
+          dataKey="value"
+          nameKey="name"
+          color="hsl(var(--chart-1))"
+        />
+        <HorizontalBarChartCard
+          loading={loading}
+          title="Observasi per Lokasi"
+          data={locationDistributionData}
+          chartConfig={locationChartConfig}
+          dataKey="value"
+          nameKey="name"
+          color="hsl(var(--chart-2))"
+        />
+      </div>
       
       <Card>
           <CardHeader>
