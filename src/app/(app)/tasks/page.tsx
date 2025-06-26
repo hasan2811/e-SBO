@@ -50,6 +50,13 @@ const locationChartConfig = {
     value: { label: "Observations", color: "hsl(var(--chart-2))" },
 };
 
+const categoryChartConfig = {
+    Structural: { label: "Structural", color: "hsl(var(--chart-1))" },
+    Electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
+    Plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
+    General: { label: "General", color: "hsl(var(--chart-4))" },
+  };
+
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
   const chartConfig = {
     metric: {
@@ -162,13 +169,6 @@ export default function DashboardPage() {
     completed: { label: "Completed", color: "hsl(var(--chart-1))" },
   };
   
-  const categoryChartConfig = {
-    Structural: { label: "Structural", color: "hsl(var(--chart-1))" },
-    Electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
-    Plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
-    General: { label: "General", color: "hsl(var(--chart-4))" },
-  };
-
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: subDays(new Date(), 6),
     to: new Date(),
@@ -355,7 +355,6 @@ export default function DashboardPage() {
                   selected={date}
                   onSelect={setDate}
                   numberOfMonths={1}
-                  max={7}
                 />
               </PopoverContent>
             </Popover>
@@ -392,14 +391,14 @@ export default function DashboardPage() {
                   config={categoryChartConfig}
                   className="h-full w-full"
               >
-                  <PieChart>
+                  <PieChart margin={{ left: 40, right: 40, top: 20, bottom: 20 }}>
                     <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
                     <ChartPie
                         data={categoryDistributionData}
                         dataKey="value"
                         nameKey="name"
                         innerRadius={60}
-                        outerRadius={90}
+                        outerRadius={80}
                         strokeWidth={2}
                         labelLine
                         label={renderCustomizedLabel}
