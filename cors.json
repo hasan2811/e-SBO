@@ -7,7 +7,9 @@
       "Content-Length",
       "Authorization",
       "X-Goog-Resumable",
-      "X-Upload-Content-Type"
+      "X-Upload-Content-Type",
+      "X-Upload-Content-Length",
+      "Content-MD5"
     ],
     "maxAgeSeconds": 3600
   }

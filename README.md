@@ -17,7 +17,7 @@ To allow your web application to upload files directly to Firebase Storage, you 
 Run this command in your terminal:
 
 ```bash
-gsutil cors set cors.json gs://hssetech-e1710.appspot.com
+gsutil cors set cors.json gs://hssetech-e1710.firebasestorage.app
 ```
 
 This command uses the `gsutil` tool to set the policy defined in `cors.json` on the correct Cloud Storage bucket for this project (`hssetech-e1710.appspot.com`). This step is necessary to fix any CORS-related upload errors from the browser.
