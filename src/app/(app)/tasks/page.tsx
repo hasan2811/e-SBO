@@ -99,13 +99,15 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
 };
 
 const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, nameKey, color }: { loading: boolean; title: string; data: any[]; chartConfig: any; dataKey: string; nameKey: string; color: string; }) => {
+  const chartHeight = React.useMemo(() => Math.max(150, data.length * 40), [data.length]);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[350px]">
+        <div style={{ height: `${chartHeight}px` }}>
           {loading ? (
             <Skeleton className="h-full w-full" />
           ) : data.length > 0 ? (
@@ -118,7 +120,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                   axisLine={false}
                   tickMargin={10}
                   className="text-xs"
-                  width={80}
+                  width={100}
                 />
                 <ChartXAxis dataKey={dataKey} type="number" hide />
                 <ChartTooltip
@@ -127,9 +129,9 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                 />
                 <ChartBar
                   dataKey={dataKey}
-                  layout="vertical"
                   fill={color}
                   radius={4}
+                  barSize={16}
                 />
               </BarChart>
             </ChartContainer>
@@ -268,7 +270,7 @@ export default function DashboardPage() {
 
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => a.value - b.value);
+      .sort((a, b) => b.value - a.value);
   }, [filteredObservations]);
 
   const locationDistributionData = React.useMemo(() => {
@@ -279,7 +281,7 @@ export default function DashboardPage() {
 
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => a.value - b.value);
+      .sort((a, b) => b.value - a.value);
   }, [filteredObservations]);
 
   // Custom label renderer for the pie chart
@@ -375,7 +377,7 @@ export default function DashboardPage() {
                             data={categoryDistributionData}
                             dataKey="value"
                             nameKey="name"
-                            innerRadius={60}
+                            innerRadius={50}
                             outerRadius={80}
                             strokeWidth={5}
                             labelLine
