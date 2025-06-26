@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -418,26 +419,24 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
       
-       <div className="grid gap-6 md:grid-cols-2">
-        <HorizontalBarChartCard
-          loading={loading}
-          title="Observasi per Perusahaan"
-          data={companyDistributionData}
-          chartConfig={companyChartConfig}
-          dataKey="value"
-          nameKey="name"
-          color="hsl(var(--chart-1))"
-        />
-        <HorizontalBarChartCard
-          loading={loading}
-          title="Observasi per Lokasi"
-          data={locationDistributionData}
-          chartConfig={locationChartConfig}
-          dataKey="value"
-          nameKey="name"
-          color="hsl(var(--chart-2))"
-        />
-      </div>
+      <HorizontalBarChartCard
+        loading={loading}
+        title="Observasi per Perusahaan"
+        data={companyDistributionData}
+        chartConfig={companyChartConfig}
+        dataKey="value"
+        nameKey="name"
+        color="hsl(var(--chart-1))"
+      />
+      <HorizontalBarChartCard
+        loading={loading}
+        title="Observasi per Lokasi"
+        data={locationDistributionData}
+        chartConfig={locationChartConfig}
+        dataKey="value"
+        nameKey="name"
+        color="hsl(var(--chart-2))"
+      />
       
       <Card>
           <CardHeader>
