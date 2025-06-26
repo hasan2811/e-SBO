@@ -38,7 +38,7 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
 };
 
 export default function TasksPage() {
-  const { observations, addObservation, updateObservation } = useObservations();
+  const { observations, addObservation, updateObservation, retryAiAnalysis } = useObservations();
   const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isViewDialogOpen, setViewDialogOpen] = React.useState(false);
@@ -126,6 +126,7 @@ export default function TasksPage() {
             onOpenChange={setViewDialogOpen}
             observation={selectedObservation}
             onTakeAction={handleTakeAction}
+            onRetry={retryAiAnalysis}
           />
         </>
       )}

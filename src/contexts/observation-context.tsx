@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, doc, onSnapshot, query, setDoc, updateDoc, orderBy, addDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, updateDoc, orderBy, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -13,6 +13,7 @@ interface ObservationContextType {
   observations: Observation[];
   addObservation: (observation: Omit<Observation, 'id' | 'referenceId'>) => Promise<void>;
   updateObservation: (id: string, updatedData: Partial<Observation>) => Promise<void>;
+  retryAiAnalysis: (observation: Observation) => Promise<void>;
 }
 
 const ObservationContext = React.createContext<ObservationContextType | undefined>(undefined);
@@ -48,44 +49,51 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }
   }, [user, toast]);
 
+  const _runAiAnalysis = (observation: Observation) => {
+    const observationDocRef = doc(db, 'observations', observation.id);
+    getAiSummary(observation)
+      .then(summary => {
+        if (summary) {
+          const aiData = {
+            aiSummary: summary.summary,
+            aiRisks: summary.risks,
+            aiSuggestedActions: summary.suggestedActions,
+            aiRelevantRegulations: summary.relevantRegulations,
+            aiStatus: 'completed' as const,
+          };
+          updateDoc(observationDocRef, aiData);
+        } else {
+           updateDoc(observationDocRef, { aiStatus: 'failed' });
+        }
+      })
+      .catch(error => {
+        console.error("Failed to generate or save AI summary:", error);
+        updateDoc(observationDocRef, { aiStatus: 'failed' });
+        toast({
+          variant: 'destructive',
+          title: 'AI Analysis Failed',
+          description: 'Could not generate AI analysis. Please try again.',
+        });
+      });
+  };
+
+  const retryAiAnalysis = async (observation: Observation) => {
+    const observationDocRef = doc(db, 'observations', observation.id);
+    await updateDoc(observationDocRef, { aiStatus: 'processing' });
+    _runAiAnalysis(observation);
+  };
 
   const addObservation = async (newObservation: Omit<Observation, 'id' | 'referenceId'>) => {
     try {
-      // Generate a professional, user-friendly reference ID
       const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
       
-      const observationToSave = { ...newObservation, referenceId };
+      const observationToSave = { ...newObservation, referenceId, aiStatus: 'processing' as const };
 
-      // Use addDoc to let Firestore generate the ID.
       const observationCollection = collection(db, 'observations');
       const observationDocRef = await addDoc(observationCollection, observationToSave);
 
-      // Asynchronously get AI summary and update the document.
-      // This runs in the background and does not block the UI.
       const fullObservationData = { ...observationToSave, id: observationDocRef.id };
-      
-      getAiSummary(fullObservationData)
-        .then(summary => {
-          if (summary) {
-            const aiData = {
-              aiSummary: summary.summary,
-              aiRisks: summary.risks,
-              aiSuggestedActions: summary.suggestedActions,
-              aiRelevantRegulations: summary.relevantRegulations,
-            };
-            // Update the same doc with the AI data.
-            updateDoc(observationDocRef, aiData);
-          }
-        })
-        .catch(error => {
-          // Log the error and also inform the user.
-          console.error("Failed to generate or save AI summary:", error);
-          toast({
-            variant: 'destructive',
-            title: 'AI Analysis Failed',
-            description: 'Observation saved, but AI analysis failed. Check AI service configuration (API key).',
-          });
-        });
+      _runAiAnalysis(fullObservationData);
 
     } catch (error) {
       console.error("Error adding document to Firestore: ", error);
@@ -103,7 +111,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }
   };
 
-  const value = { observations, addObservation, updateObservation };
+  const value = { observations, addObservation, updateObservation, retryAiAnalysis };
 
   return (
     <ObservationContext.Provider value={value}>

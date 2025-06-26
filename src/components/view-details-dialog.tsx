@@ -15,17 +15,24 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Observation } from '@/lib/types';
 import { RiskBadge, StatusBadge } from './status-badges';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2 } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 
 interface ViewDetailsDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   observation: Observation | null;
   onTakeAction: () => void;
+  onRetry: (observation: Observation) => void;
 }
 
-export function ViewDetailsDialog({ isOpen, onOpenChange, observation, onTakeAction }: ViewDetailsDialogProps) {
+export function ViewDetailsDialog({ isOpen, onOpenChange, observation, onTakeAction, onRetry }: ViewDetailsDialogProps) {
   if (!observation) return null;
+
+  const handleRetry = () => {
+    onRetry(observation);
+  };
+
+  const showAiSection = observation.aiStatus || observation.aiSummary;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -76,60 +83,81 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation, onTakeAct
               <p className="text-sm text-muted-foreground">{observation.recommendation}</p>
             </div>
 
-            {(observation.aiSummary || observation.aiRisks || observation.aiSuggestedActions || observation.aiRelevantRegulations) && (
+            {showAiSection && (
               <div className="space-y-4 pt-4 mt-4 border-t">
                  <div className="bg-primary/5 p-4 rounded-lg border-l-4 border-primary space-y-4">
                     <h4 className="font-semibold text-base flex items-center gap-2">
                       <Sparkles className="h-5 w-5 text-primary" />
                       HSSE Tech Analysis
                     </h4>
-                    {observation.aiSummary && (
-                      <div className="space-y-1">
-                        <h5 className="font-semibold text-sm flex items-center gap-2">
-                           <FileText className="h-4 w-4 text-muted-foreground" />
-                           Summary
-                        </h5>
-                        <p className="text-sm text-muted-foreground pl-6">{observation.aiSummary}</p>
+
+                    {observation.aiStatus === 'processing' && (
+                      <div className="flex items-center gap-3 p-4 rounded-lg">
+                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                          <p className="text-sm text-muted-foreground">AI analysis is in progress. This may take a moment...</p>
                       </div>
                     )}
-                    {observation.aiRisks && (
-                      <div className="space-y-1">
-                        <h5 className="font-semibold text-sm flex items-center gap-2">
-                            <ShieldAlert className="h-4 w-4 text-destructive" />
-                            Potential Risks
-                        </h5>
-                        <p className="text-sm text-muted-foreground whitespace-pre-line pl-6">{observation.aiRisks}</p>
+
+                    {observation.aiStatus === 'failed' && (
+                      <div className="flex flex-col items-start gap-3 bg-destructive/10 p-4 rounded-lg border border-destructive/20">
+                          <p className="text-sm text-destructive font-medium">The AI analysis could not be completed.</p>
+                          <Button variant="destructive" size="sm" onClick={handleRetry}>
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Retry Analysis
+                          </Button>
                       </div>
                     )}
-                     {observation.aiSuggestedActions && (
-                        <div className="space-y-1">
-                          <h5 className="font-semibold text-sm flex items-center gap-2">
-                            <ListChecks className="h-4 w-4 text-green-600" />
-                            Suggested Actions
-                          </h5>
-                          <div className="pl-6 space-y-1">
-                            {observation.aiSuggestedActions.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((action, index) => (
-                              <div key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-                                <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                                <span>{action.replace(/^- /, '')}</span>
-                              </div>
-                            ))}
+
+                    {observation.aiStatus === 'completed' && (
+                      <>
+                        {observation.aiSummary && (
+                          <div className="space-y-1">
+                            <h5 className="font-semibold text-sm flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              Summary
+                            </h5>
+                            <p className="text-sm text-muted-foreground pl-6">{observation.aiSummary}</p>
                           </div>
-                        </div>
-                      )}
-                    {observation.aiRelevantRegulations && (
-                      <div className="space-y-1">
-                        <h5 className="font-semibold text-sm flex items-center gap-2">
-                           <Gavel className="h-4 w-4 text-muted-foreground" />
-                           Relevant Regulations & Procedures
-                        </h5>
-                        <p className="text-sm text-muted-foreground whitespace-pre-line pl-6">{observation.aiRelevantRegulations}</p>
-                      </div>
+                        )}
+                        {observation.aiRisks && (
+                          <div className="space-y-1">
+                            <h5 className="font-semibold text-sm flex items-center gap-2">
+                                <ShieldAlert className="h-4 w-4 text-destructive" />
+                                Potential Risks
+                            </h5>
+                            <p className="text-sm text-muted-foreground whitespace-pre-line pl-6">{observation.aiRisks}</p>
+                          </div>
+                        )}
+                        {observation.aiSuggestedActions && (
+                            <div className="space-y-1">
+                              <h5 className="font-semibold text-sm flex items-center gap-2">
+                                <ListChecks className="h-4 w-4 text-green-600" />
+                                Suggested Actions
+                              </h5>
+                              <div className="pl-6 space-y-1">
+                                {observation.aiSuggestedActions.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((action, index) => (
+                                  <div key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                                    <span>{action.replace(/^- /, '')}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        {observation.aiRelevantRegulations && (
+                          <div className="space-y-1">
+                            <h5 className="font-semibold text-sm flex items-center gap-2">
+                              <Gavel className="h-4 w-4 text-muted-foreground" />
+                              Relevant Regulations & Procedures
+                            </h5>
+                            <p className="text-sm text-muted-foreground whitespace-pre-line pl-6">{observation.aiRelevantRegulations}</p>
+                          </div>
+                        )}
+                      </>
                     )}
                  </div>
               </div>
             )}
-
 
             {observation.status === 'Completed' && (
               <div className="space-y-4 pt-4 border-t mt-4">
