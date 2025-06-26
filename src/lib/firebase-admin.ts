@@ -6,7 +6,7 @@ if (!admin.apps.length) {
   admin.initializeApp({
     // Using hardcoded values to ensure consistency and avoid environment variable issues.
     projectId: 'hssetech-e1710',
-    storageBucket: 'hssetech-e1710.appspot.com',
+    storageBucket: 'hssetech-e1710.firebaseapp.com',
   });
 }
 
