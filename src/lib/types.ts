@@ -33,4 +33,5 @@ export type Observation = {
   aiSummary?: string;
   aiRisks?: string;
   aiSuggestedActions?: string;
+  aiRelevantRegulations?: string;
 };

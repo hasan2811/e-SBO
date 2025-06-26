@@ -72,6 +72,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
               aiSummary: summary.summary,
               aiRisks: summary.risks,
               aiSuggestedActions: summary.suggestedActions,
+              aiRelevantRegulations: summary.relevantRegulations,
             };
             // Update the same doc with the AI data.
             updateDoc(observationDocRef, aiData);

@@ -16,11 +16,13 @@ export const RiskBadge = ({ riskLevel }: { riskLevel: RiskLevel }) => {
 };
 
 export const StatusBadge = ({ status }: { status: Observation['status'] }) => {
-  const variant: 'default' | 'secondary' | 'outline' =
+  const variant: 'default' | 'secondary' | 'destructive' | 'outline' =
     status === 'Completed'
       ? 'default'
       : status === 'In Progress'
       ? 'secondary'
+      : status === 'Pending'
+      ? 'destructive'
       : 'outline';
   return <Badge variant={variant}>{status}</Badge>;
 };

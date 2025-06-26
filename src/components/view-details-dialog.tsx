@@ -75,12 +75,12 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
               <p className="text-sm text-muted-foreground">{observation.recommendation}</p>
             </div>
 
-            {(observation.aiSummary || observation.aiRisks || observation.aiSuggestedActions) && (
+            {(observation.aiSummary || observation.aiRisks || observation.aiSuggestedActions || observation.aiRelevantRegulations) && (
               <div className="space-y-4 pt-4 mt-4 border-t">
                  <div className="bg-primary/5 p-4 rounded-lg border-l-4 border-primary space-y-4">
                     <h4 className="font-semibold text-base flex items-center gap-2">
                       <Sparkles className="h-5 w-5 text-primary" />
-                      AI-Generated Analysis
+                      HSSE Tech Analysis
                     </h4>
                     {observation.aiSummary && (
                       <div className="space-y-1">
@@ -98,6 +98,12 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
                       <div className="space-y-1">
                         <h5 className="font-semibold text-sm">Suggested Actions</h5>
                         <p className="text-sm text-muted-foreground">{observation.aiSuggestedActions}</p>
+                      </div>
+                    )}
+                    {observation.aiRelevantRegulations && (
+                      <div className="space-y-1">
+                        <h5 className="font-semibold text-sm">Relevant Regulations & Procedures</h5>
+                        <p className="text-sm text-muted-foreground">{observation.aiRelevantRegulations}</p>
                       </div>
                     )}
                  </div>

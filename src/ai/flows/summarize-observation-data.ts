@@ -17,8 +17,9 @@ export type SummarizeObservationDataInput = z.infer<typeof SummarizeObservationD
 
 const SummarizeObservationDataOutputSchema = z.object({
   summary: z.string().describe('A concise summary of the observation findings.'),
-  risks: z.string().describe('Potential risks identified during the observation.'),
+  risks: z.string().describe('A detailed analysis of potential hazards and risks, including root causes and consequences.'),
   suggestedActions: z.string().describe('Suggested actions based on the observation findings.'),
+  relevantRegulations: z.string().describe('Analysis of relevant Indonesian national and international regulations, standards, or procedures that apply to the findings.'),
 });
 export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservationDataOutputSchema>;
 
@@ -30,8 +31,14 @@ const summarizeObservationDataPrompt = ai.definePrompt({
   name: 'summarizeObservationDataPrompt',
   input: {schema: SummarizeObservationDataInputSchema},
   output: {schema: SummarizeObservationDataOutputSchema},
-  prompt: `You are an AI assistant specializing in summarizing observation data from safety reports.
-Analyze the following observation data and generate a JSON object containing a concise summary of the findings, potential risks identified based on findings and risk level, and suggested actionable steps based on the provided recommendation.
+  prompt: `You are an expert HSSE (Health, Safety, Security, and Environment) analyst.
+Analyze the following observation data from a safety report. Your task is to provide a professional and detailed analysis.
+
+Based on the observation data provided, generate a JSON object with the following fields:
+1.  "summary": A concise summary of the core findings.
+2.  "risks": A detailed analysis of potential hazards. Describe the immediate risks, potential consequences if left unaddressed, and possible root causes. Be specific.
+3.  "suggestedActions": Clear, actionable steps to mitigate the risks, based on the recommendation provided in the data.
+4.  "relevantRegulations": Identify and explain relevant regulations or standards. This should include applicable Indonesian national regulations (e.g., UU, PP, Permenaker) and relevant international standards (e.g., ISO, OHSAS) that relate to the findings. Also, describe the standard procedure that should have been followed.
 
 Observation Data:
 {{{observationData}}}
