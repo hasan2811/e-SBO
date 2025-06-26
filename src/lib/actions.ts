@@ -20,7 +20,11 @@ export async function getAiSummary(observation: Observation): Promise<SummarizeO
     const result = await summarizeObservationData({ observationData });
     return result;
   } catch (error) {
-    console.error('Error getting AI summary:', error);
-    throw new Error('Failed to generate AI summary.');
+    console.error('Detailed error in getAiSummary:', error);
+    if (error instanceof Error) {
+      // Propagate a more descriptive error message to the client.
+      throw new Error(`Failed to generate AI summary. Reason: ${error.message}`);
+    }
+    throw new Error('Failed to generate AI summary due to an unknown error.');
   }
 }
