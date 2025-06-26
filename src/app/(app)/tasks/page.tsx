@@ -105,7 +105,7 @@ export default function DashboardPage() {
     from: subDays(new Date(), 6),
     to: new Date(),
   });
-
+  
   const dailyChartConfig = {
     pending: { label: "Pending", color: "hsl(var(--chart-4))" },
     completed: { label: "Completed", color: "hsl(var(--chart-1))" },
@@ -158,7 +158,7 @@ export default function DashboardPage() {
         value: categoryCounts[category as ObservationCategory] || 0,
         fill: `var(--color-${category})`,
       })).filter(item => item.value > 0);
-  }, [filteredObservations]);
+  }, [filteredObservations, categoryChartConfig]);
 
 
   const dailyData = React.useMemo(() => {
@@ -205,6 +205,27 @@ export default function DashboardPage() {
       ...riskLevelConfig[level]
     }));
   }, [filteredObservations]);
+
+  // Custom label renderer for the pie chart
+  const renderCustomizedLabel = (props: any) => {
+    const { cx, cy, midAngle, outerRadius, percent, name } = props;
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + 25; // Position labels outside the pie
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text
+        x={x}
+        y={y}
+        style={{ fill: 'hsl(var(--foreground))', fontSize: '12px' }}
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+      >
+        {`${name} - ${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -265,28 +286,35 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="h-[250px]">
-               {loading ? <Skeleton className="h-full w-full rounded-full" /> :
-                <ChartContainer
-                    config={categoryChartConfig}
-                    className="h-full w-full"
-                >
-                    <PieChart>
-                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                      <ChartPie
-                          data={categoryDistributionData}
-                          dataKey="value"
-                          nameKey="name"
-                          innerRadius={50}
-                          strokeWidth={5}
-                      />
-                      <ChartLegend />
-                    </PieChart>
-                </ChartContainer>
+               {loading ? (
+                  <Skeleton className="h-full w-full rounded-full" />
+                ) : categoryDistributionData.length > 0 ? (
+                  <ChartContainer
+                      config={categoryChartConfig}
+                      className="h-full w-full"
+                  >
+                      <PieChart margin={{ top: 30, right: 30, bottom: 30, left: 30 }}>
+                        <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                        <ChartPie
+                            data={categoryDistributionData}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={50}
+                            outerRadius={80}
+                            strokeWidth={5}
+                            labelLine
+                            label={renderCustomizedLabel}
+                        />
+                      </PieChart>
+                  </ChartContainer>
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <p>No category data for this period.</p>
+                  </div>
+                )
                }
               </div>
             </CardContent>
-             <CardFooter className="flex-col gap-2 text-sm pt-4">
-             </CardFooter>
           </Card>
       </div>
 
