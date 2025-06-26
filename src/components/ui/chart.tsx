@@ -62,10 +62,8 @@ const ChartContext = React.createContext<{
 
 const ChartContainer = React.forwardRef<
   HTMLDivElement,
-  Omit<ChartContainerProps, "children"> & {
-    children: React.ReactNode
-  }
->(({ config, className, children, ...props }, ref) => {
+  ChartContainerProps
+>(({ config, children, className, ...props }, ref) => {
   const [activeChart, setActiveChart] =
     React.useState<keyof typeof config | null>(null)
   const id = React.useId()
@@ -86,18 +84,27 @@ const ChartContainer = React.forwardRef<
         data-chart={id}
         data-active-chart={activeChart}
         className={cn(
-          "flex flex-col",
-          "[&_>_.recharts-responsive-container]:!my-auto [&_>_.recharts-responsive-container]:*:!h-auto",
+          "flex justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer:focus-visible]:outline-none [&_.recharts-polar-axis-tick_text]:fill-muted-foreground [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-radial-bar-sector]:stroke-border [&_.recharts-reference-line_line]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-none",
           className
         )}
+        style={
+          {
+            ...Object.fromEntries(
+              Object.entries(config).map(([key, value]) => [
+                `--color-${key}`,
+                value.color,
+              ])
+            ),
+          } as React.CSSProperties
+        }
         {...props}
       >
-        {children}
+        <Chart>{children}</Chart>
       </div>
     </ChartContext.Provider>
   )
 })
-ChartContainer.displayName = "Chart"
+ChartContainer.displayName = "ChartContainer"
 // #endregion
 
 // #region Chart Legend

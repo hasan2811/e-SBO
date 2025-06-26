@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Chart,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -44,7 +43,13 @@ const riskLevelConfig: Record<RiskLevel, { color: string, className: string }> =
 };
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
-  const chartData = [{ name: title, value }];
+  const chartConfig = {
+    metric: {
+      label: title,
+      color: color,
+    },
+  };
+  const chartData = [{ name: title, value, fill: 'var(--color-metric)' }];
 
   return (
     <Card>
@@ -57,7 +62,10 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
             <Skeleton className="h-full w-full rounded-full" />
           ) : (
             <div className="relative h-full w-full">
-              <Chart>
+              <ChartContainer
+                config={chartConfig}
+                className="absolute inset-0 h-full w-full"
+              >
                 <RadialBarChart
                   data={chartData}
                   innerRadius="80%"
@@ -71,10 +79,9 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
                     dataKey="value"
                     background={{ fill: 'hsl(var(--muted))' }}
                     cornerRadius={6}
-                    fill={color}
                   />
                 </RadialBarChart>
-              </Chart>
+              </ChartContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-4xl font-bold" style={{ color }}>{value}%</span>
                 <span className="text-sm text-muted-foreground mt-1">({count} Laporan)</span>
@@ -246,8 +253,8 @@ export default function DashboardPage() {
                   <ChartYAxis tickLine={false} axisLine={false} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <ChartLegend content={<ChartLegendContent />} />
-                  <ChartBar dataKey="completed" stackId="a" fill={dailyChartConfig.completed.color} radius={[4, 4, 0, 0]} />
-                  <ChartBar dataKey="pending" stackId="a" fill={dailyChartConfig.pending.color} radius={[4, 4, 0, 0]} />
+                  <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
+                  <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ChartContainer>
             )}
