@@ -2,16 +2,22 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // All paths are publicly readable for simplicity of displaying images.
-    // In a production app, you might want to restrict this further.
-    allow read: if true;
-
-    // Any authenticated user can write files.
-    // The security is enforced by the client-side code, which ensures
-    // a user can only upload to a path containing their own UID.
-    // This simplified rule avoids complex CORS preflight issues.
-    match /{allPaths=**} {
-      allow write: if request.auth != null;
+    
+    // Aturan untuk folder observasi
+    match /observations/{userId}/{allPaths=**} {
+      // Izinkan siapa saja untuk membaca file (URL tidak dapat ditebak)
+      allow read;
+      // Hanya izinkan pengguna yang terotentikasi untuk menulis ke folder mereka sendiri
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
+    
+    // Aturan untuk folder tindakan
+    match /actions/{userId}/{allPaths=**} {
+      // Izinkan siapa saja untuk membaca file
+      allow read;
+      // Hanya izinkan pengguna yang terotentikasi untuk menulis ke folder mereka sendiri
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
   }
 }
