@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { useObservations } from '@/contexts/observation-context';
 import type { Observation } from '@/lib/types';
 import { RiskBadge } from '@/components/status-badges';
-import { format } from 'date-fns';
+import { format, subDays, addDays, isToday, isFuture } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { FileText, ChevronRight } from 'lucide-react';
+import { FileText, ChevronRight, ChevronLeft, Calendar as CalendarIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Card } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ObservationListItem = ({ observation }: { observation: Observation }) => {
@@ -39,7 +40,25 @@ const ObservationListItem = ({ observation }: { observation: Observation }) => {
 
 export default function JurnalPage() {
   const { observations, loading } = useObservations();
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
+  const [isPopoverOpen, setPopoverOpen] = React.useState(false);
+
+  const handlePreviousDay = () => {
+    setSelectedDate(subDays(selectedDate, 1));
+  };
+
+  const handleNextDay = () => {
+    if (!isToday(selectedDate) && !isFuture(addDays(selectedDate, 1))) {
+       setSelectedDate(addDays(selectedDate, 1));
+    }
+  };
+  
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date && !isFuture(date)) {
+      setSelectedDate(date);
+      setPopoverOpen(false);
+    }
+  };
 
   const filteredObservations = React.useMemo(() => {
     if (!selectedDate) {
@@ -58,30 +77,42 @@ export default function JurnalPage() {
   }, [observations, selectedDate]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-      <aside className="lg:col-span-1">
-        <div className="sticky top-20">
-          <h2 className="text-2xl font-bold tracking-tight mb-4">Pilih Tanggal</h2>
-          <Card>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-              initialFocus
-            />
-          </Card>
-        </div>
-      </aside>
-      
-      <main className="lg:col-span-2">
-        <h2 className="text-2xl font-bold tracking-tight mb-4">
-          Jurnal Observasi - <span className="text-primary">{selectedDate ? format(selectedDate, "d MMMM yyyy", { locale: id }) : 'Pilih Tanggal'}</span>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <h2 className="text-2xl font-bold tracking-tight">
+          Jurnal Observasi
         </h2>
-        
+        <div className="flex items-center gap-2 border rounded-lg p-1 bg-card shadow-sm w-full sm:w-auto">
+            <Button variant="ghost" size="icon" onClick={handlePreviousDay} className="h-9 w-9">
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <Popover open={isPopoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-center text-center font-semibold">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(selectedDate, "d MMMM yyyy", { locale: id })}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  disabled={(date) => date > new Date() || date < new Date("2020-01-01")}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <Button variant="ghost" size="icon" onClick={handleNextDay} disabled={isToday(selectedDate)} className="h-9 w-9">
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+        </div>
+      </div>
+      
+      <main>
         {loading ? (
           <ul className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {Array.from({ length: 4 }).map((_, i) => (
               <li key={i}>
                 <div className="flex items-center bg-card p-4 rounded-lg shadow-sm">
                   <div className="flex-1 space-y-2 pr-4">
