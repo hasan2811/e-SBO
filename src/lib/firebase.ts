@@ -8,7 +8,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyD-P_1XOQ9xQOgxwMApClEFoqHcxs7fYPI",
   authDomain: "hssetech-e1710.firebaseapp.com",
   projectId: "hssetech-e1710",
-  storageBucket: "hssetech-e1710.firebaseapp.com",
+  storageBucket: "hssetech-e1710.appspot.com",
   messagingSenderId: "789147047426",
   appId: "1:789147047426:web:7a37fdc4adfb51905bb91b",
   measurementId: "G-X84C2SP8MH"
