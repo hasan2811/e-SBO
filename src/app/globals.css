@@ -5,31 +5,33 @@
 
 @layer base {
   :root {
-    --background: 240 10% 98%; /* Lightest Gray */
+    --background: 220 17% 95%; /* Light gray - As per PRD */
     --foreground: 222 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 84% 4.9%;
-    --primary: 221 83% 53%; /* Strong Blue */
+    --primary: 197 78% 52%; /* Strong Blue - As per PRD */
     --primary-foreground: 0 0% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 84% 4.9%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222 84% 4.9%;
+    --accent: 291 64% 42%; /* Muted Purple - As per PRD */
+    --accent-foreground: 0 0% 98%; /* White text on purple */
     --destructive: 0 84.2% 60.2%; /* Red for Critical */
     --destructive-foreground: 0 0% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221 83% 53%;
+    --ring: 197 78% 52%; /* Match new primary */
     --radius: 0.5rem;
-    --chart-1: 221 83% 53%; /* Blue (Completed) */
-    --chart-2: 158 64% 52%; /* Green (Low Risk) */
-    --chart-3: 45 93% 57%; /* Yellow (Unused) */
-    --chart-4: 43 74% 66%; /* Amber (Medium Risk & Pending) */
-    --chart-5: 358 91% 64%; /* Orange/Red (High Risk) */
+
+    /* New Contrasting Chart Colors */
+    --chart-1: 197 78% 52%; /* Blue (Primary) */
+    --chart-2: 145 63% 42%; /* Green */
+    --chart-3: 291 64% 42%; /* Purple (Accent) */
+    --chart-4: 45 93% 57%;  /* Yellow */
+    --chart-5: 25 95% 53%;  /* Orange */
   }
 
   .dark {
@@ -39,24 +41,26 @@
     --card-foreground: 0 0% 98%;
     --popover: 222 84% 4.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 221 83% 53%;
+    --primary: 197 78% 52%;
     --primary-foreground: 0 0% 98%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 0 0% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 291 64% 55%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 221 83% 53%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --ring: 197 78% 52%;
+    
+    /* New Contrasting Chart Colors for Dark Mode */
+    --chart-1: 197 70% 55%; /* Blue */
+    --chart-2: 145 55% 55%; /* Green */
+    --chart-3: 291 60% 60%; /* Purple */
+    --chart-4: 45 85% 65%;  /* Yellow */
+    --chart-5: 25 85% 60%;  /* Orange */
   }
 }
 
