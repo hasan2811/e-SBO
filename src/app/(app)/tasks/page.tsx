@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -41,6 +40,26 @@ const riskLevelConfig: Record<RiskLevel, { color: string, className: string }> =
   Medium: { color: 'hsl(var(--chart-4))', className: 'bg-chart-4' },
   High: { color: 'hsl(var(--chart-5))', className: 'bg-chart-5' },
   Critical: { color: 'hsl(var(--destructive))', className: 'bg-destructive' },
+};
+
+const dailyChartConfig = {
+    pending: { label: "Pending", color: "hsl(var(--chart-4))" },
+    completed: { label: "Completed", color: "hsl(var(--chart-1))" },
+};
+  
+const categoryChartConfig = {
+    Structural: { label: "Structural", color: "hsl(var(--chart-1))" },
+    Electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
+    Plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
+    General: { label: "General", color: "hsl(var(--chart-4))" },
+};
+
+const companyChartConfig = {
+    value: { label: "Observations", color: "hsl(var(--chart-1))" },
+};
+  
+const locationChartConfig = {
+    value: { label: "Observations", color: "hsl(var(--chart-2))" },
 };
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
@@ -121,7 +140,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                   axisLine={false}
                   tickMargin={10}
                   className="text-xs"
-                  width={100}
+                  width={120}
                 />
                 <ChartXAxis dataKey={dataKey} type="number" hide />
                 <ChartTooltip
@@ -155,26 +174,6 @@ export default function DashboardPage() {
     to: new Date(),
   });
   
-  const dailyChartConfig = {
-    pending: { label: "Pending", color: "hsl(var(--chart-4))" },
-    completed: { label: "Completed", color: "hsl(var(--chart-1))" },
-  };
-  
-  const categoryChartConfig = {
-    Structural: { label: "Structural", color: "hsl(var(--chart-1))" },
-    Electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
-    Plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
-    General: { label: "General", color: "hsl(var(--chart-4))" },
-  };
-
-  const companyChartConfig = {
-    value: { label: "Observations", color: "hsl(var(--chart-1))" },
-  };
-  
-  const locationChartConfig = {
-    value: { label: "Observations", color: "hsl(var(--chart-2))" },
-  };
-
   const filteredObservations = React.useMemo(() => {
     if (!date?.from) return observations;
     const from = date.from;
@@ -215,7 +214,7 @@ export default function DashboardPage() {
         value: categoryCounts[category as ObservationCategory] || 0,
         fill: `var(--color-${category})`,
       })).filter(item => item.value > 0);
-  }, [filteredObservations, categoryChartConfig]);
+  }, [filteredObservations]);
 
 
   const dailyData = React.useMemo(() => {
