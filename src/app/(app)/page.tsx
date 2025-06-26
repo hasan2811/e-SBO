@@ -1,65 +1,43 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useObservations } from '@/contexts/observation-context';
 import type { Observation } from '@/lib/types';
-import { TakeActionDialog } from '@/components/take-action-dialog';
-import { ViewDetailsDialog } from '@/components/view-details-dialog';
 import { RiskBadge } from '@/components/status-badges';
 import { SubmitObservationDialog } from '@/components/submit-observation-dialog';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Plus, FileText, ChevronRight } from 'lucide-react';
 
-const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
+const ObservationListItem = ({ observation }: { observation: Observation }) => {
   return (
-    <li 
-      className="flex items-center bg-card p-3.5 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer"
-      onClick={onSelect}
-    >
-      <div className="flex-1 space-y-1 pr-4">
-        <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">{format(new Date(observation.date), 'HH:mm')}</span> - {observation.category}
-        </p>
-        <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
-        <div className="flex items-center gap-2 pt-1">
-          <RiskBadge riskLevel={observation.riskLevel} />
-          <span className="text-xs text-muted-foreground">{observation.company}</span>
+    <li>
+      <Link href={`/observation/${observation.id}`} className="flex items-center bg-card p-3.5 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer">
+        <div className="flex-1 space-y-1 pr-4">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{format(new Date(observation.date), 'HH:mm')}</span> - {observation.category}
+          </p>
+          <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
+          <div className="flex items-center gap-2 pt-1">
+            <RiskBadge riskLevel={observation.riskLevel} />
+            <span className="text-xs text-muted-foreground">{observation.company}</span>
+          </div>
         </div>
-      </div>
-      <div className="ml-auto flex items-center gap-2">
-        <div className="hidden sm:flex items-center justify-center h-12 w-12 rounded-full bg-primary/10">
-          <FileText className="h-6 w-6 text-primary" />
+        <div className="ml-auto flex items-center gap-2">
+          <div className="hidden sm:flex items-center justify-center h-12 w-12 rounded-full bg-primary/10">
+            <FileText className="h-6 w-6 text-primary" />
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </div>
-        <ChevronRight className="h-5 w-5 text-muted-foreground sm:hidden" />
-      </div>
+      </Link>
     </li>
   );
 };
 
 export default function JurnalPage() {
-  const { observations, addObservation, updateObservation, retryAiAnalysis } = useObservations();
-  const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
-  const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
-  const [isViewDialogOpen, setViewDialogOpen] = React.useState(false);
+  const { observations, addObservation } = useObservations();
   const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
-
-  const handleUpdate = async (id: string, data: Partial<Observation>) => {
-    await updateObservation(id, data);
-    setActionDialogOpen(false);
-    setViewDialogOpen(false);
-    setSelectedObservation(prev => prev ? { ...prev, ...data } as Observation : null);
-  };
-
-  const openViewDialog = (obs: Observation) => {
-    setSelectedObservation(obs);
-    setViewDialogOpen(true);
-  };
-  
-  const handleTakeAction = () => {
-    setViewDialogOpen(false);
-    setActionDialogOpen(true);
-  };
 
   const groupedObservations = React.useMemo(() => {
     return observations.reduce((acc, obs) => {
@@ -88,7 +66,7 @@ export default function JurnalPage() {
                 </h3>
                 <ul className="space-y-3">
                   {groupedObservations[date].map(obs => (
-                    <ObservationListItem key={obs.id} observation={obs} onSelect={() => openViewDialog(obs)} />
+                    <ObservationListItem key={obs.id} observation={obs} />
                   ))}
                 </ul>
               </div>
@@ -113,23 +91,6 @@ export default function JurnalPage() {
       </button>
 
       {/* Dialogs */}
-      {selectedObservation && (
-        <>
-          <TakeActionDialog
-            isOpen={isActionDialogOpen}
-            onOpenChange={setActionDialogOpen}
-            observation={selectedObservation}
-            onUpdate={handleUpdate}
-          />
-          <ViewDetailsDialog
-            isOpen={isViewDialogOpen}
-            onOpenChange={setViewDialogOpen}
-            observation={selectedObservation}
-            onTakeAction={handleTakeAction}
-            onRetry={retryAiAnalysis}
-          />
-        </>
-      )}
       <SubmitObservationDialog
         isOpen={isAddDialogOpen}
         onOpenChange={setAddDialogOpen}
