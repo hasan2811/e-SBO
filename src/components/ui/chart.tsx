@@ -58,6 +58,16 @@ type ChartContainerProps = React.ComponentProps<typeof Card> & {
   children: React.ComponentProps<typeof ResponsiveContainer>["children"]
 }
 
+const ChartContext = React.createContext<{
+  config: ChartContainerSettings
+  activeChart: string | null
+  setActiveChart: (chart: string | null) => void
+}>({
+  config: {},
+  activeChart: null,
+  setActiveChart: () => {},
+})
+
 const ChartContainer = React.forwardRef<
   HTMLDivElement,
   Omit<ChartContainerProps, "children"> & {
@@ -68,20 +78,31 @@ const ChartContainer = React.forwardRef<
     React.useState<keyof typeof config | null>(null)
   const id = React.useId()
 
+  const value = React.useMemo(
+    () => ({
+      config,
+      activeChart,
+      setActiveChart,
+    }),
+    [config, activeChart, setActiveChart]
+  )
+
   return (
-    <Card
-      ref={ref}
-      data-chart={id}
-      data-active-chart={activeChart}
-      className={cn(
-        "flex flex-col",
-        "[&_>_.recharts-responsive-container]:!my-auto [&_>_.recharts-responsive-container]:*:!h-auto",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </Card>
+    <ChartContext.Provider value={value}>
+      <Card
+        ref={ref}
+        data-chart={id}
+        data-active-chart={activeChart}
+        className={cn(
+          "flex flex-col",
+          "[&_>_.recharts-responsive-container]:!my-auto [&_>_.recharts-responsive-container]:*:!h-auto",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </Card>
+    </ChartContext.Provider>
   )
 })
 ChartContainer.displayName = "Chart"
@@ -356,16 +377,6 @@ ChartTooltipContent.displayName = "ChartTooltipContent"
 // #endregion
 
 // #region Chart Primitive
-const ChartContext = React.createContext<{
-  config: ChartContainerSettings
-  activeChart: string | null
-  setActiveChart: (chart: string | null) => void
-}>({
-  config: {},
-  activeChart: null,
-  setActiveChart: () => {},
-})
-
 const createChart = <
   T extends
     | "area"
