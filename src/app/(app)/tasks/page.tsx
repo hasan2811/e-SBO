@@ -21,8 +21,6 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
   BarChart,
   RadialBarChart,
   ChartRadialBar,
@@ -248,14 +246,25 @@ export default function DashboardPage() {
                   <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
                   <ChartYAxis tickLine={false} axisLine={false} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
-                  <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
+                  <ChartBar dataKey="completed" stackId="a" fill={dailyChartConfig.completed.color} radius={[4, 4, 0, 0]} />
+                  <ChartBar dataKey="pending" stackId="a" fill={dailyChartConfig.pending.color} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ChartContainer>
             )}
           </div>
         </CardContent>
+        <CardFooter className="flex-col items-start gap-2 text-sm pt-4 border-t">
+          <div className="flex gap-x-4 gap-y-2 flex-wrap">
+            <div className="flex items-center gap-2">
+                <span className="h-3 w-3 shrink-0 rounded-sm" style={{backgroundColor: dailyChartConfig.completed.color}} />
+                <div className="text-muted-foreground">{dailyChartConfig.completed.label}</div>
+            </div>
+            <div className="flex items-center gap-2">
+                <span className="h-3 w-3 shrink-0 rounded-sm" style={{backgroundColor: dailyChartConfig.pending.color}} />
+                <div className="text-muted-foreground">{dailyChartConfig.pending.label}</div>
+            </div>
+          </div>
+        </CardFooter>
       </Card>
       
       <Card>
