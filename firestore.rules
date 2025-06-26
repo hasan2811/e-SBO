@@ -1,22 +1,16 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read, create, or update their own profile document.
+
+    // Users can only read and update their own profile document.
     match /users/{userId} {
-      allow read, create, update: if request.auth != null && request.auth.uid == userId;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Rules for the observations collection
+    // Authenticated users can read, create, and update observations.
     match /observations/{observationId} {
-      // Any authenticated user can create an observation.
-      allow create: if request.auth != null;
-
-      // Any authenticated user can read observations (for detail view and list view).
-      allow read: if request.auth != null;
-
-      // Any authenticated user can update an observation (e.g., to complete a task).
-      allow update: if request.auth != null;
+      allow get, list: if request.auth != null;
+      allow create, update: if request.auth != null;
     }
   }
 }
