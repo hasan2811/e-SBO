@@ -31,7 +31,6 @@ import {
   ChartXAxis,
   ChartPolarAngleAxis,
   ChartLegend,
-  ChartLegendContent,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
@@ -107,9 +106,20 @@ export default function DashboardPage() {
     to: new Date(),
   });
 
+  const dailyChartConfig = {
+    pending: { label: "Pending", color: "hsl(var(--chart-4))" },
+    completed: { label: "Completed", color: "hsl(var(--chart-1))" },
+  };
+  
+  const categoryChartConfig = {
+    Structural: { label: "Structural", color: "hsl(var(--chart-1))" },
+    Electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
+    Plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
+    General: { label: "General", color: "hsl(var(--chart-4))" },
+  };
+
   const filteredObservations = React.useMemo(() => {
     if (!date?.from) return observations;
-    // Ensure `to` date is not before `from` date
     const from = date.from;
     const to = date.to && date.to > from ? date.to : from;
 
@@ -150,7 +160,7 @@ export default function DashboardPage() {
         value: categoryCounts[category as ObservationCategory] || 0,
         fill: `var(--color-${category})`,
       })).filter(item => item.value > 0);
-  }, [filteredObservations]);
+  }, [filteredObservations, categoryChartConfig]);
 
 
   const dailyData = React.useMemo(() => {
@@ -197,18 +207,6 @@ export default function DashboardPage() {
       ...riskLevelConfig[level]
     }));
   }, [filteredObservations]);
-
-  const dailyChartConfig = {
-    pending: { label: "Pending", color: "hsl(var(--chart-4))" },
-    completed: { label: "Completed", color: "hsl(var(--chart-1))" },
-  };
-  
-  const categoryChartConfig = {
-    Structural: { label: "Structural", color: "hsl(var(--chart-1))" },
-    Electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
-    Plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
-    General: { label: "General", color: "hsl(var(--chart-4))" },
-  };
 
   return (
     <div className="space-y-6">
@@ -288,8 +286,7 @@ export default function DashboardPage() {
                }
             </CardContent>
              <CardFooter className="flex-col gap-2 text-sm pt-4">
-               {/* This footer can be used for additional info or removed if legend is enough */}
-            </CardFooter>
+             </CardFooter>
           </Card>
       </div>
 
