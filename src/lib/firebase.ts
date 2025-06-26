@@ -14,18 +14,21 @@ const firebaseConfig: FirebaseOptions = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Comprehensive check for all required Firebase config variables
-// This helps pinpoint exactly which environment variables are missing.
+// Comprehensive check for missing environment variables
 const missingConfigKeys = Object.entries(firebaseConfig)
   .filter(([, value]) => !value)
-  .map(([key]) => key);
+  .map(([key]) => `NEXT_PUBLIC_FIREBASE_${key.replace(/([A-Z])/g, '_$1').toUpperCase()}`);
 
 if (missingConfigKeys.length > 0) {
-  const variableNames = missingConfigKeys.map(key => 
-    `NEXT_PUBLIC_FIREBASE_${key.replace(/([A-Z])/g, '_$1').toUpperCase()}`
-  );
   throw new Error(
-    `Firebase config is missing or incomplete. Please ensure the following environment variables are set: ${variableNames.join(', ')}`
+    `Firebase config is missing or incomplete. Please set the following environment variables in your .env file: ${missingConfigKeys.join(', ')}`
+  );
+}
+
+// Check for placeholder values to provide a more helpful error message
+if (Object.values(firebaseConfig).some(value => typeof value === 'string' && value.includes('YOUR_'))) {
+  throw new Error(
+    `Firebase config in .env file contains placeholder values. Please replace them with your actual Firebase project credentials.`
   );
 }
 
