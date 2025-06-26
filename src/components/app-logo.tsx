@@ -1,25 +1,23 @@
+'use client';
+
 import * as React from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
-interface AppLogoProps extends React.SVGProps<SVGSVGElement> {}
+interface AppLogoProps {
+  className?: string;
+}
 
-export function AppLogo({ className, ...props }: AppLogoProps) {
+export function AppLogo({ className }: AppLogoProps) {
   return (
-    <svg
-      className={cn("h-8 w-auto text-primary", className)}
-      viewBox="0 0 48 48"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" />
-      <path
-        d="M32 24C32 28.4183 28.4183 32 24 32C19.5817 32 16 28.4183 16 24"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-      />
-      <path d="M16 24H30" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-    </svg>
+    <Image
+      src="/logo.png"
+      alt="InspectWise Logo"
+      width={48}
+      height={48}
+      className={cn('h-8 w-8', className)}
+      data-ai-hint="gear logo"
+      priority
+    />
   );
 }
