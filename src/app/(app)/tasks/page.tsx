@@ -1,10 +1,10 @@
+
 'use client';
 
 import * as React from 'react';
-import { format, subDays } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { Cell } from 'recharts';
+import { Calendar as CalendarIcon, BarChart3, AlertTriangle, ListChecks, Shield, ChevronRight } from 'lucide-react';
 
 import type { Observation, RiskLevel } from '@/lib/types';
 import { useObservations } from '@/contexts/observation-context';
@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   ChartContainer,
   ChartTooltip,
@@ -31,29 +31,56 @@ import {
   ChartPie,
   ChartYAxis,
   ChartXAxis,
+  RadialBarChart,
+  RadialBar,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
 
-const statusColors: Record<Observation['status'], string> = {
-  Pending: 'hsl(var(--destructive))',
-  'In Progress': 'hsl(var(--chart-4))',
-  Completed: 'hsl(var(--chart-2))',
+
+const riskLevelConfig: Record<RiskLevel, { color: string, className: string }> = {
+  Low: { color: 'hsl(var(--chart-2))', className: 'bg-chart-2' },
+  Medium: { color: 'hsl(var(--chart-4))', className: 'bg-chart-4' },
+  High: { color: 'hsl(var(--chart-5))', className: 'bg-chart-5' },
+  Critical: { color: 'hsl(var(--destructive))', className: 'bg-destructive' },
 };
 
-const riskLevelColors: Record<RiskLevel, string> = {
-  Low: 'hsl(var(--chart-2))',
-  Medium: 'hsl(var(--chart-4))',
-  High: 'hsl(var(--chart-5))',
-  Critical: 'hsl(var(--destructive))',
+const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
+  const chartData = [{ name: title, value, fill: color }];
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex items-center justify-center p-4">
+        {loading ? (
+          <Skeleton className="h-40 w-40 rounded-full" />
+        ) : (
+          <div className="relative h-40 w-40">
+            <ChartContainer config={{}} className="absolute inset-0">
+              <RadialBarChart
+                data={chartData}
+                innerRadius="80%"
+                outerRadius="100%"
+                startAngle={90}
+                endAngle={450}
+                barSize={12}
+              >
+                <RadialBar dataKey="value" background={{ fill: 'hsl(var(--muted))' }} cornerRadius={10} />
+              </ChartContainer>
+            </d  iv>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-4xl font-bold" style={{ color }}>{value}%</span>
+              <span className="text-sm text-muted-foreground">({count} Laporan)</span>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 };
 
-const genericChartColors = [
-  'hsl(var(--chart-1))',
-  'hsl(var(--chart-2))',
-  'hsl(var(--chart-3))',
-  'hsl(var(--chart-4))',
-  'hsl(var(--chart-5))',
-];
 
 export default function DashboardPage() {
   const { observations, loading } = useObservations();
@@ -67,90 +94,62 @@ export default function DashboardPage() {
     return observations.filter(obs => {
       const obsDate = new Date(obs.date);
       const from = new Date(date.from!);
-      from.setHours(0, 0, 0, 0); // Start of the day
-      
+      from.setHours(0, 0, 0, 0);
       const to = date.to ? new Date(date.to) : new Date(date.from!);
-      to.setHours(23, 59, 59, 999); // End of the day
-
+      to.setHours(23, 59, 59, 999);
       return obsDate >= from && obsDate <= to;
     });
   }, [observations, date]);
 
-  const statusData = React.useMemo(() => {
-     const counts = filteredObservations.reduce((acc, obs) => {
-      acc[obs.status] = (acc[obs.status] || 0) + 1;
-      return acc;
-    }, {} as Record<Observation['status'], number>);
-    
-    return Object.entries(counts).map(([status, count]) => ({
-      name: status,
-      count: count,
-      fill: statusColors[status as Observation['status']],
-    }));
+  const overviewData = React.useMemo(() => {
+    const total = filteredObservations.length;
+    if (total === 0) return { pendingPercentage: 0, pendingCount: 0, highRiskPercentage: 0, highRiskCount: 0 };
+
+    const pendingCount = filteredObservations.filter(o => o.status !== 'Completed').length;
+    const highRiskCount = filteredObservations.filter(o => ['High', 'Critical'].includes(o.riskLevel)).length;
+
+    return {
+      pendingPercentage: Math.round((pendingCount / total) * 100),
+      pendingCount,
+      highRiskPercentage: Math.round((highRiskCount / total) * 100),
+      highRiskCount,
+    };
   }, [filteredObservations]);
-  
-  const riskLevelData = React.useMemo(() => {
+
+  const monthlyData = React.useMemo(() => {
+    if (!date?.from) return [];
+    const interval = { start: startOfMonth(date.from), end: endOfMonth(date.to || date.from) };
+    const months = eachMonthOfInterval(interval);
+
+    return months.map(month => {
+      const monthName = format(month, 'MMM');
+      const pending = observations.filter(o => format(new Date(o.date), 'yyyy-MM') === format(month, 'yyyy-MM') && o.status !== 'Completed').length;
+      const completed = observations.filter(o => format(new Date(o.date), 'yyyy-MM') === format(month, 'yyyy-MM') && o.status === 'Completed').length;
+      return { month: monthName, pending, completed };
+    });
+  }, [observations, date]);
+
+  const riskDetailsData = React.useMemo(() => {
+    const total = filteredObservations.length;
+    if (total === 0) return [];
+
     const counts = filteredObservations.reduce((acc, obs) => {
       acc[obs.riskLevel] = (acc[obs.riskLevel] || 0) + 1;
       return acc;
     }, {} as Record<RiskLevel, number>);
 
-    return Object.entries(counts).map(([riskLevel, count]) => ({
-      name: riskLevel,
-      count: count,
-      fill: riskLevelColors[riskLevel as RiskLevel],
+    return (['Low', 'Medium', 'High', 'Critical'] as RiskLevel[]).map(level => ({
+      name: level,
+      value: Math.round(((counts[level] || 0) / total) * 100),
+      count: counts[level] || 0,
+      ...riskLevelConfig[level]
     }));
   }, [filteredObservations]);
 
-  const categoryData = React.useMemo(() => {
-    const counts = filteredObservations.reduce((acc, obs) => {
-      acc[obs.category] = (acc[obs.category] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(counts).map(([name, count], index) => ({
-      name,
-      count,
-      fill: genericChartColors[index % genericChartColors.length],
-    }));
-  }, [filteredObservations]);
-
-  const companyData = React.useMemo(() => {
-    const counts = filteredObservations.reduce((acc, obs) => {
-      acc[obs.company] = (acc[obs.company] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(counts).map(([name, count], index) => ({
-      name,
-      count,
-      fill: genericChartColors[index % genericChartColors.length],
-    }));
-  }, [filteredObservations]);
-
-  const locationData = React.useMemo(() => {
-    const counts = filteredObservations.reduce((acc, obs) => {
-      acc[obs.location] = (acc[obs.location] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(counts).map(([name, count], index) => ({
-      name,
-      count,
-      fill: genericChartColors[index % genericChartColors.length],
-    }));
-  }, [filteredObservations]);
-
-
-  const chartConfig = (data: { name: string, fill: string }[]) => ({
-    count: {
-      label: 'Observations',
-    },
-    ...data.reduce((acc, item) => {
-      acc[item.name] = { label: item.name, color: item.fill };
-      return acc;
-    }, {} as any)
-  });
+  const yearlyChartConfig = {
+    pending: { label: "Pending", color: "hsl(var(--chart-4))" },
+    completed: { label: "Completed", color: "hsl(var(--chart-1))" },
+  };
 
   return (
     <div className="space-y-6">
@@ -195,241 +194,70 @@ export default function DashboardPage() {
             </Popover>
         </div>
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-         <Card>
-           <CardHeader>
-             <CardTitle>Total Observations</CardTitle>
-           </CardHeader>
-           <CardContent>
-             {loading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-12 w-24" />
-                  <Skeleton className="h-4 w-4/5" />
-                </div>
-              ) : (
-                <>
-                  <div className="text-5xl font-bold">{filteredObservations.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                      Total observations in the selected date range
-                  </p>
-                </>
-              )}
-           </CardContent>
-         </Card>
-          <Card>
-           <CardHeader>
-             <CardTitle>Completed</CardTitle>
-           </CardHeader>
-           <CardContent>
-             {loading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-12 w-24" />
-                  <Skeleton className="h-4 w-4/5" />
-                </div>
-              ) : (
-                <>
-                  <div className="text-5xl font-bold">{filteredObservations.filter(s => s.status === 'Completed').length}</div>
-                  <p className="text-xs text-muted-foreground">
-                      Completed observations
-                  </p>
-                </>
-              )}
-           </CardContent>
-         </Card>
-          <Card>
-           <CardHeader>
-             <CardTitle>Pending</CardTitle>
-           </CardHeader>
-           <CardContent>
-              {loading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-12 w-24" />
-                  <Skeleton className="h-4 w-4/5" />
-                </div>
-              ) : (
-                <>
-                  <div className="text-5xl font-bold">{filteredObservations.filter(s => s.status !== 'Completed').length}</div>
-                  <p className="text-xs text-muted-foreground">
-                      Pending or in-progress observations
-                  </p>
-                </>
-              )}
-           </CardContent>
-         </Card>
+      
+      <div className="grid gap-6 md:grid-cols-2">
+         <RadialChartCard 
+            loading={loading}
+            value={overviewData.pendingPercentage}
+            count={overviewData.pendingCount}
+            title="Laporan Terbuka"
+            color="hsl(var(--chart-5))"
+          />
+          <RadialChartCard 
+            loading={loading}
+            value={overviewData.highRiskPercentage}
+            count={overviewData.highRiskCount}
+            title="Risiko Tinggi & Kritis"
+            color="hsl(var(--destructive))"
+          />
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tren Observasi Bulanan</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            {loading ? <Skeleton className="h-full w-full" /> : (
+              <ChartContainer config={yearlyChartConfig} className="h-full w-full">
+                <BarChart data={monthlyData} accessibilityLayer>
+                  <ChartXAxis dataKey="month" tickLine={false} axisLine={false} />
+                  <ChartYAxis tickLine={false} axisLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
+                  <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
           <CardHeader>
-            <CardTitle>Observations by Status</CardTitle>
+            <CardTitle>Detail Risiko</CardTitle>
           </CardHeader>
-          <CardContent className="min-h-[300px] flex items-center justify-center">
+          <CardContent className="space-y-4">
             {loading ? (
-              <Skeleton className="h-[250px] w-full" />
-            ) : statusData.length > 0 ? (
-                 <ChartContainer config={chartConfig(statusData)} className="min-h-[250px] w-full">
-                    <Chart>
-                      <PieChart>
-                        <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                        <ChartPie data={statusData} dataKey="count" nameKey="name" innerRadius={60}>
-                           {statusData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </ChartPie>
-                        <ChartLegend content={<ChartLegendContent nameKey="name"/>} />
-                      </PieChart>
-                    </Chart>
-                  </ChartContainer>
-            ) : (
-                <div className="text-center text-muted-foreground">
-                    <p>No data to display for the selected period.</p>
+              Array.from({length: 4}).map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-8 w-1/3" />
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-8 w-12" />
                 </div>
+              ))
+            ) : (
+              riskDetailsData.map((risk) => (
+                <div key={risk.name} className="flex items-center gap-4 text-sm">
+                  <span className="w-24 font-medium">{risk.name}</span>
+                  <Progress value={risk.value} indicatorClassName={risk.className} />
+                  <span className="w-16 text-right font-semibold">{risk.value}%</span>
+                </div>
+              ))
             )}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Observations by Risk Level</CardTitle>
-          </CardHeader>
-          <CardContent className="min-h-[300px] flex items-center justify-center">
-             {loading ? (
-              <Skeleton className="h-[250px] w-full" />
-            ) : riskLevelData.length > 0 ? (
-                <ChartContainer config={chartConfig(riskLevelData)} className="min-h-[250px] w-full">
-                  <Chart>
-                    <BarChart data={riskLevelData} layout="vertical" margin={{ left: 20 }}>
-                      <ChartYAxis
-                        dataKey="name"
-                        type="category"
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <ChartXAxis dataKey="count" type="number" hide />
-                       <ChartTooltip
-                          cursor={false}
-                          content={<ChartTooltipContent indicator="line" nameKey="name" />}
-                        />
-                      <ChartBar dataKey="count" radius={4} layout="vertical">
-                         {riskLevelData.map((entry) => (
-                          <Cell key={entry.name} fill={entry.fill} />
-                        ))}
-                      </ChartBar>
-                    </BarChart>
-                  </Chart>
-                </ChartContainer>
-             ) : (
-                 <div className="text-center text-muted-foreground">
-                    <p>No data to display for the selected period.</p>
-                </div>
-             )}
-          </CardContent>
-        </Card>
-         <Card>
-          <CardHeader>
-            <CardTitle>Observations by Category</CardTitle>
-          </CardHeader>
-          <CardContent className="min-h-[300px] flex items-center justify-center">
-            {loading ? (
-              <Skeleton className="h-[250px] w-full" />
-            ) : categoryData.length > 0 ? (
-                 <ChartContainer config={chartConfig(categoryData)} className="min-h-[250px] w-full">
-                    <Chart>
-                      <PieChart>
-                        <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                        <ChartPie data={categoryData} dataKey="count" nameKey="name" innerRadius={60}>
-                           {categoryData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </ChartPie>
-                        <ChartLegend content={<ChartLegendContent nameKey="name"/>} />
-                      </PieChart>
-                    </Chart>
-                  </ChartContainer>
-            ) : (
-                <div className="text-center text-muted-foreground">
-                    <p>No data to display for the selected period.</p>
-                </div>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Observations by Company</CardTitle>
-            <CardDescription>Horizontal bar chart showing findings per company.</CardDescription>
-          </CardHeader>
-          <CardContent className="min-h-[300px] flex items-center justify-center">
-             {loading ? (
-              <Skeleton className="h-[250px] w-full" />
-            ) : companyData.length > 0 ? (
-                <ChartContainer config={chartConfig(companyData)} className="min-h-[250px] w-full">
-                  <Chart>
-                    <BarChart data={companyData} layout="vertical" margin={{ left: 20 }}>
-                      <ChartYAxis
-                        dataKey="name"
-                        type="category"
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={10}
-                        width={100}
-                      />
-                      <ChartXAxis dataKey="count" type="number" hide />
-                       <ChartTooltip
-                          cursor={false}
-                          content={<ChartTooltipContent indicator="line" nameKey="name" />}
-                        />
-                      <ChartBar dataKey="count" radius={4} layout="vertical">
-                         {companyData.map((entry) => (
-                          <Cell key={entry.name} fill={entry.fill} />
-                        ))}
-                      </ChartBar>
-                    </BarChart>
-                  </Chart>
-                </ChartContainer>
-             ) : (
-                 <div className="text-center text-muted-foreground">
-                    <p>No data to display for the selected period.</p>
-                </div>
-             )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Observations by Location</CardTitle>
-            <CardDescription>Vertical bar chart showing findings per location.</CardDescription>
-          </CardHeader>
-          <CardContent className="min-h-[300px] flex items-center justify-center">
-             {loading ? (
-              <Skeleton className="h-[250px] w-full" />
-            ) : locationData.length > 0 ? (
-                <ChartContainer config={chartConfig(locationData)} className="min-h-[250px] w-full">
-                  <Chart>
-                    <BarChart data={locationData} margin={{ top: 20 }}>
-                      <ChartXAxis
-                        dataKey="name"
-                        type="category"
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <ChartYAxis dataKey="count" type="number" hide />
-                       <ChartTooltip
-                          cursor={false}
-                          content={<ChartTooltipContent indicator="dot" nameKey="name" />}
-                        />
-                      <ChartBar dataKey="count" radius={4}>
-                         {locationData.map((entry) => (
-                          <Cell key={entry.name} fill={entry.fill} />
-                        ))}
-                      </ChartBar>
-                    </BarChart>
-                  </Chart>
-                </ChartContainer>
-             ) : (
-                 <div className="text-center text-muted-foreground">
-                    <p>No data to display for the selected period.</p>
-                </div>
-             )}
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
