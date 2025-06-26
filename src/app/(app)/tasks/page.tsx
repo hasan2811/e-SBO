@@ -366,7 +366,7 @@ export default function DashboardPage() {
             loading={loading}
             value={overviewData.pendingPercentage}
             count={overviewData.pendingCount}
-            title="Laporan Terbuka"
+            title="Open Status"
             color="hsl(var(--chart-5))"
           />
           <RadialChartCard 
