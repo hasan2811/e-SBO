@@ -1,10 +1,29 @@
 /** @type {import('next').NextConfig} */
 
+const runtimeCaching = require("next-pwa/cache");
+
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
+  runtimeCaching: [
+    ...runtimeCaching,
+    {
+      urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'firebase-images',
+        expiration: {
+          maxEntries: 60,
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+      },
+    },
+  ],
 });
 
 const nextConfig = {

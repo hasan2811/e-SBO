@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp, type FirebaseOptions } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
@@ -28,8 +28,22 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
 
-// Initialize Analytics if running in the browser
+// Initialize Analytics & Firestore Persistence if running in the browser
 if (typeof window !== 'undefined') {
+  // Enable Firestore offline persistence
+  try {
+    enableIndexedDbPersistence(db)
+      .catch((err) => {
+        if (err.code == 'failed-precondition') {
+          console.warn('Firestore persistence failed: multiple tabs open.');
+        } else if (err.code == 'unimplemented') {
+          console.warn('Firestore persistence not available in this browser.');
+        }
+      });
+  } catch (err) {
+    console.error("Error enabling Firestore persistence:", err);
+  }
+
   isSupported().then((supported) => {
     if (supported && firebaseConfig.measurementId) {
       getAnalytics(app);
