@@ -31,6 +31,7 @@ import {
   ChartYAxis,
   ChartXAxis,
 } from '@/components/ui/chart';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const statusColors: Record<Observation['status'], string> = {
   Pending: 'hsl(var(--destructive))',
@@ -54,7 +55,7 @@ const genericChartColors = [
 ];
 
 export default function DashboardPage() {
-  const { observations } = useObservations();
+  const { observations, loading } = useObservations();
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: subDays(new Date(), 29),
     to: new Date(),
@@ -199,10 +200,19 @@ export default function DashboardPage() {
              <CardTitle>Total Observations</CardTitle>
            </CardHeader>
            <CardContent>
-             <div className="text-5xl font-bold">{filteredObservations.length}</div>
-             <p className="text-xs text-muted-foreground">
-                Total observations in the selected date range
-             </p>
+             {loading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-24" />
+                  <Skeleton className="h-4 w-4/5" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-5xl font-bold">{filteredObservations.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                      Total observations in the selected date range
+                  </p>
+                </>
+              )}
            </CardContent>
          </Card>
           <Card>
@@ -210,10 +220,19 @@ export default function DashboardPage() {
              <CardTitle>Completed</CardTitle>
            </CardHeader>
            <CardContent>
-             <div className="text-5xl font-bold">{filteredObservations.filter(s => s.status === 'Completed').length}</div>
-             <p className="text-xs text-muted-foreground">
-                Completed observations
-             </p>
+             {loading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-24" />
+                  <Skeleton className="h-4 w-4/5" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-5xl font-bold">{filteredObservations.filter(s => s.status === 'Completed').length}</div>
+                  <p className="text-xs text-muted-foreground">
+                      Completed observations
+                  </p>
+                </>
+              )}
            </CardContent>
          </Card>
           <Card>
@@ -221,10 +240,19 @@ export default function DashboardPage() {
              <CardTitle>Pending</CardTitle>
            </CardHeader>
            <CardContent>
-             <div className="text-5xl font-bold">{filteredObservations.filter(s => s.status !== 'Completed').length}</div>
-              <p className="text-xs text-muted-foreground">
-                Pending or in-progress observations
-             </p>
+              {loading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-24" />
+                  <Skeleton className="h-4 w-4/5" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-5xl font-bold">{filteredObservations.filter(s => s.status !== 'Completed').length}</div>
+                  <p className="text-xs text-muted-foreground">
+                      Pending or in-progress observations
+                  </p>
+                </>
+              )}
            </CardContent>
          </Card>
       </div>
@@ -234,7 +262,9 @@ export default function DashboardPage() {
             <CardTitle>Observations by Status</CardTitle>
           </CardHeader>
           <CardContent className="min-h-[300px] flex items-center justify-center">
-            {statusData.length > 0 ? (
+            {loading ? (
+              <Skeleton className="h-[250px] w-full" />
+            ) : statusData.length > 0 ? (
                  <ChartContainer config={chartConfig(statusData.map(d => ({name: d.name, fill: d.fill})))} className="min-h-[250px] w-full">
                     <PieChart>
                       <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
@@ -258,7 +288,9 @@ export default function DashboardPage() {
             <CardTitle>Observations by Risk Level</CardTitle>
           </CardHeader>
           <CardContent className="min-h-[300px] flex items-center justify-center">
-             {riskLevelData.length > 0 ? (
+             {loading ? (
+              <Skeleton className="h-[250px] w-full" />
+            ) : riskLevelData.length > 0 ? (
                 <ChartContainer config={chartConfig(riskLevelData.map(d => ({name: d.name, fill: d.fill})))} className="min-h-[250px] w-full">
                   <BarChart data={riskLevelData} layout="vertical" margin={{ left: 20 }}>
                     <ChartYAxis
@@ -291,7 +323,9 @@ export default function DashboardPage() {
             <CardTitle>Observations by Category</CardTitle>
           </CardHeader>
           <CardContent className="min-h-[300px] flex items-center justify-center">
-            {categoryData.length > 0 ? (
+            {loading ? (
+              <Skeleton className="h-[250px] w-full" />
+            ) : categoryData.length > 0 ? (
                  <ChartContainer config={chartConfig(categoryData)} className="min-h-[250px] w-full">
                     <PieChart>
                       <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
@@ -316,7 +350,9 @@ export default function DashboardPage() {
             <CardDescription>Horizontal bar chart showing findings per company.</CardDescription>
           </CardHeader>
           <CardContent className="min-h-[300px] flex items-center justify-center">
-             {companyData.length > 0 ? (
+             {loading ? (
+              <Skeleton className="h-[250px] w-full" />
+            ) : companyData.length > 0 ? (
                 <ChartContainer config={chartConfig(companyData)} className="min-h-[250px] w-full">
                   <BarChart data={companyData} layout="vertical" margin={{ left: 20 }}>
                     <ChartYAxis
@@ -352,7 +388,9 @@ export default function DashboardPage() {
             <CardDescription>Vertical bar chart showing findings per location.</CardDescription>
           </CardHeader>
           <CardContent className="min-h-[300px] flex items-center justify-center">
-             {locationData.length > 0 ? (
+             {loading ? (
+              <Skeleton className="h-[250px] w-full" />
+            ) : locationData.length > 0 ? (
                 <ChartContainer config={chartConfig(locationData)} className="min-h-[250px] w-full">
                   <BarChart data={locationData} margin={{ top: 20 }}>
                     <ChartXAxis

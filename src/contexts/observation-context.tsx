@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 
 interface ObservationContextType {
   observations: Observation[];
+  loading: boolean;
   addObservation: (observation: Omit<Observation, 'id' | 'referenceId'>) => Promise<void>;
   updateObservation: (id: string, updatedData: Partial<Observation>) => Promise<void>;
   retryAiAnalysis: (observation: Observation) => Promise<void>;
@@ -20,11 +21,13 @@ const ObservationContext = React.createContext<ObservationContextType | undefine
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
   const [observations, setObservations] = React.useState<Observation[]>([]);
+  const [loading, setLoading] = React.useState<boolean>(true);
   const { user } = useAuth();
   const { toast } = useToast();
 
   React.useEffect(() => {
     if (user) {
+      setLoading(true);
       const observationCollection = collection(db, 'observations');
       const q = query(observationCollection, orderBy('date', 'desc'));
 
@@ -34,6 +37,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
           id: doc.id,
         } as Observation));
         setObservations(obsData);
+        setLoading(false);
       }, (error) => {
         console.error("Error fetching observations from Firestore: ", error);
          toast({
@@ -41,11 +45,13 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
           title: 'Error Fetching Data',
           description: 'Could not fetch observations from the database.',
         });
+        setLoading(false);
       });
 
       return () => unsubscribe();
     } else {
       setObservations([]);
+      setLoading(false);
     }
   }, [user, toast]);
 
@@ -111,7 +117,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }
   };
 
-  const value = { observations, addObservation, updateObservation, retryAiAnalysis };
+  const value = { observations, loading, addObservation, updateObservation, retryAiAnalysis };
 
   return (
     <ObservationContext.Provider value={value}>
