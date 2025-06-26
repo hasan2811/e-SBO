@@ -42,35 +42,45 @@ const riskLevelConfig: Record<RiskLevel, { color: string, className: string }> =
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
   const chartData = [{ name: title, value, fill: color }];
+  const chartConfig = { [title]: { color } };
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="items-center pb-2">
         <CardTitle className="text-base font-medium">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="flex items-center justify-center p-4">
-        {loading ? (
-          <Skeleton className="h-40 w-40 rounded-full" />
-        ) : (
-          <div className="relative h-40 w-40">
-            <ChartContainer config={{}} className="absolute inset-0">
-              <RadialBarChart
-                data={chartData}
-                innerRadius="80%"
-                outerRadius="100%"
-                startAngle={180}
-                endAngle={0}
-                barSize={12}
+      <CardContent className="p-4 pt-2 flex justify-center">
+        <div className="w-48 h-48">
+          {loading ? (
+            <Skeleton className="h-full w-full rounded-full" />
+          ) : (
+            <div className="relative h-full w-full">
+              <ChartContainer
+                config={chartConfig}
+                className="absolute inset-0 h-full w-full"
               >
-                <RadialBar dataKey="value" background={{ fill: 'hsl(var(--muted))' }} cornerRadius={10} />
-              </RadialBarChart>
-            </ChartContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-4xl font-bold" style={{ color }}>{value}%</span>
-              <span className="text-sm text-muted-foreground">({count} Laporan)</span>
+                <RadialBarChart
+                  data={chartData}
+                  innerRadius="80%"
+                  outerRadius="100%"
+                  startAngle={225}
+                  endAngle={-45}
+                  barSize={12}
+                >
+                  <RadialBar
+                    dataKey="value"
+                    background={{ fill: 'hsl(var(--muted))' }}
+                    cornerRadius={6}
+                  />
+                </RadialBarChart>
+              </ChartContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-4xl font-bold" style={{ color }}>{value}%</span>
+                <span className="text-sm text-muted-foreground mt-1">({count} Laporan)</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -237,7 +247,7 @@ export default function DashboardPage() {
             {loading ? (
               Array.from({length: 4}).map((_, i) => (
                 <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-8 w-1/3" />
+                  <Skeleton className="h-8 w-12" />
                   <Skeleton className="h-4 flex-1" />
                   <Skeleton className="h-8 w-12" />
                 </div>
@@ -247,7 +257,7 @@ export default function DashboardPage() {
                 <div key={risk.name} className="flex items-center gap-4 text-sm">
                   <span className="w-24 font-medium">{risk.name}</span>
                   <Progress value={risk.value} indicatorClassName={risk.className} />
-                  <span className="w-16 text-right font-semibold">{risk.value}%</span>
+                  <span className="w-16 text-right font-semibold">{risk.count}</span>
                 </div>
               ))
             )}
