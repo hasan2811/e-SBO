@@ -203,6 +203,18 @@ export default function DashboardPage() {
       pendingCount,
     };
   }, [filteredObservations]);
+
+  const criticalPercentageData = React.useMemo(() => {
+    const total = filteredObservations.length;
+    if (total === 0) return { percentage: 0, count: 0 };
+
+    const criticalCount = filteredObservations.filter(o => o.riskLevel === 'Critical').length;
+    
+    return {
+      percentage: Math.round((criticalCount / total) * 100),
+      count: criticalCount,
+    };
+  }, [filteredObservations]);
   
   const categoryDistributionData = React.useMemo(() => {
       const categoryCounts = filteredObservations.reduce((acc, obs) => {
@@ -359,43 +371,51 @@ export default function DashboardPage() {
             title="Laporan Terbuka"
             color="hsl(var(--chart-5))"
           />
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribusi Kategori</CardTitle>
-            </CardHeader>
-            <CardContent className="flex items-center justify-center">
-              <div className="h-[250px] w-full">
-               {loading ? (
-                  <Skeleton className="h-full w-full rounded-full" />
-                ) : categoryDistributionData.length > 0 ? (
-                  <ChartContainer
-                      config={categoryChartConfig}
-                      className="h-full w-full"
-                  >
-                      <PieChart>
-                        <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                        <ChartPie
-                            data={categoryDistributionData}
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius={50}
-                            outerRadius={90}
-                            strokeWidth={2}
-                            labelLine
-                            label={renderCustomizedLabel}
-                        />
-                      </PieChart>
-                  </ChartContainer>
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                    <p>No category data for this period.</p>
-                  </div>
-                )
-               }
-              </div>
-            </CardContent>
-          </Card>
+          <RadialChartCard 
+            loading={loading}
+            value={criticalPercentageData.percentage}
+            count={criticalPercentageData.count}
+            title="Finding Kritis"
+            color="hsl(var(--destructive))"
+          />
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Distribusi Kategori</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[250px] w-full">
+           {loading ? (
+              <Skeleton className="h-full w-full rounded-full" />
+            ) : categoryDistributionData.length > 0 ? (
+              <ChartContainer
+                  config={categoryChartConfig}
+                  className="h-full w-full"
+              >
+                  <PieChart margin={{left: 40, right: 40}}>
+                    <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                    <ChartPie
+                        data={categoryDistributionData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={60}
+                        outerRadius={90}
+                        strokeWidth={2}
+                        labelLine
+                        label={renderCustomizedLabel}
+                    />
+                  </PieChart>
+              </ChartContainer>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                <p>No category data for this period.</p>
+              </div>
+            )
+           }
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
