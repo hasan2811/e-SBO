@@ -103,7 +103,7 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
               className="absolute inset-0 flex flex-col items-center justify-center"
               aria-hidden="true"
             >
-              <span className="text-4xl font-bold" style={{ color }}>
+              <span className="text-3xl font-bold sm:text-4xl" style={{ color }}>
                 {value}%
               </span>
             </div>
@@ -140,7 +140,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                   axisLine={false}
                   tickMargin={10}
                   className="text-xs"
-                  width={120}
+                  width={100}
                 />
                 <ChartXAxis dataKey={dataKey} type="number" hide />
                 <ChartTooltip
@@ -309,14 +309,14 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   id="date"
                   variant={'outline'}
                   className={cn(
-                    'w-[260px] justify-start text-left font-normal',
+                    'w-full sm:w-[260px] justify-start text-left font-normal',
                     !date && 'text-muted-foreground'
                   )}
                 >
@@ -371,13 +371,13 @@ export default function DashboardPage() {
                       config={categoryChartConfig}
                       className="h-full w-full"
                   >
-                      <PieChart margin={{ top: 30, right: 30, bottom: 30, left: 30 }}>
+                      <PieChart margin={{ top: 30, right: 40, bottom: 30, left: 40 }}>
                         <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
                         <ChartPie
                             data={categoryDistributionData}
                             dataKey="value"
                             nameKey="name"
-                            innerRadius={50}
+                            innerRadius={60}
                             outerRadius={80}
                             strokeWidth={5}
                             labelLine
