@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/chart';
 
 const statusColors: Record<Observation['status'], string> = {
-  Pending: 'hsl(var(--chart-3))',
+  Pending: 'hsl(var(--destructive))',
   'In Progress': 'hsl(var(--chart-4))',
   Completed: 'hsl(var(--chart-2))',
 };
