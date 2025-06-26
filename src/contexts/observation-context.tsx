@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -79,8 +78,13 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
           }
         })
         .catch(error => {
-          // Log the error but don't bother the user. The main observation is saved.
+          // Log the error and also inform the user.
           console.error("Failed to generate or save AI summary:", error);
+          toast({
+            variant: 'destructive',
+            title: 'AI Analysis Failed',
+            description: 'Observation saved, but AI analysis failed. Check AI service configuration (API key).',
+          });
         });
 
     } catch (error) {
