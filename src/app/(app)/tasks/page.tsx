@@ -28,6 +28,8 @@ import {
   ChartYAxis,
   ChartXAxis,
   ChartPolarAngleAxis,
+  ChartLegend,
+  ChartLegendContent,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
@@ -54,32 +56,39 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
-        <ChartContainer
-          config={chartConfig}
-          className="mx-auto aspect-square h-full max-h-[250px]"
-        >
-          <RadialBarChart
-            data={chartData}
-            startAngle={90}
-            endAngle={-270}
-            innerRadius="80%"
-            outerRadius="100%"
-            barSize={12}
-          >
-            <ChartPolarAngleAxis key={title} type="number" domain={[0, 100]} tick={false} />
-            <ChartRadialBar
-              dataKey="value"
-              background={{ fill: 'hsl(var(--muted))' }}
-              cornerRadius={6}
-              fill={color}
-            />
-          </RadialBarChart>
-        </ChartContainer>
-      </CardContent>
-      <CardFooter className="flex-col gap-2 text-sm pt-2">
-        <div className="flex items-center gap-2 font-medium leading-none">
-          {value}%
+        <div className="relative mx-auto aspect-square h-full max-h-[250px]">
+            <ChartContainer
+              config={chartConfig}
+              className="h-full w-full"
+            >
+              <RadialBarChart
+                data={chartData}
+                startAngle={90}
+                endAngle={-270}
+                innerRadius="80%"
+                outerRadius="100%"
+                barSize={12}
+              >
+                <ChartPolarAngleAxis key={title} type="number" domain={[0, 100]} tick={false} />
+                <ChartRadialBar
+                  dataKey="value"
+                  background={{ fill: 'hsl(var(--muted))' }}
+                  cornerRadius={6}
+                  fill={color}
+                />
+              </RadialBarChart>
+            </ChartContainer>
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center"
+              aria-hidden="true"
+            >
+              <span className="text-4xl font-bold" style={{ color }}>
+                {value}%
+              </span>
+            </div>
         </div>
+      </CardContent>
+      <CardFooter className="flex-col items-center text-sm pt-4">
         <div className="leading-none text-muted-foreground">
           ({count} Laporan)
         </div>
@@ -211,6 +220,7 @@ export default function DashboardPage() {
                   selected={date}
                   onSelect={setDate}
                   numberOfMonths={2}
+                  max={7}
                 />
               </PopoverContent>
             </Popover>
@@ -248,6 +258,7 @@ export default function DashboardPage() {
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <ChartBar dataKey="completed" stackId="a" fill={dailyChartConfig.completed.color} radius={[4, 4, 0, 0]} />
                   <ChartBar dataKey="pending" stackId="a" fill={dailyChartConfig.pending.color} radius={[4, 4, 0, 0]} />
+                  <ChartLegend content={<ChartLegendContent />} />
                 </BarChart>
               </ChartContainer>
             )}
