@@ -5,13 +5,13 @@ import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
 const firebaseConfig: FirebaseOptions = {
-  apiKey: "AIzaSyD-P_1XOQ9xQOgxwMApClEFoqHcxs7fYPI",
-  authDomain: "hssetech-e1710.firebaseapp.com",
-  projectId: "hssetech-e1710",
-  storageBucket: "hssetech-e1710.firebasestorage.app",
-  messagingSenderId: "789147047426",
-  appId: "1:789147047426:web:7a37fdc4adfb51905bb91b",
-  measurementId: "G-X84C2SP8MH"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
@@ -23,7 +23,7 @@ const storage = getStorage(app);
 // Initialize Analytics if running in the browser
 if (typeof window !== 'undefined') {
   isSupported().then((supported) => {
-    if (supported) {
+    if (supported && process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID) {
       getAnalytics(app);
     }
   });
