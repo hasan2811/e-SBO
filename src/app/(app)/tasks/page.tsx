@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -18,6 +19,7 @@ import {
 } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Chart,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -41,8 +43,7 @@ const riskLevelConfig: Record<RiskLevel, { color: string, className: string }> =
 };
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
-  const chartData = [{ name: title, value, fill: color }];
-  const chartConfig = { [title]: { color } };
+  const chartData = [{ name: title, value }];
 
   return (
     <Card>
@@ -55,23 +56,23 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
             <Skeleton className="h-full w-full rounded-full" />
           ) : (
             <div className="relative h-full w-full">
-              <ChartContainer
-                config={chartConfig}
-                className="absolute inset-0 h-full w-full"
-              >
+              <Chart>
                 <RadialBarChart
                   data={chartData}
                   innerRadius="80%"
                   outerRadius="100%"
                   barSize={12}
+                  startAngle={90}
+                  endAngle={-270}
                 >
                   <RadialBar
                     dataKey="value"
                     background={{ fill: 'hsl(var(--muted))' }}
                     cornerRadius={6}
+                    fill={color}
                   />
                 </RadialBarChart>
-              </ChartContainer>
+              </Chart>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-4xl font-bold" style={{ color }}>{value}%</span>
                 <span className="text-sm text-muted-foreground mt-1">({count} Laporan)</span>
