@@ -1,7 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
-import { collection, doc, onSnapshot, query, setDoc, updateDoc, orderBy } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, setDoc, updateDoc, orderBy, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -10,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface ObservationContextType {
   observations: Observation[];
-  addObservation: (observation: Observation) => Promise<void>;
+  addObservation: (observation: Omit<Observation, 'id'>) => Promise<void>;
   updateObservation: (id: string, updatedData: Partial<Observation>) => Promise<void>;
 }
 
@@ -48,14 +49,18 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, [user, toast]);
 
 
-  const addObservation = async (newObservation: Observation) => {
+  const addObservation = async (newObservation: Omit<Observation, 'id'>) => {
     try {
-      const observationDocRef = doc(db, 'observations', newObservation.id);
-      await setDoc(observationDocRef, newObservation);
+      // Use addDoc to let Firestore generate the ID.
+      const observationCollection = collection(db, 'observations');
+      const observationDocRef = await addDoc(observationCollection, newObservation);
 
       // Asynchronously get AI summary and update the document.
       // This runs in the background and does not block the UI.
-      getAiSummary(newObservation)
+      // We pass the full new data including the generated ID.
+      const fullObservationData = { ...newObservation, id: observationDocRef.id };
+      
+      getAiSummary(fullObservationData)
         .then(summary => {
           if (summary) {
             const aiData = {
@@ -63,6 +68,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
               aiRisks: summary.risks,
               aiSuggestedActions: summary.suggestedActions,
             };
+            // Update the same doc with the AI data.
             updateDoc(observationDocRef, aiData);
           }
         })
@@ -103,3 +109,5 @@ export function useObservations() {
   }
   return context;
 }
+
+    

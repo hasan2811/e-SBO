@@ -8,8 +8,9 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload } from 'lucide-react';
 import { ref, getDownloadURL, uploadBytesResumable, type UploadTask } from 'firebase/storage';
+import { doc } from 'firebase/firestore';
 
-import { storage } from '@/lib/firebase';
+import { storage, db } from '@/lib/firebase';
 import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -36,13 +37,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 
-// --- 1. Sentralisasi Opsi untuk Select (DRY Principle) ---
 const LOCATIONS = ['Location A', 'Location B', 'Location C', 'Location D'] as const;
 const COMPANIES = ['Perusahaan A', 'Perusahaan B', 'Perusahaan C', 'Perusahaan D'] as const;
 const CATEGORIES = ['Structural', 'Electrical', 'Plumbing', 'General'] as const;
 const RISK_LEVELS = ['Low', 'Medium', 'High', 'Critical'] as const;
 
-// --- 2. Skema Validasi Zod yang Lebih Baik ---
 const formSchema = z.object({
   location: z.enum(LOCATIONS),
   company: z.enum(COMPANIES),
@@ -53,13 +52,11 @@ const formSchema = z.object({
   photo: z
     .instanceof(File, { message: 'Foto wajib diunggah.' })
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`)
-    .optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-// --- 3. Fungsi Helper di luar Komponen ---
-// Memisahkan logika upload agar komponen lebih fokus pada tampilan.
+
 function uploadFile(
   file: File,
   userId: string,
@@ -77,7 +74,7 @@ function uploadFile(
       },
       (error) => {
         console.error('Firebase Storage upload error:', error);
-        reject(new Error('Gagal mengunggah file. Silakan periksa koneksi atau izin Anda.'));
+        reject(new Error('Gagal mengunggah file. Silakan periksa koneksi atau izin CORS Anda.'));
       },
       async () => {
         try {
@@ -117,11 +114,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       findings: '',
       recommendation: '',
     },
-    mode: 'onChange', // Validasi saat ada perubahan untuk menonaktifkan tombol submit
+    mode: 'onChange',
   });
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
+    const file = event.target.files?.[0];
     if (file) {
       const validation = formSchema.shape.photo.safeParse(file);
       if (validation.success) {
@@ -146,18 +143,24 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       toast({ variant: 'destructive', title: 'Belum Terautentikasi', description: 'Anda harus login untuk mengirim.' });
       return;
     }
+    
+    // This check is now more robust thanks to zod.
+    if (!values.photo) {
+       toast({ variant: 'destructive', title: 'Foto Wajib', description: 'Silakan unggah foto temuan.' });
+       return;
+    }
 
     setIsSubmitting(true);
     setUploadProgress(0);
 
     try {
-      let photoUrl: string | undefined;
-      if (values.photo) {
-        photoUrl = await uploadFile(values.photo, user.uid, setUploadProgress);
-      }
+      // Step 1: Upload the file first.
+      const photoUrl = await uploadFile(values.photo, user.uid, setUploadProgress);
 
+      // Step 2: Once upload is successful, create the observation data.
+      // A new ID is generated on the client by Firestore SDK.
       const newObservationData: Omit<Observation, 'id'> = {
-        userId: user.uid, // This is the critical fix
+        userId: user.uid,
         date: new Date().toISOString(),
         status: 'Pending' as ObservationStatus,
         submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
@@ -167,9 +170,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         riskLevel: values.riskLevel as RiskLevel,
         findings: values.findings,
         recommendation: values.recommendation,
-        ...(photoUrl && { photoUrl }),
+        photoUrl: photoUrl, // Use the URL from the successful upload.
       };
 
+      // Step 3: Pass the complete data to the context to be saved.
       await onAddObservation(newObservationData);
 
       toast({
@@ -380,3 +384,5 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     </Dialog>
   );
 }
+
+    
