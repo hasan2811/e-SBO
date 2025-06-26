@@ -4,7 +4,7 @@ import * as admin from 'firebase-admin';
 // This configuration uses the correct storage bucket name as requested.
 const firebaseAdminConfig = {
   projectId: 'hssetech-e1710',
-  storageBucket: 'hssetech-e1710.firebaseapp.com',
+  storageBucket: 'hssetech-e1710.appspot.com',
 };
 
 // Initialize the Firebase Admin SDK.
