@@ -58,8 +58,8 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
                 data={chartData}
                 innerRadius="80%"
                 outerRadius="100%"
-                startAngle={90}
-                endAngle={450}
+                startAngle={180}
+                endAngle={0}
                 barSize={12}
               >
                 <RadialBar dataKey="value" background={{ fill: 'hsl(var(--muted))' }} cornerRadius={10} />
