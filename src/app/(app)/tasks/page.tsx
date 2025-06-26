@@ -148,8 +148,6 @@ export default function DashboardPage() {
   }, [filteredObservations]);
   
   const categoryDistributionData = React.useMemo(() => {
-      if (filteredObservations.length === 0) return [];
-      
       const categoryCounts = filteredObservations.reduce((acc, obs) => {
         acc[obs.category] = (acc[obs.category] || 0) + 1;
         return acc;
@@ -160,7 +158,7 @@ export default function DashboardPage() {
         value: categoryCounts[category as ObservationCategory] || 0,
         fill: `var(--color-${category})`,
       })).filter(item => item.value > 0);
-  }, [filteredObservations, categoryChartConfig]);
+  }, [filteredObservations]);
 
 
   const dailyData = React.useMemo(() => {
@@ -265,11 +263,12 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Distribusi Kategori</CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 pb-0">
-               {loading ? <Skeleton className="mx-auto aspect-square max-h-[250px] rounded-full" /> :
+            <CardContent>
+              <div className="h-[250px]">
+               {loading ? <Skeleton className="h-full w-full rounded-full" /> :
                 <ChartContainer
                     config={categoryChartConfig}
-                    className="mx-auto aspect-square max-h-[250px]"
+                    className="h-full w-full"
                 >
                     <PieChart>
                       <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
@@ -277,13 +276,14 @@ export default function DashboardPage() {
                           data={categoryDistributionData}
                           dataKey="value"
                           nameKey="name"
-                          innerRadius={60}
+                          innerRadius={50}
                           strokeWidth={5}
                       />
                       <ChartLegend />
                     </PieChart>
                 </ChartContainer>
                }
+              </div>
             </CardContent>
              <CardFooter className="flex-col gap-2 text-sm pt-4">
              </CardFooter>
@@ -302,9 +302,9 @@ export default function DashboardPage() {
                   <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
                   <ChartYAxis tickLine={false} axisLine={false} />
                   <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartLegend />
                   <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
                   <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
-                  <ChartLegend />
                 </BarChart>
               </ChartContainer>
             )}
