@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   description: 'Dashboard for viewing and managing HSSE observation data.',
   manifest: '/manifest.json',
   icons: {
-    icon: '/icons/icon-192x192.png',
-    shortcut: '/logo.png',
-    apple: '/icons/apple-touch-icon.png',
+    icon: '/logo.svg',
+    shortcut: '/logo.svg',
+    apple: '/logo.svg',
   },
 };
 
