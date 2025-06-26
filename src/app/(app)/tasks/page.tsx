@@ -5,7 +5,7 @@ import { format, subDays, eachDayOfInterval } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { Calendar as CalendarIcon } from 'lucide-react';
 
-import type { Observation, RiskLevel } from '@/lib/types';
+import type { Observation, RiskLevel, ObservationCategory } from '@/lib/types';
 import { useObservations } from '@/contexts/observation-context';
 
 import { cn } from '@/lib/utils';
@@ -22,6 +22,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   BarChart,
+  PieChart,
+  ChartPie,
   RadialBarChart,
   ChartRadialBar,
   ChartBar,
@@ -63,8 +65,8 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
             >
               <RadialBarChart
                 data={chartData}
-                startAngle={90}
-                endAngle={-270}
+                startAngle={-90}
+                endAngle={270}
                 innerRadius="80%"
                 outerRadius="100%"
                 barSize={12}
@@ -119,18 +121,31 @@ export default function DashboardPage() {
 
   const overviewData = React.useMemo(() => {
     const total = filteredObservations.length;
-    if (total === 0) return { pendingPercentage: 0, pendingCount: 0, highRiskPercentage: 0, highRiskCount: 0 };
+    if (total === 0) return { pendingPercentage: 0, pendingCount: 0 };
 
     const pendingCount = filteredObservations.filter(o => o.status !== 'Completed').length;
-    const highRiskCount = filteredObservations.filter(o => ['High', 'Critical'].includes(o.riskLevel)).length;
-
+    
     return {
       pendingPercentage: Math.round((pendingCount / total) * 100),
       pendingCount,
-      highRiskPercentage: Math.round((highRiskCount / total) * 100),
-      highRiskCount,
     };
   }, [filteredObservations]);
+  
+  const categoryDistributionData = React.useMemo(() => {
+      if (filteredObservations.length === 0) return [];
+      
+      const categoryCounts = filteredObservations.reduce((acc, obs) => {
+        acc[obs.category] = (acc[obs.category] || 0) + 1;
+        return acc;
+      }, {} as Record<ObservationCategory, number>);
+
+      return (['Structural', 'Electrical', 'Plumbing', 'General'] as ObservationCategory[]).map((category) => ({
+        name: category,
+        value: categoryCounts[category] || 0,
+        fill: `var(--color-${category.toLowerCase()})`,
+      })).filter(item => item.value > 0);
+  }, [filteredObservations]);
+
 
   const dailyData = React.useMemo(() => {
     if (!date?.from || !date.to) return [];
@@ -180,6 +195,13 @@ export default function DashboardPage() {
   const dailyChartConfig = {
     pending: { label: "Pending", color: "hsl(var(--chart-4))" },
     completed: { label: "Completed", color: "hsl(var(--chart-1))" },
+  };
+  
+  const categoryChartConfig = {
+    structural: { label: "Structural", color: "hsl(var(--chart-1))" },
+    electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
+    plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
+    general: { label: "General", color: "hsl(var(--chart-4))" },
   };
 
   return (
@@ -235,13 +257,34 @@ export default function DashboardPage() {
             title="Laporan Terbuka"
             color="hsl(var(--chart-5))"
           />
-          <RadialChartCard 
-            loading={loading}
-            value={overviewData.highRiskPercentage}
-            count={overviewData.highRiskCount}
-            title="Risiko Tinggi & Kritis"
-            color="hsl(var(--destructive))"
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribusi Kategori</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 pb-0">
+               {loading ? <Skeleton className="mx-auto aspect-square max-h-[250px] rounded-full" /> :
+                <ChartContainer
+                    config={categoryChartConfig}
+                    className="mx-auto aspect-square max-h-[250px]"
+                >
+                    <PieChart>
+                    <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                    <ChartPie
+                        data={categoryDistributionData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={60}
+                        strokeWidth={5}
+                    />
+                     <ChartLegend
+                        content={<ChartLegendContent nameKey="name" />}
+                        className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
+                    />
+                    </PieChart>
+                </ChartContainer>
+               }
+            </CardContent>
+          </Card>
       </div>
 
       <Card>
@@ -256,26 +299,14 @@ export default function DashboardPage() {
                   <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
                   <ChartYAxis tickLine={false} axisLine={false} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <ChartBar dataKey="completed" stackId="a" fill={dailyChartConfig.completed.color} radius={[4, 4, 0, 0]} />
-                  <ChartBar dataKey="pending" stackId="a" fill={dailyChartConfig.pending.color} radius={[4, 4, 0, 0]} />
+                  <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
+                  <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
                   <ChartLegend content={<ChartLegendContent />} />
                 </BarChart>
               </ChartContainer>
             )}
           </div>
         </CardContent>
-        <CardFooter className="flex-col items-start gap-2 text-sm pt-4 border-t">
-          <div className="flex gap-x-4 gap-y-2 flex-wrap">
-            <div className="flex items-center gap-2">
-                <span className="h-3 w-3 shrink-0 rounded-sm" style={{backgroundColor: dailyChartConfig.completed.color}} />
-                <div className="text-muted-foreground">{dailyChartConfig.completed.label}</div>
-            </div>
-            <div className="flex items-center gap-2">
-                <span className="h-3 w-3 shrink-0 rounded-sm" style={{backgroundColor: dailyChartConfig.pending.color}} />
-                <div className="text-muted-foreground">{dailyChartConfig.pending.label}</div>
-            </div>
-          </div>
-        </CardFooter>
       </Card>
       
       <Card>
