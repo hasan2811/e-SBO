@@ -21,9 +21,10 @@ interface ViewDetailsDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   observation: Observation | null;
+  onTakeAction: () => void;
 }
 
-export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDetailsDialogProps) {
+export function ViewDetailsDialog({ isOpen, onOpenChange, observation, onTakeAction }: ViewDetailsDialogProps) {
   if (!observation) return null;
 
   return (
@@ -167,6 +168,12 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
+          {observation.status !== 'Completed' && (
+            <Button type="button" onClick={onTakeAction}>
+              <Gavel className="mr-2 h-4 w-4" />
+              Take Action
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

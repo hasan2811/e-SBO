@@ -55,6 +55,11 @@ export default function TasksPage() {
     setSelectedObservation(obs);
     setViewDialogOpen(true);
   };
+  
+  const handleTakeAction = () => {
+    setViewDialogOpen(false);
+    setActionDialogOpen(true);
+  };
 
   const groupedObservations = React.useMemo(() => {
     return observations.reduce((acc, obs) => {
@@ -120,6 +125,7 @@ export default function TasksPage() {
             isOpen={isViewDialogOpen}
             onOpenChange={setViewDialogOpen}
             observation={selectedObservation}
+            onTakeAction={handleTakeAction}
           />
         </>
       )}
