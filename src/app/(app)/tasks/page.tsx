@@ -27,7 +27,7 @@ import {
   ChartLegendContent,
   BarChart,
   RadialBarChart,
-  RadialBar,
+  ChartRadialBar,
   ChartBar,
   ChartYAxis,
   ChartXAxis,
@@ -62,10 +62,8 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
                   innerRadius="80%"
                   outerRadius="100%"
                   barSize={12}
-                  startAngle={90}
-                  endAngle={-270}
                 >
-                  <RadialBar
+                  <ChartRadialBar
                     dataKey="value"
                     background={{ fill: 'hsl(var(--muted))' }}
                     cornerRadius={6}
