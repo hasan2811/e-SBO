@@ -1,16 +1,10 @@
 
 import * as admin from 'firebase-admin';
 
-// This configuration uses the correct storage bucket name as requested.
-const firebaseAdminConfig = {
-  projectId: 'hssetech-e1710',
-  storageBucket: 'hssetech-e1710.firebasestorage.app',
-};
-
-// Initialize the Firebase Admin SDK.
-// This is safe to run in a server environment and will only initialize once.
+// In a Google Cloud environment like App Hosting, the SDK is automatically
+// configured with the project's credentials. We don't need to pass any config.
 if (!admin.apps.length) {
-  admin.initializeApp(firebaseAdminConfig);
+  admin.initializeApp();
 }
 
 // Export the initialized admin services.

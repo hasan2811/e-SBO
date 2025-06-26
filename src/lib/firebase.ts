@@ -11,8 +11,16 @@ const firebaseConfig: FirebaseOptions = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
+
+// Check for missing environment variables to prevent runtime errors.
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  throw new Error(
+    'Firebase config is missing. Make sure you have a .env file with all the required NEXT_PUBLIC_FIREBASE_ variables.'
+  );
+}
+
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -23,7 +31,7 @@ const storage = getStorage(app);
 // Initialize Analytics if running in the browser
 if (typeof window !== 'undefined') {
   isSupported().then((supported) => {
-    if (supported && process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID) {
+    if (supported && firebaseConfig.measurementId) {
       getAnalytics(app);
     }
   });
