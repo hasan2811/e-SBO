@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -17,7 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import {
   ChartContainer,
   ChartTooltip,
@@ -52,45 +51,41 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
   const chartData = [{ name: title, value, fill: 'var(--color-metric)' }];
 
   return (
-    <Card>
+    <Card className="flex flex-col">
       <CardHeader className="items-center pb-2">
-        <CardTitle className="text-base font-medium">{title}</CardTitle>
+        <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent className="p-4 pt-2 flex justify-center">
-        <div className="w-48 h-48">
-          {loading ? (
-            <Skeleton className="h-full w-full rounded-full" />
-          ) : (
-            <div className="relative h-full w-full">
-              <ChartContainer
-                config={chartConfig}
-                className="absolute inset-0 h-full w-full"
-              >
-                <RadialBarChart
-                  data={chartData}
-                  innerRadius="80%"
-                  outerRadius="100%"
-                  barSize={12}
-                  startAngle={90}
-                  endAngle={450}
-                >
-                  <ChartPolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-                  <ChartRadialBar
-                    dataKey="value"
-                    background={{ fill: 'hsl(var(--muted))' }}
-                    cornerRadius={6}
-                    fill={color}
-                  />
-                </RadialBarChart>
-              </ChartContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-bold" style={{ color }}>{value}%</span>
-                <span className="text-sm text-muted-foreground mt-1">({count} Laporan)</span>
-              </div>
-            </div>
-          )}
-        </div>
+      <CardContent className="flex-1 pb-0">
+        <ChartContainer
+          config={chartConfig}
+          className="mx-auto aspect-square h-full max-h-[250px]"
+        >
+          <RadialBarChart
+            data={chartData}
+            startAngle={0}
+            endAngle={value / 100 * 360}
+            innerRadius="80%"
+            outerRadius="100%"
+            barSize={12}
+          >
+            <ChartPolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+            <ChartRadialBar
+              dataKey="value"
+              background={{ fill: 'hsl(var(--muted))' }}
+              cornerRadius={6}
+              fill={color}
+            />
+          </RadialBarChart>
+        </ChartContainer>
       </CardContent>
+      <CardFooter className="flex-col gap-2 text-sm pt-2">
+        <div className="flex items-center gap-2 font-medium leading-none">
+          {value}%
+        </div>
+        <div className="leading-none text-muted-foreground">
+          ({count} Laporan)
+        </div>
+      </CardFooter>
     </Card>
   );
 };
