@@ -60,17 +60,20 @@ export default function ObservationDetailPage() {
   const showAiSection = observation.aiStatus || observation.aiSummary;
 
   return (
-    <>
-      <div className="flex items-center gap-2 mb-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h2 className="text-xl font-bold tracking-tight">
-          Observation: {observation.referenceId || observation.id}
-        </h2>
+    <div className="h-full flex flex-col">
+      <div className="flex-shrink-0">
+        <div className="flex items-center gap-2 mb-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Observation: {observation.referenceId || observation.id}
+          </h2>
+        </div>
       </div>
-      <ScrollArea className="flex-1 overflow-y-auto" style={{ height: 'calc(100vh - 160px)' }}>
-          <div className="space-y-6 pb-8">
+      
+      <ScrollArea className="flex-1">
+          <div className="space-y-6 pb-8 pr-4">
             {observation.photoUrl && (
               <div className="relative w-full aspect-video rounded-md overflow-hidden border">
                 <Image
@@ -233,12 +236,13 @@ export default function ObservationDetailPage() {
             )}
           </div>
         </ScrollArea>
+        
         <TakeActionDialog
             isOpen={isActionDialogOpen}
             onOpenChange={setActionDialogOpen}
             observation={observation}
             onUpdate={handleUpdate}
         />
-    </>
+    </div>
   );
 }

@@ -13,7 +13,7 @@ import { Plus, FileText, ChevronRight } from 'lucide-react';
 const ObservationListItem = ({ observation }: { observation: Observation }) => {
   return (
     <li>
-      <Link href={`/observation/${observation.id}`} className="flex items-center bg-card p-3.5 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer">
+      <Link href={`/observation/${observation.id}`} className="flex items-center bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer">
         <div className="flex-1 space-y-1 pr-4">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{format(new Date(observation.date), 'HH:mm')}</span> - {observation.category}
@@ -28,7 +28,7 @@ const ObservationListItem = ({ observation }: { observation: Observation }) => {
           <div className="hidden sm:flex items-center justify-center h-12 w-12 rounded-full bg-primary/10">
             <FileText className="h-6 w-6 text-primary" />
           </div>
-          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          <ChevronRight className="h-6 w-6 text-muted-foreground" />
         </div>
       </Link>
     </li>
