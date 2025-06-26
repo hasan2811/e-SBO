@@ -67,14 +67,6 @@ export default function JurnalPage() {
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              className="p-0"
-              classNames={{
-                root: 'w-full',
-                month: 'w-full',
-                table: 'w-full',
-                head_row: 'w-full',
-                row: 'w-full',
-              }}
               disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
               initialFocus
             />
