@@ -57,6 +57,11 @@ const categoryChartConfig = {
     General: { label: "General", color: "hsl(var(--chart-4))" },
   };
 
+const dailyChartConfig = {
+    pending: { label: "Pending", color: "hsl(var(--chart-4))" },
+    completed: { label: "Completed", color: "hsl(var(--chart-1))" },
+  };
+
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
   const chartConfig = {
     metric: {
@@ -163,11 +168,6 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
 
 export default function DashboardPage() {
   const { observations, loading } = useObservations();
-  
-  const dailyChartConfig = {
-    pending: { label: "Pending", color: "hsl(var(--chart-4))" },
-    completed: { label: "Completed", color: "hsl(var(--chart-1))" },
-  };
   
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: subDays(new Date(), 6),
