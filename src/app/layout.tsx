@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import { AppProviders } from '@/components/app-providers';
@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'e-Observation Dashboard',
   description: 'Dashboard for viewing and managing observation data.',
+};
+
+export const viewport: Viewport = {
   themeColor: '#4A90E2',
 };
 
