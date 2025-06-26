@@ -16,10 +16,10 @@ const SummarizeObservationDataInputSchema = z.object({
 export type SummarizeObservationDataInput = z.infer<typeof SummarizeObservationDataInputSchema>;
 
 const SummarizeObservationDataOutputSchema = z.object({
-  summary: z.string().describe('A concise summary of the observation findings.'),
-  risks: z.string().describe('A detailed analysis of potential hazards and risks, including root causes and consequences.'),
-  suggestedActions: z.string().describe('Suggested actions based on the observation findings.'),
-  relevantRegulations: z.string().describe('Analysis of relevant Indonesian national and international regulations, standards, or procedures that apply to the findings.'),
+  summary: z.string().describe('Ringkasan singkat dari temuan inti dalam Bahasa Indonesia.'),
+  risks: z.string().describe('Analisis potensi bahaya dan risiko dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
+  suggestedActions: z.string().describe('Saran tindakan perbaikan dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
+  relevantRegulations: z.string().describe('Poin-poin inti dari peraturan nasional & internasional yang relevan beserta penjelasan singkatnya (Bahasa Indonesia).'),
 });
 export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservationDataOutputSchema>;
 
@@ -31,16 +31,17 @@ const summarizeObservationDataPrompt = ai.definePrompt({
   name: 'summarizeObservationDataPrompt',
   input: {schema: SummarizeObservationDataInputSchema},
   output: {schema: SummarizeObservationDataOutputSchema},
-  prompt: `You are an expert HSSE (Health, Safety, Security, and Environment) analyst.
-Analyze the following observation data from a safety report. Your task is to provide a professional and detailed analysis.
+  prompt: `Anda adalah seorang analis ahli HSSE (Kesehatan, Keselamatan, Keamanan, dan Lingkungan) yang sangat profesional.
+Tugas Anda adalah menganalisis data observasi dari sebuah laporan keselamatan dan memberikan analisis yang ringkas, jelas, dan dalam **Bahasa Indonesia**.
 
-Based on the observation data provided, generate a JSON object with the following fields:
-1.  "summary": A concise summary of the core findings.
-2.  "risks": A detailed analysis of potential hazards. Describe the immediate risks, potential consequences if left unaddressed, and possible root causes. Be specific.
-3.  "suggestedActions": Clear, actionable steps to mitigate the risks, based on the recommendation provided in the data.
-4.  "relevantRegulations": Identify and explain relevant regulations or standards. This should include applicable Indonesian national regulations (e.g., UU, PP, Permenaker) and relevant international standards (e.g., ISO, OHSAS) that relate to the findings. Also, describe the standard procedure that should have been followed.
+Berdasarkan data observasi yang diberikan, hasilkan objek JSON dengan format berikut. Semua respons harus dalam Bahasa Indonesia.
 
-Observation Data:
+1.  "summary": Berikan ringkasan yang sangat singkat (satu atau dua kalimat) dari temuan inti.
+2.  "risks": Jelaskan potensi bahaya dan risiko dalam bentuk **poin-poin singkat**. Fokus pada risiko utama dan konsekuensi paling signifikan jika tidak ditangani.
+3.  "suggestedActions": Berikan saran tindakan yang jelas dan dapat dieksekusi dalam bentuk **poin-poin singkat**, berdasarkan rekomendasi yang ada di data.
+4.  "relevantRegulations": Identifikasi peraturan/standar nasional Indonesia (UU, PP, Permenaker) dan internasional (ISO, OHSAS) yang relevan. Untuk setiap peraturan, sebutkan **inti aturannya dalam satu poin** dan berikan penjelasan singkat.
+
+Data Observasi:
 {{{observationData}}}
 `,
 });
