@@ -116,8 +116,8 @@ ChartLegend.displayName = "ChartLegend"
 
 const ChartLegendContent = React.forwardRef<
   HTMLUListElement,
-  React.ComponentProps<"ul"> & Pick<LegendProps, "payload" | "verticalAlign">
->(({ className, payload, verticalAlign, ...props }, ref) => {
+  React.ComponentProps<"ul"> & Pick<LegendProps, "payload" | "verticalAlign" | "iconSize">
+>(({ className, payload, verticalAlign, iconSize, ...props }, ref) => {
   const { config } = React.useContext(ChartContext)
 
   if (!config || !payload?.length) {
