@@ -27,6 +27,7 @@ import {
   XAxis,
   YAxis,
   PolarAngleAxis,
+  Legend as LegendPrimitive,
   type LegendProps,
   type TooltipProps,
 } from "recharts"
@@ -108,45 +109,7 @@ ChartContainer.displayName = "ChartContainer"
 // #endregion
 
 // #region Chart Legend
-const ChartLegend = React.forwardRef<
-  HTMLDivElement,
-  Omit<LegendProps, "content" | "ref"> & {
-    hide?: boolean
-    content?: React.ComponentProps<typeof ChartLegendContent>["content"]
-    nameKey?: string
-  }
->(({ className, hide, content, nameKey, ...props }, ref) => {
-  const { config, activeChart } = React.useContext(ChartContext)
-
-  if (hide || !config) {
-    return null
-  }
-
-  return (
-    <div
-      ref={ref}
-      data-chart-legend
-      className={cn(
-        "flex items-center justify-end gap-2 text-sm text-muted-foreground",
-        "[&>[data-chart-legend-item]]:has-[:disabled]:opacity-50",
-        activeChart &&
-          "[&>[data-chart-legend-item]:not([data-chart-legend-item-name=${activeChart}])]:opacity-50",
-        className
-      )}
-    >
-      {content ? (
-        content
-      ) : (
-        <ChartLegendContent
-          className={props.payload ? "flex-wrap" : ""}
-          nameKey={nameKey}
-          {...props}
-        />
-      )}
-    </div>
-  )
-})
-ChartLegend.displayName = "ChartLegend"
+const ChartLegend = LegendPrimitive
 
 const ChartLegendContent = React.forwardRef<
   HTMLUListElement,
@@ -186,7 +149,7 @@ const ChartLegendContent = React.forwardRef<
       <ul
         ref={ref}
         className={cn(
-          "flex items-center gap-4",
+          "flex items-center justify-center gap-4",
           verticalAlign === "top" ? "flex-wrap" : "",
           className
         )}
