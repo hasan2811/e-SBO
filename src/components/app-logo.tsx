@@ -16,7 +16,7 @@ export function AppLogo({ className }: AppLogoProps) {
       width={48}
       height={48}
       className={cn('h-8 w-8', className)}
-      data-ai-hint="gear logo"
+      data-ai-hint="gear hardhat"
       priority
     />
   );
