@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { format, subDays, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
+import { format, subDays, eachDayOfInterval } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { Calendar as CalendarIcon } from 'lucide-react';
 
@@ -64,7 +64,7 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
                   outerRadius="100%"
                   barSize={12}
                   startAngle={90}
-                  endAngle={-270}
+                  endAngle={450}
                 >
                   <ChartPolarAngleAxis type="number" domain={[0, 100]} tick={false} />
                   <ChartRadialBar
@@ -122,18 +122,33 @@ export default function DashboardPage() {
     };
   }, [filteredObservations]);
 
-  const monthlyData = React.useMemo(() => {
-    if (!date?.from) return [];
-    const interval = { start: startOfMonth(date.from), end: endOfMonth(date.to || date.from) };
-    const months = eachMonthOfInterval(interval);
+  const dailyData = React.useMemo(() => {
+    if (!filteredObservations.length || !date?.from || !date.to) return [];
 
-    return months.map(month => {
-      const monthName = format(month, 'MMM');
-      const pending = observations.filter(o => format(new Date(o.date), 'yyyy-MM') === format(month, 'yyyy-MM') && o.status !== 'Completed').length;
-      const completed = observations.filter(o => format(new Date(o.date), 'yyyy-MM') === format(month, 'yyyy-MM') && o.status === 'Completed').length;
-      return { month: monthName, pending, completed };
+    const dataMap = new Map<string, { pending: number, completed: number }>();
+    const daysInRange = eachDayOfInterval({ start: date.from, end: date.to });
+    daysInRange.forEach(day => {
+        dataMap.set(format(day, 'yyyy-MM-dd'), { pending: 0, completed: 0 });
     });
-  }, [observations, date]);
+
+    for (const obs of filteredObservations) {
+        const dayKey = format(new Date(obs.date), 'yyyy-MM-dd');
+        if (dataMap.has(dayKey)) {
+            const dayData = dataMap.get(dayKey)!;
+            if (obs.status === 'Completed') {
+                dayData.completed += 1;
+            } else {
+                dayData.pending += 1;
+            }
+        }
+    }
+
+    return Array.from(dataMap.entries()).map(([dateStr, counts]) => ({
+        day: format(new Date(dateStr), 'd'), // Use just day number for label
+        ...counts
+    }));
+  }, [filteredObservations, date]);
+
 
   const riskDetailsData = React.useMemo(() => {
     const total = filteredObservations.length;
@@ -152,7 +167,7 @@ export default function DashboardPage() {
     }));
   }, [filteredObservations]);
 
-  const yearlyChartConfig = {
+  const dailyChartConfig = {
     pending: { label: "Pending", color: "hsl(var(--chart-4))" },
     completed: { label: "Completed", color: "hsl(var(--chart-1))" },
   };
@@ -220,14 +235,14 @@ export default function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tren Observasi Bulanan</CardTitle>
+          <CardTitle>Tren Observasi Harian</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[300px]">
             {loading ? <Skeleton className="h-full w-full" /> : (
-              <ChartContainer config={yearlyChartConfig} className="h-full w-full">
-                <BarChart data={monthlyData} accessibilityLayer>
-                  <ChartXAxis dataKey="month" tickLine={false} axisLine={false} />
+              <ChartContainer config={dailyChartConfig} className="h-full w-full">
+                <BarChart data={dailyData} accessibilityLayer>
+                  <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
                   <ChartYAxis tickLine={false} axisLine={false} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <ChartLegend content={<ChartLegendContent />} />
