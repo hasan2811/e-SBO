@@ -371,7 +371,7 @@ const createChart = <
       },
       ref
     ) => {
-      const { config, activeChart, setActiveChart } =
+      const { config, setActiveChart } =
         React.useContext(ChartContext)
 
       const stackedData = React.useMemo(() => {
@@ -398,39 +398,42 @@ const createChart = <
 
       const Children = React.Children.map(children, (child) => {
         if (React.isValidElement(child)) {
-          return React.cloneElement(child, {
-            ...child.props,
-            ...(stackBy
-              ? {
-                  stackId: stackBy,
-                }
-              : {}),
-            ...(child.type === Bar &&
-              layout === "vertical" && {
-                layout: "vertical",
-                radius: [0, 6, 6, 0],
+          const childType = child.type as any
+          const isChartComponent = [
+            Area,
+            Bar,
+            Line,
+            Pie,
+            Radar,
+            RadialBar,
+          ].includes(childType)
+
+          if (isChartComponent) {
+            return React.cloneElement(child, {
+              ...child.props,
+              ...(stackBy && {
+                stackId: stackBy,
               }),
-            ...(child.type === Bar &&
-              layout === "horizontal" && {
-                radius: [0, 6, 6, 0],
-              }),
-            ...(child.type === Bar
-              ? {
-                  // fill: `var(--color-${child.props.dataKey})`,
-                  // style: {
-                  //   opacity: activeChart === child.props.dataKey || !activeChart ? 1 : 0.3,
-                  // } as React.CSSProperties,
-                }
-              : {}),
-            onMouseEnter: (props: any, i: number) => {
-              child.props.onMouseEnter?.(props, i)
-              setActiveChart(child.props.dataKey)
-            },
-            onMouseLeave: (props: any, i: number) => {
-              child.props.onMouseLeave?.(props, i)
-              setActiveChart(null)
-            },
-          })
+              ...(childType === Bar &&
+                layout === "vertical" && {
+                  layout: "vertical",
+                  radius: [0, 6, 6, 0],
+                }),
+              ...(childType === Bar &&
+                layout === "horizontal" && {
+                  radius: [0, 6, 6, 0],
+                }),
+              onMouseEnter: (props: any, i: number) => {
+                child.props.onMouseEnter?.(props, i)
+                setActiveChart(child.props.dataKey)
+              },
+              onMouseLeave: (props: any, i: number) => {
+                child.props.onMouseLeave?.(props, i)
+                setActiveChart(null)
+              },
+            })
+          }
+          return child
         }
         return child
       })
