@@ -1,10 +1,9 @@
-
 'use client';
 
 import * as React from 'react';
 import { format, subDays, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { Calendar as CalendarIcon, BarChart3, AlertTriangle, ListChecks, Shield, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 
 import type { Observation, RiskLevel } from '@/lib/types';
 import { useObservations } from '@/contexts/observation-context';
@@ -25,18 +24,14 @@ import {
   ChartLegend,
   ChartLegendContent,
   BarChart,
-  PieChart,
-  Chart,
-  ChartBar,
-  ChartPie,
-  ChartYAxis,
-  ChartXAxis,
   RadialBarChart,
   RadialBar,
+  ChartBar,
+  ChartYAxis,
+  ChartXAxis,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-
 
 const riskLevelConfig: Record<RiskLevel, { color: string, className: string }> = {
   Low: { color: 'hsl(var(--chart-2))', className: 'bg-chart-2' },
@@ -68,8 +63,8 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
                 barSize={12}
               >
                 <RadialBar dataKey="value" background={{ fill: 'hsl(var(--muted))' }} cornerRadius={10} />
-              </ChartContainer>
-            </d  iv>
+              </RadialBarChart>
+            </ChartContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-4xl font-bold" style={{ color }}>{value}%</span>
               <span className="text-sm text-muted-foreground">({count} Laporan)</span>
