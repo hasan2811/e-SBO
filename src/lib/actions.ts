@@ -4,6 +4,12 @@ import { summarizeObservationData, SummarizeObservationDataOutput } from '@/ai/f
 import type { Observation } from './types';
 
 export async function getAiSummary(observation: Observation): Promise<SummarizeObservationDataOutput> {
+  // Ensure the GOOGLE_API_KEY is explicitly loaded for the server environment.
+  const apiKey = process.env.GOOGLE_API_KEY;
+  if (!apiKey) {
+    throw new Error('GOOGLE_API_KEY is not configured on the server.');
+  }
+
   const observationData = `
     Location: ${observation.location}
     Company: ${observation.company}
