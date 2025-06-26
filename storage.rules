@@ -1,9 +1,13 @@
-
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow authenticated users to upload images to their own folders
-    match /(observations|actions)/{userId}/{allPaths=**} {
+    // Files for new observations
+    match /observations/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Files for actions taken to complete an observation
+    match /actions/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
