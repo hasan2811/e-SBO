@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Observation } from '@/lib/types';
 import { RiskBadge, StatusBadge } from './status-badges';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2 } from 'lucide-react';
 
 interface ViewDetailsDialogProps {
   isOpen: boolean;
@@ -101,14 +101,21 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
                       </div>
                     )}
                      {observation.aiSuggestedActions && (
-                      <div className="space-y-1">
-                        <h5 className="font-semibold text-sm flex items-center gap-2">
-                           <ListChecks className="h-4 w-4 text-green-600" />
-                           Suggested Actions
-                        </h5>
-                        <p className="text-sm text-muted-foreground whitespace-pre-line pl-6">{observation.aiSuggestedActions}</p>
-                      </div>
-                    )}
+                        <div className="space-y-1">
+                          <h5 className="font-semibold text-sm flex items-center gap-2">
+                            <ListChecks className="h-4 w-4 text-green-600" />
+                            Suggested Actions
+                          </h5>
+                          <div className="pl-6 space-y-1">
+                            {observation.aiSuggestedActions.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((action, index) => (
+                              <div key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                                <span>{action.replace(/^- /, '')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     {observation.aiRelevantRegulations && (
                       <div className="space-y-1">
                         <h5 className="font-semibold text-sm flex items-center gap-2">
