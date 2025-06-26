@@ -14,7 +14,7 @@ export function AppLogo({ className }: AppLogoProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={cn('h-8 w-8 text-primary', className)}
