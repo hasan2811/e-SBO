@@ -102,45 +102,12 @@ ChartContainer.displayName = "ChartContainer"
 // #region Chart Legend
 const ChartLegend = React.forwardRef<
   React.ElementRef<typeof LegendPrimitive>,
-  React.ComponentProps<typeof LegendPrimitive> & {
-    data?: any[]
-    config?: ChartContainerSettings
-  }
->(({ className, ...props }, ref) => {
-  const { config: contextConfig } = React.useContext(ChartContext)
-  const config = props.config ?? contextConfig
-
-  // The Recharts Legend component receives an array of payloads, but we can't
-  // depend on this, so we have to generate it from the data.
-  const payload = React.useMemo(
-    () =>
-      props.payload ??
-      (props.data
-        ? Object.entries(config)
-            .map(([key, config]) => ({
-              dataKey: key,
-              value: config.label,
-              color: config.color,
-              payload: {
-                ...config,
-                dataKey: key,
-              },
-            }))
-            .filter((item) =>
-              props.data!.some((dataItem) => dataItem[item.dataKey])
-            )
-        : []),
-    [props.payload, props.data, config]
-  )
-
+  React.ComponentProps<typeof LegendPrimitive>
+>((props, ref) => {
   return (
     <LegendPrimitive
       ref={ref}
-      className={cn(
-        "[&_.recharts-legend-item]:flex [&_.recharts-legend-item]:items-center [&_.recharts-legend-item]:gap-1.5 [&_.recharts-legend-icon]:!size-3",
-        className
-      )}
-      payload={payload}
+      content={<ChartLegendContent />} // Always use our custom content renderer
       {...props}
     />
   )
@@ -149,81 +116,56 @@ ChartLegend.displayName = "ChartLegend"
 
 const ChartLegendContent = React.forwardRef<
   HTMLUListElement,
-  React.ComponentProps<"ul"> &
-    Pick<LegendProps, "payload" | "verticalAlign"> & {
-      content?:
-        | React.ReactNode
-        | (({
-            config,
-            payload,
-          }: {
-            config: ChartContainerSettings
-            payload: LegendProps["payload"]
-          }) => React.ReactNode)
-      hide?: boolean
-      nameKey?: string
-    }
->(
-  (
-    { className, content, hide, nameKey, payload, verticalAlign, ...props },
-    ref
-  ) => {
-    const { config } = React.useContext(ChartContext)
+  React.ComponentProps<"ul"> & Pick<LegendProps, "payload" | "verticalAlign">
+>(({ className, payload, verticalAlign, ...props }, ref) => {
+  const { config } = React.useContext(ChartContext)
 
-    if (hide || !config || !payload?.length) {
-      return null
-    }
-
-    if (content) {
-      if (typeof content === "function") {
-        return content({ config, payload })
-      }
-      return content
-    }
-
-    return (
-      <ul
-        ref={ref}
-        className={cn(
-          "flex items-center justify-center gap-x-4",
-          verticalAlign === "top" ? "flex-row" : "flex-col",
-          className
-        )}
-        {...props}
-      >
-        {payload.map((item) => {
-          const key = `${nameKey ? item.payload?.[nameKey] : item.dataKey}`
-          const
-           configItem = config[key]
-
-          if (!configItem) {
-            return null
-          }
-
-          const { color, label } = configItem
-
-          return (
-            <li
-              key={item.value}
-              className={cn(
-                "flex items-center gap-1.5 text-sm font-medium text-muted-foreground",
-                item.inactive && "opacity-50"
-              )}
-            >
-              <div
-                className="size-3 shrink-0 rounded-[2px]"
-                style={{
-                  backgroundColor: color,
-                }}
-              />
-              {label}
-            </li>
-          )
-        })}
-      </ul>
-    )
+  if (!config || !payload?.length) {
+    return null
   }
-)
+
+  return (
+    <ul
+      ref={ref}
+      className={cn(
+        "flex items-center justify-center gap-x-4",
+        verticalAlign === "top" ? "flex-row" : "flex-col",
+        className
+      )}
+      {...props}
+    >
+      {payload.map((item, index) => {
+        const key = item.value as string;
+        const configItem = config[key]
+
+        const label = configItem?.label ?? key
+        const color = item.color
+
+        if (!label) {
+          return null
+        }
+
+        return (
+          <li
+            key={`legend-item-${index}`}
+            className={cn(
+              "flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-muted-foreground",
+              item.inactive && "opacity-50"
+            )}
+          >
+            <div
+              className="size-3 shrink-0 rounded-[2px]"
+              style={{
+                backgroundColor: color,
+              }}
+            />
+            {label}
+          </li>
+        )
+      })}
+    </ul>
+  )
+})
 ChartLegendContent.displayName = "ChartLegendContent"
 // #endregion
 
@@ -417,16 +359,10 @@ const createChart = <
 
       const Children = React.Children.map(children, (child) => {
         if (React.isValidElement(child)) {
-          const childType = child.type as any
-          const isChartComponent = [
-            Area,
-            Bar,
-            Line,
-            Pie,
-            Radar,
-            RadialBar,
-          ].includes(childType)
-
+          const childType = child.type as any;
+          const isChartComponent = [Area, Bar, Line, Pie, Radar, RadialBar].includes(childType);
+          const isLegend = childType === LegendPrimitive;
+      
           if (isChartComponent) {
             return React.cloneElement(child, {
               ...child.props,
@@ -442,6 +378,11 @@ const createChart = <
                 layout === "horizontal" && {
                   radius: [0, 6, 6, 0],
                 }),
+            });
+          }
+          if (isLegend) {
+            return React.cloneElement(child as React.ReactElement<LegendProps>, {
+              ...child.props,
             })
           }
           return child

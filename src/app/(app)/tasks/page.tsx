@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { format, subDays, eachDayOfInterval } from 'date-fns';
+import { format, subDays, eachDayOfInterval, addDays } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { Calendar as CalendarIcon } from 'lucide-react';
 
@@ -109,13 +109,19 @@ export default function DashboardPage() {
 
   const filteredObservations = React.useMemo(() => {
     if (!date?.from) return observations;
+    // Ensure `to` date is not before `from` date
+    const from = date.from;
+    const to = date.to && date.to > from ? date.to : from;
+
+    const startDate = new Date(from);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(to);
+    endDate.setHours(23, 59, 59, 999);
+
     return observations.filter(obs => {
       const obsDate = new Date(obs.date);
-      const from = new Date(date.from!);
-      from.setHours(0, 0, 0, 0);
-      const to = date.to ? new Date(date.to) : new Date(date.from!);
-      to.setHours(23, 59, 59, 999);
-      return obsDate >= from && obsDate <= to;
+      return obsDate >= startDate && obsDate <= endDate;
     });
   }, [observations, date]);
 
@@ -137,29 +143,31 @@ export default function DashboardPage() {
       const categoryCounts = filteredObservations.reduce((acc, obs) => {
         acc[obs.category] = (acc[obs.category] || 0) + 1;
         return acc;
-      }, {} as Record<ObservationCategory, number>);
+      }, {} as Record<string, number>);
 
-      return (['Structural', 'Electrical', 'Plumbing', 'General'] as ObservationCategory[]).map((category) => ({
-        name: category.toLowerCase(),
-        value: categoryCounts[category] || 0,
-        fill: `var(--color-${category.toLowerCase()})`,
+      return (Object.keys(categoryChartConfig) as string[]).map((category) => ({
+        name: category,
+        value: categoryCounts[category as ObservationCategory] || 0,
+        fill: `var(--color-${category})`,
       })).filter(item => item.value > 0);
   }, [filteredObservations]);
 
 
   const dailyData = React.useMemo(() => {
-    if (!date?.from || !date.to) return [];
+    const from = date?.from ? date.from : new Date();
+    const to = date?.to && date.to > from ? date.to : from;
+    const daysInRange = eachDayOfInterval({ start: from, end: to });
 
     const dataMap = new Map<string, { pending: number, completed: number }>();
-    const daysInRange = eachDayOfInterval({ start: date.from, end: date.to });
-    daysInRange.forEach(day => {
+     daysInRange.forEach(day => {
         dataMap.set(format(day, 'yyyy-MM-dd'), { pending: 0, completed: 0 });
     });
 
     for (const obs of filteredObservations) {
-        const dayKey = format(new Date(obs.date), 'yyyy-MM-dd');
-        if (dataMap.has(dayKey)) {
-            const dayData = dataMap.get(dayKey)!;
+        const dayKey = format(new Date(obs.date), 'yyyy-M-d');
+        const mapKey = format(new Date(obs.date), 'yyyy-MM-dd');
+        if (dataMap.has(mapKey)) {
+            const dayData = dataMap.get(mapKey)!;
             if (obs.status === 'Completed') {
                 dayData.completed += 1;
             } else {
@@ -169,7 +177,7 @@ export default function DashboardPage() {
     }
 
     return Array.from(dataMap.entries()).map(([dateStr, counts]) => ({
-        day: format(new Date(dateStr), 'EEE'),
+        day: format(addDays(new Date(dateStr), 1), 'EEE'),
         ...counts
     }));
   }, [filteredObservations, date]);
@@ -196,10 +204,10 @@ export default function DashboardPage() {
   };
   
   const categoryChartConfig = {
-    structural: { label: "Structural", color: "hsl(var(--chart-1))" },
-    electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
-    plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
-    general: { label: "General", color: "hsl(var(--chart-4))" },
+    Structural: { label: "Structural", color: "hsl(var(--chart-1))" },
+    Electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
+    Plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
+    General: { label: "General", color: "hsl(var(--chart-4))" },
   };
 
   return (
@@ -239,7 +247,7 @@ export default function DashboardPage() {
                   defaultMonth={date?.from}
                   selected={date}
                   onSelect={setDate}
-                  numberOfMonths={2}
+                  numberOfMonths={1}
                   max={7}
                 />
               </PopoverContent>
@@ -274,20 +282,13 @@ export default function DashboardPage() {
                           innerRadius={60}
                           strokeWidth={5}
                       />
-                      <ChartLegend
-                        content={<ChartLegendContent nameKey="name" />}
-                      />
+                      <ChartLegend />
                     </PieChart>
                 </ChartContainer>
                }
             </CardContent>
              <CardFooter className="flex-col gap-2 text-sm pt-4">
-              <ChartLegend
-                  content={<ChartLegendContent nameKey="name" />}
-                  className="flex items-center gap-x-2 [&>li]:flex-row [&>li]:gap-1.5 [&>li>div]:!size-3"
-                  config={categoryChartConfig}
-                  data={categoryDistributionData}
-              />
+               {/* This footer can be used for additional info or removed if legend is enough */}
             </CardFooter>
           </Card>
       </div>
@@ -306,7 +307,7 @@ export default function DashboardPage() {
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
                   <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
-                  <ChartLegend content={<ChartLegendContent />} />
+                  <ChartLegend />
                 </BarChart>
               </ChartContainer>
             )}
