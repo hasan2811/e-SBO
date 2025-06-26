@@ -53,29 +53,21 @@ type ChartContainerProps = React.ComponentProps<"div"> & {
 
 const ChartContext = React.createContext<{
   config: ChartContainerSettings
-  activeChart: string | null
-  setActiveChart: (chart: string | null) => void
 }>({
   config: {},
-  activeChart: null,
-  setActiveChart: () => {},
 })
 
 const ChartContainer = React.forwardRef<
   HTMLDivElement,
   ChartContainerProps
 >(({ config, children, className, ...props }, ref) => {
-  const [activeChart, setActiveChart] =
-    React.useState<keyof typeof config | null>(null)
   const id = React.useId()
 
   const value = React.useMemo(
     () => ({
       config,
-      activeChart,
-      setActiveChart,
     }),
-    [config, activeChart, setActiveChart]
+    [config]
   )
 
   return (
@@ -83,7 +75,6 @@ const ChartContainer = React.forwardRef<
       <div
         ref={ref}
         data-chart={id}
-        data-active-chart={activeChart}
         className={cn(
           "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer:focus-visible]:outline-none [&_.recharts-polar-axis-tick_text]:fill-muted-foreground [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-radial-bar-sector]:stroke-border [&_.recharts-reference-line_line]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-none",
           className
@@ -109,7 +100,52 @@ ChartContainer.displayName = "ChartContainer"
 // #endregion
 
 // #region Chart Legend
-const ChartLegend = LegendPrimitive
+const ChartLegend = React.forwardRef<
+  React.ElementRef<typeof LegendPrimitive>,
+  React.ComponentProps<typeof LegendPrimitive> & {
+    data?: any[]
+    config?: ChartContainerSettings
+  }
+>(({ className, ...props }, ref) => {
+  const { config: contextConfig } = React.useContext(ChartContext)
+  const config = props.config ?? contextConfig
+
+  // The Recharts Legend component receives an array of payloads, but we can't
+  // depend on this, so we have to generate it from the data.
+  const payload = React.useMemo(
+    () =>
+      props.payload ??
+      (props.data
+        ? Object.entries(config)
+            .map(([key, config]) => ({
+              dataKey: key,
+              value: config.label,
+              color: config.color,
+              payload: {
+                ...config,
+                dataKey: key,
+              },
+            }))
+            .filter((item) =>
+              props.data!.some((dataItem) => dataItem[item.dataKey])
+            )
+        : []),
+    [props.payload, props.data, config]
+  )
+
+  return (
+    <LegendPrimitive
+      ref={ref}
+      className={cn(
+        "[&_.recharts-legend-item]:flex [&_.recharts-legend-item]:items-center [&_.recharts-legend-item]:gap-1.5 [&_.recharts-legend-icon]:!size-3",
+        className
+      )}
+      payload={payload}
+      {...props}
+    />
+  )
+})
+ChartLegend.displayName = "ChartLegend"
 
 const ChartLegendContent = React.forwardRef<
   HTMLUListElement,
@@ -129,12 +165,12 @@ const ChartLegendContent = React.forwardRef<
     }
 >(
   (
-    { className, content, hide, nameKey = "name", payload, verticalAlign },
+    { className, content, hide, nameKey, payload, verticalAlign, ...props },
     ref
   ) => {
-    const { config, setActiveChart } = React.useContext(ChartContext)
+    const { config } = React.useContext(ChartContext)
 
-    if (hide || !config || !payload) {
+    if (hide || !config || !payload?.length) {
       return null
     }
 
@@ -149,45 +185,38 @@ const ChartLegendContent = React.forwardRef<
       <ul
         ref={ref}
         className={cn(
-          "flex items-center justify-center gap-x-6 gap-y-1.5 text-sm flex-wrap",
+          "flex items-center justify-center gap-x-4",
+          verticalAlign === "top" ? "flex-row" : "flex-col",
           className
         )}
-        onMouseLeave={() => {
-          setActiveChart(null)
-        }}
+        {...props}
       >
         {payload.map((item) => {
-          const key = (item.payload as any)?.[nameKey] ?? item.dataKey
-          const name = item.value as string
-          const settings = config[key as keyof typeof config]
+          const key = `${nameKey ? item.payload?.[nameKey] : item.dataKey}`
+          const
+           configItem = config[key]
 
-          if (!settings) {
+          if (!configItem) {
             return null
           }
 
-          const { color, label } = settings
+          const { color, label } = configItem
+
           return (
             <li
-              key={name}
-              data-chart-legend-item
-              data-chart-legend-item-name={key}
+              key={item.value}
               className={cn(
-                "flex items-center gap-1.5",
-                item.inactive
-                  ? "text-muted-foreground"
-                  : "cursor-pointer"
+                "flex items-center gap-1.5 text-sm font-medium text-muted-foreground",
+                item.inactive && "opacity-50"
               )}
-              onMouseEnter={() => {
-                setActiveChart(key as string)
-              }}
             >
-               <div
-                className="size-3 shrink-0 rounded-sm"
-                style={{ backgroundColor: color }}
+              <div
+                className="size-3 shrink-0 rounded-[2px]"
+                style={{
+                  backgroundColor: color,
+                }}
               />
-              <div className="flex-1 truncate">
-                {label ?? name}
-              </div>
+              {label}
             </li>
           )
         })}
@@ -361,7 +390,7 @@ const createChart = <
       },
       ref
     ) => {
-      const { config, setActiveChart } =
+      const { config } =
         React.useContext(ChartContext)
 
       const stackedData = React.useMemo(() => {
@@ -413,14 +442,6 @@ const createChart = <
                 layout === "horizontal" && {
                   radius: [0, 6, 6, 0],
                 }),
-              onMouseEnter: (props: any, i: number) => {
-                child.props.onMouseEnter?.(props, i)
-                setActiveChart(child.props.dataKey)
-              },
-              onMouseLeave: (props: any, i: number) => {
-                child.props.onMouseLeave?.(props, i)
-                setActiveChart(null)
-              },
             })
           }
           return child

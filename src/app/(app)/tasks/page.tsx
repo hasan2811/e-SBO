@@ -65,8 +65,8 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
             >
               <RadialBarChart
                 data={chartData}
-                startAngle={-90}
-                endAngle={270}
+                startAngle={90}
+                endAngle={-270}
                 innerRadius="80%"
                 outerRadius="100%"
                 barSize={12}
@@ -275,13 +275,20 @@ export default function DashboardPage() {
                           strokeWidth={5}
                       />
                       <ChartLegend
-                          content={<ChartLegendContent nameKey="name" />}
-                          className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
+                        content={<ChartLegendContent nameKey="name" />}
                       />
                     </PieChart>
                 </ChartContainer>
                }
             </CardContent>
+             <CardFooter className="flex-col gap-2 text-sm pt-4">
+              <ChartLegend
+                  content={<ChartLegendContent nameKey="name" />}
+                  className="flex items-center gap-x-2 [&>li]:flex-row [&>li]:gap-1.5 [&>li>div]:!size-3"
+                  config={categoryChartConfig}
+                  data={categoryDistributionData}
+              />
+            </CardFooter>
           </Card>
       </div>
 
