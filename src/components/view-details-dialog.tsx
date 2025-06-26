@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Observation } from '@/lib/types';
 import { RiskBadge, StatusBadge } from './status-badges';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel } from 'lucide-react';
 
 interface ViewDetailsDialogProps {
   isOpen: boolean;
@@ -84,26 +84,38 @@ export function ViewDetailsDialog({ isOpen, onOpenChange, observation }: ViewDet
                     </h4>
                     {observation.aiSummary && (
                       <div className="space-y-1">
-                        <h5 className="font-semibold text-sm">Summary</h5>
-                        <p className="text-sm text-muted-foreground">{observation.aiSummary}</p>
+                        <h5 className="font-semibold text-sm flex items-center gap-2">
+                           <FileText className="h-4 w-4 text-muted-foreground" />
+                           Summary
+                        </h5>
+                        <p className="text-sm text-muted-foreground pl-6">{observation.aiSummary}</p>
                       </div>
                     )}
                     {observation.aiRisks && (
                       <div className="space-y-1">
-                        <h5 className="font-semibold text-sm">Potential Risks</h5>
-                        <p className="text-sm text-muted-foreground">{observation.aiRisks}</p>
+                        <h5 className="font-semibold text-sm flex items-center gap-2">
+                            <ShieldAlert className="h-4 w-4 text-destructive" />
+                            Potential Risks
+                        </h5>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line pl-6">{observation.aiRisks}</p>
                       </div>
                     )}
                      {observation.aiSuggestedActions && (
                       <div className="space-y-1">
-                        <h5 className="font-semibold text-sm">Suggested Actions</h5>
-                        <p className="text-sm text-muted-foreground">{observation.aiSuggestedActions}</p>
+                        <h5 className="font-semibold text-sm flex items-center gap-2">
+                           <ListChecks className="h-4 w-4 text-green-600" />
+                           Suggested Actions
+                        </h5>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line pl-6">{observation.aiSuggestedActions}</p>
                       </div>
                     )}
                     {observation.aiRelevantRegulations && (
                       <div className="space-y-1">
-                        <h5 className="font-semibold text-sm">Relevant Regulations & Procedures</h5>
-                        <p className="text-sm text-muted-foreground">{observation.aiRelevantRegulations}</p>
+                        <h5 className="font-semibold text-sm flex items-center gap-2">
+                           <Gavel className="h-4 w-4 text-muted-foreground" />
+                           Relevant Regulations & Procedures
+                        </h5>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line pl-6">{observation.aiRelevantRegulations}</p>
                       </div>
                     )}
                  </div>
