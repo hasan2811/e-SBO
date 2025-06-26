@@ -177,8 +177,6 @@ export default function DashboardPage() {
 
   const riskDetailsData = React.useMemo(() => {
     const total = filteredObservations.length;
-    if (total === 0) return [];
-
     const counts = filteredObservations.reduce((acc, obs) => {
       acc[obs.riskLevel] = (acc[obs.riskLevel] || 0) + 1;
       return acc;
@@ -186,7 +184,7 @@ export default function DashboardPage() {
 
     return (['Low', 'Medium', 'High', 'Critical'] as RiskLevel[]).map(level => ({
       name: level,
-      value: Math.round(((counts[level] || 0) / total) * 100),
+      value: total > 0 ? Math.round(((counts[level] || 0) / total) * 100) : 0,
       count: counts[level] || 0,
       ...riskLevelConfig[level]
     }));
