@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -156,6 +157,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       }
 
       const newObservationData: Omit<Observation, 'id'> = {
+        userId: user.uid, // This is the critical fix
         date: new Date().toISOString(),
         status: 'Pending' as ObservationStatus,
         submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
@@ -341,7 +343,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                     </Button>
                     {photoPreview && (
                       <div className="mt-2 relative w-full h-48 rounded-md overflow-hidden border">
-                        {/* PERBAIKAN: Menggunakan prop `fill` dan `className` untuk Next/Image */}
                         <Image src={photoPreview} alt="Pratinjau Foto" fill className="object-cover" />
                       </div>
                     )}

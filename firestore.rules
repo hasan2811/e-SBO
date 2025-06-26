@@ -1,16 +1,32 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can only read and update their own profile document.
-    match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
+    // Helper function to check for authentication
+    function isLoggedIn() {
+      return request.auth != null;
     }
 
-    // Authenticated users can read, create, and update observations.
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      // Any logged-in user can view any user's profile
+      allow get: if isLoggedIn();
+      // A user can only create or update their own profile
+      allow create, update: if isLoggedIn() && request.auth.uid == userId;
+    }
+
+    // Rules for the 'observations' collection
     match /observations/{observationId} {
-      allow get, list: if request.auth != null;
-      allow create, update: if request.auth != null;
+      // Logged-in users can read the list of observations or a single observation
+      allow get, list: if isLoggedIn();
+      
+      // A logged-in user can create an observation, but only if they set themselves as the userId
+      allow create: if isLoggedIn() && request.resource.data.userId == request.auth.uid;
+
+      // Any logged-in user can update an observation (e.g., to complete a task)
+      allow update: if isLoggedIn();
     }
   }
 }

@@ -1,21 +1,29 @@
+
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access on all files.
+    
+    // Helper function to check for authentication
+    function isLoggedIn() {
+      return request.auth != null;
+    }
+
+    // Allow read access to all files for simplicity, so the app can display images.
+    // For stricter rules, you might check if the user is part of a specific group, etc.
     match /{allPaths=**} {
-      allow read;
+      allow read: if true;
     }
 
-    // Allow authenticated users to write to the 'observations' folder.
-    // The userId in the path must match the currently signed-in user's UID.
+    // Users can only write to their own designated folder within 'observations'.
+    // This prevents a user from uploading files to another user's observation folder.
     match /observations/{userId}/{fileName} {
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if isLoggedIn() && userId == request.auth.uid;
     }
-
-    // Allow authenticated users to write to the 'actions' folder.
-    // The userId in the path must match the currently signed-in user's UID.
+    
+    // Users can only write to their own designated folder within 'actions'.
     match /actions/{userId}/{fileName} {
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if isLoggedIn() && userId == request.auth.uid;
     }
   }
 }
