@@ -1,14 +1,14 @@
+
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Files for new observations
-    match /observations/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Users can only write to their own subdirectories within 'observations' and 'actions'
+    match /{folder}/{userId}/{allPaths=**}
+      where folder == 'observations' || folder == 'actions' {
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
-
-    // Files for actions taken to complete an observation
-    match /actions/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
+    
+    // Anyone can read any file. Required for displaying images in the app.
+    allow read;
   }
 }
