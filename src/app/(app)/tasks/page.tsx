@@ -246,8 +246,8 @@ export default function DashboardPage() {
                   <ChartYAxis tickLine={false} axisLine={false} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <ChartLegend content={<ChartLegendContent />} />
-                  <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
-                  <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
+                  <ChartBar dataKey="completed" stackId="a" fill={dailyChartConfig.completed.color} radius={[4, 4, 0, 0]} />
+                  <ChartBar dataKey="pending" stackId="a" fill={dailyChartConfig.pending.color} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ChartContainer>
             )}
