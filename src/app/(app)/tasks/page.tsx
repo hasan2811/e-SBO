@@ -5,7 +5,7 @@ import { format, subDays, eachDayOfInterval, addDays } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { Calendar as CalendarIcon } from 'lucide-react';
 
-import type { Observation, RiskLevel, ObservationCategory } from '@/lib/types';
+import type { Observation, RiskLevel, ObservationCategory, Company, Location } from '@/lib/types';
 import { useObservations } from '@/contexts/observation-context';
 
 import { cn } from '@/lib/utils';
@@ -98,6 +98,52 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
   );
 };
 
+const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, nameKey, color }: { loading: boolean; title: string; data: any[]; chartConfig: any; dataKey: string; nameKey: string; color: string; }) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[350px]">
+          {loading ? (
+            <Skeleton className="h-full w-full" />
+          ) : data.length > 0 ? (
+            <ChartContainer config={chartConfig} className="h-full w-full">
+              <BarChart data={data} layout="vertical" accessibilityLayer margin={{ left: 10 }}>
+                <ChartYAxis
+                  dataKey={nameKey}
+                  type="category"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={10}
+                  className="text-xs"
+                  width={80}
+                />
+                <ChartXAxis dataKey={dataKey} type="number" hide />
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent indicator="line" />}
+                />
+                <ChartBar
+                  dataKey={dataKey}
+                  layout="vertical"
+                  fill={color}
+                  radius={4}
+                />
+              </BarChart>
+            </ChartContainer>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+              <p>No data for this period.</p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 
 export default function DashboardPage() {
   const { observations, loading } = useObservations();
@@ -116,6 +162,14 @@ export default function DashboardPage() {
     Electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
     Plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
     General: { label: "General", color: "hsl(var(--chart-4))" },
+  };
+
+  const companyChartConfig = {
+    value: { label: "Observations", color: "hsl(var(--chart-1))" },
+  };
+  
+  const locationChartConfig = {
+    value: { label: "Observations", color: "hsl(var(--chart-2))" },
   };
 
   const filteredObservations = React.useMemo(() => {
@@ -204,6 +258,28 @@ export default function DashboardPage() {
       count: counts[level] || 0,
       ...riskLevelConfig[level]
     }));
+  }, [filteredObservations]);
+  
+  const companyDistributionData = React.useMemo(() => {
+    const counts = filteredObservations.reduce((acc, obs) => {
+      acc[obs.company] = (acc[obs.company] || 0) + 1;
+      return acc;
+    }, {} as Record<Company, number>);
+
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => a.value - b.value);
+  }, [filteredObservations]);
+
+  const locationDistributionData = React.useMemo(() => {
+    const counts = filteredObservations.reduce((acc, obs) => {
+      acc[obs.location] = (acc[obs.location] || 0) + 1;
+      return acc;
+    }, {} as Record<Location, number>);
+
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => a.value - b.value);
   }, [filteredObservations]);
 
   // Custom label renderer for the pie chart
@@ -299,7 +375,7 @@ export default function DashboardPage() {
                             data={categoryDistributionData}
                             dataKey="value"
                             nameKey="name"
-                            innerRadius={50}
+                            innerRadius={60}
                             outerRadius={80}
                             strokeWidth={5}
                             labelLine
@@ -339,6 +415,27 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+      
+       <div className="grid gap-6 md:grid-cols-2">
+        <HorizontalBarChartCard
+          loading={loading}
+          title="Observasi per Perusahaan"
+          data={companyDistributionData}
+          chartConfig={companyChartConfig}
+          dataKey="value"
+          nameKey="name"
+          color="hsl(var(--chart-1))"
+        />
+        <HorizontalBarChartCard
+          loading={loading}
+          title="Observasi per Lokasi"
+          data={locationDistributionData}
+          chartConfig={locationChartConfig}
+          dataKey="value"
+          nameKey="name"
+          color="hsl(var(--chart-2))"
+        />
+      </div>
       
       <Card>
           <CardHeader>
