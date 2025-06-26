@@ -51,7 +51,7 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
   const chartData = [{ name: title, value, fill: 'var(--color-metric)' }];
 
   return (
-    <Card className="flex flex-col">
+    <Card>
       <CardHeader className="items-center pb-2">
         <CardTitle>{title}</CardTitle>
       </CardHeader>
@@ -62,13 +62,13 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
         >
           <RadialBarChart
             data={chartData}
-            startAngle={0}
-            endAngle={value / 100 * 360}
+            startAngle={90}
+            endAngle={-270}
             innerRadius="80%"
             outerRadius="100%"
             barSize={12}
           >
-            <ChartPolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+            <ChartPolarAngleAxis key={title} type="number" domain={[0, 100]} tick={false} />
             <ChartRadialBar
               dataKey="value"
               background={{ fill: 'hsl(var(--muted))' }}
@@ -126,7 +126,7 @@ export default function DashboardPage() {
   }, [filteredObservations]);
 
   const dailyData = React.useMemo(() => {
-    if (!filteredObservations.length || !date?.from || !date.to) return [];
+    if (!date?.from || !date.to) return [];
 
     const dataMap = new Map<string, { pending: number, completed: number }>();
     const daysInRange = eachDayOfInterval({ start: date.from, end: date.to });
