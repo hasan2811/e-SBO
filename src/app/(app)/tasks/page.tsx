@@ -79,6 +79,7 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
                     dataKey="value"
                     background={{ fill: 'hsl(var(--muted))' }}
                     cornerRadius={6}
+                    fill={color}
                   />
                 </RadialBarChart>
               </ChartContainer>
@@ -98,7 +99,7 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
 export default function DashboardPage() {
   const { observations, loading } = useObservations();
   const [date, setDate] = React.useState<DateRange | undefined>({
-    from: subDays(new Date(), 29),
+    from: subDays(new Date(), 6),
     to: new Date(),
   });
 
@@ -151,7 +152,7 @@ export default function DashboardPage() {
     }
 
     return Array.from(dataMap.entries()).map(([dateStr, counts]) => ({
-        day: format(new Date(dateStr), 'd'), // Use just day number for label
+        day: format(new Date(dateStr), 'EEE'),
         ...counts
     }));
   }, [filteredObservations, date]);
