@@ -66,7 +66,7 @@ export default function ObservationDetailPage() {
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h2 className="text-2xl font-semibold tracking-tight">
+          <h2 className="text-xl font-semibold tracking-tight">
             Observation: {observation.referenceId || observation.id}
           </h2>
         </div>
