@@ -31,6 +31,7 @@ import {
   ChartBar,
   ChartYAxis,
   ChartXAxis,
+  ChartPolarAngleAxis,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
@@ -62,7 +63,10 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
                   innerRadius="80%"
                   outerRadius="100%"
                   barSize={12}
+                  startAngle={90}
+                  endAngle={-270}
                 >
+                  <ChartPolarAngleAxis type="number" domain={[0, 100]} tick={false} />
                   <ChartRadialBar
                     dataKey="value"
                     background={{ fill: 'hsl(var(--muted))' }}

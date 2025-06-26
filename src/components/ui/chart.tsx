@@ -26,6 +26,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  PolarAngleAxis,
   type LegendProps,
   type TooltipProps,
 } from "recharts"
@@ -538,6 +539,7 @@ const ChartLine = Line
 const ChartPie = Pie
 const ChartRadar = Radar
 const ChartRadialBar = RadialBar
+const ChartPolarAngleAxis = PolarAngleAxis
 // #endregion
 
 export {
@@ -566,6 +568,7 @@ export {
   ChartPie,
   ChartRadar,
   ChartRadialBar,
+  ChartPolarAngleAxis,
 }
 export type {
   ChartContainerSettings,
