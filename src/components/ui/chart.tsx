@@ -32,15 +32,6 @@ import {
 
 import { cn } from "@/lib/utils"
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "./card"
-
 // #region Chart Types
 const Chart = ResponsiveContainer
 // #endregion
@@ -53,7 +44,7 @@ type ChartContainerSettings = {
   }
 }
 
-type ChartContainerProps = React.ComponentProps<typeof Card> & {
+type ChartContainerProps = React.ComponentProps<"div"> & {
   config: ChartContainerSettings
   children: React.ComponentProps<typeof ResponsiveContainer>["children"]
 }
@@ -89,7 +80,7 @@ const ChartContainer = React.forwardRef<
 
   return (
     <ChartContext.Provider value={value}>
-      <Card
+      <div
         ref={ref}
         data-chart={id}
         data-active-chart={activeChart}
@@ -101,7 +92,7 @@ const ChartContainer = React.forwardRef<
         {...props}
       >
         {children}
-      </Card>
+      </div>
     </ChartContext.Provider>
   )
 })

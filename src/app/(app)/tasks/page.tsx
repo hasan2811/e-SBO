@@ -26,6 +26,7 @@ import {
   ChartLegendContent,
   BarChart,
   PieChart,
+  Chart,
   ChartBar,
   ChartPie,
   ChartYAxis,
@@ -265,16 +266,18 @@ export default function DashboardPage() {
             {loading ? (
               <Skeleton className="h-[250px] w-full" />
             ) : statusData.length > 0 ? (
-                 <ChartContainer config={chartConfig(statusData.map(d => ({name: d.name, fill: d.fill})))} className="min-h-[250px] w-full">
-                    <PieChart>
-                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                      <ChartPie data={statusData} dataKey="count" nameKey="name" innerRadius={60}>
-                         {statusData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </ChartPie>
-                      <ChartLegend content={<ChartLegendContent nameKey="name"/>} />
-                    </PieChart>
+                 <ChartContainer config={chartConfig(statusData)} className="min-h-[250px] w-full">
+                    <Chart>
+                      <PieChart>
+                        <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                        <ChartPie data={statusData} dataKey="count" nameKey="name" innerRadius={60}>
+                           {statusData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </ChartPie>
+                        <ChartLegend content={<ChartLegendContent nameKey="name"/>} />
+                      </PieChart>
+                    </Chart>
                   </ChartContainer>
             ) : (
                 <div className="text-center text-muted-foreground">
@@ -291,25 +294,27 @@ export default function DashboardPage() {
              {loading ? (
               <Skeleton className="h-[250px] w-full" />
             ) : riskLevelData.length > 0 ? (
-                <ChartContainer config={chartConfig(riskLevelData.map(d => ({name: d.name, fill: d.fill})))} className="min-h-[250px] w-full">
-                  <BarChart data={riskLevelData} layout="vertical" margin={{ left: 20 }}>
-                    <ChartYAxis
-                      dataKey="name"
-                      type="category"
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <ChartXAxis dataKey="count" type="number" hide />
-                     <ChartTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent indicator="line" nameKey="name" />}
+                <ChartContainer config={chartConfig(riskLevelData)} className="min-h-[250px] w-full">
+                  <Chart>
+                    <BarChart data={riskLevelData} layout="vertical" margin={{ left: 20 }}>
+                      <ChartYAxis
+                        dataKey="name"
+                        type="category"
+                        tickLine={false}
+                        axisLine={false}
                       />
-                    <ChartBar dataKey="count" radius={4} layout="vertical">
-                       {riskLevelData.map((entry) => (
-                        <Cell key={entry.name} fill={entry.fill} />
-                      ))}
-                    </ChartBar>
-                  </BarChart>
+                      <ChartXAxis dataKey="count" type="number" hide />
+                       <ChartTooltip
+                          cursor={false}
+                          content={<ChartTooltipContent indicator="line" nameKey="name" />}
+                        />
+                      <ChartBar dataKey="count" radius={4} layout="vertical">
+                         {riskLevelData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.fill} />
+                        ))}
+                      </ChartBar>
+                    </BarChart>
+                  </Chart>
                 </ChartContainer>
              ) : (
                  <div className="text-center text-muted-foreground">
@@ -327,15 +332,17 @@ export default function DashboardPage() {
               <Skeleton className="h-[250px] w-full" />
             ) : categoryData.length > 0 ? (
                  <ChartContainer config={chartConfig(categoryData)} className="min-h-[250px] w-full">
-                    <PieChart>
-                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                      <ChartPie data={categoryData} dataKey="count" nameKey="name" innerRadius={60}>
-                         {categoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </ChartPie>
-                      <ChartLegend content={<ChartLegendContent nameKey="name"/>} />
-                    </PieChart>
+                    <Chart>
+                      <PieChart>
+                        <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                        <ChartPie data={categoryData} dataKey="count" nameKey="name" innerRadius={60}>
+                           {categoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </ChartPie>
+                        <ChartLegend content={<ChartLegendContent nameKey="name"/>} />
+                      </PieChart>
+                    </Chart>
                   </ChartContainer>
             ) : (
                 <div className="text-center text-muted-foreground">
@@ -354,26 +361,28 @@ export default function DashboardPage() {
               <Skeleton className="h-[250px] w-full" />
             ) : companyData.length > 0 ? (
                 <ChartContainer config={chartConfig(companyData)} className="min-h-[250px] w-full">
-                  <BarChart data={companyData} layout="vertical" margin={{ left: 20 }}>
-                    <ChartYAxis
-                      dataKey="name"
-                      type="category"
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={10}
-                      width={100}
-                    />
-                    <ChartXAxis dataKey="count" type="number" hide />
-                     <ChartTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent indicator="line" nameKey="name" />}
+                  <Chart>
+                    <BarChart data={companyData} layout="vertical" margin={{ left: 20 }}>
+                      <ChartYAxis
+                        dataKey="name"
+                        type="category"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={10}
+                        width={100}
                       />
-                    <ChartBar dataKey="count" radius={4} layout="vertical">
-                       {companyData.map((entry) => (
-                        <Cell key={entry.name} fill={entry.fill} />
-                      ))}
-                    </ChartBar>
-                  </BarChart>
+                      <ChartXAxis dataKey="count" type="number" hide />
+                       <ChartTooltip
+                          cursor={false}
+                          content={<ChartTooltipContent indicator="line" nameKey="name" />}
+                        />
+                      <ChartBar dataKey="count" radius={4} layout="vertical">
+                         {companyData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.fill} />
+                        ))}
+                      </ChartBar>
+                    </BarChart>
+                  </Chart>
                 </ChartContainer>
              ) : (
                  <div className="text-center text-muted-foreground">
@@ -392,24 +401,26 @@ export default function DashboardPage() {
               <Skeleton className="h-[250px] w-full" />
             ) : locationData.length > 0 ? (
                 <ChartContainer config={chartConfig(locationData)} className="min-h-[250px] w-full">
-                  <BarChart data={locationData} margin={{ top: 20 }}>
-                    <ChartXAxis
-                      dataKey="name"
-                      type="category"
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <ChartYAxis dataKey="count" type="number" hide />
-                     <ChartTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent indicator="dot" nameKey="name" />}
+                  <Chart>
+                    <BarChart data={locationData} margin={{ top: 20 }}>
+                      <ChartXAxis
+                        dataKey="name"
+                        type="category"
+                        tickLine={false}
+                        axisLine={false}
                       />
-                    <ChartBar dataKey="count" radius={4}>
-                       {locationData.map((entry) => (
-                        <Cell key={entry.name} fill={entry.fill} />
-                      ))}
-                    </ChartBar>
-                  </BarChart>
+                      <ChartYAxis dataKey="count" type="number" hide />
+                       <ChartTooltip
+                          cursor={false}
+                          content={<ChartTooltipContent indicator="dot" nameKey="name" />}
+                        />
+                      <ChartBar dataKey="count" radius={4}>
+                         {locationData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.fill} />
+                        ))}
+                      </ChartBar>
+                    </BarChart>
+                  </Chart>
                 </ChartContainer>
              ) : (
                  <div className="text-center text-muted-foreground">
