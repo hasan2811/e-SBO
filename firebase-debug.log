@@ -290,3 +290,12 @@ INFO: Detected non-HTTP/2 connection.
 [debug] [2025-06-26T05:19:42.794Z] <<< [apiv2][status] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules 200
 [debug] [2025-06-26T05:19:42.798Z] <<< [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {}
 [info] ✔  firestore: Rules updated. 
+[info] i  firestore: Change detected, updating rules... 
+[debug] [2025-06-26T05:22:07.957Z] >>> [apiv2][query] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules [none]
+[debug] [2025-06-26T05:22:07.958Z] >>> [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {"ignore_errors":true,"rules":{"files":[{"name":"security.rules","content":"\nrules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    // Users can manage their own profile\n    match /users/{userId} {\n      allow read, update: if request.auth != null && request.auth.uid == userId;\n      allow create: if request.auth != null;\n    }\n    // Authenticated users can perform all actions on observations\n    match /observations/{observationId} {\n       allow read, create, update, delete: if request.auth != null;\n    }\n  }\n}\n"}]}}
+[debug] [2025-06-26T05:22:08.008Z] Jun 26, 2025 5:22:08 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+INFO: Detected non-HTTP/2 connection.
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jun 26, 2025 5:22:08 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead\nINFO: Detected non-HTTP/2 connection.\n"}}
+[debug] [2025-06-26T05:22:08.103Z] <<< [apiv2][status] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules 200
+[debug] [2025-06-26T05:22:08.104Z] <<< [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {}
+[info] ✔  firestore: Rules updated. 

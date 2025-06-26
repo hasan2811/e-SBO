@@ -1,20 +1,10 @@
-rules_version = '2';
 
+rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access to all files. Photo URLs are stored in Firestore
-    // and are not easily guessable. This simplifies showing images in the app.
-    match /{allPaths=**} {
-      allow read;
-    }
-
-    // A user can only write files to their own user-specific folder.
-    // This prevents a user from overwriting another user's files.
-    match /observations/{userId}/{fileName} {
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-    match /actions/{userId}/{fileName} {
-      allow write: if request.auth != null && request.auth.uid == userId;
+    // Allow authenticated users to upload images to their own folders
+    match /(observations|actions)/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
