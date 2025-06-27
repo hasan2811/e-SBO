@@ -137,15 +137,21 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
             <Skeleton className="h-full w-full" />
           ) : data.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-full w-full">
-              <BarChart data={data} layout="vertical" accessibilityLayer margin={{ left: 10 }}>
+              <BarChart data={data} layout="vertical" accessibilityLayer margin={{ left: 0, right: 20 }}>
                 <ChartYAxis
                   dataKey={nameKey}
                   type="category"
                   tickLine={false}
                   axisLine={false}
-                  tickMargin={10}
+                  tickMargin={5}
                   className="text-xs"
-                  width={120}
+                  width={80}
+                   tickFormatter={(value) => {
+                    if (typeof value === 'string' && value.length > 10) {
+                      return `${value.substring(0, 10)}...`;
+                    }
+                    return value;
+                  }}
                 />
                 <ChartXAxis dataKey={dataKey} type="number" hide />
                 <ChartTooltip
@@ -362,7 +368,7 @@ export default function DashboardPage() {
       </div>
 
        <div className="grid gap-6 md:grid-cols-2">
-         <Card className="md:col-span-2">
+        <Card>
             <CardHeader>
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
@@ -373,7 +379,7 @@ export default function DashboardPage() {
                 ) : riskDetailsData.length > 0 ? (
                     <ChartContainer
                         config={riskPieChartConfig}
-                        className="mx-auto aspect-square h-full"
+                        className="mx-auto h-full w-full"
                     >
                         <PieChart>
                             <ChartTooltip formatter={(value, name, item) => `${item.payload.count} (${(value as number).toFixed(0)}%)`} content={<ChartTooltipContent nameKey="name" />} />
@@ -411,7 +417,7 @@ export default function DashboardPage() {
                                 <ChartCell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background" />
                               ))}
                             </ChartPie>
-                            <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+                            <ChartLegend content={<ChartLegendContent />} />
                         </PieChart>
                     </ChartContainer>
                 ) : (
@@ -422,7 +428,7 @@ export default function DashboardPage() {
                 </div>
             </CardContent>
         </Card>
-
+        
         <Card>
             <CardHeader>
             <CardTitle>Tren Observasi Harian</CardTitle>
