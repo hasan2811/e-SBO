@@ -32,6 +32,7 @@ import {
   ChartXAxis,
   ChartPolarAngleAxis,
   ChartLegend,
+  ChartLegendContent,
   ChartCell,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -272,6 +273,7 @@ export default function DashboardPage() {
       .map((level) => ({
         name: level,
         count: counts[level] || 0,
+        fill: `var(--color-${level})`
       }))
       .filter((item) => item.count > 0);
   }, [filteredObservations]);
@@ -359,8 +361,8 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="space-y-6">
-        <Card>
+       <div className="grid gap-6 md:grid-cols-2">
+         <Card className="md:col-span-2">
             <CardHeader>
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
@@ -379,23 +381,12 @@ export default function DashboardPage() {
                                 data={riskDetailsData}
                                 dataKey="count"
                                 nameKey="name"
-                                innerRadius={60}
-                                labelLine={true}
-                                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) => {
-                                    const RADIAN = Math.PI / 180;
-                                    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                                    if (percent === 0) return null;
-                                    return (
-                                    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-xs font-bold">
-                                        {`${(percent * 100).toFixed(0)}%`}
-                                    </text>
-                                    );
-                                }}
+                                innerRadius="30%"
+                                label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                                labelLine
                             >
                               {riskDetailsData.map((entry) => (
-                                <ChartCell key={`cell-${entry.name}`} fill={`var(--color-${entry.name})`} className={cn(`stroke-background`)} />
+                                <ChartCell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background" />
                               ))}
                             </ChartPie>
                             <ChartLegend content={<ChartLegendContent />} />
@@ -420,9 +411,9 @@ export default function DashboardPage() {
                 <ChartContainer config={dailyChartConfig} className="h-full w-full">
                     <BarChart data={dailyData} accessibilityLayer>
                     <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
-                    <ChartYAxis tickLine={false} axisLine={false} />
+                    <ChartYAxis tickLine={false} axisLine={false} allowDecimals={false} />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend />
+                    <ChartLegend content={<ChartLegendContent />} />
                     <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
                     <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -441,7 +432,7 @@ export default function DashboardPage() {
         nameKey="name"
         color="hsl(var(--chart-3))"
         />
-
+        
         <HorizontalBarChartCard
         loading={loading}
         title="Observasi per Perusahaan"
@@ -465,3 +456,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
