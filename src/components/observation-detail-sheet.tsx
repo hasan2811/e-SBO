@@ -9,7 +9,7 @@ import { RiskBadge, StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
 
@@ -39,6 +39,17 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
   };
 
   const showAiSection = observation.aiStatus || observation.aiSummary;
+
+  const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
+    <div className="pl-8 space-y-2">
+      {text.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((item, index) => (
+        <div key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+          <Icon className={`h-4 w-4 flex-shrink-0 mt-0.5 ${iconClassName}`} />
+          <span>{item.replace(/^- /, '')}</span>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <>
@@ -148,7 +159,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
-                              <p className="text-sm text-muted-foreground whitespace-pre-line pl-8">{observation.aiRisks}</p>
+                               {renderBulletedList(observation.aiRisks, AlertTriangle, "text-destructive")}
                             </AccordionContent>
                           </AccordionItem>
                         )}
@@ -161,14 +172,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
-                              <div className="pl-8 space-y-2">
-                                {observation.aiSuggestedActions.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((action, index) => (
-                                  <div key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-                                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                                    <span>{action.replace(/^- /, '')}</span>
-                                  </div>
-                                ))}
-                              </div>
+                              {renderBulletedList(observation.aiSuggestedActions, CheckCircle2, "text-green-600")}
                             </AccordionContent>
                           </AccordionItem>
                         )}
@@ -181,7 +185,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
-                              <p className="text-sm text-muted-foreground whitespace-pre-line pl-8">{observation.aiRelevantRegulations}</p>
+                              {renderBulletedList(observation.aiRelevantRegulations, Gavel, "text-muted-foreground")}
                             </AccordionContent>
                           </AccordionItem>
                         )}
