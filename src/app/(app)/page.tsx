@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
 import { useObservations } from '@/contexts/observation-context';
 import type { Observation, RiskLevel } from '@/lib/types';
 import { RiskBadge, StatusBadge } from '@/components/status-badges';
@@ -11,12 +10,9 @@ import { FileText, ChevronRight, ChevronLeft, Calendar as CalendarIcon } from 'l
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
 
 
 const riskColorMap: Record<RiskLevel, string> = {
@@ -26,12 +22,12 @@ const riskColorMap: Record<RiskLevel, string> = {
   Low: 'bg-chart-2',
 };
 
-const ObservationListItem = ({ observation }: { observation: Observation }) => {
+const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
   const riskColor = riskColorMap[observation.riskLevel] || 'bg-muted';
   
   return (
     <li>
-      <Link href={`/observation/${observation.id}`} className="relative flex items-center bg-card p-4 pl-6 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
+      <div onClick={onSelect} className="relative flex items-center bg-card p-4 pl-6 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
         <div className={cn("absolute left-0 top-0 h-full w-2", riskColor)} />
         <div className="flex-1 space-y-2 pr-4">
           <p className="text-xs text-muted-foreground">
@@ -47,7 +43,7 @@ const ObservationListItem = ({ observation }: { observation: Observation }) => {
         <div className="ml-auto flex items-center">
           <ChevronRight className="h-6 w-6 text-muted-foreground" />
         </div>
-      </Link>
+      </div>
     </li>
   );
 };
@@ -55,6 +51,7 @@ const ObservationListItem = ({ observation }: { observation: Observation }) => {
 export default function JurnalPage() {
   const { observations, loading } = useObservations();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
+  const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
 
   const handlePreviousDay = () => {
     if (selectedDate) {
@@ -91,6 +88,7 @@ export default function JurnalPage() {
 
 
   return (
+    <>
      <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight">
@@ -148,7 +146,7 @@ export default function JurnalPage() {
         ) : filteredObservations.length > 0 ? (
           <ul className="space-y-3">
             {filteredObservations.map(obs => (
-              <ObservationListItem key={obs.id} observation={obs} />
+              <ObservationListItem key={obs.id} observation={obs} onSelect={() => setSelectedObservation(obs)} />
             ))}
           </ul>
         ) : (
@@ -160,5 +158,17 @@ export default function JurnalPage() {
         )}
       </main>
     </div>
+    {selectedObservation && (
+        <ObservationDetailSheet 
+            observation={selectedObservation}
+            isOpen={!!selectedObservation}
+            onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    setSelectedObservation(null);
+                }
+            }}
+        />
+    )}
+   </>
   );
 }
