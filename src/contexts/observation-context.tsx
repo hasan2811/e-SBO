@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase';
 import type { Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { getAiSummary } from '@/lib/actions';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
 interface ObservationContextType {
@@ -23,7 +23,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const [observations, setObservations] = React.useState<Observation[]>([]);
   const [loading, setLoading] = React.useState<boolean>(true);
   const { user } = useAuth();
-  const { toast } = useToast();
 
   React.useEffect(() => {
     if (user) {
@@ -53,7 +52,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       setObservations([]);
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user]);
 
   const _runAiAnalysis = (observation: Observation) => {
     const observationDocRef = doc(db, 'observations', observation.id);
