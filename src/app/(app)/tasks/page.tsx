@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { format, subDays, eachDayOfInterval, addDays } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import type { Observation, RiskLevel, ObservationCategory, Company, Location } from '@/lib/types';
 import { useObservations } from '@/contexts/observation-context';
@@ -376,30 +376,42 @@ export default function DashboardPage() {
                         className="h-full w-full"
                     >
                         <PieChart>
-                            <ChartTooltip formatter={(value, name, item) => `${item.payload.count} (${value.toFixed(0)}%)`} content={<ChartTooltipContent nameKey="name" />} />
+                            <ChartTooltip formatter={(value, name, item) => `${item.payload.count} (${(value as number).toFixed(0)}%)`} content={<ChartTooltipContent nameKey="name" />} />
                             <ChartPie
                                 data={riskDetailsData}
                                 dataKey="count"
                                 nameKey="name"
                                 innerRadius="30%"
                                 labelLine={false}
-                                label={({ percent, ...entry }) => (
-                                  <text
-                                    x={entry.cx}
-                                    y={entry.cy}
-                                    textAnchor="middle"
-                                    dominantBaseline="central"
-                                    className="fill-white text-sm font-semibold"
-                                  >
-                                    {`${(percent * 100).toFixed(0)}%`}
-                                  </text>
-                                )}
+                                label={({ percent, ...entry }) => {
+                                  const name = entry.name as RiskLevel;
+                                  if ((percent * 100) < 5) {
+                                    return null;
+                                  }
+                                  
+                                  return (
+                                    <text
+                                      x={entry.cx}
+                                      y={entry.cy}
+                                      textAnchor="middle"
+                                      dominantBaseline="central"
+                                      className={cn(
+                                        'text-sm font-semibold',
+                                        name === 'Medium' || name === 'High'
+                                          ? 'fill-[hsl(var(--card-foreground))]'
+                                          : 'fill-[hsl(var(--primary-foreground))]'
+                                      )}
+                                    >
+                                      {`${(percent * 100).toFixed(0)}%`}
+                                    </text>
+                                  );
+                                }}
                             >
                               {riskDetailsData.map((entry) => (
                                 <ChartCell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background" />
                               ))}
                             </ChartPie>
-                            <ChartLegend content={<ChartLegendContent nameKey="name" align="center" />} />
+                            <ChartLegend content={<ChartLegendContent align="center" />} />
                         </PieChart>
                     </ChartContainer>
                 ) : (
@@ -466,7 +478,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
-
-    
