@@ -31,6 +31,7 @@ import {
   ChartXAxis,
   ChartPolarAngleAxis,
   ChartLegend,
+  ChartLegendContent,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
@@ -296,27 +297,6 @@ export default function DashboardPage() {
       .sort((a, b) => b.value - a.value);
   }, [filteredObservations]);
 
-  // Custom label renderer for the pie chart
-  const renderCustomizedLabel = (props: any) => {
-    const { cx, cy, midAngle, outerRadius, percent, name } = props;
-    const RADIAN = Math.PI / 180;
-    const radius = outerRadius + 20; // Position labels outside the pie
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-    return (
-      <text
-        x={x}
-        y={y}
-        style={{ fill: 'hsl(var(--foreground))', fontSize: '12px' }}
-        textAnchor={x > cx ? 'start' : 'end'}
-        dominantBaseline="central"
-      >
-        {`${name} - ${(percent * 100).toFixed(0)}%`}
-      </text>
-    );
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -362,126 +342,129 @@ export default function DashboardPage() {
       </div>
       
       <div className="grid gap-6 md:grid-cols-2">
-         <RadialChartCard 
-            loading={loading}
-            value={overviewData.pendingPercentage}
-            count={overviewData.pendingCount}
-            title="Open Status"
-            color="hsl(var(--chart-5))"
-          />
-          <RadialChartCard 
-            loading={loading}
-            value={criticalPercentageData.percentage}
-            count={criticalPercentageData.count}
-            title="Finding Kritis"
-            color="hsl(var(--destructive))"
-          />
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Distribusi Kategori</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[250px] w-full">
-           {loading ? (
-              <Skeleton className="h-full w-full rounded-full" />
-            ) : categoryDistributionData.length > 0 ? (
-              <ChartContainer
-                  config={categoryChartConfig}
-                  className="h-full w-full"
-              >
-                  <PieChart margin={{ left: 40, right: 40, top: 20, bottom: 20 }}>
-                    <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                    <ChartPie
-                        data={categoryDistributionData}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={60}
-                        outerRadius={80}
-                        strokeWidth={2}
-                        labelLine
-                        label={renderCustomizedLabel}
-                    />
-                  </PieChart>
-              </ChartContainer>
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                <p>No category data for this period.</p>
-              </div>
-            )
-           }
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Tren Observasi Harian</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            {loading ? <Skeleton className="h-full w-full" /> : (
-              <ChartContainer config={dailyChartConfig} className="h-full w-full">
-                <BarChart data={dailyData} accessibilityLayer>
-                  <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
-                  <ChartYAxis tickLine={false} axisLine={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <ChartLegend />
-                  <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
-                  <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ChartContainer>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-      
-      <div className="grid grid-cols-1 gap-6">
-        <HorizontalBarChartCard
+        <RadialChartCard 
           loading={loading}
-          title="Observasi per Perusahaan"
-          data={companyDistributionData}
-          chartConfig={companyChartConfig}
-          dataKey="value"
-          nameKey="name"
-          color="hsl(var(--chart-1))"
+          value={overviewData.pendingPercentage}
+          count={overviewData.pendingCount}
+          title="Open Status"
+          color="hsl(var(--chart-5))"
         />
-        <HorizontalBarChartCard
+        <RadialChartCard 
           loading={loading}
-          title="Observasi per Lokasi"
-          data={locationDistributionData}
-          chartConfig={locationChartConfig}
-          dataKey="value"
-          nameKey="name"
-          color="hsl(var(--chart-2))"
+          value={criticalPercentageData.percentage}
+          count={criticalPercentageData.count}
+          title="Finding Kritis"
+          color="hsl(var(--destructive))"
         />
-      </div>
-      
-      <Card>
-          <CardHeader>
-            <CardTitle>Detail Risiko</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {loading ? (
-              Array.from({length: 4}).map((_, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-8 w-12" />
-                  <Skeleton className="h-4 flex-1" />
-                  <Skeleton className="h-8 w-12" />
+
+        <div className="md:col-span-2">
+            <Card>
+                <CardHeader>
+                <CardTitle>Distribusi Kategori</CardTitle>
+                </CardHeader>
+                <CardContent>
+                <div className="h-[250px] w-full">
+                {loading ? (
+                    <Skeleton className="h-full w-full rounded-full" />
+                    ) : categoryDistributionData.length > 0 ? (
+                    <ChartContainer
+                        config={categoryChartConfig}
+                        className="h-full w-full"
+                    >
+                        <PieChart>
+                            <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                            <ChartLegend />
+                            <ChartPie
+                                data={categoryDistributionData}
+                                dataKey="value"
+                                nameKey="name"
+                                innerRadius={60}
+                                outerRadius={80}
+                                strokeWidth={2}
+                            />
+                        </PieChart>
+                    </ChartContainer>
+                    ) : (
+                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                        <p>No category data for this period.</p>
+                    </div>
+                    )
+                }
                 </div>
-              ))
-            ) : (
-              riskDetailsData.map((risk) => (
-                <div key={risk.name} className="flex items-center gap-4 text-sm">
-                  <span className="w-24 font-medium">{risk.name}</span>
-                  <Progress value={risk.value} indicatorClassName={risk.className} />
-                  <span className="w-16 text-right font-semibold">{risk.count}</span>
-                </div>
-              ))
-            )}
-          </CardContent>
+                </CardContent>
+            </Card>
+        </div>
+
+        <Card>
+            <CardHeader>
+            <CardTitle>Tren Observasi Harian</CardTitle>
+            </CardHeader>
+            <CardContent>
+            <div className="h-[300px]">
+                {loading ? <Skeleton className="h-full w-full" /> : (
+                <ChartContainer config={dailyChartConfig} className="h-full w-full">
+                    <BarChart data={dailyData} accessibilityLayer>
+                    <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
+                    <ChartYAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend />
+                    <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
+                    <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                </ChartContainer>
+                )}
+            </div>
+            </CardContent>
         </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Detail Risiko</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-2 flex flex-col justify-center h-[300px]">
+                {loading ? (
+                Array.from({length: 4}).map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="h-8 w-12" />
+                    <Skeleton className="h-4 flex-1" />
+                    <Skeleton className="h-8 w-12" />
+                    </div>
+                ))
+                ) : (
+                riskDetailsData.map((risk) => (
+                    <div key={risk.name} className="flex items-center gap-4 text-sm">
+                    <span className="w-24 font-medium">{risk.name}</span>
+                    <Progress value={risk.value} indicatorClassName={risk.className} />
+                    <span className="w-16 text-right font-semibold">{risk.count}</span>
+                    </div>
+                ))
+                )}
+            </CardContent>
+        </Card>
+        
+        <div className="md:col-span-2">
+            <HorizontalBarChartCard
+            loading={loading}
+            title="Observasi per Perusahaan"
+            data={companyDistributionData}
+            chartConfig={companyChartConfig}
+            dataKey="value"
+            nameKey="name"
+            color="hsl(var(--chart-1))"
+            />
+        </div>
+        <div className="md:col-span-2">
+            <HorizontalBarChartCard
+            loading={loading}
+            title="Observasi per Lokasi"
+            data={locationDistributionData}
+            chartConfig={locationChartConfig}
+            dataKey="value"
+            nameKey="name"
+            color="hsl(var(--chart-2))"
+            />
+        </div>
+      </div>
     </div>
   );
 }
