@@ -226,18 +226,6 @@ export default function DashboardPage() {
       count: criticalCount,
     };
   }, [filteredObservations]);
-  
-  const categoryDistributionData = React.useMemo(() => {
-    const counts = filteredObservations.reduce((acc, obs) => {
-      acc[obs.category] = (acc[obs.category] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-  
-    return Object.entries(counts)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-  }, [filteredObservations]);
-
 
   const dailyData = React.useMemo(() => {
     const from = date?.from ? date.from : new Date();
@@ -350,7 +338,7 @@ export default function DashboardPage() {
         </div>
       </div>
       
-      <div className="grid gap-6 sm:grid-cols-2">
+       <div className="grid gap-6 sm:grid-cols-2">
          <RadialChartCard 
           loading={loading}
           value={overviewData.pendingPercentage}
@@ -368,18 +356,18 @@ export default function DashboardPage() {
       </div>
 
        <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+         <Card>
             <CardHeader>
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-[250px] sm:h-[300px] w-full">
+                <div className="h-[250px] w-full">
                 {loading ? (
                     <Skeleton className="h-full w-full" />
                 ) : riskDetailsData.length > 0 ? (
                     <ChartContainer
                         config={riskPieChartConfig}
-                        className="mx-auto h-full w-full"
+                        className="mx-auto aspect-square h-full max-h-[250px]"
                     >
                         <PieChart>
                             <ChartTooltip formatter={(value, name, item) => `${item.payload.count} (${(value as number).toFixed(0)}%)`} content={<ChartTooltipContent nameKey="name" />} />
@@ -387,37 +375,13 @@ export default function DashboardPage() {
                                 data={riskDetailsData}
                                 dataKey="count"
                                 nameKey="name"
-                                innerRadius="30%"
-                                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) => {
-                                  if (percent < 0.05) return null;
-                                  const RADIAN = Math.PI / 180;
-                                  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                                  const riskName = name as RiskLevel;
-                                  return (
-                                    <text
-                                      x={x}
-                                      y={y}
-                                      textAnchor="middle"
-                                      dominantBaseline="central"
-                                      className={cn(
-                                        'text-sm font-semibold',
-                                        riskName === 'Medium' || riskName === 'High'
-                                          ? 'fill-[hsl(var(--card-foreground))]'
-                                          : 'fill-[hsl(var(--primary-foreground))]'
-                                      )}
-                                    >
-                                      {`${(percent * 100).toFixed(0)}%`}
-                                    </text>
-                                  );
-                                }}
+                                innerRadius="60%"
                             >
                               {riskDetailsData.map((entry) => (
                                 <ChartCell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background" />
                               ))}
                             </ChartPie>
-                            <ChartLegend content={<ChartLegendContent />} />
+                            <ChartLegend content={<ChartLegendContent align="center" />} />
                         </PieChart>
                     </ChartContainer>
                 ) : (
@@ -434,14 +398,14 @@ export default function DashboardPage() {
             <CardTitle>Tren Observasi Harian</CardTitle>
             </CardHeader>
             <CardContent>
-            <div className="h-[250px] sm:h-[300px]">
+            <div className="h-[250px] w-full">
                 {loading ? <Skeleton className="h-full w-full" /> : (
                 <ChartContainer config={dailyChartConfig} className="h-full w-full">
                     <BarChart data={dailyData} accessibilityLayer>
                     <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
                     <ChartYAxis tickLine={false} axisLine={false} allowDecimals={false} />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend content={<ChartLegendContent />} />
+                    <ChartLegend content={<ChartLegendContent align="center" />} />
                     <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
                     <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
                     </BarChart>
