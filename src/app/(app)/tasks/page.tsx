@@ -124,12 +124,11 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
             <Skeleton className="h-full w-full" />
           ) : data.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-full w-full">
-              {/* By removing the Y-axis width and letting Recharts calculate it, the chart becomes dynamic. */}
               <BarChart 
                 data={data} 
                 layout="vertical" 
                 accessibilityLayer 
-                margin={{ left: 10, right: 10 }}
+                margin={{ left: 90, right: 10 }}
               >
                 <ChartYAxis
                   dataKey={nameKey}
@@ -290,7 +289,6 @@ export default function DashboardPage() {
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
   
-    // Determine text color based on slice background for better contrast
     const isLight = name === 'Medium' || name === 'Low';
     const textColor = isLight ? 'hsl(var(--card-foreground))' : 'hsl(var(--primary-foreground))';
   
