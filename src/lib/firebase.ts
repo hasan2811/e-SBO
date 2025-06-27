@@ -21,14 +21,6 @@ const firebaseConfig: FirebaseOptions = process.env.NEXT_PUBLIC_FIREBASE_CONFIG
       measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
     };
 
-// Check for missing environment variables to prevent runtime errors.
-if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-  throw new Error(
-    'Firebase config is missing. Make sure you have a .env.local file with all the required NEXT_PUBLIC_FIREBASE_ variables, or that the environment provides them.'
-  );
-}
-
-
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
