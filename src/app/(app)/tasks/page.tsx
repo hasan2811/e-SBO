@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -30,8 +31,6 @@ import {
   ChartYAxis,
   ChartXAxis,
   ChartPolarAngleAxis,
-  ChartLegend,
-  ChartLegendContent,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
@@ -341,8 +340,8 @@ export default function DashboardPage() {
         </div>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2">
-        <RadialChartCard 
+      <div className="grid gap-6 sm:grid-cols-2">
+         <RadialChartCard 
           loading={loading}
           value={overviewData.pendingPercentage}
           count={overviewData.pendingCount}
@@ -356,44 +355,43 @@ export default function DashboardPage() {
           title="Finding Kritis"
           color="hsl(var(--destructive))"
         />
+      </div>
 
-        <div className="md:col-span-2">
-            <Card>
-                <CardHeader>
-                <CardTitle>Distribusi Kategori</CardTitle>
-                </CardHeader>
-                <CardContent>
-                <div className="h-[250px] w-full">
-                {loading ? (
-                    <Skeleton className="h-full w-full rounded-full" />
-                    ) : categoryDistributionData.length > 0 ? (
-                    <ChartContainer
-                        config={categoryChartConfig}
-                        className="h-full w-full"
-                    >
-                        <PieChart>
-                            <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                            <ChartLegend />
-                            <ChartPie
-                                data={categoryDistributionData}
-                                dataKey="value"
-                                nameKey="name"
-                                innerRadius={60}
-                                outerRadius={80}
-                                strokeWidth={2}
-                            />
-                        </PieChart>
-                    </ChartContainer>
-                    ) : (
-                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                        <p>No category data for this period.</p>
-                    </div>
-                    )
-                }
+      <div className="space-y-6">
+        <Card>
+            <CardHeader>
+            <CardTitle>Distribusi Kategori</CardTitle>
+            </CardHeader>
+            <CardContent>
+            <div className="h-[300px] w-full">
+            {loading ? (
+                <Skeleton className="h-full w-full rounded-full" />
+                ) : categoryDistributionData.length > 0 ? (
+                <ChartContainer
+                    config={categoryChartConfig}
+                    className="h-full w-full"
+                >
+                    <PieChart>
+                        <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                        <ChartPie
+                            data={categoryDistributionData}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={50}
+                            labelLine={false}
+                            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                        />
+                    </PieChart>
+                </ChartContainer>
+                ) : (
+                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <p>No category data for this period.</p>
                 </div>
-                </CardContent>
-            </Card>
-        </div>
+                )
+            }
+            </div>
+            </CardContent>
+        </Card>
 
         <Card>
             <CardHeader>
@@ -407,7 +405,6 @@ export default function DashboardPage() {
                     <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
                     <ChartYAxis tickLine={false} axisLine={false} />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend />
                     <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
                     <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -441,29 +438,26 @@ export default function DashboardPage() {
                 )}
             </CardContent>
         </Card>
-        
-        <div className="md:col-span-2">
-            <HorizontalBarChartCard
-            loading={loading}
-            title="Observasi per Perusahaan"
-            data={companyDistributionData}
-            chartConfig={companyChartConfig}
-            dataKey="value"
-            nameKey="name"
-            color="hsl(var(--chart-1))"
-            />
-        </div>
-        <div className="md:col-span-2">
-            <HorizontalBarChartCard
-            loading={loading}
-            title="Observasi per Lokasi"
-            data={locationDistributionData}
-            chartConfig={locationChartConfig}
-            dataKey="value"
-            nameKey="name"
-            color="hsl(var(--chart-2))"
-            />
-        </div>
+
+        <HorizontalBarChartCard
+        loading={loading}
+        title="Observasi per Perusahaan"
+        data={companyDistributionData}
+        chartConfig={companyChartConfig}
+        dataKey="value"
+        nameKey="name"
+        color="hsl(var(--chart-1))"
+        />
+
+        <HorizontalBarChartCard
+        loading={loading}
+        title="Observasi per Lokasi"
+        data={locationDistributionData}
+        chartConfig={locationChartConfig}
+        dataKey="value"
+        nameKey="name"
+        color="hsl(var(--chart-2))"
+        />
       </div>
     </div>
   );
