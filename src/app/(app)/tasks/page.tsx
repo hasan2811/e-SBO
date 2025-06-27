@@ -31,6 +31,7 @@ import {
   ChartYAxis,
   ChartXAxis,
   ChartPolarAngleAxis,
+  ChartLegend,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
@@ -365,7 +366,7 @@ export default function DashboardPage() {
             <CardContent>
             <div className="h-[250px] sm:h-[300px] w-full">
             {loading ? (
-                <Skeleton className="h-full w-full rounded-full" />
+                <Skeleton className="h-full w-full" />
                 ) : categoryDistributionData.length > 0 ? (
                 <ChartContainer
                     config={categoryChartConfig}
@@ -378,9 +379,8 @@ export default function DashboardPage() {
                             dataKey="value"
                             nameKey="name"
                             innerRadius={50}
-                            labelLine={true}
-                            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                         />
+                        <ChartLegend />
                     </PieChart>
                 </ChartContainer>
                 ) : (
@@ -405,6 +405,7 @@ export default function DashboardPage() {
                     <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
                     <ChartYAxis tickLine={false} axisLine={false} />
                     <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend />
                     <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
                     <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
                     </BarChart>
