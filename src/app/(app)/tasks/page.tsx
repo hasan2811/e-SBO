@@ -119,7 +119,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[250px] w-full">
+        <div className="h-[220px] sm:h-[250px] w-full">
           {loading ? (
             <Skeleton className="h-full w-full" />
           ) : data.length > 0 ? (
@@ -128,7 +128,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                 data={data} 
                 layout="vertical" 
                 accessibilityLayer 
-                margin={{ left: 120, right: 10 }}
+                margin={{ left: 140, right: 10 }}
               >
                 <ChartYAxis
                   dataKey={nameKey}
@@ -136,7 +136,8 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                   tickLine={false}
                   axisLine={false}
                   tickMargin={5}
-                  tick={{ fontSize: 12 }}
+                  width={140}
+                  tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
                   interval={0}
                 />
                 <ChartXAxis dataKey={dataKey} type="number" hide />
@@ -282,7 +283,7 @@ export default function DashboardPage() {
 
   const RADIAN = Math.PI / 180;
   const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
-    if (!percent) { 
+    if (!percent || percent < 0.05) { 
       return null;
     }
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -374,7 +375,7 @@ export default function DashboardPage() {
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-[250px] w-full">
+                <div className="h-[220px] sm:h-[250px] w-full">
                 {loading ? (
                     <Skeleton className="h-full w-full" />
                 ) : riskDetailsData.length > 0 ? (
@@ -414,7 +415,7 @@ export default function DashboardPage() {
             <CardTitle>Tren Observasi Harian</CardTitle>
             </CardHeader>
             <CardContent>
-            <div className="h-[250px] w-full">
+            <div className="h-[220px] sm:h-[250px] w-full">
                 {loading ? <Skeleton className="h-full w-full" /> : (
                 <ChartContainer config={dailyChartConfig} className="h-full w-full">
                     <BarChart data={dailyData} accessibilityLayer>
