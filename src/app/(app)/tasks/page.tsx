@@ -118,8 +118,8 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="h-[220px] sm:h-[250px] w-full">
+      <CardContent className="p-4 pt-0">
+        <div className="h-[220px] md:h-[260px] w-full">
           {loading ? (
             <Skeleton className="h-full w-full" />
           ) : data.length > 0 ? (
@@ -128,7 +128,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                 data={data} 
                 layout="vertical" 
                 accessibilityLayer 
-                margin={{ left: 140, right: 10 }}
+                margin={{ left: 80, right: 10 }}
               >
                 <ChartYAxis
                   dataKey={nameKey}
@@ -136,7 +136,6 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                   tickLine={false}
                   axisLine={false}
                   tickMargin={5}
-                  width={140}
                   tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
                   interval={0}
                 />
@@ -149,7 +148,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                   dataKey={dataKey}
                   fill={color}
                   radius={4}
-                  barSize={16}
+                  barSize={14}
                 />
               </BarChart>
             </ChartContainer>
@@ -309,7 +308,7 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -352,7 +351,7 @@ export default function DashboardPage() {
         </div>
       </div>
       
-       <div className="grid gap-6 sm:grid-cols-2">
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
          <RadialChartCard 
           loading={loading}
           value={overviewData.pendingPercentage}
@@ -369,13 +368,13 @@ export default function DashboardPage() {
         />
       </div>
 
-       <div className="grid gap-6 md:grid-cols-2">
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
          <Card>
             <CardHeader>
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-[220px] sm:h-[250px] w-full">
+                <div className="h-[220px] md:h-[260px] w-full">
                 {loading ? (
                     <Skeleton className="h-full w-full" />
                 ) : riskDetailsData.length > 0 ? (
@@ -415,7 +414,7 @@ export default function DashboardPage() {
             <CardTitle>Tren Observasi Harian</CardTitle>
             </CardHeader>
             <CardContent>
-            <div className="h-[220px] sm:h-[250px] w-full">
+            <div className="h-[220px] md:h-[260px] w-full">
                 {loading ? <Skeleton className="h-full w-full" /> : (
                 <ChartContainer config={dailyChartConfig} className="h-full w-full">
                     <BarChart data={dailyData} accessibilityLayer>
