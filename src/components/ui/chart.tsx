@@ -119,7 +119,7 @@ ChartLegend.displayName = "ChartLegend"
 const ChartLegendContent = React.forwardRef<
   HTMLUListElement,
   Omit<React.ComponentProps<"ul">, "name"> & Pick<LegendProps, "payload" | "verticalAlign" | "align"> & { iconSize?: number, nameKey?: string, chartWidth?: number, chartHeight?: number }
->(({ className, payload, verticalAlign, align = "center", iconSize, ...props }, ref) => {
+>(({ className, payload, verticalAlign, align = "center", iconSize, nameKey, chartWidth, chartHeight, ...props }, ref) => {
   const { config } = React.useContext(ChartContext)
 
   if (!config || !payload?.length) {
@@ -511,5 +511,3 @@ export type {
   RadarProps as ChartRadarProps,
   RadialBarProps as ChartRadialBarProps,
 }
-
-    
