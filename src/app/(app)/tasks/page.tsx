@@ -378,7 +378,7 @@ export default function DashboardPage() {
                             dataKey="value"
                             nameKey="name"
                             innerRadius={50}
-                            labelLine={false}
+                            labelLine={true}
                             label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                         />
                     </PieChart>
