@@ -46,15 +46,15 @@ const locationChartConfig = {
 };
 
 const dailyChartConfig = {
-    pending: { label: "Pending", color: "hsl(var(--chart-5))" },
-    completed: { label: "Completed", color: "hsl(var(--chart-2))" },
+    pending: { label: "Pending", color: "hsl(var(--chart-5))", icon: 'circle' },
+    completed: { label: "Completed", color: "hsl(var(--chart-2))", icon: 'circle' },
   };
 
 const riskPieChartConfig = {
-    Low: { label: "Low", color: "hsl(var(--chart-2))" },
-    Medium: { label: "Medium", color: "hsl(var(--chart-4))" },
-    High: { label: "High", color: "hsl(var(--chart-5))" },
-    Critical: { label: "Critical", color: "hsl(var(--destructive))" },
+    Low: { label: "Low", color: "hsl(var(--chart-2))", icon: 'circle' },
+    Medium: { label: "Medium", color: "hsl(var(--chart-4))", icon: 'circle' },
+    High: { label: "High", color: "hsl(var(--chart-5))", icon: 'circle' },
+    Critical: { label: "Critical", color: "hsl(var(--destructive))", icon: 'circle' },
 };
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
@@ -119,7 +119,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[240px] w-full sm:h-[260px]">
+        <div className="h-[250px] w-full">
           {loading ? (
             <Skeleton className="h-full w-full" />
           ) : data.length > 0 ? (
@@ -128,7 +128,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                 data={data} 
                 layout="vertical" 
                 accessibilityLayer 
-                margin={{ left: 90, right: 10 }}
+                margin={{ left: 120, right: 10 }}
               >
                 <ChartYAxis
                   dataKey={nameKey}
@@ -253,7 +253,7 @@ export default function DashboardPage() {
       .map((level) => ({
         name: level,
         count: counts[level] || 0,
-        fill: `var(--color-${level})`
+        fill: riskPieChartConfig[level].color
       }))
       .filter((item) => item.count > 0);
   }, [filteredObservations]);
@@ -282,7 +282,7 @@ export default function DashboardPage() {
 
   const RADIAN = Math.PI / 180;
   const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
-    if (!percent || percent < 0.05) { 
+    if (!percent) { 
       return null;
     }
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -374,7 +374,7 @@ export default function DashboardPage() {
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-[240px] w-full sm:h-[260px]">
+                <div className="h-[250px] w-full">
                 {loading ? (
                     <Skeleton className="h-full w-full" />
                 ) : riskDetailsData.length > 0 ? (
@@ -414,7 +414,7 @@ export default function DashboardPage() {
             <CardTitle>Tren Observasi Harian</CardTitle>
             </CardHeader>
             <CardContent>
-            <div className="h-[240px] w-full sm:h-[260px]">
+            <div className="h-[250px] w-full">
                 {loading ? <Skeleton className="h-full w-full" /> : (
                 <ChartContainer config={dailyChartConfig} className="h-full w-full">
                     <BarChart data={dailyData} accessibilityLayer>
