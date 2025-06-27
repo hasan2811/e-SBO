@@ -362,28 +362,6 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <Card>
             <CardHeader>
-            <CardTitle>Tren Observasi Harian</CardTitle>
-            </CardHeader>
-            <CardContent>
-            <div className="h-[250px] sm:h-[300px]">
-                {loading ? <Skeleton className="h-full w-full" /> : (
-                <ChartContainer config={dailyChartConfig} className="h-full w-full">
-                    <BarChart data={dailyData} accessibilityLayer>
-                    <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
-                    <ChartYAxis tickLine={false} axisLine={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend align="left" />
-                    <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
-                    <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                </ChartContainer>
-                )}
-            </div>
-            </CardContent>
-        </Card>
-        
-        <Card>
-            <CardHeader>
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
             <CardContent>
@@ -402,11 +380,12 @@ export default function DashboardPage() {
                                 dataKey="count"
                                 nameKey="name"
                                 innerRadius={60}
-                                labelLine={false}
-                                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                                labelLine={true}
+                                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) => {
+                                    const RADIAN = Math.PI / 180;
                                     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                                    const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
-                                    const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+                                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
                                     if (percent === 0) return null;
                                     return (
                                     <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-xs font-bold">
@@ -416,10 +395,10 @@ export default function DashboardPage() {
                                 }}
                             >
                               {riskDetailsData.map((entry) => (
-                                <ChartCell key={`cell-${entry.name}`} fill={`var(--color-${entry.name})`} />
+                                <ChartCell key={`cell-${entry.name}`} fill={`var(--color-${entry.name})`} className={cn(`stroke-background`)} />
                               ))}
                             </ChartPie>
-                            <ChartLegend align="left" />
+                            <ChartLegend content={<ChartLegendContent />} />
                         </PieChart>
                     </ChartContainer>
                 ) : (
@@ -431,6 +410,28 @@ export default function DashboardPage() {
             </CardContent>
         </Card>
 
+        <Card>
+            <CardHeader>
+            <CardTitle>Tren Observasi Harian</CardTitle>
+            </CardHeader>
+            <CardContent>
+            <div className="h-[250px] sm:h-[300px]">
+                {loading ? <Skeleton className="h-full w-full" /> : (
+                <ChartContainer config={dailyChartConfig} className="h-full w-full">
+                    <BarChart data={dailyData} accessibilityLayer>
+                    <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
+                    <ChartYAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend />
+                    <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
+                    <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                </ChartContainer>
+                )}
+            </div>
+            </CardContent>
+        </Card>
+        
         <HorizontalBarChartCard
         loading={loading}
         title="Distribusi Kategori"
