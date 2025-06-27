@@ -34,7 +34,6 @@ import {
   ChartLegend,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
 
 const riskLevelConfig: Record<RiskLevel, { color: string, className: string }> = {
   Low: { color: 'hsl(var(--chart-2))', className: 'bg-chart-2' },
@@ -62,6 +61,13 @@ const dailyChartConfig = {
     pending: { label: "Pending", color: "hsl(var(--chart-4))" },
     completed: { label: "Completed", color: "hsl(var(--chart-1))" },
   };
+
+const riskPieChartConfig = {
+    Low: { label: "Low", color: "hsl(var(--chart-2))" },
+    Medium: { label: "Medium", color: "hsl(var(--chart-4))" },
+    High: { label: "High", color: "hsl(var(--chart-5))" },
+    Critical: { label: "Critical", color: "hsl(var(--destructive))" },
+};
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
   const chartConfig = {
@@ -217,16 +223,18 @@ export default function DashboardPage() {
   }, [filteredObservations]);
   
   const categoryDistributionData = React.useMemo(() => {
-      const categoryCounts = filteredObservations.reduce((acc, obs) => {
-        acc[obs.category] = (acc[obs.category] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+    const categoryCounts = filteredObservations.reduce((acc, obs) => {
+      acc[obs.category] = (acc[obs.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
-      return (Object.keys(categoryChartConfig) as string[]).map((category) => ({
+    return (Object.keys(categoryChartConfig) as string[])
+      .map((category) => ({
         name: category,
         value: categoryCounts[category as ObservationCategory] || 0,
-        fill: `var(--color-${category})`,
-      })).filter(item => item.value > 0);
+      }))
+      .filter((item) => item.value > 0)
+      .sort((a, b) => b.value - a.value);
   }, [filteredObservations]);
 
 
@@ -261,18 +269,18 @@ export default function DashboardPage() {
 
 
   const riskDetailsData = React.useMemo(() => {
-    const total = filteredObservations.length;
     const counts = filteredObservations.reduce((acc, obs) => {
       acc[obs.riskLevel] = (acc[obs.riskLevel] || 0) + 1;
       return acc;
     }, {} as Record<RiskLevel, number>);
 
-    return (['Low', 'Medium', 'High', 'Critical'] as RiskLevel[]).map(level => ({
-      name: level,
-      value: total > 0 ? Math.round(((counts[level] || 0) / total) * 100) : 0,
-      count: counts[level] || 0,
-      ...riskLevelConfig[level]
-    }));
+    return (Object.keys(riskPieChartConfig) as RiskLevel[])
+      .map((level) => ({
+        name: level,
+        count: counts[level] || 0,
+        fill: `var(--color-${level})`,
+      }))
+      .filter((item) => item.count > 0);
   }, [filteredObservations]);
   
   const companyDistributionData = React.useMemo(() => {
@@ -361,40 +369,6 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <Card>
             <CardHeader>
-            <CardTitle>Distribusi Kategori</CardTitle>
-            </CardHeader>
-            <CardContent>
-            <div className="h-[250px] sm:h-[300px] w-full">
-            {loading ? (
-                <Skeleton className="h-full w-full" />
-                ) : categoryDistributionData.length > 0 ? (
-                <ChartContainer
-                    config={categoryChartConfig}
-                    className="h-full w-full"
-                >
-                    <PieChart>
-                        <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                        <ChartPie
-                            data={categoryDistributionData}
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius={50}
-                        />
-                        <ChartLegend />
-                    </PieChart>
-                </ChartContainer>
-                ) : (
-                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                    <p>No category data for this period.</p>
-                </div>
-                )
-            }
-            </div>
-            </CardContent>
-        </Card>
-
-        <Card>
-            <CardHeader>
             <CardTitle>Tren Observasi Harian</CardTitle>
             </CardHeader>
             <CardContent>
@@ -419,26 +393,56 @@ export default function DashboardPage() {
             <CardHeader>
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 pt-2 flex flex-col justify-center h-[250px] sm:h-[300px]">
+            <CardContent>
+                <div className="h-[250px] sm:h-[300px] w-full">
                 {loading ? (
-                Array.from({length: 4}).map((_, i) => (
-                    <div key={i} className="flex items-center gap-4">
-                    <Skeleton className="h-8 w-12" />
-                    <Skeleton className="h-4 flex-1" />
-                    <Skeleton className="h-8 w-12" />
-                    </div>
-                ))
+                    <Skeleton className="h-full w-full" />
+                ) : riskDetailsData.length > 0 ? (
+                    <ChartContainer
+                        config={riskPieChartConfig}
+                        className="h-full w-full"
+                    >
+                        <PieChart>
+                            <ChartTooltip formatter={(value, name, item) => `${item.payload.count} (${value.toFixed(0)}%)`} content={<ChartTooltipContent nameKey="name" />} />
+                            <ChartPie
+                                data={riskDetailsData}
+                                dataKey="count"
+                                nameKey="name"
+                                innerRadius={60}
+                                labelLine={false}
+                                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                                    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                                    const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+                                    const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+                                    if (percent === 0) return null;
+                                    return (
+                                    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-xs font-bold">
+                                        {`${(percent * 100).toFixed(0)}%`}
+                                    </text>
+                                    );
+                                }}
+                            />
+                            <ChartLegend />
+                        </PieChart>
+                    </ChartContainer>
                 ) : (
-                riskDetailsData.map((risk) => (
-                    <div key={risk.name} className="flex items-center gap-4 text-sm">
-                    <span className="w-24 font-medium">{risk.name}</span>
-                    <Progress value={risk.value} indicatorClassName={risk.className} />
-                    <span className="w-16 text-right font-semibold">{risk.count}</span>
-                    </div>
-                ))
+                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <p>No risk data for this period.</p>
+                </div>
                 )}
+                </div>
             </CardContent>
         </Card>
+
+        <HorizontalBarChartCard
+        loading={loading}
+        title="Distribusi Kategori"
+        data={categoryDistributionData}
+        chartConfig={categoryChartConfig}
+        dataKey="value"
+        nameKey="name"
+        color="hsl(var(--chart-3))"
+        />
 
         <HorizontalBarChartCard
         loading={loading}
