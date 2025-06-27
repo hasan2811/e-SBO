@@ -32,6 +32,7 @@ import {
   ChartXAxis,
   ChartPolarAngleAxis,
   ChartLegend,
+  ChartCell,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -51,10 +52,7 @@ const locationChartConfig = {
 };
 
 const categoryChartConfig = {
-    Structural: { label: "Structural", color: "hsl(var(--chart-1))" },
-    Electrical: { label: "Electrical", color: "hsl(var(--chart-2))" },
-    Plumbing: { label: "Plumbing", color: "hsl(var(--chart-3))" },
-    General: { label: "General", color: "hsl(var(--chart-4))" },
+    value: { label: "Observations", color: "hsl(var(--chart-3))" },
   };
 
 const dailyChartConfig = {
@@ -223,17 +221,13 @@ export default function DashboardPage() {
   }, [filteredObservations]);
   
   const categoryDistributionData = React.useMemo(() => {
-    const categoryCounts = filteredObservations.reduce((acc, obs) => {
+    const counts = filteredObservations.reduce((acc, obs) => {
       acc[obs.category] = (acc[obs.category] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-
-    return (Object.keys(categoryChartConfig) as string[])
-      .map((category) => ({
-        name: category,
-        value: categoryCounts[category as ObservationCategory] || 0,
-      }))
-      .filter((item) => item.value > 0)
+  
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
   }, [filteredObservations]);
 
@@ -278,7 +272,6 @@ export default function DashboardPage() {
       .map((level) => ({
         name: level,
         count: counts[level] || 0,
-        fill: `var(--color-${level})`,
       }))
       .filter((item) => item.count > 0);
   }, [filteredObservations]);
@@ -379,7 +372,7 @@ export default function DashboardPage() {
                     <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
                     <ChartYAxis tickLine={false} axisLine={false} />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend />
+                    <ChartLegend align="left" />
                     <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
                     <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -421,8 +414,12 @@ export default function DashboardPage() {
                                     </text>
                                     );
                                 }}
-                            />
-                            <ChartLegend />
+                            >
+                              {riskDetailsData.map((entry) => (
+                                <ChartCell key={`cell-${entry.name}`} fill={`var(--color-${entry.name})`} />
+                              ))}
+                            </ChartPie>
+                            <ChartLegend align="left" />
                         </PieChart>
                     </ChartContainer>
                 ) : (

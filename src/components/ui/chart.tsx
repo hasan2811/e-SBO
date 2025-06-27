@@ -1,9 +1,11 @@
+
 "use client"
 
 import * as React from "react"
 import {
   Area,
   Bar,
+  Cell as CellPrimitive,
   Line,
   Pie,
   Radar,
@@ -116,8 +118,8 @@ ChartLegend.displayName = "ChartLegend"
 
 const ChartLegendContent = React.forwardRef<
   HTMLUListElement,
-  React.ComponentProps<"ul"> & Pick<LegendProps, "payload" | "verticalAlign"> & { iconSize?: number, chartWidth?: number, chartHeight?: number }
->(({ className, payload, verticalAlign, iconSize, chartWidth, chartHeight, ...props }, ref) => {
+  React.ComponentProps<"ul"> & Pick<LegendProps, "payload" | "verticalAlign" | "align"> & { iconSize?: number, chartWidth?: number, chartHeight?: number }
+>(({ className, payload, verticalAlign, align = "center", iconSize, chartWidth, chartHeight, ...props }, ref) => {
   const { config } = React.useContext(ChartContext)
 
   if (!config || !payload?.length) {
@@ -128,8 +130,11 @@ const ChartLegendContent = React.forwardRef<
     <ul
       ref={ref}
       className={cn(
-        "flex items-center justify-center gap-x-4",
+        "flex items-center gap-x-4",
         verticalAlign === "top" ? "flex-row" : "flex-col",
+        align === "left" && "justify-start",
+        align === "center" && "justify-center",
+        align === "right" && "justify-end",
         className
       )}
       {...props}
@@ -465,6 +470,7 @@ const ChartPie = Pie
 const ChartRadar = Radar
 const ChartRadialBar = RadialBar
 const ChartPolarAngleAxis = PolarAngleAxis
+const ChartCell = CellPrimitive
 // #endregion
 
 export {
@@ -494,6 +500,7 @@ export {
   ChartRadar,
   ChartRadialBar,
   ChartPolarAngleAxis,
+  ChartCell,
 }
 export type {
   ChartContainerSettings,
