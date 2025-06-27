@@ -1,2 +1,2 @@
-// This file is no longer needed as its logic has been moved to the new layout structure.
+// This file is no longer needed and has been left blank to clean up the project.
 export {};

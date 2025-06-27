@@ -1,3 +1,2 @@
-// This component has been replaced by the observation detail page
-// at /app/(app)/observation/[id]/page.tsx and is no longer used.
+// This component has been replaced by the observation detail page and is no longer in use.
 export {};
