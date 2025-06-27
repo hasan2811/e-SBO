@@ -51,10 +51,10 @@ const dailyChartConfig = {
   };
 
 const riskPieChartConfig = {
-    Low: { label: "Low", color: "hsl(var(--chart-2))", icon: CheckCircle },
-    Medium: { label: "Medium", color: "hsl(var(--chart-4))", icon: CheckCircle },
-    High: { label: "High", color: "hsl(var(--chart-5))", icon: CheckCircle },
-    Critical: { label: "Critical", color: "hsl(var(--destructive))", icon: CheckCircle },
+    Low: { label: "Low", color: "hsl(var(--chart-2))" },
+    Medium: { label: "Medium", color: "hsl(var(--chart-4))" },
+    High: { label: "High", color: "hsl(var(--chart-5))" },
+    Critical: { label: "Critical", color: "hsl(var(--destructive))" },
 };
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
@@ -113,8 +113,6 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
 
 
 const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, nameKey, color }: { loading: boolean; title: string; data: any[]; chartConfig: any; dataKey: string; nameKey: string; color: string; }) => {
-  const chartHeight = React.useMemo(() => Math.max(150, data.length * 40), [data.length]);
-
   return (
     <Card>
       <CardHeader>
@@ -126,21 +124,21 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
             <Skeleton className="h-full w-full" />
           ) : data.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-full w-full">
-              <BarChart data={data} layout="vertical" accessibilityLayer margin={{ left: 10, right: 10, top: 10, bottom: 10 }}>
+              {/* By removing the Y-axis width and letting Recharts calculate it, the chart becomes dynamic. */}
+              <BarChart 
+                data={data} 
+                layout="vertical" 
+                accessibilityLayer 
+                margin={{ left: 10, right: 10 }}
+              >
                 <ChartYAxis
                   dataKey={nameKey}
                   type="category"
                   tickLine={false}
                   axisLine={false}
                   tickMargin={5}
-                  className="text-xs truncate"
-                  width={60}
-                   tickFormatter={(value) => {
-                    if (typeof value === 'string' && value.length > 8) {
-                      return `${value.substring(0, 8)}...`;
-                    }
-                    return value;
-                  }}
+                  tick={{ fontSize: 12 }}
+                  interval={0}
                 />
                 <ChartXAxis dataKey={dataKey} type="number" hide />
                 <ChartTooltip
@@ -285,16 +283,17 @@ export default function DashboardPage() {
 
   const RADIAN = Math.PI / 180;
   const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
-    if (percent < 0.05) { 
+    if (!percent || percent < 0.05) { 
       return null;
     }
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
+  
+    // Determine text color based on slice background for better contrast
     const isLight = name === 'Medium' || name === 'Low';
     const textColor = isLight ? 'hsl(var(--card-foreground))' : 'hsl(var(--primary-foreground))';
-
+  
     return (
       <text
         x={x}
@@ -383,7 +382,7 @@ export default function DashboardPage() {
                 ) : riskDetailsData.length > 0 ? (
                     <ChartContainer
                         config={riskPieChartConfig}
-                        className="mx-auto aspect-square h-full max-w-full"
+                        className="mx-auto aspect-square h-full"
                     >
                         <PieChart>
                             <ChartTooltip formatter={(value, name, item) => `${item.payload.count} (${(value as number).toFixed(0)}%)`} content={<ChartTooltipContent nameKey="name" />} />
@@ -457,5 +456,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
