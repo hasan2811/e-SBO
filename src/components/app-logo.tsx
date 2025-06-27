@@ -19,7 +19,7 @@ export function AppLogo({ className }: AppLogoProps) {
       strokeLinejoin="round"
       className={cn('h-8 w-8 text-primary', className)}
     >
-      <title>InspectWise Logo</title>
+      <title>HSSE Tech Logo</title>
       <path d="M12 2L2 6v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-10-4z" />
       <path d="m9 12 2 2 4-4" />
     </svg>

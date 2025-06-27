@@ -18,6 +18,7 @@ import { Skeleton } from './ui/skeleton';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from './ui/separator';
 
 export function UserAccountSheet() {
   const { user, userProfile, loading: authLoading, signInWithGoogle, logout, updateUserProfile } = useAuth();
@@ -150,6 +151,17 @@ export function UserAccountSheet() {
               <p className="text-muted-foreground">You are not signed in.</p>
             </div>
           )}
+          <Separator className="my-6" />
+            <div className="text-center text-xs text-muted-foreground space-y-1">
+                <p className="font-semibold text-sm text-foreground">HSSE Tech v1.001</p>
+                <div className="pt-2">
+                <p>Copyright © 2025 CV Arzan Sirah Persada</p>
+                <p>All rights reserved.</p>
+                </div>
+                <div className="pt-2">
+                <p>Design by: Arzan (+971502861769)</p>
+                </div>
+            </div>
         </div>
         <SheetFooter className="mt-auto">
             {user ? (

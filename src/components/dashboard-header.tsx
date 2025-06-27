@@ -19,7 +19,7 @@ export function DashboardHeader({ onAddNew }: DashboardHeaderProps) {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <AppLogo />
-              <h1 className="text-2xl font-bold ml-3 text-foreground">InspectWise</h1>
+              <h1 className="text-2xl font-bold ml-3 text-foreground">HSSE Tech</h1>
             </div>
             <div className="flex items-center gap-4">
                <div className="hidden md:block">

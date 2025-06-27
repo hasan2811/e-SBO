@@ -8,8 +8,8 @@ import '@/app/globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'InspectWise Dashboard',
-  description: 'Dashboard for viewing and managing HSSE observation data.',
+  title: 'HSSE Tech',
+  description: 'HSSE Observation and Analysis Platform',
   manifest: '/manifest.json',
   icons: {
     icon: '/logo.svg',
