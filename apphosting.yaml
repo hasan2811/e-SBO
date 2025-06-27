@@ -1,6 +1,8 @@
 # This file is for Firebase App Hosting.
 runConfig:
   maxInstances: 1
+  location: asia-east1
+
 # Secrets are stored securely in Google Secret Manager.
 # This section defines the secrets that App Hosting needs access to.
 # You can manage these secrets in the App Hosting settings page.
