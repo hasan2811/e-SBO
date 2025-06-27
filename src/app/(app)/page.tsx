@@ -5,7 +5,7 @@ import { useObservations } from '@/contexts/observation-context';
 import type { Observation, RiskLevel } from '@/lib/types';
 import { RiskBadge, StatusBadge } from '@/components/status-badges';
 import { format, isToday, isYesterday, subDays, addDays } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id as indonesianLocale } from 'date-fns/locale';
 import { FileText, ChevronRight, ChevronLeft, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -81,9 +81,9 @@ export default function JurnalPage() {
   }, [observations, selectedDate]);
   
   const formatDateDisplay = (date: Date): string => {
-    if (isToday(date)) return `Hari ini, ${format(date, "eeee, d MMMM yyyy", { locale: id })}`;
-    if (isYesterday(date)) return `Kemarin, ${format(date, "eeee, d MMMM yyyy", { locale: id })}`;
-    return format(date, "eeee, d MMMM yyyy", { locale: id });
+    if (isToday(date)) return `Hari ini, ${format(date, "eeee, d MMMM yyyy", { locale: indonesianLocale })}`;
+    if (isYesterday(date)) return `Kemarin, ${format(date, "eeee, d MMMM yyyy", { locale: indonesianLocale })}`;
+    return format(date, "eeee, d MMMM yyyy", { locale: indonesianLocale });
   };
 
 
