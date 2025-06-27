@@ -7,6 +7,17 @@ const withPWA = require('@ducanh2912/next-pwa').default({
   disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
     {
+      urlPattern: ({ request }) => request.mode === 'navigate',
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'pages',
+        expiration: {
+          maxEntries: 64,
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+        },
+      },
+    },
+    {
       urlPattern: ({ request }) => {
         return request.destination === 'style' || request.destination === 'script' || request.destination === 'worker';
       },
