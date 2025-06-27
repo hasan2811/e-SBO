@@ -61,7 +61,7 @@ const dailyChartConfig = {
     completed: { label: "Completed", color: "hsl(var(--chart-1))" },
   };
 
-const riskPieChartConfig = {
+const riskPieChartConfig: any = {
     Low: { label: "Low", color: "hsl(var(--chart-2))" },
     Medium: { label: "Medium", color: "hsl(var(--chart-4))" },
     High: { label: "High", color: "hsl(var(--chart-5))" },
@@ -367,13 +367,13 @@ export default function DashboardPage() {
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-[250px] sm:h-[300px] w-full">
+                <div className="h-[240px] sm:h-[280px] w-full">
                 {loading ? (
                     <Skeleton className="h-full w-full" />
                 ) : riskDetailsData.length > 0 ? (
                     <ChartContainer
                         config={riskPieChartConfig}
-                        className="h-full w-full"
+                        className="mx-auto aspect-square h-full"
                     >
                         <PieChart>
                             <ChartTooltip formatter={(value, name, item) => `${item.payload.count} (${(value as number).toFixed(0)}%)`} content={<ChartTooltipContent nameKey="name" />} />
@@ -384,19 +384,12 @@ export default function DashboardPage() {
                                 innerRadius="30%"
                                 labelLine={false}
                                 label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) => {
-                                  // Hide label for small slices to avoid clutter
-                                  if ((percent * 100) < 5) {
-                                    return null;
-                                  }
-
+                                  if (percent < 0.05) return null;
                                   const RADIAN = Math.PI / 180;
-                                  // Calculate the position for the label inside the slice
                                   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
                                   const x = cx + radius * Math.cos(-midAngle * RADIAN);
                                   const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
                                   const riskName = name as RiskLevel;
-
                                   return (
                                     <text
                                       x={x}
@@ -405,7 +398,6 @@ export default function DashboardPage() {
                                       dominantBaseline="central"
                                       className={cn(
                                         'text-sm font-semibold',
-                                        // Dynamic color for better contrast
                                         riskName === 'Medium' || riskName === 'High'
                                           ? 'fill-[hsl(var(--card-foreground))]'
                                           : 'fill-[hsl(var(--primary-foreground))]'
@@ -420,7 +412,7 @@ export default function DashboardPage() {
                                 <ChartCell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background" />
                               ))}
                             </ChartPie>
-                            <ChartLegend content={<ChartLegendContent align="center" />} />
+                            <ChartLegend content={<ChartLegendContent nameKey="name" align="center" />} />
                         </PieChart>
                     </ChartContainer>
                 ) : (
@@ -437,7 +429,7 @@ export default function DashboardPage() {
             <CardTitle>Tren Observasi Harian</CardTitle>
             </CardHeader>
             <CardContent>
-            <div className="h-[250px] sm:h-[300px]">
+            <div className="h-[240px] sm:h-[280px]">
                 {loading ? <Skeleton className="h-full w-full" /> : (
                 <ChartContainer config={dailyChartConfig} className="h-full w-full">
                     <BarChart data={dailyData} accessibilityLayer>
