@@ -1,14 +1,37 @@
 /** @type {import('next').NextConfig} */
 
-const runtimeCaching = require("@ducanh2912/next-pwa/cache");
-
 const withPWA = require('@ducanh2912/next-pwa').default({
   dest: 'public',
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
-    ...runtimeCaching,
+    {
+      urlPattern: ({ request }) => {
+        return request.destination === 'style' || request.destination === 'script' || request.destination === 'worker';
+      },
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'static-resources',
+        expiration: {
+          maxEntries: 64,
+          maxAgeSeconds: 24 * 60 * 60, // 24 hours
+        },
+      },
+    },
+    {
+      urlPattern: ({ request }) => {
+        return request.destination === 'image';
+      },
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'images',
+        expiration: {
+          maxEntries: 64,
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+        },
+      },
+    },
     {
       urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
       handler: 'CacheFirst',
