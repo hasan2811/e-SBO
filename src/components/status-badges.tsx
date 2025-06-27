@@ -16,13 +16,11 @@ export const RiskBadge = ({ riskLevel }: { riskLevel: RiskLevel }) => {
 };
 
 export const StatusBadge = ({ status }: { status: Observation['status'] }) => {
-  const variant: 'default' | 'secondary' | 'destructive' | 'outline' =
-    status === 'Completed'
-      ? 'default'
-      : status === 'In Progress'
-      ? 'secondary'
-      : status === 'Pending'
-      ? 'destructive'
-      : 'outline';
-  return <Badge variant={variant}>{status}</Badge>;
+   const statusStyles: Record<Observation['status'], string> = {
+    Pending: 'bg-chart-5/80 border-transparent text-secondary-foreground hover:bg-chart-5/70',
+    'In Progress': 'bg-chart-4/80 border-transparent text-secondary-foreground hover:bg-chart-4/70',
+    Completed: 'bg-chart-2/80 border-transparent text-primary-foreground hover:bg-chart-2/70',
+  };
+  
+  return <Badge className={cn('font-semibold', statusStyles[status])}>{status}</Badge>;
 };

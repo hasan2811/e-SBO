@@ -3,32 +3,48 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useObservations } from '@/contexts/observation-context';
-import type { Observation } from '@/lib/types';
-import { RiskBadge } from '@/components/status-badges';
-import { format, subDays, addDays, isToday, isYesterday } from 'date-fns';
+import type { Observation, RiskLevel } from '@/lib/types';
+import { RiskBadge, StatusBadge } from '@/components/status-badges';
+import { format, isToday, isYesterday, subDays, addDays } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { FileText, ChevronRight, ChevronLeft } from 'lucide-react';
+import { FileText, ChevronRight, ChevronLeft, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+
+
+const riskColorMap: Record<RiskLevel, string> = {
+  Critical: 'bg-destructive',
+  High: 'bg-chart-5',
+  Medium: 'bg-chart-4',
+  Low: 'bg-chart-2',
+};
 
 const ObservationListItem = ({ observation }: { observation: Observation }) => {
+  const riskColor = riskColorMap[observation.riskLevel] || 'bg-muted';
+  
   return (
     <li>
-      <Link href={`/observation/${observation.id}`} className="flex items-center bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer">
-        <div className="flex-1 space-y-1 pr-4">
+      <Link href={`/observation/${observation.id}`} className="relative flex items-center bg-card p-4 pl-6 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
+        <div className={cn("absolute left-0 top-0 h-full w-2", riskColor)} />
+        <div className="flex-1 space-y-2 pr-4">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{format(new Date(observation.date), 'HH:mm')}</span> - {observation.category}
           </p>
           <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <StatusBadge status={observation.status} />
             <RiskBadge riskLevel={observation.riskLevel} />
             <span className="text-xs text-muted-foreground">{observation.company}</span>
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="hidden sm:flex items-center justify-center h-12 w-12 rounded-full bg-primary/10">
-            <FileText className="h-6 w-6 text-primary" />
-          </div>
+        <div className="ml-auto flex items-center">
           <ChevronRight className="h-6 w-6 text-muted-foreground" />
         </div>
       </Link>
@@ -38,22 +54,23 @@ const ObservationListItem = ({ observation }: { observation: Observation }) => {
 
 export default function JurnalPage() {
   const { observations, loading } = useObservations();
-  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
 
   const handlePreviousDay = () => {
-    setSelectedDate(subDays(selectedDate, 1));
+    if (selectedDate) {
+      setSelectedDate(subDays(selectedDate, 1));
+    }
   };
 
   const handleNextDay = () => {
-    if (!isToday(selectedDate)) {
+    if (selectedDate && !isToday(selectedDate)) {
        setSelectedDate(addDays(selectedDate, 1));
     }
   };
 
   const filteredObservations = React.useMemo(() => {
-    if (!selectedDate) {
-      return [];
-    }
+    if (!selectedDate) return [];
+    
     const startOfDay = new Date(selectedDate);
     startOfDay.setHours(0, 0, 0, 0);
 
@@ -67,14 +84,14 @@ export default function JurnalPage() {
   }, [observations, selectedDate]);
   
   const formatDateDisplay = (date: Date): string => {
-    const dayAndDateString = format(date, "eeee, d MMMM yyyy", { locale: id });
-    if (isToday(date)) return `Hari ini, ${dayAndDateString}`;
-    if (isYesterday(date)) return `Kemarin, ${dayAndDateString}`;
-    return dayAndDateString;
+    if (isToday(date)) return `Hari ini, ${format(date, "eeee, d MMMM yyyy", { locale: id })}`;
+    if (isYesterday(date)) return `Kemarin, ${format(date, "eeee, d MMMM yyyy", { locale: id })}`;
+    return format(date, "eeee, d MMMM yyyy", { locale: id });
   };
 
+
   return (
-    <div className="space-y-6">
+     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight">
           Jurnal Observasi
@@ -84,13 +101,27 @@ export default function JurnalPage() {
               <ChevronLeft className="h-5 w-5" />
             </Button>
             
-            <div
-              className="flex items-center justify-center h-9 w-full flex-1 px-2 text-center font-semibold text-sm whitespace-nowrap"
-            >
-              {formatDateDisplay(selectedDate)}
-            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"ghost"}
+                  className="h-9 flex-1 px-2 text-center font-semibold text-sm whitespace-nowrap"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? formatDateDisplay(selectedDate) : <span>Pilih tanggal</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
 
-            <Button variant="ghost" size="icon" onClick={handleNextDay} disabled={isToday(selectedDate)} className="h-9 w-9 flex-shrink-0" aria-label="Next Day">
+            <Button variant="ghost" size="icon" onClick={handleNextDay} disabled={isToday(selectedDate || new Date())} className="h-9 w-9 flex-shrink-0" aria-label="Next Day">
               <ChevronRight className="h-5 w-5" />
             </Button>
         </div>
@@ -99,10 +130,10 @@ export default function JurnalPage() {
       <main>
         {loading ? (
           <ul className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: 5 }).map((_, i) => (
               <li key={i}>
-                <div className="flex items-center bg-card p-4 rounded-lg shadow-sm">
-                  <div className="flex-1 space-y-2 pr-4">
+                <div className="flex items-center bg-card p-4 rounded-lg shadow-sm h-[118px]">
+                  <div className="flex-1 space-y-3">
                     <Skeleton className="h-4 w-1/3" />
                     <Skeleton className="h-5 w-full" />
                     <Skeleton className="h-5 w-2/3" />
