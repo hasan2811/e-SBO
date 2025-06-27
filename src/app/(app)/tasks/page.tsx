@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -67,12 +66,12 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
   const chartData = [{ name: title, value, fill: 'var(--color-metric)' }];
 
   return (
-    <Card>
+    <Card className="col-span-1 lg:col-span-1">
       <CardHeader className="items-center pb-2">
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
-        <div className="relative mx-auto aspect-square h-full max-h-[200px]">
+        <div className="relative mx-auto aspect-square h-full max-h-[180px] sm:max-h-[200px]">
             <ChartContainer
               config={chartConfig}
               className="h-full w-full"
@@ -114,21 +113,21 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
 
 const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, nameKey, color }: { loading: boolean; title: string; data: any[]; chartConfig: any; dataKey: string; nameKey: string; color: string; }) => {
   return (
-    <Card>
+    <Card className="col-span-1 lg:col-span-1">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <div className="h-[220px] md:h-[260px] w-full">
+      <CardContent className="p-0 sm:p-4 sm:pt-0">
+        <div className="h-[250px] sm:h-[280px] w-full">
           {loading ? (
             <Skeleton className="h-full w-full" />
           ) : data.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-full w-full">
-              <BarChart 
-                data={data} 
-                layout="vertical" 
-                accessibilityLayer 
-                margin={{ left: 80, right: 10 }}
+              <BarChart
+                data={data}
+                layout="vertical"
+                accessibilityLayer
+                margin={{ left: 20, right: 10 }}
               >
                 <ChartYAxis
                   dataKey={nameKey}
@@ -136,7 +135,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                   tickLine={false}
                   axisLine={false}
                   tickMargin={5}
-                  tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
+                  tick={{ fontSize: 12, fill: "hsl(var(--foreground))" }}
                   interval={0}
                 />
                 <ChartXAxis dataKey={dataKey} type="number" hide />
@@ -148,7 +147,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                   dataKey={dataKey}
                   fill={color}
                   radius={4}
-                  barSize={14}
+                  barSize={12}
                 />
               </BarChart>
             </ChartContainer>
@@ -285,7 +284,7 @@ export default function DashboardPage() {
     if (!percent || percent < 0.05) { 
       return null;
     }
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.7;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
   
@@ -299,7 +298,7 @@ export default function DashboardPage() {
         fill={textColor}
         textAnchor="middle"
         dominantBaseline="central"
-        className="text-sm font-semibold"
+        className="text-xs font-semibold"
       >
         {`${(percent * 100).toFixed(0)}%`}
       </text>
@@ -368,13 +367,13 @@ export default function DashboardPage() {
         />
       </div>
 
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-         <Card>
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         <Card className="col-span-1 lg:col-span-1">
             <CardHeader>
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-[220px] md:h-[260px] w-full">
+                <div className="h-[250px] sm:h-[280px] w-full">
                 {loading ? (
                     <Skeleton className="h-full w-full" />
                 ) : riskDetailsData.length > 0 ? (
@@ -388,8 +387,8 @@ export default function DashboardPage() {
                                 data={riskDetailsData}
                                 dataKey="count"
                                 nameKey="name"
-                                innerRadius="65%"
-                                outerRadius="95%"
+                                innerRadius="55%"
+                                outerRadius="90%"
                                 labelLine={false}
                                 label={renderCustomizedLabel}
                             >
@@ -409,12 +408,12 @@ export default function DashboardPage() {
             </CardContent>
         </Card>
         
-        <Card>
+        <Card className="col-span-1 lg:col-span-1">
             <CardHeader>
             <CardTitle>Tren Observasi Harian</CardTitle>
             </CardHeader>
             <CardContent>
-            <div className="h-[220px] md:h-[260px] w-full">
+            <div className="h-[250px] sm:h-[280px] w-full">
                 {loading ? <Skeleton className="h-full w-full" /> : (
                 <ChartContainer config={dailyChartConfig} className="h-full w-full">
                     <BarChart data={dailyData} accessibilityLayer>
