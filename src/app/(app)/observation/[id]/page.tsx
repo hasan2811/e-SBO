@@ -10,6 +10,7 @@ import { RiskBadge, StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, ArrowLeft } from 'lucide-react';
 
 export default function ObservationDetailPage() {
@@ -144,32 +145,43 @@ export default function ObservationDetailPage() {
                     )}
 
                     {observation.aiStatus === 'completed' && (
-                      <>
+                       <Accordion type="multiple" defaultValue={['summary']} className="w-full">
                         {observation.aiSummary && (
-                          <div className="space-y-1">
-                            <h5 className="font-semibold text-sm flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                              Summary
-                            </h5>
-                            <p className="text-sm text-muted-foreground pl-6">{observation.aiSummary}</p>
-                          </div>
+                          <AccordionItem value="summary">
+                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                Summary
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2">
+                              <p className="text-sm text-muted-foreground pl-8">{observation.aiSummary}</p>
+                            </AccordionContent>
+                          </AccordionItem>
                         )}
                         {observation.aiRisks && (
-                          <div className="space-y-1">
-                            <h5 className="font-semibold text-sm flex items-center gap-2">
+                          <AccordionItem value="risks">
+                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                              <div className="flex items-center gap-2">
                                 <ShieldAlert className="h-4 w-4 text-destructive" />
                                 Potential Risks
-                            </h5>
-                            <p className="text-sm text-muted-foreground whitespace-pre-line pl-6">{observation.aiRisks}</p>
-                          </div>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2">
+                              <p className="text-sm text-muted-foreground whitespace-pre-line pl-8">{observation.aiRisks}</p>
+                            </AccordionContent>
+                          </AccordionItem>
                         )}
                         {observation.aiSuggestedActions && (
-                            <div className="space-y-1">
-                              <h5 className="font-semibold text-sm flex items-center gap-2">
-                                <ListChecks className="h-4 w-4 text-green-600" />
-                                Suggested Actions
-                              </h5>
-                              <div className="pl-6 space-y-1">
+                          <AccordionItem value="actions">
+                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                                <div className="flex items-center gap-2">
+                                  <ListChecks className="h-4 w-4 text-green-600" />
+                                  Suggested Actions
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2">
+                              <div className="pl-8 space-y-2">
                                 {observation.aiSuggestedActions.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((action, index) => (
                                   <div key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
                                     <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
@@ -177,18 +189,23 @@ export default function ObservationDetailPage() {
                                   </div>
                                 ))}
                               </div>
-                            </div>
-                          )}
-                        {observation.aiRelevantRegulations && (
-                          <div className="space-y-1">
-                            <h5 className="font-semibold text-sm flex items-center gap-2">
-                              <Gavel className="h-4 w-4 text-muted-foreground" />
-                              Relevant Regulations & Procedures
-                            </h5>
-                            <p className="text-sm text-muted-foreground whitespace-pre-line pl-6">{observation.aiRelevantRegulations}</p>
-                          </div>
+                            </AccordionContent>
+                          </AccordionItem>
                         )}
-                      </>
+                        {observation.aiRelevantRegulations && (
+                          <AccordionItem value="regulations" className="border-b-0">
+                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                               <div className="flex items-center gap-2">
+                                <Gavel className="h-4 w-4 text-muted-foreground" />
+                                Relevant Regulations
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2">
+                              <p className="text-sm text-muted-foreground whitespace-pre-line pl-8">{observation.aiRelevantRegulations}</p>
+                            </AccordionContent>
+                          </AccordionItem>
+                        )}
+                      </Accordion>
                     )}
                  </div>
               </div>
