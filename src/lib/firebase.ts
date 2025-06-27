@@ -5,19 +5,19 @@ import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD-P_1XOQ9xQOgxwMApClEFoqHcxs7fYPI",
-  authDomain: "hssetech-e1710.firebaseapp.com",
-  projectId: "hssetech-e1710",
-  storageBucket: "hssetech-e1710.firebasestorage.app",
-  messagingSenderId: "789147047426",
-  appId: "1:789147047426:web:7a37fdc4adfb51905bb91b",
-  measurementId: "G-X84C2SP8MH"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyD-P_1XOQ9xQOgxwMApClEFoqHcxs7fYPI",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "hssetech-e1710.firebaseapp.com",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "hssetech-e1710",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "hssetech-e1710.firebasestorage.app",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "789147047426",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:789147047426:web:7a37fdc4adfb51905bb91b",
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-X84C2SP8MH"
 };
 
 // Check for missing environment variables to prevent runtime errors.
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
   throw new Error(
-    'Firebase config is missing. Make sure you have a .env file with all the required NEXT_PUBLIC_FIREBASE_ variables.'
+    'Firebase config is missing. Make sure you have a .env.local file with all the required NEXT_PUBLIC_FIREBASE_ variables, or that the environment provides them.'
   );
 }
 
