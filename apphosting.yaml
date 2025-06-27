@@ -1,7 +1,6 @@
 # This file is for Firebase App Hosting.
 runConfig:
   maxInstances: 1
-  location: asia-east1
 
 # This is the master list of secrets. App Hosting makes these secrets available
 # as environment variables to both the build process and the runtime environment.
