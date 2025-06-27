@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import {
   getAuth,
   onAuthStateChanged,
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
@@ -103,9 +103,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Error signing in with Google: ', error);
       throw error;
     }
-  };
+  }, []);
 
-  const signUpWithEmailAndPasswordHandler = async ({ email, password, displayName }: SignUpInput) => {
+  const signUpWithEmailAndPasswordHandler = useCallback(async ({ email, password, displayName }: SignUpInput) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -125,18 +125,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Error signing up: ', error);
       throw error;
     }
-  };
+  }, []);
 
-  const signInWithEmailAndPasswordHandler = async ({ email, password }: SignInInput) => {
+  const signInWithEmailAndPasswordHandler = useCallback(async ({ email, password }: SignInInput) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
       console.error('Error signing in: ', error);
       throw error;
     }
-  };
+  }, []);
   
-  const handleUpdateUserProfile = async (uid: string, data: Partial<Pick<UserProfile, 'displayName' | 'position'>>) => {
+  const handleUpdateUserProfile = useCallback(async (uid: string, data: Partial<Pick<UserProfile, 'displayName' | 'position'>>) => {
     if (!auth.currentUser || auth.currentUser.uid !== uid) {
       throw new Error("Permission denied.");
     }
@@ -150,17 +150,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Refresh local state to reflect changes immediately
     setUserProfile(prev => prev ? { ...prev, ...data } as UserProfile : null);
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await signOut(auth);
     } catch (error) {
       console.error('Error signing out: ', error);
     }
-  };
+  }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     userProfile,
     loading,
@@ -169,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithEmailAndPassword: signInWithEmailAndPasswordHandler,
     updateUserProfile: handleUpdateUserProfile,
     logout,
-  };
+  }), [user, userProfile, loading, signInWithGoogle, signUpWithEmailAndPasswordHandler, signInWithEmailAndPasswordHandler, handleUpdateUserProfile, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
