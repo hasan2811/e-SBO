@@ -62,10 +62,10 @@ const dailyChartConfig = {
   };
 
 const riskPieChartConfig: any = {
-    Low: { label: "Low", color: "hsl(var(--chart-2))" },
-    Medium: { label: "Medium", color: "hsl(var(--chart-4))" },
-    High: { label: "High", color: "hsl(var(--chart-5))" },
-    Critical: { label: "Critical", color: "hsl(var(--destructive))" },
+    Low: { label: "Low", color: "var(--color-Low)" },
+    Medium: { label: "Medium", color: "var(--color-Medium)" },
+    High: { label: "High", color: "var(--color-High)" },
+    Critical: { label: "Critical", color: "var(--color-Critical)" },
 };
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
@@ -273,7 +273,7 @@ export default function DashboardPage() {
       .map((level) => ({
         name: level,
         count: counts[level] || 0,
-        fill: `var(--color-${level})`
+        fill: riskLevelConfig[level].color
       }))
       .filter((item) => item.count > 0);
   }, [filteredObservations]);
@@ -367,7 +367,7 @@ export default function DashboardPage() {
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-[220px] sm:h-[280px] w-full">
+                <div className="h-[250px] sm:h-[300px] w-full">
                 {loading ? (
                     <Skeleton className="h-full w-full" />
                 ) : riskDetailsData.length > 0 ? (
@@ -411,7 +411,7 @@ export default function DashboardPage() {
                                 <ChartCell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background" />
                               ))}
                             </ChartPie>
-                            <ChartLegend content={<ChartLegendContent nameKey="name" align="center" />} />
+                            <ChartLegend content={<ChartLegendContent nameKey="name" />} />
                         </PieChart>
                     </ChartContainer>
                 ) : (
@@ -428,14 +428,14 @@ export default function DashboardPage() {
             <CardTitle>Tren Observasi Harian</CardTitle>
             </CardHeader>
             <CardContent>
-            <div className="h-[220px] sm:h-[280px]">
+            <div className="h-[250px] sm:h-[300px]">
                 {loading ? <Skeleton className="h-full w-full" /> : (
                 <ChartContainer config={dailyChartConfig} className="h-full w-full">
                     <BarChart data={dailyData} accessibilityLayer>
                     <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
                     <ChartYAxis tickLine={false} axisLine={false} allowDecimals={false} />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend content={<ChartLegendContent align="center" />} />
+                    <ChartLegend content={<ChartLegendContent />} />
                     <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
                     <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -444,16 +444,6 @@ export default function DashboardPage() {
             </div>
             </CardContent>
         </Card>
-        
-        <HorizontalBarChartCard
-        loading={loading}
-        title="Distribusi Kategori"
-        data={categoryDistributionData}
-        chartConfig={categoryChartConfig}
-        dataKey="value"
-        nameKey="name"
-        color="hsl(var(--chart-3))"
-        />
         
         <HorizontalBarChartCard
         loading={loading}
