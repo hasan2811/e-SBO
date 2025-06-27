@@ -363,7 +363,7 @@ export default function DashboardPage() {
             <CardTitle>Distribusi Kategori</CardTitle>
             </CardHeader>
             <CardContent>
-            <div className="h-[300px] w-full">
+            <div className="h-[250px] sm:h-[300px] w-full">
             {loading ? (
                 <Skeleton className="h-full w-full rounded-full" />
                 ) : categoryDistributionData.length > 0 ? (
@@ -398,7 +398,7 @@ export default function DashboardPage() {
             <CardTitle>Tren Observasi Harian</CardTitle>
             </CardHeader>
             <CardContent>
-            <div className="h-[300px]">
+            <div className="h-[250px] sm:h-[300px]">
                 {loading ? <Skeleton className="h-full w-full" /> : (
                 <ChartContainer config={dailyChartConfig} className="h-full w-full">
                     <BarChart data={dailyData} accessibilityLayer>
@@ -418,7 +418,7 @@ export default function DashboardPage() {
             <CardHeader>
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 pt-2 flex flex-col justify-center h-[300px]">
+            <CardContent className="space-y-4 pt-2 flex flex-col justify-center h-[250px] sm:h-[300px]">
                 {loading ? (
                 Array.from({length: 4}).map((_, i) => (
                     <div key={i} className="flex items-center gap-4">
