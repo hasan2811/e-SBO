@@ -8,15 +8,17 @@ import { useObservations } from '@/contexts/observation-context';
 import { DashboardHeader } from '@/components/dashboard-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { SubmitObservationDialog } from '@/components/submit-observation-dialog';
+import { CompleteProfileDialog } from '@/components/complete-profile-dialog';
 import type { Observation } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const { addObservation } = useObservations();
   const router = useRouter();
   const pathname = usePathname();
   const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
+  const [isProfileDialogOpen, setProfileDialogOpen] = React.useState(false);
 
   const isDetailPage = pathname.startsWith('/observation/');
 
@@ -25,6 +27,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.push('/login');
     }
   }, [user, authLoading, router]);
+
+  React.useEffect(() => {
+    if (userProfile && (userProfile.position === 'Not Set' || !userProfile.position)) {
+      setProfileDialogOpen(true);
+    } else {
+      setProfileDialogOpen(false);
+    }
+  }, [userProfile]);
 
   if (authLoading || !user) {
     return (
@@ -47,6 +57,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <CompleteProfileDialog 
+        isOpen={isProfileDialogOpen}
+        onProfileComplete={() => setProfileDialogOpen(false)}
+      />
+
       <div className="flex flex-col min-h-screen">
         {!isDetailPage && <DashboardHeader onAddNew={() => setAddDialogOpen(true)} />}
         <main className={`flex-1 p-4 sm:p-6 lg:p-8 ${!isDetailPage ? 'pb-28 md:pb-8' : ''} overflow-y-auto`}>
@@ -61,7 +76,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className={isDetailPage ? 'h-full' : ''}
               >
-                {children}
+                {!isProfileDialogOpen && children}
               </motion.div>
             </AnimatePresence>
           </div>
