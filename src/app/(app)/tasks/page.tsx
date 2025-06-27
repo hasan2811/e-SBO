@@ -367,7 +367,7 @@ export default function DashboardPage() {
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-[240px] sm:h-[280px] w-full">
+                <div className="h-[220px] sm:h-[280px] w-full">
                 {loading ? (
                     <Skeleton className="h-full w-full" />
                 ) : riskDetailsData.length > 0 ? (
@@ -382,7 +382,6 @@ export default function DashboardPage() {
                                 dataKey="count"
                                 nameKey="name"
                                 innerRadius="30%"
-                                labelLine={false}
                                 label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) => {
                                   if (percent < 0.05) return null;
                                   const RADIAN = Math.PI / 180;
@@ -429,7 +428,7 @@ export default function DashboardPage() {
             <CardTitle>Tren Observasi Harian</CardTitle>
             </CardHeader>
             <CardContent>
-            <div className="h-[240px] sm:h-[280px]">
+            <div className="h-[220px] sm:h-[280px]">
                 {loading ? <Skeleton className="h-full w-full" /> : (
                 <ChartContainer config={dailyChartConfig} className="h-full w-full">
                     <BarChart data={dailyData} accessibilityLayer>
