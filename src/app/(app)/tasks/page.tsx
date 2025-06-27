@@ -4,9 +4,9 @@
 import * as React from 'react';
 import { format, subDays, eachDayOfInterval, addDays } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 
-import type { Observation, RiskLevel, ObservationCategory, Company, Location } from '@/lib/types';
+import type { Observation, RiskLevel, Company, Location } from '@/lib/types';
 import { useObservations } from '@/contexts/observation-context';
 
 import { cn } from '@/lib/utils';
@@ -37,13 +37,6 @@ import {
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const riskLevelConfig: Record<RiskLevel, { color: string, className: string }> = {
-  Low: { color: 'hsl(var(--chart-2))', className: 'bg-chart-2' },
-  Medium: { color: 'hsl(var(--chart-4))', className: 'bg-chart-4' },
-  High: { color: 'hsl(var(--chart-5))', className: 'bg-chart-5' },
-  Critical: { color: 'hsl(var(--destructive))', className: 'bg-destructive' },
-};
-
 const companyChartConfig = {
     value: { label: "Observations", color: "hsl(var(--chart-1))" },
 };
@@ -53,15 +46,15 @@ const locationChartConfig = {
 };
 
 const dailyChartConfig = {
-    pending: { label: "Pending", color: "hsl(var(--chart-4))" },
-    completed: { label: "Completed", color: "hsl(var(--chart-1))" },
+    pending: { label: "Pending", color: "hsl(var(--chart-5))" },
+    completed: { label: "Completed", color: "hsl(var(--chart-2))" },
   };
 
-const riskPieChartConfig: any = {
-    Low: { label: "Low", color: "var(--color-Low)" },
-    Medium: { label: "Medium", color: "var(--color-Medium)" },
-    High: { label: "High", color: "var(--color-High)" },
-    Critical: { label: "Critical", color: "var(--color-Critical)" },
+const riskPieChartConfig = {
+    Low: { label: "Low", color: "hsl(var(--chart-2))" },
+    Medium: { label: "Medium", color: "hsl(var(--chart-4))" },
+    High: { label: "High", color: "hsl(var(--chart-5))" },
+    Critical: { label: "Critical", color: "hsl(var(--destructive))" },
 };
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
@@ -299,7 +292,7 @@ export default function DashboardPage() {
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-    const isLight = name === 'Medium' || name === 'High';
+    const isLight = name === 'Medium' || name === 'Low';
     const textColor = isLight ? 'hsl(var(--card-foreground))' : 'hsl(var(--primary-foreground))';
 
     return (
@@ -390,7 +383,7 @@ export default function DashboardPage() {
                 ) : riskDetailsData.length > 0 ? (
                     <ChartContainer
                         config={riskPieChartConfig}
-                        className="mx-auto aspect-square h-full max-h-[240px] sm:max-h-[260px]"
+                        className="mx-auto aspect-square h-full max-h-[240px] w-full max-w-[240px] sm:max-h-[260px] sm:max-w-[260px]"
                     >
                         <PieChart>
                             <ChartTooltip formatter={(value, name, item) => `${item.payload.count} (${(value as number).toFixed(0)}%)`} content={<ChartTooltipContent nameKey="name" />} />
@@ -398,8 +391,8 @@ export default function DashboardPage() {
                                 data={riskDetailsData}
                                 dataKey="count"
                                 nameKey="name"
-                                innerRadius="60%"
-                                outerRadius="90%"
+                                innerRadius="65%"
+                                outerRadius="95%"
                                 labelLine={false}
                                 label={renderCustomizedLabel}
                             >
@@ -407,7 +400,7 @@ export default function DashboardPage() {
                                 <ChartCell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background" />
                               ))}
                             </ChartPie>
-                            <ChartLegend content={<ChartLegendContent align="center" nameKey="name" />} />
+                            <ChartLegend content={<ChartLegendContent nameKey="name" align="center" />} />
                         </PieChart>
                     </ChartContainer>
                 ) : (
@@ -464,3 +457,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
