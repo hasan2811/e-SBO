@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { format, subDays, eachDayOfInterval, addDays } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, CheckCircle, PieChart as PieChartIcon, BarChart2 } from 'lucide-react';
 
 import type { Observation, RiskLevel, Company, Location } from '@/lib/types';
 import { useObservations } from '@/contexts/observation-context';
@@ -51,10 +51,10 @@ const dailyChartConfig = {
   };
 
 const riskPieChartConfig = {
-    Low: { label: "Low", color: "hsl(var(--chart-2))" },
-    Medium: { label: "Medium", color: "hsl(var(--chart-4))" },
-    High: { label: "High", color: "hsl(var(--chart-5))" },
-    Critical: { label: "Critical", color: "hsl(var(--destructive))" },
+    Low: { label: "Low", color: "hsl(var(--chart-2))", icon: CheckCircle },
+    Medium: { label: "Medium", color: "hsl(var(--chart-4))", icon: CheckCircle },
+    High: { label: "High", color: "hsl(var(--chart-5))", icon: CheckCircle },
+    Critical: { label: "Critical", color: "hsl(var(--destructive))", icon: CheckCircle },
 };
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
@@ -126,7 +126,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
             <Skeleton className="h-full w-full" />
           ) : data.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-full w-full">
-              <BarChart data={data} layout="vertical" accessibilityLayer margin={{ left: 10, right: 30, top: 10, bottom: 10 }}>
+              <BarChart data={data} layout="vertical" accessibilityLayer margin={{ left: 10, right: 10, top: 10, bottom: 10 }}>
                 <ChartYAxis
                   dataKey={nameKey}
                   type="category"
@@ -134,10 +134,10 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                   axisLine={false}
                   tickMargin={5}
                   className="text-xs truncate"
-                  width={80}
+                  width={60}
                    tickFormatter={(value) => {
-                    if (typeof value === 'string' && value.length > 10) {
-                      return `${value.substring(0, 10)}...`;
+                    if (typeof value === 'string' && value.length > 8) {
+                      return `${value.substring(0, 8)}...`;
                     }
                     return value;
                   }}
@@ -383,7 +383,7 @@ export default function DashboardPage() {
                 ) : riskDetailsData.length > 0 ? (
                     <ChartContainer
                         config={riskPieChartConfig}
-                        className="mx-auto aspect-square h-full max-h-[240px] w-full max-w-[240px] sm:max-h-[260px] sm:max-w-[260px]"
+                        className="mx-auto aspect-square h-full max-w-full"
                     >
                         <PieChart>
                             <ChartTooltip formatter={(value, name, item) => `${item.payload.count} (${(value as number).toFixed(0)}%)`} content={<ChartTooltipContent nameKey="name" />} />
@@ -400,7 +400,7 @@ export default function DashboardPage() {
                                 <ChartCell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background" />
                               ))}
                             </ChartPie>
-                            <ChartLegend content={<ChartLegendContent nameKey="name" align="center" />} />
+                            <ChartLegend content={<ChartLegendContent nameKey="name" />} />
                         </PieChart>
                     </ChartContainer>
                 ) : (
