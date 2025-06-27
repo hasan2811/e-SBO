@@ -383,21 +383,30 @@ export default function DashboardPage() {
                                 nameKey="name"
                                 innerRadius="30%"
                                 labelLine={false}
-                                label={({ percent, ...entry }) => {
-                                  const name = entry.name as RiskLevel;
+                                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) => {
+                                  // Hide label for small slices to avoid clutter
                                   if ((percent * 100) < 5) {
                                     return null;
                                   }
-                                  
+
+                                  const RADIAN = Math.PI / 180;
+                                  // Calculate the position for the label inside the slice
+                                  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+                                  const riskName = name as RiskLevel;
+
                                   return (
                                     <text
-                                      x={entry.cx}
-                                      y={entry.cy}
+                                      x={x}
+                                      y={y}
                                       textAnchor="middle"
                                       dominantBaseline="central"
                                       className={cn(
                                         'text-sm font-semibold',
-                                        name === 'Medium' || name === 'High'
+                                        // Dynamic color for better contrast
+                                        riskName === 'Medium' || riskName === 'High'
                                           ? 'fill-[hsl(var(--card-foreground))]'
                                           : 'fill-[hsl(var(--primary-foreground))]'
                                       )}
