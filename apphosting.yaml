@@ -1,4 +1,3 @@
 # This file is for Firebase App Hosting.
-# It can be safely removed if you are deploying to a different provider like Vercel or Netlify.
 runConfig:
   maxInstances: 1
