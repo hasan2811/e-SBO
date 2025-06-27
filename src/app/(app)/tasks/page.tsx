@@ -382,14 +382,24 @@ export default function DashboardPage() {
                                 dataKey="count"
                                 nameKey="name"
                                 innerRadius="30%"
-                                label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                                labelLine
+                                labelLine={false}
+                                label={({ percent, ...entry }) => (
+                                  <text
+                                    x={entry.cx}
+                                    y={entry.cy}
+                                    textAnchor="middle"
+                                    dominantBaseline="central"
+                                    className="fill-white text-sm font-semibold"
+                                  >
+                                    {`${(percent * 100).toFixed(0)}%`}
+                                  </text>
+                                )}
                             >
                               {riskDetailsData.map((entry) => (
                                 <ChartCell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background" />
                               ))}
                             </ChartPie>
-                            <ChartLegend content={<ChartLegendContent />} />
+                            <ChartLegend content={<ChartLegendContent nameKey="name" align="center" />} />
                         </PieChart>
                     </ChartContainer>
                 ) : (
@@ -413,7 +423,7 @@ export default function DashboardPage() {
                     <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
                     <ChartYAxis tickLine={false} axisLine={false} allowDecimals={false} />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend content={<ChartLegendContent />} />
+                    <ChartLegend content={<ChartLegendContent align="center" />} />
                     <ChartBar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[4, 4, 0, 0]} />
                     <ChartBar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -456,5 +466,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     
