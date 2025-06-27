@@ -13,7 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { useAuth } from '@/hooks/use-auth';
-import { LogIn, LogOut, UserCircle, Loader2, Edit } from 'lucide-react';
+import { LogOut, UserCircle, Loader2, Edit } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
@@ -21,10 +21,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 
 export function UserAccountSheet() {
-  const { user, userProfile, loading: authLoading, signInWithGoogle, logout, updateUserProfile } = useAuth();
+  const { user, userProfile, loading: authLoading, logout, updateUserProfile } = useAuth();
   const { toast } = useToast();
   
-  const [isSigningIn, setIsSigningIn] = React.useState(false);
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
 
@@ -38,17 +37,6 @@ export function UserAccountSheet() {
     }
   }, [userProfile, isEditing]);
 
-
-  const handleSignIn = async () => {
-    setIsSigningIn(true);
-    try {
-      await signInWithGoogle();
-    } catch (error) {
-      console.error("Sign in failed from sheet", error);
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -148,7 +136,7 @@ export function UserAccountSheet() {
             </div>
           ) : (
             <div className="text-center">
-              <p className="text-muted-foreground">You are not signed in.</p>
+              <p className="text-muted-foreground">You are not signed in. Please go to the login page.</p>
             </div>
           )}
           <Separator className="my-6" />
@@ -169,16 +157,7 @@ export function UserAccountSheet() {
                 <LogOut className="mr-2" />
                 Sign Out
               </Button>
-            ) : (
-               <Button onClick={handleSignIn} className="w-full" disabled={isSigningIn || authLoading}>
-                {isSigningIn ? (
-                    <Loader2 className="mr-2 animate-spin" />
-                ) : (
-                    <LogIn className="mr-2" />
-                )}
-                {isSigningIn ? 'Signing In...' : 'Sign In with Google'}
-              </Button>
-            )}
+            ) : null}
         </SheetFooter>
       </SheetContent>
     </Sheet>

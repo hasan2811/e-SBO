@@ -5,8 +5,6 @@ import {
   getAuth,
   onAuthStateChanged,
   User,
-  GoogleAuthProvider,
-  signInWithPopup,
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -34,7 +32,6 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
   signUpWithEmailAndPassword: (data: SignUpInput) => Promise<void>;
   signInWithEmailAndPassword: (data: SignInInput) => Promise<void>;
   updateUserProfile: (uid: string, data: Partial<Pick<UserProfile, 'displayName' | 'position'>>) => Promise<void>;
@@ -79,30 +76,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
-
-  const signInWithGoogle = useCallback(async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      
-      const userDocRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(userDocRef);
-      if (!docSnap.exists()) {
-        const newUserProfile: UserProfile = {
-            uid: user.uid,
-            email: user.email!,
-            displayName: user.displayName || 'New User',
-            position: 'Not Set',
-          };
-        await setDoc(userDocRef, newUserProfile);
-        // The onAuthStateChanged listener will then pick this up.
-      }
-    } catch (error) {
-      console.error('Error signing in with Google: ', error);
-      throw error;
-    }
   }, []);
 
   const signUpWithEmailAndPasswordHandler = useCallback(async ({ email, password, displayName }: SignUpInput) => {
@@ -164,12 +137,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     userProfile,
     loading,
-    signInWithGoogle,
     signUpWithEmailAndPassword: signUpWithEmailAndPasswordHandler,
     signInWithEmailAndPassword: signInWithEmailAndPasswordHandler,
     updateUserProfile: handleUpdateUserProfile,
     logout,
-  }), [user, userProfile, loading, signInWithGoogle, signUpWithEmailAndPasswordHandler, signInWithEmailAndPasswordHandler, handleUpdateUserProfile, logout]);
+  }), [user, userProfile, loading, signUpWithEmailAndPasswordHandler, signInWithEmailAndPasswordHandler, handleUpdateUserProfile, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

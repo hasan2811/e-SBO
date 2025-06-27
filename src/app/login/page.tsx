@@ -13,15 +13,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Separator } from '@/components/ui/separator';
 import { AppLogo } from '@/components/app-logo';
 
 export default function LoginPage() {
-  const { signInWithEmailAndPassword, signInWithGoogle, user, loading } = useAuth();
+  const { signInWithEmailAndPassword, user, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
 
   const form = useForm<SignInInput>({
     resolver: zodResolver(SignInSchema),
@@ -49,22 +47,6 @@ export default function LoginPage() {
     }
   }
 
-  async function handleGoogleSignIn() {
-    setIsGoogleLoading(true);
-    try {
-      await signInWithGoogle();
-      router.push('/');
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Google Sign In Failed',
-        description: error.message || 'An unexpected error occurred.',
-      });
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  }
-
   React.useEffect(() => {
     if (!loading && user) {
       router.push('/');
@@ -89,7 +71,7 @@ export default function LoginPage() {
           <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
           <CardDescription>Enter your credentials to access your account</CardDescription>
         </CardHeader>
-        <CardContent className="p-4">
+        <CardContent className="p-4 pt-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -124,26 +106,8 @@ export default function LoginPage() {
               </Button>
             </form>
           </Form>
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <Separator />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
-            </div>
-          </div>
-          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading}>
-            {isGoogleLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
-                <path fill="currentColor" d="M488 261.8C488 403.3 381.5 512 244 512 109.8 512 0 402.2 0 266.3 0 130.4 109.8 21.8 244 21.8c64.3 0 119.8 24.6 162.2 64.9l-65.7 64.3c-24.5-23.3-58.4-38-96.5-38-78.1 0-141.9 63.8-141.9 141.9s63.8 141.9 141.9 141.9c86.4 0 122-62.8 126.3-93.5H244V261.8h244z"></path>
-              </svg>
-            )}
-            Google
-          </Button>
         </CardContent>
-        <CardFooter className="p-4 flex justify-center">
+        <CardFooter className="p-4 pt-2 flex justify-center">
           <p className="text-sm text-muted-foreground">
             Don't have an account?{' '}
             <Link href="/register" className="font-semibold text-accent hover:underline">
