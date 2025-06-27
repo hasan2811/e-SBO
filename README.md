@@ -1,23 +1,44 @@
-re# Firebase Studio
+# HSSETech Observation Platform
 
-This is a NextJS starter in Firebase Studio.
+This is a Next.js application for logging and analyzing Health, Safety, Security, and Environment (HSSE) observations.
 
-To get started, take a look at src/app/page.tsx.
+## Getting Started
 
-## Backend Architecture: Direct Client-Side Uploads
+### 1. Environment Variables
 
-This application uses a modern architecture where the web client uploads files **directly** to Firebase Storage. This is efficient and fast. Because of this design, this project **does not use Cloud Functions** for handling file uploads. The backend logic is handled entirely by Firebase Storage Security Rules and Firestore Security Rules.
+This project requires environment variables to connect to Firebase services and Google AI.
 
-### Applying CORS Rules for Firebase Storage
+-   Copy the `.env.example` file to a new file named `.env.local`.
+-   Fill in the required values in `.env.local`. **This file contains secret keys and should NOT be committed to Git.**
 
-To allow your web application to upload files directly to Firebase Storage, you must apply a CORS (Cross-Origin Resource Sharing) configuration to your storage bucket. The configuration is defined in the `cors.json` file.
+```bash
+cp .env.example .env.local
+```
 
-**This is a required step.** The `firebase deploy` command does not apply these settings. You must run the following command from your project's root directory to apply the settings. This command uses the `gsutil` tool, which interacts directly with Google Cloud Storage.
+For production deployment (e.g., on Vercel, Netlify), set these environment variables directly in your hosting provider's dashboard.
 
-Run this command in your terminal:
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Run the Development Server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Required Setup: Firebase Storage CORS
+
+For file uploads to work, you must configure Cross-Origin Resource Sharing (CORS) on your Firebase Storage bucket. This is a **one-time setup**.
+
+Run the following command in your terminal, ensuring you have the `gcloud` CLI installed and authenticated:
 
 ```bash
 gsutil cors set cors.json gs://hssetech-e1710.firebasestorage.app
 ```
 
-This command uses the `gsutil` tool to set the policy defined in `cors.json` on the correct Cloud Storage bucket for this project (`hssetech-e1710.firebasestorage.app`). This step is necessary to fix any CORS-related upload errors from the browser.
+This command allows the web app to upload files directly to your storage bucket.
