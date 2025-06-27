@@ -16,8 +16,26 @@ secrets:
   - NEXT_PUBLIC_FIREBASE_APP_ID
   - NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 
-# Environment variables are mapped from the secrets defined above.
-# These variables will be available to your application at runtime.
+# These variables are available to the app during the build process.
+buildEnvironmentVariables:
+  - variable: GOOGLE_API_KEY
+    secret: GOOGLE_API_KEY
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    secret: NEXT_PUBLIC_FIREBASE_API_KEY
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    secret: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    secret: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    secret: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    secret: NEXT_PUBLIC_FIREBASE_APP_ID
+  - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+    secret: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+
+# These variables are available to the app at runtime.
 env:
   - variable: GOOGLE_API_KEY
     secret: GOOGLE_API_KEY
