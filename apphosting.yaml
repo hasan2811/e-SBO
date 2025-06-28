@@ -1,12 +1,10 @@
-# apphosting.yaml
-# Konfigurasi untuk Firebase App Hosting
-# Hapus isi file lama Anda dan ganti dengan semua yang ada di bawah ini.
+# apphosting.yaml (Versi Final Produksi)
 
 # Konfigurasi runtime Anda
 runConfig:
   maxInstances: 1
 
-# Bagian env dengan format yang benar untuk menghubungkan secrets
+# Menghubungkan semua 8 secret yang telah dibuat ulang
 env:
   - variable: GOOGLE_API_KEY
     secret: GOOGLE_API_KEY
