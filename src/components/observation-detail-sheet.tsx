@@ -13,6 +13,7 @@ import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loade
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import html2canvas from 'html2canvas';
 
 
 interface ObservationDetailSheetProps {
@@ -46,6 +47,8 @@ const StarRating = ({ rating }: { rating: number }) => {
 export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { updateObservation, retryAiAnalysis } = useObservations();
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
+  const [isSharing, setIsSharing] = React.useState(false);
+  const insightRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
   if (!observation) return null;
@@ -64,36 +67,68 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
   };
 
   const handleShare = async () => {
-    if (!observation || observation.aiStatus !== 'completed' || !observation.aiObserverSkillRating) return;
-  
-    const shareText = `Saya baru saja mendapatkan rating ${observation.aiObserverSkillRating}/5 untuk wawasan HSSE saya di platform HSSE Tech! 🚀 AI memberikan analisis mendalam tentang temuan di lapangan. Tingkatkan skill Anda dan coba sendiri! Kunjungi https://hssetech.app untuk mendaftar. #HSSE #SafetyFirst #AI`;
-    
-    const shareData = {
-      title: `Insight HSSE Saya - ${observation.referenceId}`,
-      text: shareText,
-      url: 'https://hssetech.app',
-    };
+    if (!observation || !observation.aiObserverSkillRating || !insightRef.current) return;
+    setIsSharing(true);
 
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (error) {
-        console.log('Pengguna membatalkan pembagian atau gagal.', error);
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(shareText);
-        toast({
-          title: 'Teks Berhasil Disalin!',
-          description: 'Anda kini dapat membagikannya ke media sosial pilihan Anda.',
-        });
-      } catch (err) {
-        toast({
-          variant: 'destructive',
-          title: 'Gagal Menyalin Teks',
-          description: 'Browser Anda tidak mendukung fitur berbagi atau salin.',
-        });
-      }
+    try {
+        // Always generate the text and URL first
+        const shareText = `Saya baru saja mendapatkan rating ${observation.aiObserverSkillRating}/5 untuk wawasan HSSE saya di platform HSSE Tech! 🚀 AI memberikan analisis mendalam tentang temuan di lapangan. Tingkatkan skill Anda dan coba sendiri!`;
+        const shareUrl = 'https://hsse.tech';
+        const shareTitle = `Insight HSSE Saya - ${observation.referenceId}`;
+
+        if (navigator.share) {
+            // Generate the image
+            const canvas = await html2canvas(insightRef.current, {
+                useCORS: true,
+                backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#ffffff',
+                scale: 2, // Improve quality
+            });
+            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+            
+            if (!blob) {
+                throw new Error("Failed to create blob from canvas.");
+            }
+
+            const file = new File([blob], `hsse-insight-${observation.referenceId}.png`, { type: 'image/png' });
+            
+            // Check if files can be shared
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: shareTitle,
+                    text: shareText,
+                    url: shareUrl,
+                    files: [file],
+                });
+            } else {
+                // Fallback to sharing text only if files are not supported
+                await navigator.share({
+                    title: shareTitle,
+                    text: shareText,
+                    url: shareUrl,
+                });
+            }
+        } else {
+            // Fallback for browsers without navigator.share (e.g., desktop)
+            await navigator.clipboard.writeText(`${shareText} Kunjungi ${shareUrl} untuk mendaftar. #HSSE #SafetyFirst #AI`);
+            toast({
+                title: 'Teks Berhasil Disalin!',
+                description: 'Anda kini dapat membagikannya ke media sosial pilihan Anda.',
+            });
+        }
+    } catch (error) {
+        // Don't show toast if user cancels share dialog
+        if (error instanceof Error && error.name === 'AbortError') {
+            console.log('Share was cancelled by the user.');
+        } else {
+            console.error('Share failed:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Berbagi',
+                description: 'Browser Anda tidak mendukung fitur ini atau terjadi kesalahan.',
+            });
+        }
+    } finally {
+        setIsSharing(false);
     }
   };
 
@@ -129,8 +164,8 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
               </div>
               
               {observation.aiStatus === 'completed' && observation.aiObserverSkillRating && (
-                  <Button variant="outline" size="icon" onClick={handleShare} className="flex-shrink-0" aria-label="Bagikan Insight">
-                      <Share2 className="h-4 w-4" />
+                  <Button variant="outline" size="icon" onClick={handleShare} disabled={isSharing} className="flex-shrink-0" aria-label="Bagikan Insight">
+                      {isSharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
                   </Button>
               )}
           </div>
@@ -211,7 +246,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                     {observation.aiStatus === 'completed' && (
                       <div className="space-y-4">
                         {observation.aiObserverSkillRating && observation.aiObserverSkillExplanation && (
-                          <div className="space-y-2 pb-4">
+                          <div ref={insightRef} className="space-y-2 p-4 bg-card rounded-md shadow-sm">
                             <div className="flex items-center justify-between">
                               <h5 className="font-semibold flex items-center gap-2 text-sm">
                                 <UserCheck className="h-4 w-4 text-muted-foreground" />
