@@ -7,7 +7,7 @@ import { getAnalytics, isSupported } from 'firebase/analytics';
 
 // HARDCODED Firebase configuration as per user request to ensure functionality.
 const firebaseConfig: FirebaseOptions = {
-  apiKey: "AIzaSyD-P_1XOQ9xQOgxwMApClEFoqHcxs7fYPI",
+  apiKey: "AIzaSyDfwUsDhWnoywj0aYLxfLE2MDONCnI_gho",
   authDomain: "hssetech-e1710.firebaseapp.com",
   projectId: "hssetech-e1710",
   storageBucket: "hssetech-e1710.firebasestorage.app",

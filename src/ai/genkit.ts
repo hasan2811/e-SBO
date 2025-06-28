@@ -12,7 +12,7 @@ import {googleAI} from '@genkit-ai/googleai';
 export const ai = genkit({
   plugins: [
     googleAI({
-      apiKey: 'AIzaSyD-P_1XOQ9xQOgxwMApClEFoqHcxs7fYPI', // Hardcoded API Key
+      apiKey: 'AIzaSyDfwUsDhWnoywj0aYLxfLE2MDONCnI_gho', // Hardcoded API Key
     }),
   ],
 });
