@@ -40,7 +40,7 @@ export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservation
 // It encapsulates the model, prompt text, and input/output schemas in one place.
 const summarizePrompt = ai.definePrompt({
     name: 'summarizeObservationPrompt',
-    model: 'googleai/gemini-1.5-flash-latest', // Explicitly lock the model here.
+    model: 'gemini-1.5-flash-latest', // Corrected model name.
     input: { schema: SummarizeObservationDataInputSchema },
     output: { schema: SummarizeObservationDataOutputSchema },
     config: {
