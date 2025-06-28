@@ -17,20 +17,15 @@ function Calendar({
   showOutsideDays = false,
   ...props
 }: CalendarProps) {
-  const currentYear = new Date().getFullYear();
   return (
     <DayPicker
-      captionLayout="dropdown-buttons"
-      fromYear={currentYear - 20}
-      toYear={currentYear}
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "hidden", // Hide the label when using dropdowns
-        caption_dropdowns: "flex gap-2", // Style for the dropdowns container
+        caption_label: "text-sm font-medium",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -64,7 +59,7 @@ function Calendar({
         ...classNames,
       }}
        formatters={{
-        formatWeekdayName: (date) => format(date, "EE", { locale: indonesianLocale }), // "Mi", "Se", etc.
+        formatWeekdayName: (date) => format(date, "EEEE", { locale: indonesianLocale }).substring(0, 3),
         ...props.formatters,
       }}
       components={{

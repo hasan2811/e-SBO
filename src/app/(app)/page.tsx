@@ -122,7 +122,7 @@ export default function JurnalPage() {
                 {dateButtonText}
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-auto p-0">
+            <DialogContent className="max-h-[75vh] w-auto p-0 overflow-y-auto">
               <Calendar
                 mode="single"
                 selected={selectedDate}
@@ -133,7 +133,8 @@ export default function JurnalPage() {
                   setCalendarOpen(false);
                 }}
                 disabled={(date) => date > new Date()}
-                initialFocus
+                defaultMonth={selectedDate}
+                numberOfMonths={6}
                 showOutsideDays={false}
               />
             </DialogContent>
