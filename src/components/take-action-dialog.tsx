@@ -275,9 +275,9 @@ export function TakeActionDialog({
                   render={() => (
                     <FormItem>
                       <FormLabel>Upload Photo of Completion (Optional)</FormLabel>
-                        <FormControl>
+                      <FormControl>
+                        <>
                           <Input
-                              id="action-photo-upload"
                               type="file"
                               accept="image/*"
                               className="hidden"
@@ -285,17 +285,18 @@ export function TakeActionDialog({
                               onChange={handlePhotoChange}
                               disabled={isSubmitting}
                           />
-                        </FormControl>
-                         <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={isSubmitting}
-                        >
-                            <Upload className="mr-2 h-4 w-4" />
-                            {photoPreview ? 'Change Photo' : 'Select Photo'}
-                        </Button>
+                          <Button
+                              type="button"
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={isSubmitting}
+                          >
+                              <Upload className="mr-2 h-4 w-4" />
+                              {photoPreview ? 'Change Photo' : 'Select Photo'}
+                          </Button>
+                        </>
+                      </FormControl>
                       {photoPreview && (
                         <div className="mt-4 relative w-full h-48 rounded-md overflow-hidden border">
                           <Image src={photoPreview} alt="Action taken preview" fill sizes="(max-width: 525px) 100vw, 525px" className="object-cover" data-ai-hint="fixed pipe" />
