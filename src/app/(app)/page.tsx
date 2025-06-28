@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
+import { StarRating } from '@/components/star-rating';
 
 const riskColorMap: Record<RiskLevel, string> = {
   Critical: 'bg-destructive',
@@ -28,6 +29,13 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
     <li>
       <div onClick={onSelect} className="relative flex items-center bg-card p-4 pl-6 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
         <div className={cn("absolute left-0 top-0 h-full w-2", riskColor)} />
+        
+        {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
+          <div className="absolute top-2 right-2" title={`Observer Rating: ${observation.aiObserverSkillRating}/5`}>
+            <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
+          </div>
+        )}
+
         <div className="flex-1 space-y-2 pr-4">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{format(new Date(observation.date), 'HH:mm')}</span> - {observation.category}
@@ -39,7 +47,7 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
             <span className="text-xs text-muted-foreground">{observation.company}</span>
           </div>
         </div>
-        <div className="ml-auto flex items-center">
+        <div className="ml-auto flex items-center pl-2">
           <ChevronRight className="h-6 w-6 text-muted-foreground" />
         </div>
       </div>

@@ -14,6 +14,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetCl
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import html2canvas from 'html2canvas';
+import { StarRating } from './star-rating';
 
 
 interface ObservationDetailSheetProps {
@@ -21,28 +22,6 @@ interface ObservationDetailSheetProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
 }
-
-const StarRating = ({ rating }: { rating: number }) => {
-    const colorClass = 
-        rating <= 2 ? 'text-destructive fill-destructive/80' :
-        rating <= 4 ? 'text-yellow-400 fill-yellow-400/80' :
-        'text-green-500 fill-green-500/80';
-    
-    return (
-        <div className="flex items-center gap-0.5">
-            {[1, 2, 3, 4, 5].map((star) => (
-            <Star
-                key={star}
-                className={cn(
-                'h-5 w-5',
-                rating >= star ? colorClass : 'text-muted-foreground/30'
-                )}
-            />
-            ))}
-        </div>
-    );
-};
-
 
 export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { updateObservation, retryAiAnalysis } = useObservations();
