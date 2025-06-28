@@ -7,10 +7,8 @@
  * - SummarizeObservationDataOutput - The return type for the summarizeObservationData function.
  */
 
-import {getGenkit} from '@/ai/genkit';
+import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-
-const ai = getGenkit();
 
 const SummarizeObservationDataInputSchema = z.object({
   observationData: z.string().describe('The observation data to summarize.'),
