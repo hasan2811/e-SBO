@@ -40,7 +40,7 @@ import { ScrollArea } from './ui/scroll-area';
 const formSchema = z.object({
   actionTakenDescription: z.string().min(1, 'Description cannot be empty.'),
   actionTakenPhoto: z
-    .any()
+    .instanceof(File)
     .optional()
     .refine((file) => !file || file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
 });
@@ -107,6 +107,7 @@ export function TakeActionDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       actionTakenDescription: '',
+      actionTakenPhoto: undefined,
     },
   });
 
@@ -179,6 +180,7 @@ export function TakeActionDialog({
         
         if (values.actionTakenPhoto) {
             const file = values.actionTakenPhoto as File;
+            setUploadProgress(0);
             const actionTakenPhotoUrl = await uploadFile(file, user.uid, setUploadProgress);
             updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
         }
@@ -223,7 +225,7 @@ export function TakeActionDialog({
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <ListChecks className="h-5 w-5 text-primary" />
-                      <h4 className="text-sm font-semibold">AI Suggested Actions</h4>
+                      <h4 className="text-sm font-semibold">HSSE Tech Suggested Actions</h4>
                     </div>
                     <div className="space-y-2 rounded-md border p-3">
                       {suggestedActions.map((action, index) => (
@@ -274,25 +276,26 @@ export function TakeActionDialog({
                     <FormItem>
                       <FormLabel>Upload Photo of Completion (Optional)</FormLabel>
                         <FormControl>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="w-full"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isSubmitting}
-                            >
-                                <Upload className="mr-2 h-4 w-4" />
-                                {photoPreview ? 'Change Photo' : 'Select Photo'}
-                            </Button>
+                          <Input
+                              id="action-photo-upload"
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              ref={fileInputRef}
+                              onChange={handlePhotoChange}
+                              disabled={isSubmitting}
+                          />
                         </FormControl>
-                        <Input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            ref={fileInputRef}
-                            onChange={handlePhotoChange}
+                         <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => fileInputRef.current?.click()}
                             disabled={isSubmitting}
-                        />
+                        >
+                            <Upload className="mr-2 h-4 w-4" />
+                            {photoPreview ? 'Change Photo' : 'Select Photo'}
+                        </Button>
                       {photoPreview && (
                         <div className="mt-4 relative w-full h-48 rounded-md overflow-hidden border">
                           <Image src={photoPreview} alt="Action taken preview" fill sizes="(max-width: 525px) 100vw, 525px" className="object-cover" data-ai-hint="fixed pipe" />
