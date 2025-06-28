@@ -4,11 +4,13 @@ import { summarizeObservationData, SummarizeObservationDataOutput } from '@/ai/f
 import type { Observation } from './types';
 
 export async function getAiSummary(observation: Observation): Promise<SummarizeObservationDataOutput> {
-  // Ensure the GOOGLE_API_KEY is explicitly loaded for the server environment.
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey) {
-    throw new Error('GOOGLE_API_KEY is not configured on the server.');
-  }
+  // PERINGATAN: Kunci API AI sekarang ditulis langsung di dalam kode.
+  // Pastikan kunci ini tidak digunakan di tempat lain jika Anda memutuskan untuk menghapusnya.
+  const apiKey = "AIzaSyDfwUsDhWnoywj0aYLxfLE2MDONCnI_gho";
+
+  // Cek di bawah ini tidak lagi diperlukan karena kita sudah memasukkan kunci secara langsung.
+  // Namun, kita tetap mendeklarasikan variabel 'apiKey' untuk berjaga-jaga jika ada
+  // bagian lain dari sistem build yang memeriksanya, meskipun tidak digunakan langsung di sini.
 
   const observationData = `
     Location: ${observation.location}
