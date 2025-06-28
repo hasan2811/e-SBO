@@ -1,22 +1,22 @@
-
 'use server';
 /**
- * @fileOverview AI-powered summarization of observation data.
+ * @fileOverview AI-powered analysis of HSSE observation data.
  *
- * - summarizeObservationData - A function that summarizes observation findings, risks, and actions.
- * - SummarizeObservationDataInput - The input type for the summarizeObservationData function.
- * - SummarizeObservationDataOutput - The return type for the summarizeObservationData function.
+ * This file defines a Genkit flow that takes observation data and returns a structured analysis,
+ * including a summary, risk assessment, suggested actions, and more.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { RISK_LEVELS } from '@/lib/types';
 
+// 1. Define the input schema for the AI flow.
 const SummarizeObservationDataInputSchema = z.object({
-  observationData: z.string().describe('The observation data to summarize.'),
+  observationData: z.string().describe('The raw text data of the observation report.'),
 });
 export type SummarizeObservationDataInput = z.infer<typeof SummarizeObservationDataInputSchema>;
 
+// 2. Define the structured output schema the AI must follow.
 const SummarizeObservationDataOutputSchema = z.object({
   summary: z.string().describe('Ringkasan singkat dari temuan inti dalam Bahasa Indonesia.'),
   risks: z.string().describe('Analisis potensi bahaya dan risiko dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
@@ -35,21 +35,24 @@ const SummarizeObservationDataOutputSchema = z.object({
 });
 export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservationDataOutputSchema>;
 
-// Wrapper function to be called by the application
-export async function summarizeObservationData(input: SummarizeObservationDataInput): Promise<SummarizeObservationDataOutput> {
-  return summarizeObservationDataFlow(input);
-}
 
-// Define the flow, which now calls ai.generate() directly.
-const summarizeObservationDataFlow = ai.defineFlow(
-  {
-    name: 'summarizeObservationDataFlow',
-    inputSchema: SummarizeObservationDataInputSchema,
-    outputSchema: SummarizeObservationDataOutputSchema,
-  },
-  async (input) => {
-    // This prompt template is now a simple string.
-    const prompt = `Anda adalah asisten HSSE yang cerdas, objektif, dan efisien. Tugas Anda adalah menganalisis data observasi dan memberikan poin-poin analisis yang jelas, langsung ke inti permasalahan, dan mudah dipahami dalam Bahasa Indonesia.
+// 3. Define the prompt object. This is the most stable method.
+// It encapsulates the model, prompt text, and input/output schemas in one place.
+const summarizePrompt = ai.definePrompt({
+    name: 'summarizeObservationPrompt',
+    model: 'googleai/gemini-1.5-flash-latest', // Explicitly lock the model here.
+    input: { schema: SummarizeObservationDataInputSchema },
+    output: { schema: SummarizeObservationDataOutputSchema },
+    config: {
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+        ],
+    },
+    // The prompt template. Use Handlebars syntax `{{{...}}}` for variables.
+    prompt: `Anda adalah asisten HSSE yang cerdas, objektif, dan efisien. Tugas Anda adalah menganalisis data observasi dan memberikan poin-poin analisis yang jelas, langsung ke inti permasalahan, dan mudah dipahami dalam Bahasa Indonesia.
 PENTING: Respons Anda harus berupa objek JSON mentah saja, tanpa penjelasan atau pemformatan tambahan.
 
 Berdasarkan data observasi yang diberikan, hasilkan objek JSON dengan format berikut. Semua respons harus dalam Bahasa Indonesia.
@@ -68,26 +71,20 @@ Berdasarkan data observasi yang diberikan, hasilkan objek JSON dengan format ber
     - "explanation": Berikan analisis singkat dan personal tentang laporan yang dibuat observer tersebut. Sebutkan nama observer dan jelaskan mengapa Anda memberikan rating tersebut.
 
 Data Observasi:
-${input.observationData}`;
+{{{observationData}}}`,
+});
 
-    // We call ai.generate() directly here, ensuring the model is always specified.
-    const llmResponse = await ai.generate({
-        model: 'googleai/gemini-1.5-flash-latest',
-        prompt: prompt,
-        output: {
-            schema: SummarizeObservationDataOutputSchema,
-        },
-        config: {
-            safetySettings: [
-              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-            ],
-        },
-    });
 
-    const output = llmResponse.output;
+// 4. Define the flow. Its only job is to execute the pre-configured prompt.
+const summarizeObservationDataFlow = ai.defineFlow(
+  {
+    name: 'summarizeObservationDataFlow',
+    inputSchema: SummarizeObservationDataInputSchema,
+    outputSchema: SummarizeObservationDataOutputSchema,
+  },
+  async (input) => {
+    const response = await summarizePrompt(input);
+    const output = response.output;
 
     if (!output) {
       throw new Error('AI analysis returned no structured output.');
@@ -95,3 +92,9 @@ ${input.observationData}`;
     return output;
   }
 );
+
+
+// 5. Export a simple wrapper function for the client to call.
+export async function summarizeObservationData(input: SummarizeObservationDataInput): Promise<SummarizeObservationDataOutput> {
+  return summarizeObservationDataFlow(input);
+}
