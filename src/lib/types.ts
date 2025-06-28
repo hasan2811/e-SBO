@@ -5,6 +5,8 @@ export type Company = 'Perusahaan A' | 'Perusahaan B' | 'Perusahaan C' | 'Perusa
 export type Location = 'Location A' | 'Location B' | 'Location C' | 'Location D';
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 
+export const RISK_LEVELS: [RiskLevel, ...RiskLevel[]] = ['Low', 'Medium', 'High', 'Critical'];
+
 export type UserProfile = {
   uid: string;
   displayName: string;
@@ -35,4 +37,7 @@ export type Observation = {
   aiRisks?: string;
   aiSuggestedActions?: string;
   aiRelevantRegulations?: string;
+  aiSuggestedRiskLevel?: RiskLevel;
+  aiRootCauseAnalysis?: string;
 };
+

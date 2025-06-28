@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -64,6 +65,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             aiRisks: summary.risks,
             aiSuggestedActions: summary.suggestedActions,
             aiRelevantRegulations: summary.relevantRegulations,
+            aiSuggestedRiskLevel: summary.suggestedRiskLevel,
+            aiRootCauseAnalysis: summary.rootCauseAnalysis,
             aiStatus: 'completed' as const,
           };
           updateDoc(observationDocRef, aiData);

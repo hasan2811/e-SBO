@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -9,7 +10,7 @@ import { RiskBadge, StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
 
@@ -148,6 +149,32 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
                               <p className="text-sm text-muted-foreground pl-8">{observation.aiSummary}</p>
+                            </AccordionContent>
+                          </AccordionItem>
+                        )}
+                         {observation.aiSuggestedRiskLevel && (
+                          <AccordionItem value="suggestedRisk">
+                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                              <div className="flex items-center gap-2">
+                                <Activity className="h-4 w-4 text-muted-foreground" />
+                                Suggested Risk Level
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2 pl-8">
+                              <RiskBadge riskLevel={observation.aiSuggestedRiskLevel} />
+                            </AccordionContent>
+                          </AccordionItem>
+                        )}
+                        {observation.aiRootCauseAnalysis && (
+                          <AccordionItem value="rootCause">
+                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                              <div className="flex items-center gap-2">
+                                <Target className="h-4 w-4 text-muted-foreground" />
+                                Root Cause Analysis
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2">
+                              <p className="text-sm text-muted-foreground pl-8">{observation.aiRootCauseAnalysis}</p>
                             </AccordionContent>
                           </AccordionItem>
                         )}
