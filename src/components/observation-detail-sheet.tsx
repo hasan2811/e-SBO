@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -10,9 +9,10 @@ import { RiskBadge, StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, TrendingUp, UserCheck, Star } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, TrendingUp, UserCheck, Star, Share2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface ObservationDetailSheetProps {
@@ -24,7 +24,7 @@ interface ObservationDetailSheetProps {
 const StarRating = ({ rating }: { rating: number }) => {
     const colorClass = 
         rating <= 2 ? 'text-destructive fill-destructive/80' :
-        rating === 3 ? 'text-yellow-400 fill-yellow-400/80' :
+        rating <= 4 ? 'text-yellow-400 fill-yellow-400/80' :
         'text-green-500 fill-green-500/80';
     
     return (
@@ -46,6 +46,7 @@ const StarRating = ({ rating }: { rating: number }) => {
 export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { updateObservation, retryAiAnalysis } = useObservations();
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
+  const { toast } = useToast();
   
   if (!observation) return null;
 
@@ -60,6 +61,40 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
   
   const handleRetry = () => {
     retryAiAnalysis(observation);
+  };
+
+  const handleShare = async () => {
+    if (!observation || observation.aiStatus !== 'completed' || !observation.aiObserverSkillRating) return;
+  
+    const shareText = `Saya baru saja mendapatkan rating ${observation.aiObserverSkillRating}/5 untuk wawasan HSSE saya di platform HSSE Tech! 🚀 AI memberikan analisis mendalam tentang temuan di lapangan. Tingkatkan skill Anda dan coba sendiri! Kunjungi https://hssetech.app untuk mendaftar. #HSSE #SafetyFirst #AI`;
+    
+    const shareData = {
+      title: `Insight HSSE Saya - ${observation.referenceId}`,
+      text: shareText,
+      url: 'https://hssetech.app',
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (error) {
+        console.log('Pengguna membatalkan pembagian atau gagal.', error);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareText);
+        toast({
+          title: 'Teks Berhasil Disalin!',
+          description: 'Anda kini dapat membagikannya ke media sosial pilihan Anda.',
+        });
+      } catch (err) {
+        toast({
+          variant: 'destructive',
+          title: 'Gagal Menyalin Teks',
+          description: 'Browser Anda tidak mendukung fitur berbagi atau salin.',
+        });
+      }
+    }
   };
 
   const showAiSection = observation.aiStatus || observation.aiSummary;
@@ -80,12 +115,21 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col">
         <SheetHeader className="p-6 pb-4 border-b">
-          <SheetTitle>
-            Observation: {observation.referenceId || observation.id}
-          </SheetTitle>
-          <SheetDescription>
-            Details for the selected observation.
-          </SheetDescription>
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <SheetTitle>
+                Observation: {observation.referenceId || observation.id}
+              </SheetTitle>
+              <SheetDescription>
+                Details for the selected observation.
+              </SheetDescription>
+            </div>
+            {observation.aiStatus === 'completed' && observation.aiObserverSkillRating && (
+              <Button variant="outline" size="icon" onClick={handleShare} className="ml-4 flex-shrink-0" aria-label="Bagikan Insight">
+                  <Share2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </SheetHeader>
         
         <ScrollArea className="flex-1">
@@ -163,7 +207,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                     {observation.aiStatus === 'completed' && (
                       <div className="space-y-4">
                         {observation.aiObserverSkillRating && observation.aiObserverSkillExplanation && (
-                          <div className="space-y-2 pb-4 border-b">
+                          <div className="space-y-2 pb-4">
                             <div className="flex items-center justify-between">
                               <h5 className="font-semibold flex items-center gap-2 text-sm">
                                 <UserCheck className="h-4 w-4 text-muted-foreground" />
@@ -171,7 +215,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                               </h5>
                               <StarRating rating={observation.aiObserverSkillRating} />
                             </div>
-                            <p className="text-sm text-muted-foreground pl-8">{observation.aiObserverSkillExplanation}</p>
+                            <p className="text-sm text-muted-foreground italic pl-6">{observation.aiObserverSkillExplanation}</p>
                           </div>
                         )}
 
