@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useObservations } from '@/contexts/observation-context';
 import type { Observation, RiskLevel } from '@/lib/types';
 import { RiskBadge, StatusBadge } from '@/components/status-badges';
-import { format, isToday, isYesterday, subDays, addDays, isSameDay, eachDayOfInterval } from 'date-fns';
+import { format, isSameDay, subDays } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
 import { FileText, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,6 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
 import { StarRating } from '@/components/star-rating';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 const riskColorMap: Record<RiskLevel, string> = {
   Critical: 'bg-destructive',
@@ -63,51 +62,42 @@ export default function JurnalPage() {
   const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
 
-  const dateStripRange = React.useMemo(() => {
-    const today = new Date();
-    const start = subDays(today, 30);
-    return eachDayOfInterval({ start, end: today }).reverse();
-  }, []);
-
   const filteredObservations = React.useMemo(() => {
     if (!selectedDate) return [];
     
-    const startOfDay = new Date(selectedDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(selectedDate);
-    endOfDay.setHours(23, 59, 59, 999);
-
     return observations.filter(obs => {
       const obsDate = new Date(obs.date);
-      return obsDate >= startOfDay && obsDate <= endOfDay;
+      return isSameDay(obsDate, selectedDate);
     });
   }, [observations, selectedDate]);
   
-  const formatDateDisplay = (date: Date): string => {
-    if (isToday(date)) return `Hari ini, ${format(date, "eeee, d MMMM yyyy", { locale: indonesianLocale })}`;
-    if (isYesterday(date)) return `Kemarin, ${format(date, "eeee, d MMMM yyyy", { locale: indonesianLocale })}`;
-    return format(date, "eeee, d MMMM yyyy", { locale: indonesianLocale });
-  };
-
-
   return (
     <>
      <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div className="w-full">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div>
             <h2 className="text-2xl font-bold tracking-tight">
-            Jurnal Observasi
+                Jurnal Observasi
             </h2>
             <p className="text-muted-foreground">
-            {selectedDate ? formatDateDisplay(selectedDate) : 'Pilih Tanggal'}
+                Telusuri laporan harian Anda.
             </p>
         </div>
         <Dialog open={isCalendarOpen} onOpenChange={setCalendarOpen}>
             <DialogTrigger asChild>
-            <Button variant="outline" size="icon" className="flex-shrink-0 mt-1">
-                <CalendarIcon className="h-5 w-5" />
-                <span className="sr-only">Pilih tanggal dari kalender</span>
+            <Button
+              variant={'outline'}
+              className={cn(
+                'w-full sm:w-auto justify-start text-left font-normal min-w-[240px]',
+                !selectedDate && 'text-muted-foreground'
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {selectedDate ? (
+                format(selectedDate, "PPP", { locale: indonesianLocale })
+               ) : (
+                <span>Pilih tanggal</span>
+              )}
             </Button>
             </DialogTrigger>
             <DialogContent className="w-auto p-0">
@@ -128,30 +118,6 @@ export default function JurnalPage() {
         </Dialog>
       </div>
 
-      <div className="relative -mx-4 sm:mx-0">
-        <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex space-x-3 px-4 sm:px-0 pb-2">
-            {dateStripRange.map((date) => (
-                <button
-                    key={date.toISOString()}
-                    onClick={() => setSelectedDate(date)}
-                    className={cn(
-                        "flex flex-col flex-shrink-0 items-center justify-center rounded-lg p-2 w-16 h-20 transition-all duration-200 border-2",
-                        isSameDay(selectedDate || new Date(), date)
-                        ? "bg-primary text-primary-foreground border-primary shadow-md"
-                        : "bg-card text-card-foreground border-transparent hover:bg-muted/50"
-                    )}
-                >
-                    <span className="text-sm font-medium uppercase">{format(date, 'E', { locale: indonesianLocale })}</span>
-                    <span className="text-2xl font-bold">{format(date, 'd')}</span>
-                    {isToday(date) && <div className="w-1.5 h-1.5 bg-accent rounded-full mt-1"></div>}
-                </button>
-            ))}
-            </div>
-            <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-      </div>
-      
       <main>
         {loading ? (
           <ul className="space-y-3">
