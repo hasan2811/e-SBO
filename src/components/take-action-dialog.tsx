@@ -121,8 +121,12 @@ export function TakeActionDialog({
       : [], [observation.aiSuggestedActions]);
 
   React.useEffect(() => {
-    const combinedDescription = checkedActions.map(action => `- ${action}`).join('\n');
-    form.setValue('actionTakenDescription', combinedDescription, { shouldValidate: true, shouldDirty: true });
+    if (!form.formState.dirtyFields.actionTakenDescription) {
+      const combinedDescription = checkedActions.length > 0
+        ? checkedActions.map(action => `- ${action}`).join('\n')
+        : '';
+      form.setValue('actionTakenDescription', combinedDescription, { shouldValidate: true });
+    }
   }, [checkedActions, form]);
 
 
@@ -216,11 +220,10 @@ export function TakeActionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1">
-          <div className="px-6 py-4">
-            <Form {...form}>
-              <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                
+        <Form {...form}>
+          <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="flex-1 min-h-0">
+            <ScrollArea className="h-full">
+              <div className="px-6 py-4 space-y-4">
                 {suggestedActions.length > 0 && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
@@ -276,25 +279,25 @@ export function TakeActionDialog({
                     <FormItem>
                       <FormLabel>Upload Photo of Completion (Optional)</FormLabel>
                       <FormControl>
-                        <Input
+                          <Input
                             type="file"
                             accept="image/*"
                             className="hidden"
                             ref={fileInputRef}
                             onChange={handlePhotoChange}
                             disabled={isSubmitting}
-                        />
+                          />
                       </FormControl>
-                      <Button
+                       <Button
                           type="button"
                           variant="outline"
                           className="w-full"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isSubmitting}
-                      >
+                        >
                           <Upload className="mr-2 h-4 w-4" />
                           {photoPreview ? 'Change Photo' : 'Select Photo'}
-                      </Button>
+                        </Button>
                       {photoPreview && (
                         <div className="mt-4 relative w-full h-48 rounded-md overflow-hidden border">
                           <Image src={photoPreview} alt="Action taken preview" fill sizes="(max-width: 525px) 100vw, 525px" className="object-cover" data-ai-hint="fixed pipe" />
@@ -304,11 +307,10 @@ export function TakeActionDialog({
                     </FormItem>
                   )}
                 />
-              </form>
-            </Form>
-          </div>
-        </ScrollArea>
-
+              </div>
+            </ScrollArea>
+          </form>
+        </Form>
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
           {isSubmitting && uploadProgress !== null && (
             <div className="w-full">
