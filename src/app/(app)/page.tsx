@@ -5,9 +5,9 @@ import * as React from 'react';
 import { useObservations } from '@/contexts/observation-context';
 import type { Observation, RiskLevel } from '@/lib/types';
 import { RiskBadge, StatusBadge } from '@/components/status-badges';
-import { format, isToday, isYesterday, subDays, addDays } from 'date-fns';
+import { format, isToday, isYesterday, subDays, addDays, isSameDay, eachDayOfInterval } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
-import { FileText, ChevronRight, ChevronLeft, Calendar as CalendarIcon } from 'lucide-react';
+import { FileText, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
 import { StarRating } from '@/components/star-rating';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 const riskColorMap: Record<RiskLevel, string> = {
   Critical: 'bg-destructive',
@@ -62,17 +63,11 @@ export default function JurnalPage() {
   const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
 
-  const handlePreviousDay = () => {
-    if (selectedDate) {
-      setSelectedDate(subDays(selectedDate, 1));
-    }
-  };
-
-  const handleNextDay = () => {
-    if (selectedDate && !isToday(selectedDate)) {
-       setSelectedDate(addDays(selectedDate, 1));
-    }
-  };
+  const dateStripRange = React.useMemo(() => {
+    const today = new Date();
+    const start = subDays(today, 30);
+    return eachDayOfInterval({ start, end: today }).reverse();
+  }, []);
 
   const filteredObservations = React.useMemo(() => {
     if (!selectedDate) return [];
@@ -99,43 +94,62 @@ export default function JurnalPage() {
   return (
     <>
      <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <h2 className="text-2xl font-bold tracking-tight">
-          Jurnal Observasi
-        </h2>
-        <div className="flex items-center gap-1 border rounded-lg p-1 bg-card shadow-sm w-full sm:w-auto">
-            <Button variant="ghost" size="icon" onClick={handlePreviousDay} className="h-9 w-9 flex-shrink-0" aria-label="Previous Day">
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            
-            <Dialog open={isCalendarOpen} onOpenChange={setCalendarOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  variant={"ghost"}
-                  className="h-9 flex-1 px-2 text-center font-semibold text-sm whitespace-nowrap"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {selectedDate ? formatDateDisplay(selectedDate) : <span>Pilih tanggal</span>}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => {
-                    setSelectedDate(date);
-                    setCalendarOpen(false);
-                  }}
-                  initialFocus
-                  showOutsideDays={false}
-                />
-              </DialogContent>
-            </Dialog>
-
-            <Button variant="ghost" size="icon" onClick={handleNextDay} disabled={isToday(selectedDate || new Date())} className="h-9 w-9 flex-shrink-0" aria-label="Next Day">
-              <ChevronRight className="h-5 w-5" />
-            </Button>
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="w-full">
+            <h2 className="text-2xl font-bold tracking-tight">
+            Jurnal Observasi
+            </h2>
+            <p className="text-muted-foreground">
+            {selectedDate ? formatDateDisplay(selectedDate) : 'Pilih Tanggal'}
+            </p>
         </div>
+        <Dialog open={isCalendarOpen} onOpenChange={setCalendarOpen}>
+            <DialogTrigger asChild>
+            <Button variant="outline" size="icon" className="flex-shrink-0 mt-1">
+                <CalendarIcon className="h-5 w-5" />
+                <span className="sr-only">Pilih tanggal dari kalender</span>
+            </Button>
+            </DialogTrigger>
+            <DialogContent className="w-auto p-0">
+            <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => {
+                    if (date) {
+                      setSelectedDate(date);
+                    }
+                    setCalendarOpen(false);
+                }}
+                disabled={(date) => date > new Date() || date < subDays(new Date(), 30)}
+                initialFocus
+                showOutsideDays={false}
+            />
+            </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="relative -mx-4 sm:mx-0">
+        <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex space-x-3 px-4 sm:px-0 pb-2">
+            {dateStripRange.map((date) => (
+                <button
+                    key={date.toISOString()}
+                    onClick={() => setSelectedDate(date)}
+                    className={cn(
+                        "flex flex-col flex-shrink-0 items-center justify-center rounded-lg p-2 w-16 h-20 transition-all duration-200 border-2",
+                        isSameDay(selectedDate || new Date(), date)
+                        ? "bg-primary text-primary-foreground border-primary shadow-md"
+                        : "bg-card text-card-foreground border-transparent hover:bg-muted/50"
+                    )}
+                >
+                    <span className="text-sm font-medium uppercase">{format(date, 'E', { locale: indonesianLocale })}</span>
+                    <span className="text-2xl font-bold">{format(date, 'd')}</span>
+                    {isToday(date) && <div className="w-1.5 h-1.5 bg-accent rounded-full mt-1"></div>}
+                </button>
+            ))}
+            </div>
+            <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </div>
       
       <main>
