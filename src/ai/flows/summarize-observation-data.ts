@@ -9,6 +9,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {googleAI} from '@genkit-ai/googleai';
 
 const SummarizeObservationDataInputSchema = z.object({
   observationData: z.string().describe('The observation data to summarize.'),
@@ -31,6 +32,7 @@ const summarizeObservationDataPrompt = ai.definePrompt({
   name: 'summarizeObservationDataPrompt',
   input: {schema: SummarizeObservationDataInputSchema},
   output: {schema: SummarizeObservationDataOutputSchema},
+  model: googleAI('gemini-1.5-flash-latest'),
   config: {
     safetySettings: [
       {

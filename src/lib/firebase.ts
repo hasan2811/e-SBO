@@ -13,7 +13,6 @@ const firebaseConfig: FirebaseOptions = {
   storageBucket: "hssetech-e1710.firebasestorage.app",
   messagingSenderId: "789147047426",
   appId: "1:789147047426:web:7a37fdc4adfb51905bb91b",
-  measurementId: "G-X04C2SP8M4"
 };
 
 // Initialize Firebase
@@ -30,7 +29,7 @@ const storage = getStorage(app);
 // Initialize Analytics if running in the browser
 if (typeof window !== 'undefined') {
   isSupported().then((supported) => {
-    if (supported && firebaseConfig.measurementId) {
+    if (supported) {
       getAnalytics(app);
     }
   });

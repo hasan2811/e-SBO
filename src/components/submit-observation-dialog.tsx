@@ -347,7 +347,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                     </Button>
                     {photoPreview && (
                       <div className="mt-2 relative w-full h-48 rounded-md overflow-hidden border">
-                        <Image src={photoPreview} alt="Pratinjau Foto" fill className="object-cover" />
+                        <Image src={photoPreview} alt="Pratinjau Foto" fill sizes="100vw" className="object-cover" />
                       </div>
                     )}
                     <FormMessage />
@@ -384,5 +384,3 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     </Dialog>
   );
 }
-
-    

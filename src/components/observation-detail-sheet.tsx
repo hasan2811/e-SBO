@@ -72,6 +72,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                   src={observation.photoUrl}
                   alt={`Observation at ${observation.location}`}
                   fill
+                  sizes="(max-width: 640px) 100vw, 512px"
                   className="object-contain"
                   data-ai-hint="construction site"
                 />
@@ -219,6 +220,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                       src={observation.actionTakenPhotoUrl}
                       alt="Action taken photo"
                       fill
+                      sizes="(max-width: 640px) 100vw, 512px"
                       className="object-contain"
                       data-ai-hint="fixed pipe"
                     />
