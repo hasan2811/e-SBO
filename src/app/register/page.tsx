@@ -15,6 +15,8 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { AppLogo } from '@/components/app-logo';
 
+export const dynamic = 'force-dynamic';
+
 export default function RegisterPage() {
   const { signUpWithEmailAndPassword, user, loading } = useAuth();
   const router = useRouter();

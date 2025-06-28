@@ -15,27 +15,8 @@ const firebaseConfig: FirebaseOptions = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// This is a dummy config object used ONLY during the build process
-// to prevent the build from failing when the real environment variables
-// are not yet available.
-const DUMMY_CONFIG_FOR_BUILD = {
-  apiKey: "build-time-dummy-key",
-  authDomain: "build-time-dummy-domain.firebaseapp.com",
-  projectId: "build-time-dummy-project-id",
-  storageBucket: "build-time-dummy-bucket.appspot.com",
-  messagingSenderId: "build-time-dummy-sender-id",
-  appId: "build-time-dummy-app-id",
-};
-
-
 // Initialize Firebase.
-// We check if a projectId is available. If not, it means we are in a build environment
-// where secrets are not yet injected. In that case, we use the dummy config to allow the build to pass.
-// At runtime, the correct firebaseConfig with real values will be used.
-const app = !getApps().length 
-    ? initializeApp(firebaseConfig.projectId ? firebaseConfig : DUMMY_CONFIG_FOR_BUILD) 
-    : getApp();
-
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -43,7 +24,11 @@ const storage = getStorage(app);
 
 // Initialize Analytics & Firestore Persistence if running in the browser
 if (typeof window !== 'undefined') {
-  // Enable Firestore offline persistence
+  // This check is now safe because the page is rendered at runtime when vars are present.
+  if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+      console.error("FATAL ERROR: Firebase configuration is missing on the client-side. Please check your environment variables.");
+  }
+
   try {
     enableIndexedDbPersistence(db)
       .catch((err) => {
@@ -63,6 +48,5 @@ if (typeof window !== 'undefined') {
     }
   });
 }
-
 
 export { app, db, auth, storage };

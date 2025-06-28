@@ -12,6 +12,8 @@ import { CompleteProfileDialog } from '@/components/complete-profile-dialog';
 import type { Observation } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
+export const dynamic = 'force-dynamic';
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, userProfile, loading: authLoading } = useAuth();
   const { addObservation } = useObservations();
