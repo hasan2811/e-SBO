@@ -10,7 +10,7 @@ import { FileText, ChevronRight, ChevronLeft, Calendar as CalendarIcon } from 'l
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
 import { StarRating } from '@/components/star-rating';
@@ -59,6 +59,7 @@ export default function JurnalPage() {
   const { observations, loading } = useObservations();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
+  const [isCalendarOpen, setCalendarOpen] = React.useState(false);
 
   const handlePreviousDay = () => {
     if (selectedDate) {
@@ -106,8 +107,8 @@ export default function JurnalPage() {
               <ChevronLeft className="h-5 w-5" />
             </Button>
             
-            <Popover>
-              <PopoverTrigger asChild>
+            <Dialog open={isCalendarOpen} onOpenChange={setCalendarOpen}>
+              <DialogTrigger asChild>
                 <Button
                   variant={"ghost"}
                   className="h-9 flex-1 px-2 text-center font-semibold text-sm whitespace-nowrap"
@@ -115,16 +116,19 @@ export default function JurnalPage() {
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {selectedDate ? formatDateDisplay(selectedDate) : <span>Pilih tanggal</span>}
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              </DialogTrigger>
+              <DialogContent className="w-auto p-0">
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={setSelectedDate}
+                  onSelect={(date) => {
+                    setSelectedDate(date);
+                    setCalendarOpen(false);
+                  }}
                   initialFocus
                 />
-              </PopoverContent>
-            </Popover>
+              </DialogContent>
+            </Dialog>
 
             <Button variant="ghost" size="icon" onClick={handleNextDay} disabled={isToday(selectedDate || new Date())} className="h-9 w-9 flex-shrink-0" aria-label="Next Day">
               <ChevronRight className="h-5 w-5" />

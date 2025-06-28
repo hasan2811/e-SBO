@@ -12,10 +12,10 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -165,6 +165,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
 
 export default function DashboardPage() {
   const { observations, loading } = useObservations();
+  const [isCalendarOpen, setCalendarOpen] = React.useState(false);
   
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: subDays(new Date(), 6),
@@ -311,8 +312,8 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Popover>
-              <PopoverTrigger asChild>
+            <Dialog open={isCalendarOpen} onOpenChange={setCalendarOpen}>
+              <DialogTrigger asChild>
                 <Button
                   id="date"
                   variant={'outline'}
@@ -335,18 +336,23 @@ export default function DashboardPage() {
                     <span>Pick a date</span>
                   )}
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
+              </DialogTrigger>
+              <DialogContent className="w-auto p-0">
                 <Calendar
                   initialFocus
                   mode="range"
                   defaultMonth={date?.from}
                   selected={date}
-                  onSelect={setDate}
-                  numberOfMonths={1}
+                  onSelect={(range) => {
+                    setDate(range);
+                    if (range?.to) {
+                      setCalendarOpen(false);
+                    }
+                  }}
+                  numberOfMonths={2}
                 />
-              </PopoverContent>
-            </Popover>
+              </DialogContent>
+            </Dialog>
         </div>
       </div>
       
