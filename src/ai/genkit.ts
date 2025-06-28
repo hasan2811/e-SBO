@@ -7,12 +7,21 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
+// Retrieve the API key from environment variables.
+const geminiApiKey = process.env.GEMINI_API_KEY;
+
+if (!geminiApiKey) {
+  throw new Error(
+    "GEMINI_API_KEY is not defined in your environment variables. Please add it to your .env.local file."
+  );
+}
+
 // Initialize and export the AI instance.
-// The `googleAI` plugin is configured with a hardcoded API key as per user request.
+// The `googleAI` plugin is now configured securely via environment variables.
 export const ai = genkit({
   plugins: [
     googleAI({
-      apiKey: 'AIzaSyDfwUsDhWnoywj0aYLxfLE2MDONCnI_gho', // Hardcoded Google AI Studio API Key.
+      apiKey: geminiApiKey,
     }),
   ],
 });

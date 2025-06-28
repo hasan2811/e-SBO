@@ -70,7 +70,7 @@ export function CompleteProfileDialog({ isOpen, onProfileComplete }: CompletePro
     <Dialog open={isOpen} modal={true}>
       <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Welcome to InspectWise!</DialogTitle>
+          <DialogTitle>Welcome to HSSE Tech!</DialogTitle>
           <DialogDescription>
             Please complete your profile by adding your position. This will be displayed on all your observation reports.
           </DialogDescription>
