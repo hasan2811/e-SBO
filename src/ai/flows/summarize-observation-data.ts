@@ -75,6 +75,9 @@ const summarizeObservationDataFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await summarizeObservationDataPrompt(input);
-    return output!;
+    if (!output) {
+      throw new Error("AI analysis returned no structured output.");
+    }
+    return output;
   }
 );
