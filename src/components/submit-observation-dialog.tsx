@@ -37,8 +37,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 
-const LOCATIONS = ['Location A', 'Location B', 'Location C', 'Location D'] as const;
-const COMPANIES = ['Perusahaan A', 'Perusahaan B', 'Perusahaan C', 'Perusahaan D'] as const;
+const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
+const COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
 const CATEGORIES = ['Structural', 'Electrical', 'Plumbing', 'General'] as const;
 const RISK_LEVELS = ['Low', 'Medium', 'High', 'Critical'] as const;
 
