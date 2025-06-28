@@ -101,8 +101,11 @@ const nextConfig = {
     config,
     { isServer }
   ) => {
-    // Aliasing to fix client-side bundling issues with server-only packages
+    // This is the definitive fix for the client-side build error.
+    // It tells webpack to replace these server-only modules with `false`
+    // when building for the client, preventing "module not found" errors.
     if (!isServer) {
+      config.resolve.alias['@google-cloud/firestore'] = false;
       config.resolve.alias['@opentelemetry/exporter-jaeger'] = false;
       config.resolve.alias['@opentelemetry/sdk-node'] = false;
     }
