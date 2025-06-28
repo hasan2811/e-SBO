@@ -9,7 +9,7 @@ import { RiskBadge, StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, TrendingUp, UserCheck, Star, Share2, ArrowLeft } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Share2, ArrowLeft } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -295,20 +295,6 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
                               <p className="text-sm text-muted-foreground pl-8">{observation.aiRootCauseAnalysis}</p>
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                        {observation.aiImpactRating && observation.aiImpactExplanation && (
-                          <AccordionItem value="impact">
-                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                              <div className="flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                                Impact Analysis
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2 pl-8 space-y-2">
-                                <StarRating rating={observation.aiImpactRating} />
-                                <p className="text-sm text-muted-foreground">{observation.aiImpactExplanation}</p>
                             </AccordionContent>
                           </AccordionItem>
                         )}

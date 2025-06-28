@@ -24,10 +24,6 @@ const SummarizeObservationDataOutputSchema = z.object({
   relevantRegulations: z.string().describe('Poin-poin inti dari peraturan nasional & internasional yang relevan beserta penjelasan singkatnya (Bahasa Indonesia).'),
   suggestedRiskLevel: z.enum(RISK_LEVELS).describe('Saran tingkat risiko (Low, Medium, High, Critical) berdasarkan analisis temuan.'),
   rootCauseAnalysis: z.string().describe('Analisis singkat mengenai kemungkinan akar penyebab masalah (Bahasa Indonesia).'),
-  impactAnalysis: z.object({
-      rating: z.number().min(1).max(5).describe('Rating 1-5 dampak temuan bagi K3. 1: Sangat Rendah, 2: Rendah, 3: Sedang, 4: Tinggi, 5: Sangat Tinggi/Kritis.'),
-      explanation: z.string().describe('Penjelasan singkat untuk rating dampak.'),
-  }),
   observerAssessment: z.object({
       rating: z.number().min(1).max(5).describe('Rating 1-5 tingkat pemahaman observer. 1: Sangat Dasar, 2: Dasar, 3: Cukup Paham, 4: Paham, 5: Sangat Paham/Ahli.'),
       explanation: z.string().describe('Analisis personal tentang laporan observer, sebutkan namanya.'),
@@ -61,10 +57,7 @@ Berdasarkan data observasi yang diberikan, hasilkan objek JSON dengan format ber
 4.  "relevantRegulations": Identifikasi peraturan/standar yang paling relevan. Prioritaskan peraturan nasional Indonesia (UU, PP, Permenaker) yang terbaru. Jika tidak ada yang spesifik, cari dari standar internasional seperti **ISO, ILO, ANSI, ASTM, OSHA, ASME, atau JIS**. Sebutkan **hanya 1-3 aturan paling relevan**. Untuk setiap peraturan, sebutkan **inti aturannya dalam satu poin yang diawali dengan tanda hubung (-)**.
 5.  "suggestedRiskLevel": Berdasarkan tingkat keparahan temuan, sarankan satu tingkat risiko yang paling sesuai: 'Low', 'Medium', 'High', atau 'Critical'.
 6.  "rootCauseAnalysis": Lakukan analisis singkat untuk mengidentifikasi kemungkinan akar penyebab dari temuan yang dilaporkan.
-7.  "impactAnalysis": Sebuah objek berisi:
-    - "rating": Angka **(1 sampai 5)** yang menilai dampak temuan ini bagi K3 jika diabaikan. (1: Sangat Rendah, 2: Rendah, 3: Sedang, 4: Tinggi, 5: Sangat Tinggi/Kritis).
-    - "explanation": Penjelasan singkat untuk rating dampak tersebut.
-8.  "observerAssessment": Sebuah objek berisi:
+7.  "observerAssessment": Sebuah objek berisi:
     - "rating": Angka **(1 sampai 5)** untuk menilai kualitas laporan dan pemahaman HSSE dari si observer. Nilai berdasarkan detail temuan, foto, dan rekomendasi. (1: Sangat Dasar, 2: Dasar, 3: Cukup Paham, 4: Paham, 5: Sangat Paham/Ahli).
     - "explanation": Berikan analisis singkat dan personal tentang laporan yang dibuat observer tersebut. **Sebutkan nama observer** dan jelaskan mengapa Anda memberikan rating tersebut.
 
