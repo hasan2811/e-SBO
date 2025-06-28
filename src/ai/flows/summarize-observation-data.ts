@@ -35,11 +35,16 @@ const SummarizeObservationDataOutputSchema = z.object({
 });
 export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservationDataOutputSchema>;
 
+// Wrapper function to be called by the application
 export async function summarizeObservationData(input: SummarizeObservationDataInput): Promise<SummarizeObservationDataOutput> {
   return summarizeObservationDataFlow(input);
 }
 
-const PROMPT_TEMPLATE = `Anda adalah asisten HSSE yang cerdas, objektif, dan efisien. Tugas Anda adalah menganalisis data observasi dan memberikan poin-poin analisis yang jelas, langsung ke inti permasalahan, dan mudah dipahami dalam Bahasa Indonesia.
+// Define the prompt object once, with all configurations.
+const summarizeObservationDataPrompt = ai.definePrompt({
+  name: 'summarizeObservationDataPrompt',
+  // Use Handlebars for templating
+  prompt: `Anda adalah asisten HSSE yang cerdas, objektif, dan efisien. Tugas Anda adalah menganalisis data observasi dan memberikan poin-poin analisis yang jelas, langsung ke inti permasalahan, dan mudah dipahami dalam Bahasa Indonesia.
 PENTING: Respons Anda harus berupa objek JSON mentah saja, tanpa penjelasan atau pemformatan tambahan.
 
 Berdasarkan data observasi yang diberikan, hasilkan objek JSON dengan format berikut. Semua respons harus dalam Bahasa Indonesia.
@@ -58,8 +63,22 @@ Berdasarkan data observasi yang diberikan, hasilkan objek JSON dengan format ber
     - "explanation": Berikan analisis singkat dan personal tentang laporan yang dibuat observer tersebut. Sebutkan nama observer dan jelaskan mengapa Anda memberikan rating tersebut.
 
 Data Observasi:
-{{{observationData}}}`;
+{{{observationData}}}`,
+  // Define the model explicitly within the prompt definition.
+  model: 'googleai/gemini-1.5-flash-latest',
+  input: { schema: SummarizeObservationDataInputSchema },
+  output: { schema: SummarizeObservationDataOutputSchema },
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+    ],
+  },
+});
 
+// Define the flow, which simply calls the pre-configured prompt.
 const summarizeObservationDataFlow = ai.defineFlow(
   {
     name: 'summarizeObservationDataFlow',
@@ -67,25 +86,9 @@ const summarizeObservationDataFlow = ai.defineFlow(
     outputSchema: SummarizeObservationDataOutputSchema,
   },
   async (input) => {
-    const filledPrompt = PROMPT_TEMPLATE.replace('{{{observationData}}}', input.observationData);
-
-    const llmResponse = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-latest',
-      prompt: filledPrompt,
-      output: {
-        schema: SummarizeObservationDataOutputSchema,
-      },
-      config: {
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-        ],
-      },
-    });
-
+    const llmResponse = await summarizeObservationDataPrompt(input);
     const output = llmResponse.output;
+
     if (!output) {
       throw new Error('AI analysis returned no structured output.');
     }
