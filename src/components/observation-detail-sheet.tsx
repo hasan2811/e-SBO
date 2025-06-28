@@ -10,8 +10,9 @@ import { RiskBadge, StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, TrendingUp, UserCheck, Star } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 
 
 interface ObservationDetailSheetProps {
@@ -19,6 +20,20 @@ interface ObservationDetailSheetProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
 }
+
+const StarRating = ({ rating }: { rating: number }) => (
+  <div className="flex items-center gap-0.5">
+    {[1, 2, 3].map((star) => (
+      <Star
+        key={star}
+        className={cn(
+          'h-5 w-5',
+          rating >= star ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/50'
+        )}
+      />
+    ))}
+  </div>
+);
 
 export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { updateObservation, retryAiAnalysis } = useObservations();
@@ -175,6 +190,34 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
                               <p className="text-sm text-muted-foreground pl-8">{observation.aiRootCauseAnalysis}</p>
+                            </AccordionContent>
+                          </AccordionItem>
+                        )}
+                        {observation.aiImpactRating && observation.aiImpactExplanation && (
+                          <AccordionItem value="impact">
+                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                              <div className="flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                                Impact Analysis
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2 pl-8 space-y-2">
+                                <StarRating rating={observation.aiImpactRating} />
+                                <p className="text-sm text-muted-foreground">{observation.aiImpactExplanation}</p>
+                            </AccordionContent>
+                          </AccordionItem>
+                        )}
+                        {observation.aiObserverSkillRating && observation.aiObserverSkillExplanation && (
+                          <AccordionItem value="observer">
+                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                              <div className="flex items-center gap-2">
+                                <UserCheck className="h-4 w-4 text-muted-foreground" />
+                                Observer Insight
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2 pl-8 space-y-2">
+                                <StarRating rating={observation.aiObserverSkillRating} />
+                                <p className="text-sm text-muted-foreground">{observation.aiObserverSkillExplanation}</p>
                             </AccordionContent>
                           </AccordionItem>
                         )}

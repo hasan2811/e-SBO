@@ -39,5 +39,8 @@ export type Observation = {
   aiRelevantRegulations?: string;
   aiSuggestedRiskLevel?: RiskLevel;
   aiRootCauseAnalysis?: string;
+  aiImpactRating?: number;
+  aiImpactExplanation?: string;
+  aiObserverSkillRating?: number;
+  aiObserverSkillExplanation?: string;
 };
-

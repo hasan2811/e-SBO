@@ -67,6 +67,10 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             aiRelevantRegulations: summary.relevantRegulations,
             aiSuggestedRiskLevel: summary.suggestedRiskLevel,
             aiRootCauseAnalysis: summary.rootCauseAnalysis,
+            aiImpactRating: summary.impactAnalysis.rating,
+            aiImpactExplanation: summary.impactAnalysis.explanation,
+            aiObserverSkillRating: summary.observerAssessment.rating,
+            aiObserverSkillExplanation: summary.observerAssessment.explanation,
             aiStatus: 'completed' as const,
           };
           updateDoc(observationDocRef, aiData);

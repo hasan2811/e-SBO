@@ -24,6 +24,14 @@ const SummarizeObservationDataOutputSchema = z.object({
   relevantRegulations: z.string().describe('Poin-poin inti dari peraturan nasional & internasional yang relevan beserta penjelasan singkatnya (Bahasa Indonesia).'),
   suggestedRiskLevel: z.enum(RISK_LEVELS).describe('Saran tingkat risiko (Low, Medium, High, Critical) berdasarkan analisis temuan.'),
   rootCauseAnalysis: z.string().describe('Analisis singkat mengenai kemungkinan akar penyebab masalah (Bahasa Indonesia).'),
+  impactAnalysis: z.object({
+      rating: z.number().min(1).max(3).describe('Rating 1-3 dampak temuan bagi K3. 1: Rendah, 2: Sedang, 3: Signifikan.'),
+      explanation: z.string().describe('Penjelasan singkat untuk rating dampak.'),
+  }),
+  observerAssessment: z.object({
+      rating: z.number().min(1).max(3).describe('Rating 1-3 tingkat pemahaman observer. 1: Pemula, 2: Cukup Paham, 3: Sangat Paham.'),
+      explanation: z.string().describe('Analisis personal tentang laporan observer, sebutkan namanya.'),
+  })
 });
 export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservationDataOutputSchema>;
 
@@ -31,7 +39,7 @@ export async function summarizeObservationData(input: SummarizeObservationDataIn
   return summarizeObservationDataFlow(input);
 }
 
-const PROMPT_TEMPLATE = `Anda adalah asisten HSSE yang cerdas dan efisien. Tugas Anda adalah menganalisis data observasi dan memberikan poin-poin analisis yang jelas, langsung ke inti permasalahan, dan mudah dipahami dalam Bahasa Indonesia.
+const PROMPT_TEMPLATE = `Anda adalah asisten HSSE yang cerdas, objektif, dan efisien. Tugas Anda adalah menganalisis data observasi dan memberikan poin-poin analisis yang jelas, langsung ke inti permasalahan, dan mudah dipahami dalam Bahasa Indonesia.
 PENTING: Respons Anda harus berupa objek JSON mentah saja, tanpa penjelasan atau pemformatan tambahan.
 
 Berdasarkan data observasi yang diberikan, hasilkan objek JSON dengan format berikut. Semua respons harus dalam Bahasa Indonesia.
@@ -42,6 +50,12 @@ Berdasarkan data observasi yang diberikan, hasilkan objek JSON dengan format ber
 4.  "relevantRegulations": Identifikasi peraturan/standar nasional Indonesia (UU, PP, Permenaker) dan internasional (ISO, OHSAS) yang relevan. Untuk setiap peraturan, sebutkan **inti aturannya dalam satu poin** dan berikan penjelasan singkat.
 5.  "suggestedRiskLevel": Berdasarkan tingkat keparahan temuan, sarankan satu tingkat risiko yang paling sesuai: 'Low', 'Medium', 'High', atau 'Critical'.
 6.  "rootCauseAnalysis": Lakukan analisis singkat untuk mengidentifikasi kemungkinan akar penyebab dari temuan yang dilaporkan.
+7.  "impactAnalysis": Sebuah objek berisi:
+    - "rating": Angka (1, 2, atau 3) yang menilai dampak temuan ini bagi kesehatan dan keselamatan (K3) jika diabaikan. (1: Dampak Rendah, 2: Dampak Sedang, 3: Dampak Signifikan/Tinggi).
+    - "explanation": Penjelasan singkat untuk rating dampak tersebut.
+8.  "observerAssessment": Sebuah objek berisi:
+    - "rating": Angka (1, 2, atau 3) untuk menilai kualitas laporan dan pemahaman HSSE dari si observer (lihat nama di "Submitted By"). Nilai berdasarkan detail temuan, foto, dan rekomendasi. (1: Pemula - laporan kurang detail, 2: Cukup Paham - laporan standar, 3: Sangat Paham - laporan detail dan komprehensif).
+    - "explanation": Berikan analisis singkat dan personal tentang laporan yang dibuat observer tersebut. Sebutkan nama observer dan jelaskan mengapa Anda memberikan rating tersebut.
 
 Data Observasi:
 {{{observationData}}}`;
