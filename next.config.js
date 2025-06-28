@@ -68,8 +68,6 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // This block tells Next.js to NOT bundle these packages on the client-side.
-  // This is the definitive fix for the build error.
   experimental: {
     serverComponentsExternalPackages: [
       '@google-cloud/firestore',
