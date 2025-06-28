@@ -25,11 +25,11 @@ const SummarizeObservationDataOutputSchema = z.object({
   suggestedRiskLevel: z.enum(RISK_LEVELS).describe('Saran tingkat risiko (Low, Medium, High, Critical) berdasarkan analisis temuan.'),
   rootCauseAnalysis: z.string().describe('Analisis singkat mengenai kemungkinan akar penyebab masalah (Bahasa Indonesia).'),
   impactAnalysis: z.object({
-      rating: z.number().min(1).max(3).describe('Rating 1-3 dampak temuan bagi K3. 1: Rendah, 2: Sedang, 3: Signifikan.'),
+      rating: z.number().min(1).max(5).describe('Rating 1-5 dampak temuan bagi K3. 1: Sangat Rendah, 2: Rendah, 3: Sedang, 4: Tinggi, 5: Sangat Tinggi/Kritis.'),
       explanation: z.string().describe('Penjelasan singkat untuk rating dampak.'),
   }),
   observerAssessment: z.object({
-      rating: z.number().min(1).max(3).describe('Rating 1-3 tingkat pemahaman observer. 1: Pemula, 2: Cukup Paham, 3: Sangat Paham.'),
+      rating: z.number().min(1).max(5).describe('Rating 1-5 tingkat pemahaman observer. 1: Sangat Dasar, 2: Dasar, 3: Cukup Paham, 4: Paham, 5: Sangat Paham/Ahli.'),
       explanation: z.string().describe('Analisis personal tentang laporan observer, sebutkan namanya.'),
   })
 });
@@ -37,7 +37,6 @@ export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservation
 
 
 // 3. Define the prompt object. This is the most stable method.
-// It encapsulates the model, prompt text, and input/output schemas in one place.
 const summarizePrompt = ai.definePrompt({
     name: 'summarizeObservationPrompt',
     model: 'googleai/gemini-2.0-flash',
@@ -51,24 +50,23 @@ const summarizePrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    // The prompt template. Use Handlebars syntax `{{{...}}}` for variables.
     prompt: `Anda adalah asisten HSSE yang cerdas, objektif, dan efisien. Tugas Anda adalah menganalisis data observasi dan memberikan poin-poin analisis yang jelas, langsung ke inti permasalahan, dan mudah dipahami dalam Bahasa Indonesia.
 PENTING: Respons Anda harus berupa objek JSON mentah saja, tanpa penjelasan atau pemformatan tambahan.
 
 Berdasarkan data observasi yang diberikan, hasilkan objek JSON dengan format berikut. Semua respons harus dalam Bahasa Indonesia.
 
 1.  "summary": Berikan ringkasan yang sangat singkat (satu atau dua kalimat) dari temuan inti.
-2.  "risks": Jelaskan potensi bahaya dan risiko dalam bentuk **poin-poin singkat**. Fokus pada risiko utama dan konsekuensi paling signifikan jika tidak ditangani.
-3.  "suggestedActions": Berikan saran tindakan yang jelas dan dapat dieksekusi dalam bentuk **poin-poin singkat**, berdasarkan rekomendasi yang ada di data.
-4.  "relevantRegulations": Identifikasi peraturan/standar nasional Indonesia (UU, PP, Permenaker) dan internasional (ISO, OHSAS) yang relevan. Untuk setiap peraturan, sebutkan **inti aturannya dalam satu poin** dan berikan penjelasan singkat.
+2.  "risks": Jelaskan potensi bahaya dan risiko dalam bentuk **poin-poin singkat yang diawali dengan tanda hubung (-)**. Fokus pada risiko utama dan konsekuensi paling signifikan jika tidak ditangani.
+3.  "suggestedActions": Berikan saran tindakan yang jelas dan dapat dieksekusi dalam bentuk **poin-poin singkat yang diawali dengan tanda hubung (-)**, berdasarkan rekomendasi yang ada di data.
+4.  "relevantRegulations": Identifikasi peraturan/standar yang paling relevan. Prioritaskan peraturan nasional Indonesia (UU, PP, Permenaker) yang terbaru. Jika tidak ada yang spesifik, cari dari standar internasional seperti **ISO, ILO, ANSI, ASTM, OSHA, ASME, atau JIS**. Sebutkan **hanya 1-3 aturan paling relevan**. Untuk setiap peraturan, sebutkan **inti aturannya dalam satu poin yang diawali dengan tanda hubung (-)**.
 5.  "suggestedRiskLevel": Berdasarkan tingkat keparahan temuan, sarankan satu tingkat risiko yang paling sesuai: 'Low', 'Medium', 'High', atau 'Critical'.
 6.  "rootCauseAnalysis": Lakukan analisis singkat untuk mengidentifikasi kemungkinan akar penyebab dari temuan yang dilaporkan.
 7.  "impactAnalysis": Sebuah objek berisi:
-    - "rating": Angka (1, 2, atau 3) yang menilai dampak temuan ini bagi kesehatan dan keselamatan (K3) jika diabaikan. (1: Dampak Rendah, 2: Dampak Sedang, 3: Dampak Signifikan/Tinggi).
+    - "rating": Angka **(1 sampai 5)** yang menilai dampak temuan ini bagi K3 jika diabaikan. (1: Sangat Rendah, 2: Rendah, 3: Sedang, 4: Tinggi, 5: Sangat Tinggi/Kritis).
     - "explanation": Penjelasan singkat untuk rating dampak tersebut.
 8.  "observerAssessment": Sebuah objek berisi:
-    - "rating": Angka (1, 2, atau 3) untuk menilai kualitas laporan dan pemahaman HSSE dari si observer (lihat nama di "Submitted By"). Nilai berdasarkan detail temuan, foto, dan rekomendasi. (1: Pemula - laporan kurang detail, 2: Cukup Paham - laporan standar, 3: Sangat Paham - laporan detail dan komprehensif).
-    - "explanation": Berikan analisis singkat dan personal tentang laporan yang dibuat observer tersebut. Sebutkan nama observer dan jelaskan mengapa Anda memberikan rating tersebut.
+    - "rating": Angka **(1 sampai 5)** untuk menilai kualitas laporan dan pemahaman HSSE dari si observer. Nilai berdasarkan detail temuan, foto, dan rekomendasi. (1: Sangat Dasar, 2: Dasar, 3: Cukup Paham, 4: Paham, 5: Sangat Paham/Ahli).
+    - "explanation": Berikan analisis singkat dan personal tentang laporan yang dibuat observer tersebut. **Sebutkan nama observer** dan jelaskan mengapa Anda memberikan rating tersebut.
 
 Data Observasi:
 {{{observationData}}}`,

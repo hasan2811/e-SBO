@@ -21,19 +21,27 @@ interface ObservationDetailSheetProps {
     onOpenChange: (open: boolean) => void;
 }
 
-const StarRating = ({ rating }: { rating: number }) => (
-  <div className="flex items-center gap-0.5">
-    {[1, 2, 3].map((star) => (
-      <Star
-        key={star}
-        className={cn(
-          'h-5 w-5',
-          rating >= star ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/50'
-        )}
-      />
-    ))}
-  </div>
-);
+const StarRating = ({ rating }: { rating: number }) => {
+    const colorClass = 
+        rating <= 2 ? 'text-destructive fill-destructive/80' :
+        rating === 3 ? 'text-yellow-400 fill-yellow-400/80' :
+        'text-green-500 fill-green-500/80';
+    
+    return (
+        <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map((star) => (
+            <Star
+                key={star}
+                className={cn(
+                'h-5 w-5',
+                rating >= star ? colorClass : 'text-muted-foreground/30'
+                )}
+            />
+            ))}
+        </div>
+    );
+};
+
 
 export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { updateObservation, retryAiAnalysis } = useObservations();
@@ -153,6 +161,20 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                     )}
 
                     {observation.aiStatus === 'completed' && (
+                      <div className="space-y-4">
+                        {observation.aiObserverSkillRating && observation.aiObserverSkillExplanation && (
+                          <div className="space-y-2 pb-4 border-b">
+                            <div className="flex items-center justify-between">
+                              <h5 className="font-semibold flex items-center gap-2 text-sm">
+                                <UserCheck className="h-4 w-4 text-muted-foreground" />
+                                Observer Insight
+                              </h5>
+                              <StarRating rating={observation.aiObserverSkillRating} />
+                            </div>
+                            <p className="text-sm text-muted-foreground pl-8">{observation.aiObserverSkillExplanation}</p>
+                          </div>
+                        )}
+
                        <Accordion type="multiple" defaultValue={['summary']} className="w-full">
                         {observation.aiSummary && (
                           <AccordionItem value="summary">
@@ -207,20 +229,6 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                             </AccordionContent>
                           </AccordionItem>
                         )}
-                        {observation.aiObserverSkillRating && observation.aiObserverSkillExplanation && (
-                          <AccordionItem value="observer">
-                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                              <div className="flex items-center gap-2">
-                                <UserCheck className="h-4 w-4 text-muted-foreground" />
-                                Observer Insight
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2 pl-8 space-y-2">
-                                <StarRating rating={observation.aiObserverSkillRating} />
-                                <p className="text-sm text-muted-foreground">{observation.aiObserverSkillExplanation}</p>
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
                         {observation.aiRisks && (
                           <AccordionItem value="risks">
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
@@ -261,6 +269,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                           </AccordionItem>
                         )}
                       </Accordion>
+                      </div>
                     )}
                  </div>
               </div>
