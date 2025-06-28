@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI-powered analysis of HSSE observation data.
@@ -40,7 +41,7 @@ export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservation
 // It encapsulates the model, prompt text, and input/output schemas in one place.
 const summarizePrompt = ai.definePrompt({
     name: 'summarizeObservationPrompt',
-    model: 'gemini-1.5-flash-latest', // Corrected model name.
+    model: 'gemini-1.5-flash-latest', // Corrected model name as per user analysis.
     input: { schema: SummarizeObservationDataInputSchema },
     output: { schema: SummarizeObservationDataOutputSchema },
     config: {
