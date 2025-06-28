@@ -4,13 +4,8 @@ import { summarizeObservationData, SummarizeObservationDataOutput } from '@/ai/f
 import type { Observation } from './types';
 
 export async function getAiSummary(observation: Observation): Promise<SummarizeObservationDataOutput> {
-  // PERINGATAN: Kunci API AI sekarang ditulis langsung di dalam kode.
-  // Pastikan kunci ini tidak digunakan di tempat lain jika Anda memutuskan untuk menghapusnya.
-  const apiKey = "AIzaSyDfwUsDhWnoywj0aYLxfLE2MDONCnI_gho";
-
-  // Cek di bawah ini tidak lagi diperlukan karena kita sudah memasukkan kunci secara langsung.
-  // Namun, kita tetap mendeklarasikan variabel 'apiKey' untuk berjaga-jaga jika ada
-  // bagian lain dari sistem build yang memeriksanya, meskipun tidak digunakan langsung di sini.
+  // This function now correctly relies on the centralized Genkit configuration
+  // which securely handles the API key via environment variables.
 
   const observationData = `
     Location: ${observation.location}
