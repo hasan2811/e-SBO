@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -18,15 +17,20 @@ function Calendar({
   showOutsideDays = false,
   ...props
 }: CalendarProps) {
+  const currentYear = new Date().getFullYear();
   return (
     <DayPicker
+      captionLayout="dropdown-buttons"
+      fromYear={currentYear - 10}
+      toYear={currentYear}
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
+        caption_label: "hidden", // Hide the label when using dropdowns
+        caption_dropdowns: "flex gap-2", // Style for the dropdowns container
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -39,15 +43,18 @@ function Calendar({
         head_cell:
           "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
         row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+        // This style handles ranges correctly without interfering with single-day circular selection
+        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
         day: cn(
           buttonVariants({ variant: "ghost" }),
           "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
         ),
         day_range_end: "day-range-end",
+        // Circular style for the selected day
         day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
+          "bg-primary text-primary-foreground rounded-full hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+        // Circular style for today's date
+        day_today: "bg-accent text-accent-foreground rounded-full",
         day_outside:
           "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
         day_disabled: "text-muted-foreground opacity-50",
@@ -57,7 +64,7 @@ function Calendar({
         ...classNames,
       }}
        formatters={{
-        formatWeekdayName: (date) => format(date, "EEEEEE", { locale: indonesianLocale }), // Two-letter day: Mi, Se, etc.
+        formatWeekdayName: (date) => format(date, "EE", { locale: indonesianLocale }), // "Mi", "Se", etc.
         ...props.formatters,
       }}
       components={{
