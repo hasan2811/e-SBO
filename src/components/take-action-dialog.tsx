@@ -272,7 +272,7 @@ export function TakeActionDialog({
                 <FormField
                   control={form.control}
                   name="actionTakenPhoto"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
                       <FormLabel>Upload Photo of Completion (Optional)</FormLabel>
                         <FormControl>
