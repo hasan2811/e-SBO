@@ -39,7 +39,10 @@ import { ScrollArea } from './ui/scroll-area';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(1, 'Description cannot be empty.'),
-  actionTakenPhoto: z.any().optional(),
+  actionTakenPhoto: z
+    .any()
+    .optional()
+    .refine((file) => !file || file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -138,20 +141,21 @@ export function TakeActionDialog({
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      const validation = formSchema.shape.actionTakenPhoto.safeParse(file);
+      if (validation.success) {
+        form.setValue('actionTakenPhoto', file, { shouldValidate: true });
+        const reader = new FileReader();
+        reader.onloadend = () => setPhotoPreview(reader.result as string);
+        reader.readAsDataURL(file);
+      } else {
+        form.setValue('actionTakenPhoto', undefined, { shouldValidate: true });
+        setPhotoPreview(null);
         toast({
           variant: 'destructive',
-          title: 'File too large',
-          description: 'Please upload an image smaller than 10MB.',
+          title: 'File tidak valid',
+          description: validation.error.issues[0].message,
         });
-        return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-        form.setValue('actionTakenPhoto', file);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -270,25 +274,25 @@ export function TakeActionDialog({
                     <FormItem>
                       <FormLabel>Upload Photo of Completion (Optional)</FormLabel>
                         <FormControl>
-                          <Input
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isSubmitting}
+                            >
+                                <Upload className="mr-2 h-4 w-4" />
+                                {photoPreview ? 'Change Photo' : 'Select Photo'}
+                            </Button>
+                        </FormControl>
+                        <Input
                             type="file"
                             accept="image/*"
                             className="hidden"
                             ref={fileInputRef}
                             onChange={handlePhotoChange}
                             disabled={isSubmitting}
-                          />
-                        </FormControl>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={isSubmitting}
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          {photoPreview ? 'Change Photo' : 'Select Photo'}
-                        </Button>
+                        />
                       {photoPreview && (
                         <div className="mt-4 relative w-full h-48 rounded-md overflow-hidden border">
                           <Image src={photoPreview} alt="Action taken preview" fill sizes="(max-width: 525px) 100vw, 525px" className="object-cover" data-ai-hint="fixed pipe" />
