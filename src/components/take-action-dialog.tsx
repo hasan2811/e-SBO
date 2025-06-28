@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, ListChecks, CheckCircle2 } from 'lucide-react';
 import { ref, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 
 import { storage } from '@/lib/firebase';
@@ -34,7 +34,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(10, 'Description must be at least 10 characters.'),
@@ -106,11 +107,27 @@ export function TakeActionDialog({
     },
   });
 
+  const [checkedActions, setCheckedActions] = React.useState<string[]>([]);
+
+  const suggestedActions = React.useMemo(() => observation.aiSuggestedActions
+      ? observation.aiSuggestedActions
+          .split('\n')
+          .map(line => line.trim().replace(/^- /, ''))
+          .filter(line => line.length > 0)
+      : [], [observation.aiSuggestedActions]);
+
+  React.useEffect(() => {
+    const combinedDescription = checkedActions.map(action => `- ${action}`).join('\n');
+    form.setValue('actionTakenDescription', combinedDescription, { shouldValidate: true, shouldDirty: true });
+  }, [checkedActions, form]);
+
+
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset();
       setPhotoPreview(null);
       setUploadProgress(null);
+      setCheckedActions([]);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -194,6 +211,37 @@ export function TakeActionDialog({
         </DialogHeader>
         <Form {...form}>
           <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            
+            {suggestedActions.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <ListChecks className="h-5 w-5 text-primary" />
+                  <h4 className="text-sm font-semibold">AI Suggested Actions</h4>
+                </div>
+                <div className="space-y-2 rounded-md border p-3">
+                  {suggestedActions.map((action, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <Checkbox
+                        id={`action-${index}`}
+                        onCheckedChange={(checked) => {
+                          setCheckedActions(prev => 
+                            checked ? [...prev, action] : prev.filter(a => a !== action)
+                          );
+                        }}
+                      />
+                      <label
+                        htmlFor={`action-${index}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {action}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="actionTakenDescription"
@@ -202,7 +250,7 @@ export function TakeActionDialog({
                   <FormLabel>Action Description</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Describe the action taken."
+                      placeholder="Describe the action taken, or select from the AI suggestions above."
                       className="resize-none"
                       rows={4}
                       {...field}
@@ -217,7 +265,7 @@ export function TakeActionDialog({
               name="actionTakenPhoto"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Upload Photo of Completion</FormLabel>
+                  <FormLabel>Upload Photo of Completion (Optional)</FormLabel>
                     <FormControl>
                       <Input
                         type="file"
