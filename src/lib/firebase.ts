@@ -5,23 +5,30 @@ import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
-// During the build process (`next build`), environment variables from App Hosting secrets might not be available.
-// This is a common scenario in CI/CD environments. To allow the build to succeed, we provide
-// placeholder/dummy values. At runtime, Firebase App Hosting will inject the correct
-// environment variables from the secrets, and those will be used.
 const firebaseConfig: FirebaseOptions = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "build-time-dummy-key",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "dummy-project.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "dummy-project",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "dummy-project.appspot.com",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "1234567890",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:1234567890:web:dummy",
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID, // This one is optional and can be undefined
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
+// This check runs only in the user's browser. If the API key is missing here,
+// it's a fatal error because the secrets were not injected correctly.
+if (typeof window !== 'undefined' && !firebaseConfig.apiKey) {
+    document.body.innerHTML = 'FATAL ERROR: Firebase configuration is missing. Please check App Hosting secrets and redeploy.';
+    throw new Error('Firebase configuration is missing on the client.');
+}
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+// Initialize Firebase.
+// During the build process (`next build`), the API key may be undefined.
+// We pass a dummy object `{}` to initializeApp to prevent the build from crashing.
+// At runtime in the browser, the correct firebaseConfig will be present and used.
+const app = !getApps().length ? initializeApp(firebaseConfig.apiKey ? firebaseConfig : {}) : getApp();
+
 const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
