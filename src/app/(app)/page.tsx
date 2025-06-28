@@ -5,9 +5,9 @@ import * as React from 'react';
 import { useObservations } from '@/contexts/observation-context';
 import type { Observation, RiskLevel } from '@/lib/types';
 import { RiskBadge, StatusBadge } from '@/components/status-badges';
-import { format, isSameDay, subDays } from 'date-fns';
+import { format, isSameDay, subDays, isToday, addDays } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
-import { FileText, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { FileText, ChevronRight, Calendar as CalendarIcon, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -71,51 +71,68 @@ export default function JurnalPage() {
     });
   }, [observations, selectedDate]);
   
+  const handlePrevDay = () => {
+    if (selectedDate) {
+      setSelectedDate(subDays(selectedDate, 1));
+    }
+  };
+
+  const handleNextDay = () => {
+    if (selectedDate && !(isToday(selectedDate) || selectedDate > new Date())) {
+      setSelectedDate(addDays(selectedDate, 1));
+    }
+  };
+
+  const isNextDayDisabled = selectedDate ? isToday(selectedDate) || selectedDate > new Date() : true;
+
   return (
     <>
      <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div>
-            <h2 className="text-2xl font-bold tracking-tight">
-                Jurnal Observasi
-            </h2>
-            <p className="text-muted-foreground">
-                Telusuri laporan harian Anda.
-            </p>
-        </div>
-        <Dialog open={isCalendarOpen} onOpenChange={setCalendarOpen}>
+        <h2 className="text-2xl font-bold tracking-tight">
+            Jurnal Observasi
+        </h2>
+        
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={handlePrevDay}>
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+
+          <Dialog open={isCalendarOpen} onOpenChange={setCalendarOpen}>
             <DialogTrigger asChild>
-            <Button
-              variant={'outline'}
-              className={cn(
-                'w-full sm:w-auto justify-start text-left font-normal min-w-[240px]',
-                !selectedDate && 'text-muted-foreground'
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {selectedDate ? (
-                format(selectedDate, "PPP", { locale: indonesianLocale })
-               ) : (
-                <span>Pilih tanggal</span>
-              )}
-            </Button>
+              <Button
+                variant={'outline'}
+                className={cn('w-full sm:w-auto justify-center text-center font-normal h-9 min-w-[200px]')}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {selectedDate && isToday(selectedDate)
+                  ? 'Hari ini'
+                  : selectedDate
+                  ? format(selectedDate, 'd MMMM yyyy', { locale: indonesianLocale })
+                  : 'Pilih tanggal'}
+              </Button>
             </DialogTrigger>
             <DialogContent className="w-auto p-0">
-            <Calendar
+              <Calendar
                 mode="single"
                 selected={selectedDate}
                 onSelect={(date) => {
-                    if (date) {
-                      setSelectedDate(date);
-                    }
-                    setCalendarOpen(false);
+                  if (date) {
+                    setSelectedDate(date);
+                  }
+                  setCalendarOpen(false);
                 }}
-                disabled={(date) => date > new Date() || date < subDays(new Date(), 30)}
+                disabled={(date) => date > new Date()}
                 initialFocus
                 showOutsideDays={false}
-            />
+              />
             </DialogContent>
-        </Dialog>
+          </Dialog>
+        
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={handleNextDay} disabled={isNextDayDisabled}>
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       <main>
