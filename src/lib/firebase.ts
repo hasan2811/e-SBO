@@ -13,6 +13,7 @@ const firebaseConfig = {
   storageBucket: "hssetech-e1710.firebasestorage.app",
   messagingSenderId: "789147047426",
   appId: "1:789147047426:web:7a37fdc4adfb51905bb91b",
+  measurementId: "G-X84C2SP8MH"
 };
 
 
