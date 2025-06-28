@@ -1,4 +1,3 @@
-
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
@@ -6,7 +5,8 @@ import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
-// Your web app's Firebase configuration is now securely loaded from environment variables
+// Your web app's Firebase configuration is now hardcoded as requested.
+// PLEASE REPLACE THE "YOUR_..._HERE" PLACEHOLDERS WITH YOUR ACTUAL VALUES.
 const firebaseConfig = {
   apiKey: "YOUR_FIREBASE_API_KEY_HERE",
   authDomain: "hssetech-e1710.firebaseapp.com",
@@ -15,11 +15,6 @@ const firebaseConfig = {
   messagingSenderId: "YOUR_MESSAGING_SENDER_ID_HERE",
   appId: "YOUR_APP_ID_HERE"
 };
-
-// Basic validation to ensure environment variables are loaded
-if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-    throw new Error("Firebase configuration environment variables are not set. Please check your .env.local file.");
-}
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
