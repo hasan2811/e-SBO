@@ -1,11 +1,11 @@
 
 import { initializeApp, getApps, getApp, type FirebaseOptions } from 'firebase/app';
-import { getFirestore, enableIndexedDbPersistence, memoryLocalCache, initializeFirestore } from 'firebase/firestore';
+import { getFirestore, memoryLocalCache, initializeFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
-const firebaseConfig = {
+const firebaseConfig: FirebaseOptions = {
   apiKey: "AIzaSyD-P_1XOQ9xQOgxwMApClEFoqHcxs7fYPI",
   authDomain: "hssetech-e1710.firebaseapp.com",
   projectId: "hssetech-e1710",
@@ -18,6 +18,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
+// Use initializeFirestore for modern cache management, removing deprecation warnings.
 const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
 });
