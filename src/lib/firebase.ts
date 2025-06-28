@@ -15,7 +15,7 @@ const firebaseConfig: FirebaseOptions = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase.
+// Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 const db = getFirestore(app);
@@ -24,11 +24,6 @@ const storage = getStorage(app);
 
 // Initialize Analytics & Firestore Persistence if running in the browser
 if (typeof window !== 'undefined') {
-  // This check is now safe because the page is rendered at runtime when vars are present.
-  if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-      console.error("FATAL ERROR: Firebase configuration is missing on the client-side. Please check your environment variables.");
-  }
-
   try {
     enableIndexedDbPersistence(db)
       .catch((err) => {

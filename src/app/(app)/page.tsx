@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
 
+export const dynamic = 'force-dynamic';
 
 const riskColorMap: Record<RiskLevel, string> = {
   Critical: 'bg-destructive',

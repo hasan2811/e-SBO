@@ -36,6 +36,8 @@ import {
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 
+export const dynamic = 'force-dynamic';
+
 const companyChartConfig = {
     value: { label: "Observations", color: "hsl(var(--chart-1))" },
 };
