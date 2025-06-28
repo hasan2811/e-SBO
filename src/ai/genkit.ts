@@ -8,7 +8,7 @@ import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
 // Retrieve the API key from environment variables.
-const geminiApiKey = process.env.GEMINI_API_KEY;
+const geminiApiKey = "YOUR_GEMINI_API_KEY_HERE";
 
 if (!geminiApiKey) {
   throw new Error(
