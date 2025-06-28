@@ -4,32 +4,21 @@ This is a Next.js application for logging and analyzing Health, Safety, Security
 
 ## Getting Started
 
-### 1. Environment Variables
-
-This project requires environment variables to connect to Firebase services and Google AI.
-
--   Copy the `.env.example` file to a new file named `.env.local`.
--   Fill in the required values in `.env.local`. **This file contains secret keys and should NOT be committed to Git.**
-
-```bash
-cp .env.example .env.local
-```
-
-For production deployment (e.g., on Vercel, Netlify), set these environment variables directly in your hosting provider's dashboard.
-
-### 2. Install Dependencies
+### 1. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Run the Development Server
+### 2. Run the Development Server
 
 ```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+**Note**: All necessary API keys and Firebase configurations have been directly embedded into the application code to ensure functionality in the target deployment environment.
 
 ## Required Setup: Firebase Storage CORS
 
