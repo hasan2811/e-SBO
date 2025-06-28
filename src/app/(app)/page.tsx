@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -85,6 +84,21 @@ export default function JurnalPage() {
 
   const isNextDayDisabled = selectedDate ? isToday(selectedDate) || selectedDate > new Date() : true;
 
+  const dateButtonText = React.useMemo(() => {
+    if (!selectedDate) return 'Pilih tanggal';
+
+    const formattedDate = format(selectedDate, 'EEEE, d MMMM yyyy', { locale: indonesianLocale });
+    
+    if (isToday(selectedDate)) {
+      return `Hari ini, ${formattedDate}`;
+    }
+    if (isSameDay(selectedDate, subDays(new Date(), 1))) {
+      return `Kemarin, ${formattedDate}`;
+    }
+    return formattedDate;
+  }, [selectedDate]);
+
+
   return (
     <>
      <div className="space-y-6">
@@ -102,14 +116,10 @@ export default function JurnalPage() {
             <DialogTrigger asChild>
               <Button
                 variant={'outline'}
-                className={cn('w-full sm:w-auto justify-center text-center font-normal h-9 min-w-[200px]')}
+                className={cn('w-full sm:w-auto justify-center text-center font-normal h-9 min-w-[280px]')}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedDate && isToday(selectedDate)
-                  ? 'Hari ini'
-                  : selectedDate
-                  ? format(selectedDate, 'd MMMM yyyy', { locale: indonesianLocale })
-                  : 'Pilih tanggal'}
+                {dateButtonText}
               </Button>
             </DialogTrigger>
             <DialogContent className="w-auto p-0">
