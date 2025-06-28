@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -38,7 +37,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 
 const formSchema = z.object({
-  actionTakenDescription: z.string().min(10, 'Description must be at least 10 characters.'),
+  actionTakenDescription: z.string().min(1, 'Description cannot be empty.'),
   actionTakenPhoto: z.any().optional(),
 });
 
