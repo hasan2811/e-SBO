@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#3B82F6',
+  themeColor: '#29ABE2', // Updated to match primary color from globals.css
 };
 
 export default function RootLayout({
