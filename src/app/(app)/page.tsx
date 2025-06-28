@@ -7,12 +7,10 @@ import type { Observation, RiskLevel } from '@/lib/types';
 import { RiskBadge, StatusBadge } from '@/components/status-badges';
 import { format, isSameDay, subDays, isToday, addDays } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
-import { FileText, ChevronRight, Calendar as CalendarIcon, ChevronLeft } from 'lucide-react';
+import { FileText, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Calendar } from "@/components/ui/calendar";
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
 import { StarRating } from '@/components/star-rating';
 
@@ -60,7 +58,6 @@ export default function JurnalPage() {
   const { observations, loading } = useObservations();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
-  const [isCalendarOpen, setCalendarOpen] = React.useState(false);
 
   const filteredObservations = React.useMemo(() => {
     if (!selectedDate) return [];
@@ -109,39 +106,15 @@ export default function JurnalPage() {
         </h2>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={handlePrevDay}>
+          <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handlePrevDay}>
             <ChevronLeft className="h-5 w-5" />
           </Button>
 
-          <Dialog open={isCalendarOpen} onOpenChange={setCalendarOpen}>
-            <DialogTrigger asChild>
-              <Button
-                variant={'outline'}
-                className={cn('w-full sm:w-auto justify-center text-center font-normal h-9 min-w-[200px]')}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateButtonText}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => {
-                  if (date) {
-                    setSelectedDate(date);
-                  }
-                  setCalendarOpen(false);
-                }}
-                disabled={(date) => date > new Date()}
-                defaultMonth={selectedDate}
-                numberOfMonths={2}
-                showOutsideDays={false}
-              />
-            </DialogContent>
-          </Dialog>
+          <div className="flex h-9 min-w-[240px] items-center justify-center rounded-md border border-primary/20 bg-primary/10 px-4 text-sm font-semibold text-primary shadow-sm">
+            {dateButtonText}
+          </div>
         
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={handleNextDay} disabled={isNextDayDisabled}>
+          <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handleNextDay} disabled={isNextDayDisabled}>
             <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
