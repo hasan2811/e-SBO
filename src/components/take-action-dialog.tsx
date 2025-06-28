@@ -35,7 +35,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from './ui/scroll-area';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(1, 'Description cannot be empty.'),
@@ -112,6 +111,8 @@ export function TakeActionDialog({
   });
 
   const [checkedActions, setCheckedActions] = React.useState<string[]>([]);
+  
+  const userHasTyped = React.useRef(false);
 
   const suggestedActions = React.useMemo(() => observation.aiSuggestedActions
       ? observation.aiSuggestedActions
@@ -121,7 +122,7 @@ export function TakeActionDialog({
       : [], [observation.aiSuggestedActions]);
 
   React.useEffect(() => {
-    if (!form.formState.dirtyFields.actionTakenDescription) {
+    if (!userHasTyped.current) {
       const combinedDescription = checkedActions.length > 0
         ? checkedActions.map(action => `- ${action}`).join('\n')
         : '';
@@ -136,6 +137,7 @@ export function TakeActionDialog({
       setPhotoPreview(null);
       setUploadProgress(null);
       setCheckedActions([]);
+      userHasTyped.current = false;
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -213,64 +215,67 @@ export function TakeActionDialog({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[525px] p-0 flex flex-col max-h-[90dvh]">
-        <DialogHeader className="p-6 pb-4 border-b">
+        <DialogHeader className="p-6 pb-4 border-b flex-shrink-0">
           <DialogTitle>Take Action for {observation.referenceId || observation.id}</DialogTitle>
           <DialogDescription>
             Provide details of the action taken to resolve this observation.
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="flex-1 min-h-0">
-            <ScrollArea className="h-full">
-              <div className="px-6 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto">
+            <Form {...form}>
+            <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-4">
                 {suggestedActions.length > 0 && (
-                  <div className="space-y-3">
+                <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <ListChecks className="h-5 w-5 text-primary" />
-                      <h4 className="text-sm font-semibold">HSSE Tech Suggested Actions</h4>
+                    <ListChecks className="h-5 w-5 text-primary" />
+                    <h4 className="text-sm font-semibold">HSSE Tech Suggested Actions</h4>
                     </div>
                     <div className="space-y-2 rounded-md border p-3">
-                      {suggestedActions.map((action, index) => (
+                    {suggestedActions.map((action, index) => (
                         <div key={index} className="flex items-center gap-3">
-                          <Checkbox
+                        <Checkbox
                             id={`action-${index}`}
                             onCheckedChange={(checked) => {
-                              setCheckedActions(prev => 
+                            setCheckedActions(prev => 
                                 checked ? [...prev, action] : prev.filter(a => a !== action)
-                              );
+                            );
                             }}
-                          />
-                          <label
+                        />
+                        <label
                             htmlFor={`action-${index}`}
                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
+                        >
                             {action}
-                          </label>
+                        </label>
                         </div>
-                      ))}
+                    ))}
                     </div>
                     <Separator />
-                  </div>
+                </div>
                 )}
 
                 <FormField
-                  control={form.control}
-                  name="actionTakenDescription"
-                  render={({ field }) => (
+                control={form.control}
+                name="actionTakenDescription"
+                render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Action Description</FormLabel>
-                      <FormControl>
+                    <FormLabel>Action Description</FormLabel>
+                    <FormControl>
                         <Textarea
-                          placeholder="Describe the action taken, or select from the AI suggestions above."
-                          className="resize-none"
-                          rows={4}
-                          {...field}
+                        placeholder="Describe the action taken, or select from the AI suggestions above."
+                        className="resize-none"
+                        rows={4}
+                        {...field}
+                        onChange={(e) => {
+                            userHasTyped.current = e.target.value.length > 0;
+                            field.onChange(e);
+                        }}
                         />
-                      </FormControl>
-                      <FormMessage />
+                    </FormControl>
+                    <FormMessage />
                     </FormItem>
-                  )}
+                )}
                 />
                 <FormField
                   control={form.control}
@@ -279,6 +284,7 @@ export function TakeActionDialog({
                     <FormItem>
                       <FormLabel>Upload Photo of Completion (Optional)</FormLabel>
                       <FormControl>
+                        <>
                           <Input
                             type="file"
                             accept="image/*"
@@ -287,17 +293,18 @@ export function TakeActionDialog({
                             onChange={handlePhotoChange}
                             disabled={isSubmitting}
                           />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isSubmitting}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            {photoPreview ? 'Change Photo' : 'Select Photo'}
+                          </Button>
+                        </>
                       </FormControl>
-                       <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={isSubmitting}
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          {photoPreview ? 'Change Photo' : 'Select Photo'}
-                        </Button>
                       {photoPreview && (
                         <div className="mt-4 relative w-full h-48 rounded-md overflow-hidden border">
                           <Image src={photoPreview} alt="Action taken preview" fill sizes="(max-width: 525px) 100vw, 525px" className="object-cover" data-ai-hint="fixed pipe" />
@@ -307,11 +314,11 @@ export function TakeActionDialog({
                     </FormItem>
                   )}
                 />
-              </div>
-            </ScrollArea>
-          </form>
-        </Form>
-        <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
+            </form>
+            </Form>
+        </div>
+
+        <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2 flex-shrink-0">
           {isSubmitting && uploadProgress !== null && (
             <div className="w-full">
               <Progress value={uploadProgress} />
