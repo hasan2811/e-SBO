@@ -327,8 +327,21 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
               <div className="space-y-4 pt-4 border-t mt-4">
                 <h4 className="font-semibold text-base">Action Taken</h4>
                  <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-start">
-                   <div className="font-semibold text-muted-foreground">Description</div>
-                   <div className="text-muted-foreground">{observation.actionTakenDescription || '-'}</div>
+                    <div className="font-semibold text-muted-foreground self-start">Description</div>
+                    <div className="text-muted-foreground">
+                      {observation.actionTakenDescription ? (
+                        <div className="space-y-1">
+                          {observation.actionTakenDescription.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((line, index) => (
+                            <div key={index} className="flex items-start gap-2">
+                              <CheckCircle2 className="h-4 w-4 flex-shrink-0 mt-0.5 text-green-600" />
+                              <span className="break-words">{line.replace(/^- /, '')}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        '-'
+                      )}
+                    </div>
                    
                    {observation.closedDate && (
                     <>
