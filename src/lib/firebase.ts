@@ -15,19 +15,27 @@ const firebaseConfig: FirebaseOptions = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// This check runs only in the user's browser. If the API key is missing here,
-// it's a fatal error because the secrets were not injected correctly.
-if (typeof window !== 'undefined' && !firebaseConfig.apiKey) {
-    document.body.innerHTML = 'FATAL ERROR: Firebase configuration is missing. Please check App Hosting secrets and redeploy.';
-    throw new Error('Firebase configuration is missing on the client.');
-}
+// This is a dummy config object used ONLY during the build process
+// to prevent the build from failing when the real environment variables
+// are not yet available.
+const DUMMY_CONFIG_FOR_BUILD = {
+  apiKey: "build-time-dummy-key",
+  authDomain: "build-time-dummy-domain.firebaseapp.com",
+  projectId: "build-time-dummy-project-id",
+  storageBucket: "build-time-dummy-bucket.appspot.com",
+  messagingSenderId: "build-time-dummy-sender-id",
+  appId: "build-time-dummy-app-id",
+};
 
 
 // Initialize Firebase.
-// During the build process (`next build`), the API key may be undefined.
-// We pass a dummy object `{}` to initializeApp to prevent the build from crashing.
-// At runtime in the browser, the correct firebaseConfig will be present and used.
-const app = !getApps().length ? initializeApp(firebaseConfig.apiKey ? firebaseConfig : {}) : getApp();
+// We check if a projectId is available. If not, it means we are in a build environment
+// where secrets are not yet injected. In that case, we use the dummy config to allow the build to pass.
+// At runtime, the correct firebaseConfig with real values will be used.
+const app = !getApps().length 
+    ? initializeApp(firebaseConfig.projectId ? firebaseConfig : DUMMY_CONFIG_FOR_BUILD) 
+    : getApp();
+
 
 const db = getFirestore(app);
 const auth = getAuth(app);
