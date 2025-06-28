@@ -1,21 +1,19 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access for all files. This is needed for the app
-    // to display observation and action photos. URLs are unguessable.
-    match /{allPaths=**} {
-      allow read;
+  
+    // Izinkan pengguna mengunggah foto observasi hanya ke path khusus pengguna mereka.
+    // Ukuran file maksimum juga diberlakukan di sini sebagai lapisan keamanan tambahan.
+    match /observations/{userId}/{fileName} {
+      allow read: if request.auth != null; // Izinkan semua pengguna terautentikasi untuk melihat gambar
+      allow write: if request.auth.uid == userId && request.resource.size < 10 * 1024 * 1024;
     }
 
-    // Users can only write files to a folder matching their own user ID.
-    // This secures uploads and prevents users from overwriting each other's files.
-    match /observations/{userId}/{fileName} {
-      allow write: if request.auth.uid == userId;
-    }
+    // Izinkan pengguna mengunggah foto tindakan perbaikan hanya ke path khusus pengguna mereka.
     match /actions/{userId}/{fileName} {
-      allow write: if request.auth.uid == userId;
+       allow read: if request.auth != null; // Izinkan semua pengguna terautentikasi untuk melihat gambar
+       allow write: if request.auth.uid == userId && request.resource.size < 10 * 1024 * 1024;
     }
   }
 }

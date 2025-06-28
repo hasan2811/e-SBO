@@ -14,8 +14,8 @@ const firebaseConfig = {
   projectId: "hssetech-e1710",
   storageBucket: "hssetech-e1710.firebasestorage.app",
   messagingSenderId: "789147047426",
-  appId: "1:789147047426:web:7a37fdc4adfb51905bb91b",
-  measurementId: "G-X84C2SP8MH"
+  appId: "1:789147047426:web:7a37fdc4adfb51905bb91b"
+  // measurementId is intentionally left out to allow Firebase to handle it automatically.
 };
 
 // Initialize Firebase

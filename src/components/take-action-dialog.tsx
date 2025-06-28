@@ -240,7 +240,7 @@ export function TakeActionDialog({
                     </Button>
                   {photoPreview && (
                     <div className="mt-4 relative w-full h-48 rounded-md overflow-hidden border">
-                      <Image src={photoPreview} alt="Action taken preview" fill sizes="100vw" className="object-cover" data-ai-hint="fixed pipe" />
+                      <Image src={photoPreview} alt="Action taken preview" fill sizes="(max-width: 525px) 100vw, 525px" className="object-cover" data-ai-hint="fixed pipe" />
                     </div>
                   )}
                   <FormMessage />
