@@ -9,8 +9,8 @@ import { RiskBadge, StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, TrendingUp, UserCheck, Star, Share2 } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, TrendingUp, UserCheck, Star, Share2, ArrowLeft } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -113,22 +113,26 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
   return (
     <>
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col">
-        <SheetHeader className="p-6 pb-4 border-b">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <SheetTitle>
-                Observation: {observation.referenceId || observation.id}
-              </SheetTitle>
-              <SheetDescription>
-                Details for the selected observation.
-              </SheetDescription>
-            </div>
-            {observation.aiStatus === 'completed' && observation.aiObserverSkillRating && (
-              <Button variant="outline" size="icon" onClick={handleShare} className="ml-4 flex-shrink-0" aria-label="Bagikan Insight">
-                  <Share2 className="h-4 w-4" />
-              </Button>
-            )}
+      <SheetContent hideCloseButton className="w-full sm:max-w-lg p-0 flex flex-col">
+        <SheetHeader className="p-4 border-b">
+          <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                  <SheetClose asChild>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2">
+                          <ArrowLeft className="h-5 w-5" />
+                      </Button>
+                  </SheetClose>
+                  <div className="flex flex-col">
+                      <SheetTitle>Observation Details</SheetTitle>
+                      <SheetDescription>{observation.referenceId || observation.id}</SheetDescription>
+                  </div>
+              </div>
+              
+              {observation.aiStatus === 'completed' && observation.aiObserverSkillRating && (
+                  <Button variant="outline" size="icon" onClick={handleShare} className="flex-shrink-0" aria-label="Bagikan Insight">
+                      <Share2 className="h-4 w-4" />
+                  </Button>
+              )}
           </div>
         </SheetHeader>
         
