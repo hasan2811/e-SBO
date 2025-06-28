@@ -5,15 +5,15 @@ import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
-// Your web app's Firebase configuration is now hardcoded as requested.
-// PLEASE REPLACE THE "YOUR_..._HERE" PLACEHOLDERS WITH YOUR ACTUAL VALUES.
+// Your web app's Firebase configuration, as provided by the user.
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY_HERE",
+  apiKey: "AIzaSyD-P_1XOQ9xQOgxwMApClEFoqHcxs7fYPI",
   authDomain: "hssetech-e1710.firebaseapp.com",
   projectId: "hssetech-e1710",
-  storageBucket: "hssetech-e1710.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID_HERE",
-  appId: "YOUR_APP_ID_HERE"
+  storageBucket: "hssetech-e1710.firebasestorage.app",
+  messagingSenderId: "789147047426",
+  appId: "1:789147047426:web:7a37fdc4adfb51905bb91b",
+  measurementId: "G-X84C2SP8MH"
 };
 
 // Initialize Firebase
