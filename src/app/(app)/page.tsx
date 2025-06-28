@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -126,6 +127,7 @@ export default function JurnalPage() {
                     setCalendarOpen(false);
                   }}
                   initialFocus
+                  showOutsideDays={false}
                 />
               </DialogContent>
             </Dialog>

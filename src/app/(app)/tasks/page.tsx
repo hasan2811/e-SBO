@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -350,6 +351,7 @@ export default function DashboardPage() {
                     }
                   }}
                   numberOfMonths={2}
+                  showOutsideDays={false}
                 />
               </DialogContent>
             </Dialog>
