@@ -2,21 +2,15 @@
 'use client';
 
 import * as React from 'react';
-import { format, subDays, eachDayOfInterval, addDays } from 'date-fns';
-import { DateRange } from 'react-day-picker';
-import { Calendar as CalendarIcon, CheckCircle, PieChart as PieChartIcon, BarChart2 } from 'lucide-react';
+import { format, subDays, eachDayOfInterval, addDays, isToday } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
+import { CheckCircle, PieChart as PieChartIcon, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import type { Observation, RiskLevel, Company, Location } from '@/lib/types';
 import { useObservations } from '@/contexts/observation-context';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -166,12 +160,36 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
 
 export default function DashboardPage() {
   const { observations, loading } = useObservations();
-  const [isCalendarOpen, setCalendarOpen] = React.useState(false);
   
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: subDays(new Date(), 6),
     to: new Date(),
   });
+
+  const handlePrevWeek = () => {
+    if (date?.from && date?.to) {
+      setDate({
+        from: subDays(date.from, 7),
+        to: subDays(date.to, 7),
+      });
+    }
+  };
+  
+  const handleNextWeek = () => {
+    if (date?.from && date?.to) {
+      let newTo = addDays(date.to, 7);
+      if (newTo > new Date()) {
+        newTo = new Date();
+      }
+      const newFrom = subDays(newTo, 6);
+      setDate({ from: newFrom, to: newTo });
+    }
+  };
+
+  const isNextWeekDisabled = React.useMemo(() => {
+    if (!date?.to) return true;
+    return isToday(date.to);
+  }, [date]);
   
   const filteredObservations = React.useMemo(() => {
     if (!date?.from) return observations;
@@ -312,50 +330,21 @@ export default function DashboardPage() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Dialog open={isCalendarOpen} onOpenChange={setCalendarOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  id="date"
-                  variant={'outline'}
-                  className={cn(
-                    'w-full sm:w-[260px] justify-start text-left font-normal',
-                    !date && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date?.from ? (
-                    date.to ? (
-                      <>
-                        {format(date.from, 'LLL dd, y')} -{' '}
-                        {format(date.to, 'LLL dd, y')}
-                      </>
-                    ) : (
-                      format(date.from, 'LLL dd, y')
-                    )
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="w-auto p-0">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={date?.from}
-                  selected={date}
-                  onSelect={(range) => {
-                    setDate(range);
-                    if (range?.to) {
-                      setCalendarOpen(false);
-                    }
-                  }}
-                  numberOfMonths={2}
-                  showOutsideDays={false}
-                />
-              </DialogContent>
-            </Dialog>
-        </div>
+        <div className="flex items-center gap-2">
+            <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handlePrevWeek}>
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+
+            <div className="flex h-9 min-w-[240px] items-center justify-center rounded-md border border-primary/20 bg-primary/10 px-4 text-sm font-semibold text-primary shadow-sm">
+               {date?.from && date.to ? 
+                `${format(date.from, 'd MMM')} - ${format(date.to, 'd MMM yyyy')}` : 
+                'Memuat...'}
+            </div>
+          
+            <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handleNextWeek} disabled={isNextWeekDisabled}>
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </div>
       </div>
       
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
