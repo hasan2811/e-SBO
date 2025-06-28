@@ -15,7 +15,6 @@ export function getGenkit() {
     }
     ai = genkit({
       plugins: [googleAI({apiKey: process.env.GOOGLE_API_KEY})],
-      model: 'googleai/gemini-2.0-flash',
     });
   }
   return ai;
