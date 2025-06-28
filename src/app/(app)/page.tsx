@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -87,7 +88,7 @@ export default function JurnalPage() {
   const dateButtonText = React.useMemo(() => {
     if (!selectedDate) return 'Pilih tanggal';
 
-    const formattedDate = format(selectedDate, 'EEEE, d MMMM yyyy', { locale: indonesianLocale });
+    const formattedDate = format(selectedDate, 'd MMMM yyyy', { locale: indonesianLocale });
     
     if (isToday(selectedDate)) {
       return `Hari ini, ${formattedDate}`;
@@ -95,7 +96,7 @@ export default function JurnalPage() {
     if (isSameDay(selectedDate, subDays(new Date(), 1))) {
       return `Kemarin, ${formattedDate}`;
     }
-    return formattedDate;
+    return format(selectedDate, 'EEEE, d MMMM yyyy', { locale: indonesianLocale });
   }, [selectedDate]);
 
 
@@ -116,13 +117,13 @@ export default function JurnalPage() {
             <DialogTrigger asChild>
               <Button
                 variant={'outline'}
-                className={cn('w-full sm:w-auto justify-center text-center font-normal h-9 min-w-[280px]')}
+                className={cn('w-full sm:w-auto justify-center text-center font-normal h-9 min-w-[200px]')}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateButtonText}
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[75vh] w-auto p-0 overflow-y-auto">
+            <DialogContent className="w-auto p-0">
               <Calendar
                 mode="single"
                 selected={selectedDate}
@@ -134,7 +135,7 @@ export default function JurnalPage() {
                 }}
                 disabled={(date) => date > new Date()}
                 defaultMonth={selectedDate}
-                numberOfMonths={6}
+                numberOfMonths={2}
                 showOutsideDays={false}
               />
             </DialogContent>
