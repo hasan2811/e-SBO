@@ -27,7 +27,7 @@ const db = initializeFirestore(app, {
 const auth = getAuth(app);
 const storage = getStorage(app);
 
-// Initialize Analytics if running in the browser
+// Initialize Analytics only if running in the browser and it's supported.
 if (typeof window !== 'undefined') {
   isSupported().then((supported) => {
     if (supported) {
