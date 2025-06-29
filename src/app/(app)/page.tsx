@@ -3,11 +3,11 @@
 
 import * as React from 'react';
 import { useObservations } from '@/contexts/observation-context';
-import type { Observation, RiskLevel } from '@/lib/types';
-import { RiskBadge, StatusBadge } from '@/components/status-badges';
+import type { Observation, RiskLevel, Inspection, Ptw } from '@/lib/types';
+import { RiskBadge, StatusBadge, InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format, isSameDay, subDays, isToday, addDays } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
-import { FileText, ChevronRight, ChevronLeft, Download } from 'lucide-react';
+import { FileText, ChevronRight, ChevronLeft, Download, Wrench, FileSignature as PtwIcon, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,7 @@ import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
 import { StarRating } from '@/components/star-rating';
 import { exportToExcel } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const riskColorMap: Record<RiskLevel, string> = {
   Critical: 'bg-destructive',
@@ -56,22 +57,78 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
   );
 };
 
+const InspectionListItem = ({ inspection }: { inspection: Inspection }) => (
+  <li>
+    <div className="relative flex items-center bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
+      <div className="flex-1 space-y-2 pr-4">
+        <p className="text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">{format(new Date(inspection.date), 'HH:mm')}</span> - {inspection.equipmentType}
+        </p>
+        <p className="font-semibold leading-snug line-clamp-2">{inspection.equipmentName}: {inspection.findings}</p>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <InspectionStatusBadge status={inspection.status} />
+          <span className="text-xs text-muted-foreground">{inspection.location}</span>
+        </div>
+      </div>
+      <div className="ml-auto flex items-center pl-2">
+        <ChevronRight className="h-6 w-6 text-muted-foreground" />
+      </div>
+    </div>
+  </li>
+);
+
+const PtwListItem = ({ ptw }: { ptw: Ptw }) => (
+  <li>
+    <div className="relative flex items-center bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
+      <div className="flex-1 space-y-2 pr-4">
+        <p className="text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">{format(new Date(ptw.date), 'HH:mm')}</span> - {ptw.contractor}
+        </p>
+        <p className="font-semibold leading-snug line-clamp-2">{ptw.workDescription}</p>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <PtwStatusBadge status={ptw.status} />
+          <span className="text-xs text-muted-foreground">{ptw.location}</span>
+        </div>
+      </div>
+      <div className="ml-auto flex items-center pl-2">
+        <ChevronRight className="h-6 w-6 text-muted-foreground" />
+      </div>
+    </div>
+  </li>
+);
+
+
 export default function JurnalPage() {
-  const { observations, loading } = useObservations();
+  const { observations, inspections, ptws, loading } = useObservations();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
+  const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
   const { toast } = useToast();
 
-  const filteredObservations = React.useMemo(() => {
+  const viewConfig = {
+    observations: { label: 'Jurnal Observasi', icon: FileText, data: observations },
+    inspections: { label: 'Jurnal Inspeksi', icon: Wrench, data: inspections },
+    ptws: { label: 'Jurnal PTW', icon: PtwIcon, data: ptws },
+  };
+
+  const filteredData = React.useMemo(() => {
     if (!selectedDate) return [];
     
-    return observations
-      .filter(obs => obs.scope === 'public' || obs.scope === undefined)
-      .filter(obs => {
-        const obsDate = new Date(obs.date);
-        return isSameDay(obsDate, selectedDate);
-    });
-  }, [observations, selectedDate]);
+    const filterByDate = (item: { date: string }) => isSameDay(new Date(item.date), selectedDate);
+
+    if (viewType === 'observations') {
+       return observations
+        .filter(obs => obs.scope === 'public' || obs.scope === undefined)
+        .filter(filterByDate);
+    }
+    if (viewType === 'inspections') {
+      return inspections.filter(filterByDate);
+    }
+    if (viewType === 'ptws') {
+      return ptws.filter(filterByDate);
+    }
+    return [];
+  }, [observations, inspections, ptws, selectedDate, viewType]);
   
   const handlePrevDay = () => {
     if (selectedDate) {
@@ -102,7 +159,14 @@ export default function JurnalPage() {
   }, [selectedDate]);
 
   const handleExport = () => {
-    if (filteredObservations.length === 0) {
+    if (viewType !== 'observations') {
+      toast({
+        title: 'Fitur Dalam Pengembangan',
+        description: 'Ekspor untuk tipe data ini akan segera hadir.',
+      });
+      return;
+    }
+    if (filteredData.length === 0) {
         toast({
             variant: 'destructive',
             title: 'Tidak Ada Data untuk Diekspor',
@@ -111,19 +175,39 @@ export default function JurnalPage() {
         return;
     }
     const fileName = `Jurnal_Observasi_${format(selectedDate!, 'yyyy-MM-dd')}`;
-    exportToExcel(filteredObservations, fileName);
+    exportToExcel(filteredData as Observation[], fileName);
   };
 
+  const EmptyState = () => {
+    const config = viewConfig[viewType];
+    return (
+      <div className="text-center py-16 text-muted-foreground bg-card rounded-lg">
+        {React.createElement(config.icon, { className: "mx-auto h-12 w-12" })}
+        <h3 className="mt-4 text-xl font-semibold">Tidak Ada Data</h3>
+        <p className="mt-2 text-sm max-w-xs mx-auto">Tidak ada data {config.label.toLowerCase()} untuk tanggal ini.</p>
+      </div>
+    )
+  };
 
   return (
     <>
      <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold tracking-tight">
-              Jurnal Observasi
-          </h2>
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredObservations.length === 0 || loading}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="text-2xl font-bold tracking-tight -ml-2 p-2 h-auto">
+                  {viewConfig[viewType].label}
+                  <ChevronDown className="h-6 w-6 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onSelect={() => setViewType('observations')}>{viewConfig.observations.label}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setViewType('inspections')}>{viewConfig.inspections.label}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setViewType('ptws')}>{viewConfig.ptws.label}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredData.length === 0 || loading}>
               <Download className="mr-2 h-4 w-4" />
               Export
           </Button>
@@ -133,11 +217,9 @@ export default function JurnalPage() {
           <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handlePrevDay}>
             <ChevronLeft className="h-5 w-5" />
           </Button>
-
           <div className="flex h-9 min-w-[240px] items-center justify-center rounded-md border border-primary/20 bg-primary/10 px-4 text-sm font-semibold text-primary shadow-sm">
             {dateButtonText}
           </div>
-        
           <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handleNextDay} disabled={isNextDayDisabled}>
             <ChevronRight className="h-5 w-5" />
           </Button>
@@ -162,18 +244,20 @@ export default function JurnalPage() {
               </li>
             ))}
           </ul>
-        ) : filteredObservations.length > 0 ? (
+        ) : filteredData.length > 0 ? (
           <ul className="space-y-3">
-            {filteredObservations.map(obs => (
-              <ObservationListItem key={obs.id} observation={obs} onSelect={() => setSelectedObservation(obs)} />
+            {viewType === 'observations' && filteredData.map(obs => (
+              <ObservationListItem key={(obs as Observation).id} observation={obs as Observation} onSelect={() => setSelectedObservation(obs as Observation)} />
+            ))}
+            {viewType === 'inspections' && filteredData.map(insp => (
+              <InspectionListItem key={(insp as Inspection).id} inspection={insp as Inspection} />
+            ))}
+            {viewType === 'ptws' && filteredData.map(ptw => (
+              <PtwListItem key={(ptw as Ptw).id} ptw={ptw as Ptw} />
             ))}
           </ul>
         ) : (
-          <div className="text-center py-16 text-muted-foreground bg-card rounded-lg">
-            <FileText className="mx-auto h-12 w-12" />
-            <h3 className="mt-4 text-xl font-semibold">Tidak Ada Observasi</h3>
-            <p className="mt-2 text-sm max-w-xs mx-auto">Tidak ada data observasi untuk tanggal yang dipilih. Silakan pilih tanggal lain.</p>
-          </div>
+          <EmptyState />
         )}
       </main>
     </div>

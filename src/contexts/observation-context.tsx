@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { collection, doc, onSnapshot, query, updateDoc, orderBy, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Observation } from '@/lib/types';
+import type { Observation, Inspection, Ptw } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { getAiSummary } from '@/lib/actions';
 import { toast } from '@/hooks/use-toast';
@@ -12,6 +12,8 @@ import { format } from 'date-fns';
 
 interface ObservationContextType {
   observations: Observation[];
+  inspections: Inspection[];
+  ptws: Ptw[];
   loading: boolean;
   addObservation: (observation: Omit<Observation, 'id' | 'referenceId'>) => Promise<void>;
   updateObservation: (id: string, updatedData: Partial<Observation>) => Promise<void>;
@@ -22,35 +24,61 @@ const ObservationContext = React.createContext<ObservationContextType | undefine
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
   const [observations, setObservations] = React.useState<Observation[]>([]);
+  const [inspections, setInspections] = React.useState<Inspection[]>([]);
+  const [ptws, setPtws] = React.useState<Ptw[]>([]);
   const [loading, setLoading] = React.useState<boolean>(true);
   const { user } = useAuth();
 
   React.useEffect(() => {
     if (user) {
       setLoading(true);
-      const observationCollection = collection(db, 'observations');
-      const q = query(observationCollection, orderBy('date', 'desc'));
+      
+      const collections = {
+        observations: collection(db, 'observations'),
+        inspections: collection(db, 'inspections'),
+        ptws: collection(db, 'ptws'),
+      };
 
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const obsData = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id,
-        } as Observation));
-        setObservations(obsData);
-        setLoading(false);
+      const qObs = query(collections.observations, orderBy('date', 'desc'));
+      const qInsp = query(collections.inspections, orderBy('date', 'desc'));
+      const qPtw = query(collections.ptws, orderBy('date', 'desc'));
+
+      const unsubObs = onSnapshot(qObs, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Observation));
+        setObservations(data);
+        setLoading(false); // Set loading to false after the primary data loads
       }, (error) => {
-        console.error("Error fetching observations from Firestore: ", error);
-         toast({
-          variant: 'destructive',
-          title: 'Error Fetching Data',
-          description: 'Could not fetch observations from the database.',
-        });
+        console.error("Error fetching observations: ", error);
+        toast({ variant: 'destructive', title: 'Error Fetching Data', description: 'Could not fetch observations.' });
         setLoading(false);
       });
 
-      return () => unsubscribe();
+      const unsubInsp = onSnapshot(qInsp, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Inspection));
+        setInspections(data);
+      }, (error) => {
+        console.error("Error fetching inspections: ", error);
+        toast({ variant: 'destructive', title: 'Error Fetching Data', description: 'Could not fetch inspections.' });
+      });
+
+      const unsubPtw = onSnapshot(qPtw, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Ptw));
+        setPtws(data);
+      }, (error) => {
+        console.error("Error fetching PTWs: ", error);
+        toast({ variant: 'destructive', title: 'Error Fetching Data', description: 'Could not fetch PTWs.' });
+      });
+
+
+      return () => {
+        unsubObs();
+        unsubInsp();
+        unsubPtw();
+      };
     } else {
       setObservations([]);
+      setInspections([]);
+      setPtws([]);
       setLoading(false);
     }
   }, [user]);
@@ -126,7 +154,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }
   };
 
-  const value = { observations, loading, addObservation, updateObservation, retryAiAnalysis };
+  const value = { observations, inspections, ptws, loading, addObservation, updateObservation, retryAiAnalysis };
 
   return (
     <ObservationContext.Provider value={value}>
