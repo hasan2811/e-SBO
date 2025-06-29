@@ -170,6 +170,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const inspectionToSave = {
       ...newInspection,
+      scope: newInspection.scope || 'public',
       referenceId,
       aiStatus: 'processing' as const,
     };

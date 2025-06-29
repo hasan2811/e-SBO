@@ -62,6 +62,7 @@ export type Inspection = {
   status: InspectionStatus;
   recommendation?: string;
   photoUrl?: string;
+  scope?: 'public' | 'private';
   aiStatus?: 'processing' | 'completed' | 'failed';
   aiSummary?: string;
   aiRisks?: string;

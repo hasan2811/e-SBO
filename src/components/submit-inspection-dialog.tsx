@@ -15,11 +15,12 @@ import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const EQUIPMENT_TYPES = ['Heavy Machinery', 'Hand Tool', 'Vehicle', 'Electrical', 'Other'] as const;
@@ -35,6 +36,7 @@ const formSchema = z.object({
   photo: z
     .instanceof(File, { message: 'Foto wajib diunggah.' })
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
+  isPrivate: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -63,6 +65,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
       status: INSPECTION_STATUSES[0],
       findings: '',
       recommendation: '',
+      isPrivate: false,
     },
     mode: 'onChange',
   });
@@ -107,10 +110,11 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
         findings: values.findings,
         recommendation: values.recommendation,
         photoUrl: photoUrl,
+        scope: values.isPrivate ? 'private' : 'public',
       };
 
       await onAddInspection(newInspectionData);
-      toast({ title: 'Sukses!', description: `Laporan inspeksi baru berhasil dikirim.` });
+      toast({ title: 'Sukses!', description: `Laporan inspeksi baru berhasil dikirim ke ${values.isPrivate ? 'Beranda' : 'Jurnal'}.` });
       onOpenChange(false);
     } catch (error) {
       console.error("Submission failed: ", error);
@@ -173,6 +177,26 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
                   <FormMessage />
                 </FormItem>
               )} />
+              <FormField
+                  control={form.control}
+                  name="isPrivate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-4">
+                      <div className="space-y-0.5">
+                        <FormLabel>Simpan ke Beranda (Pribadi)</FormLabel>
+                        <FormDescription>
+                          Jika aktif, laporan ini hanya akan terlihat oleh Anda.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
             </form>
           </Form>
         </div>

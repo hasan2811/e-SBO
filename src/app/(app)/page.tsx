@@ -169,7 +169,9 @@ export default function JurnalPage() {
         .filter(filterByDate);
     }
     if (viewType === 'inspections') {
-      return inspections.filter(filterByDate);
+      return inspections
+        .filter(insp => insp.scope === 'public' || insp.scope === undefined)
+        .filter(filterByDate);
     }
     if (viewType === 'ptws') {
       return ptws
