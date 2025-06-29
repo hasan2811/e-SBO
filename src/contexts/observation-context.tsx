@@ -10,10 +10,13 @@ import { summarizeObservationData, analyzeInspectionData } from '@/ai/flows/summ
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
+type AllItems = ((Observation & { itemType: 'observation' }) | (Inspection & { itemType: 'inspection' }) | (Ptw & { itemType: 'ptw' }));
+
 interface ObservationContextType {
   observations: Observation[];
   inspections: Inspection[];
   ptws: Ptw[];
+  allItems: AllItems[];
   loading: boolean;
   addObservation: (observation: Omit<Observation, 'id' | 'referenceId'>) => Promise<void>;
   addInspection: (inspection: Omit<Inspection, 'id' | 'referenceId'>) => Promise<void>;
@@ -38,7 +41,6 @@ function combineAndSort<T extends { id: string; date: string }>(
 
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
-  // Separate states for each data source to prevent race conditions
   const [publicObservations, setPublicObservations] = React.useState<Observation[]>([]);
   const [privateObservations, setPrivateObservations] = React.useState<Observation[]>([]);
   const [publicInspections, setPublicInspections] = React.useState<Inspection[]>([]);
@@ -49,50 +51,47 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const [loading, setLoading] = React.useState<boolean>(true);
   const { user } = useAuth();
 
-  // Effect for setting up Firestore listeners
   React.useEffect(() => {
     if (user) {
       setLoading(true);
-
+      
       const createListener = <T extends {id: string}>(
         collectionPath: string,
         setData: React.Dispatch<React.SetStateAction<T[]>>,
-        isPublic: boolean
+        scope: 'public' | 'private'
       ) => {
         let q: Query<DocumentData>;
         const collectionRef = collection(db, collectionPath);
-        if (isPublic) {
+        
+        if (scope === 'public') {
           q = query(collectionRef, where('scope', '==', 'public'), orderBy('date', 'desc'));
-        } else {
-          q = query(collectionRef, where('userId', '==', user.uid), orderBy('date', 'desc'));
+        } else { // 'private'
+          q = query(collectionRef, where('userId', '==', user.uid), where('scope', '==', 'private'), orderBy('date', 'desc'));
         }
         
         return onSnapshot(q, (snapshot) => {
           const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
           setData(data);
-          if (isPublic) setLoading(false); // Consider loading finished after first public data arrives
         }, (error) => {
-          console.error(`Error fetching ${isPublic ? 'public' : 'private'} ${collectionPath}:`, error);
-          toast({ variant: 'destructive', title: 'Data Fetch Error', description: `Could not fetch ${collectionPath}.` });
-          if (isPublic) setLoading(false);
+          console.error(`Error fetching ${scope} ${collectionPath}: `, error);
+          toast({ variant: 'destructive', title: `Error Fetching ${collectionPath}`, description: error.message });
         });
       };
 
-      const unsubObsPublic = createListener('observations', setPublicObservations, true);
-      const unsubObsPrivate = createListener('observations', setPrivateObservations, false);
-      const unsubInspPublic = createListener('inspections', setPublicInspections, true);
-      const unsubInspPrivate = createListener('inspections', setPrivateInspections, false);
-      const unsubPtwPublic = createListener('ptws', setPublicPtws, true);
-      const unsubPtwPrivate = createListener('ptws', setPrivatePtws, false);
+      const unsubscribers = [
+        createListener('observations', setPublicObservations, 'public'),
+        createListener('observations', setPrivateObservations, 'private'),
+        createListener('inspections', setPublicInspections, 'public'),
+        createListener('inspections', setPrivateInspections, 'private'),
+        createListener('ptws', setPublicPtws, 'public'),
+        createListener('ptws', setPrivatePtws, 'private'),
+      ];
+      
+      // We can consider loading done once all listeners are set up.
+      // The UI will show skeletons until data arrives.
+      setLoading(false);
 
-      return () => {
-        unsubObsPublic();
-        unsubObsPrivate();
-        unsubInspPublic();
-        unsubInspPrivate();
-        unsubPtwPublic();
-        unsubPtwPrivate();
-      };
+      return () => unsubscribers.forEach(unsub => unsub());
     } else {
       // Clear all data if user logs out
       setPublicObservations([]);
@@ -105,10 +104,18 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }
   }, [user]);
   
-  // Combine states with useMemo for performance and consistency
   const observations = React.useMemo(() => combineAndSort(publicObservations, privateObservations), [publicObservations, privateObservations]);
   const inspections = React.useMemo(() => combineAndSort(publicInspections, privateInspections), [publicInspections, privateInspections]);
   const ptws = React.useMemo(() => combineAndSort(publicPtws, privatePtws), [publicPtws, privatePtws]);
+
+  const allItems = React.useMemo(() => {
+    const typedObservations = observations.map(o => ({ ...o, itemType: 'observation' as const }));
+    const typedInspections = inspections.map(i => ({ ...i, itemType: 'inspection' as const }));
+    const typedPtws = ptws.map(p => ({ ...p, itemType: 'ptw' as const }));
+    
+    return [...typedObservations, ...typedInspections, ...typedPtws]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [observations, inspections, ptws]);
 
 
   const _runObservationAiAnalysis = (observation: Observation) => {
@@ -182,7 +189,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const observationToSave = { 
       ...newObservation,
-      scope: newObservation.scope || 'public',
       referenceId,
       aiStatus: 'processing' as const
     };
@@ -195,7 +201,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const inspectionToSave = {
       ...newInspection,
-      scope: newInspection.scope || 'public',
       referenceId,
       aiStatus: 'processing' as const,
     };
@@ -206,10 +211,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
   const addPtw = async (newPtw: Omit<Ptw, 'id' | 'referenceId'>) => {
     const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    const ptwToSave = { ...newPtw, referenceId, scope: newPtw.scope || 'public' };
+    const ptwToSave = { ...newPtw, referenceId };
     const ptwCollection = collection(db, 'ptws');
     await addDoc(ptwCollection, ptwToSave);
-    // AI analysis for PTW can be added here in the future
   };
 
   const updateObservation = async (id: string, updatedData: Partial<Observation>) => {
@@ -227,7 +231,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     });
   };
 
-  const value = { observations, inspections, ptws, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
+  const value = { allItems, observations, inspections, ptws, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
 
   return (
     <ObservationContext.Provider value={value}>
