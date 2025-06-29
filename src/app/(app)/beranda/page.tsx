@@ -131,11 +131,28 @@ export default function BerandaPage() {
   const { observations, inspections, ptws, loading } = useObservations();
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
-  const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
-  const [selectedInspection, setSelectedInspection] = React.useState<Inspection | null>(null);
-  const [selectedPtw, setSelectedPtw] = React.useState<Ptw | null>(null);
+  
+  const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
+  const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
+  const [selectedPtwId, setSelectedPtwId] = React.useState<string | null>(null);
+  
   const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
   const { toast } = useToast();
+
+  const displayObservation = React.useMemo(() => 
+    selectedObservationId ? observations.find(o => o.id === selectedObservationId) ?? null : null,
+    [selectedObservationId, observations]
+  );
+  
+  const displayInspection = React.useMemo(() =>
+    selectedInspectionId ? inspections.find(i => i.id === selectedInspectionId) ?? null : null,
+    [selectedInspectionId, inspections]
+  );
+  
+  const displayPtw = React.useMemo(() =>
+    selectedPtwId ? ptws.find(p => p.id === selectedPtwId) ?? null : null,
+    [selectedPtwId, ptws]
+  );
 
   const viewConfig = {
     observations: { label: 'Beranda Observasi', icon: Home, data: observations },
@@ -281,13 +298,13 @@ export default function BerandaPage() {
         ) : filteredData.length > 0 ? (
           <ul className="space-y-3">
              {viewType === 'observations' && filteredData.map(obs => (
-              <ObservationListItem key={(obs as Observation).id} observation={obs as Observation} onSelect={() => setSelectedObservation(obs as Observation)} />
+              <ObservationListItem key={(obs as Observation).id} observation={obs as Observation} onSelect={() => setSelectedObservationId((obs as Observation).id)} />
             ))}
             {viewType === 'inspections' && filteredData.map(insp => (
-              <InspectionListItem key={(insp as Inspection).id} inspection={insp as Inspection} onSelect={() => setSelectedInspection(insp as Inspection)} />
+              <InspectionListItem key={(insp as Inspection).id} inspection={insp as Inspection} onSelect={() => setSelectedInspectionId((insp as Inspection).id)} />
             ))}
             {viewType === 'ptws' && filteredData.map(ptw => (
-              <PtwListItem key={(ptw as Ptw).id} ptw={ptw as Ptw} onSelect={() => setSelectedPtw(ptw as Ptw)} />
+              <PtwListItem key={(ptw as Ptw).id} ptw={ptw as Ptw} onSelect={() => setSelectedPtwId((ptw as Ptw).id)} />
             ))}
           </ul>
         ) : (
@@ -295,35 +312,35 @@ export default function BerandaPage() {
         )}
       </main>
     </div>
-    {selectedObservation && (
+    {displayObservation && (
         <ObservationDetailSheet 
-            observation={selectedObservation}
-            isOpen={!!selectedObservation}
+            observation={displayObservation}
+            isOpen={!!displayObservation}
             onOpenChange={(isOpen) => {
                 if (!isOpen) {
-                    setSelectedObservation(null);
+                    setSelectedObservationId(null);
                 }
             }}
         />
     )}
-    {selectedInspection && (
+    {displayInspection && (
         <InspectionDetailSheet 
-            inspection={selectedInspection}
-            isOpen={!!selectedInspection}
+            inspection={displayInspection}
+            isOpen={!!displayInspection}
             onOpenChange={(isOpen) => {
                 if (!isOpen) {
-                    setSelectedInspection(null);
+                    setSelectedInspectionId(null);
                 }
             }}
         />
     )}
-    {selectedPtw && (
+    {displayPtw && (
         <PtwDetailSheet 
-            ptw={selectedPtw}
-            isOpen={!!selectedPtw}
+            ptw={displayPtw}
+            isOpen={!!displayPtw}
             onOpenChange={(isOpen) => {
                 if (!isOpen) {
-                    setSelectedPtw(null);
+                    setSelectedPtwId(null);
                 }
             }}
         />
