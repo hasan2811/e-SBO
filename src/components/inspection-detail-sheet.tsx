@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -10,6 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
+import { format } from 'date-fns';
+import { id as indonesianLocale } from 'date-fns/locale';
 
 interface InspectionDetailSheetProps {
     inspection: Inspection | null;
@@ -72,7 +73,7 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange }: Insp
             )}
             <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-center">
               <div className="font-semibold text-muted-foreground">Submitted On</div>
-              <div>{new Date(inspection.date).toLocaleString()}</div>
+              <div>{format(new Date(inspection.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
 
               <div className="font-semibold text-muted-foreground">Submitted By</div>
               <div>{inspection.submittedBy}</div>

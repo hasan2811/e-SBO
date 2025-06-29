@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -10,6 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Gavel, ArrowLeft, FileText, User, Building, MapPin, Calendar, ExternalLink, PenSquare, Check } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { ApprovePtwDialog } from './approve-ptw-dialog';
+import { format } from 'date-fns';
+import { id as indonesianLocale } from 'date-fns/locale';
 
 interface PtwDetailSheetProps {
     ptw: Ptw | null;
@@ -58,7 +59,7 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange }: PtwDetailSheetProp
           <div className="space-y-6 p-6">
             
             <div className="space-y-4 bg-card p-4 rounded-lg border">
-                <DetailRow icon={Calendar} label="Submitted On" value={new Date(ptw.date).toLocaleString()} />
+                <DetailRow icon={Calendar} label="Submitted On" value={format(new Date(ptw.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />
                 <DetailRow icon={User} label="Submitted By" value={ptw.submittedBy} />
                 <DetailRow icon={Building} label="Contractor" value={ptw.contractor} />
                 <DetailRow icon={MapPin} label="Location" value={ptw.location} />
@@ -79,7 +80,7 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange }: PtwDetailSheetProp
                   <h4 className="font-semibold">Approval Details</h4>
                   <div className="space-y-4 bg-card p-4 rounded-lg border border-green-200">
                     <DetailRow icon={Check} label="Approved By" value={ptw.approver} />
-                    <DetailRow icon={Calendar} label="Approved Date" value={ptw.approvedDate ? new Date(ptw.approvedDate).toLocaleString() : ''} />
+                    <DetailRow icon={Calendar} label="Approved Date" value={ptw.approvedDate ? format(new Date(ptw.approvedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale }) : ''} />
                     {ptw.signatureDataUrl && (
                         <div>
                             <span className="text-sm text-muted-foreground">Signature</span>

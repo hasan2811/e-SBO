@@ -14,6 +14,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetCl
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { StarRating } from './star-rating';
+import { format } from 'date-fns';
+import { id as indonesianLocale } from 'date-fns/locale';
 
 
 interface ObservationDetailSheetProps {
@@ -136,7 +138,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
             )}
             <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-center">
               <div className="font-semibold text-muted-foreground">Submitted On</div>
-              <div>{new Date(observation.date).toLocaleString()}</div>
+              <div>{format(new Date(observation.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
 
               <div className="font-semibold text-muted-foreground">Submitted By</div>
               <div>{observation.submittedBy}</div>
@@ -316,7 +318,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                    {observation.closedDate && (
                     <>
                       <div className="font-semibold text-muted-foreground">Closed On</div>
-                      <div className="text-muted-foreground">{new Date(observation.closedDate).toLocaleString()}</div>
+                      <div className="text-muted-foreground">{format(new Date(observation.closedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
                     </>
                    )}
 
