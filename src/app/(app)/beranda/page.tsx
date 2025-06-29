@@ -167,7 +167,7 @@ export default function BerandaPage() {
 
     if (viewType === 'observations') {
        return observations
-        .filter(obs => obs.scope === 'private' && obs.userId === user.uid)
+        .filter(obs => obs.userId === user.uid)
         .filter(filterByDate);
     }
     if (viewType === 'inspections') {
@@ -175,7 +175,7 @@ export default function BerandaPage() {
     }
     if (viewType === 'ptws') {
       return ptws
-        .filter(ptw => ptw.scope === 'private' && ptw.userId === user.uid)
+        .filter(ptw => ptw.userId === user.uid)
         .filter(filterByDate);
     }
     return [];
