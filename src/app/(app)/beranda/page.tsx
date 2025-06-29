@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -7,12 +6,13 @@ import type { Observation, RiskLevel } from '@/lib/types';
 import { RiskBadge, StatusBadge } from '@/components/status-badges';
 import { format, isSameDay, subDays, isToday, addDays } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
-import { FileText, ChevronRight, ChevronLeft } from 'lucide-react';
+import { FileText, ChevronRight, ChevronLeft, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
 import { StarRating } from '@/components/star-rating';
+import { useAuth } from '@/hooks/use-auth';
 
 const riskColorMap: Record<RiskLevel, string> = {
   Critical: 'bg-destructive',
@@ -54,21 +54,22 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
   );
 };
 
-export default function JurnalPage() {
+export default function BerandaPage() {
   const { observations, loading } = useObservations();
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
 
   const filteredObservations = React.useMemo(() => {
-    if (!selectedDate) return [];
+    if (!selectedDate || !user) return [];
     
     return observations
-      .filter(obs => obs.scope === 'public' || obs.scope === undefined)
+      .filter(obs => obs.scope === 'private' && obs.userId === user.uid)
       .filter(obs => {
         const obsDate = new Date(obs.date);
         return isSameDay(obsDate, selectedDate);
     });
-  }, [observations, selectedDate]);
+  }, [observations, selectedDate, user]);
   
   const handlePrevDay = () => {
     if (selectedDate) {
@@ -104,7 +105,7 @@ export default function JurnalPage() {
      <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight">
-            Jurnal Observasi
+            Beranda
         </h2>
         
         <div className="flex items-center gap-2">
@@ -125,7 +126,7 @@ export default function JurnalPage() {
       <main>
         {loading ? (
           <ul className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
+            {Array.from({ length: 3 }).map((_, i) => (
               <li key={i}>
                 <div className="flex items-center bg-card p-4 rounded-lg shadow-sm h-[118px]">
                   <div className="flex-1 space-y-3">
@@ -148,9 +149,9 @@ export default function JurnalPage() {
           </ul>
         ) : (
           <div className="text-center py-16 text-muted-foreground bg-card rounded-lg">
-            <FileText className="mx-auto h-12 w-12" />
-            <h3 className="mt-4 text-xl font-semibold">Tidak Ada Observasi</h3>
-            <p className="mt-2 text-sm max-w-xs mx-auto">Tidak ada data observasi untuk tanggal yang dipilih. Silakan pilih tanggal lain.</p>
+            <Home className="mx-auto h-12 w-12" />
+            <h3 className="mt-4 text-xl font-semibold">Tidak Ada Laporan Pribadi</h3>
+            <p className="mt-2 text-sm max-w-xs mx-auto">Anda belum menyimpan laporan pribadi untuk tanggal ini. Coba buat laporan baru!</p>
           </div>
         )}
       </main>

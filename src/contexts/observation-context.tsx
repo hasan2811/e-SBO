@@ -97,7 +97,12 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     try {
       const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
       
-      const observationToSave = { ...newObservation, referenceId, aiStatus: 'processing' as const };
+      const observationToSave = { 
+        ...newObservation,
+        scope: newObservation.scope || 'public',
+        referenceId,
+        aiStatus: 'processing' as const
+      };
 
       const observationCollection = collection(db, 'observations');
       const observationDocRef = await addDoc(observationCollection, observationToSave);

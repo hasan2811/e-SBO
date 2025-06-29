@@ -13,7 +13,6 @@ import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loade
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import html2canvas from 'html2canvas';
 import { StarRating } from './star-rating';
 
 
@@ -27,7 +26,6 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
   const { updateObservation, retryAiAnalysis } = useObservations();
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isSharing, setIsSharing] = React.useState(false);
-  const insightRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
   if (!observation) return null;
@@ -46,46 +44,20 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
   };
 
   const handleShare = async () => {
-    if (!observation || !observation.aiObserverSkillRating || !insightRef.current) return;
+    if (!observation || !observation.aiObserverSkillRating) return;
     setIsSharing(true);
 
     try {
-        // Always generate the text and URL first
-        const shareText = `Saya baru saja mendapatkan rating ${observation.aiObserverSkillRating}/5 untuk wawasan HSSE saya di platform HSSE Tech! 🚀 AI memberikan analisis mendalam tentang temuan di lapangan. Tingkatkan skill Anda dan coba sendiri!`;
-        const shareUrl = 'https://hsse.tech';
+        const shareText = `Saya baru saja mendapatkan rating ${observation.aiObserverSkillRating}/5 untuk wawasan HSSE saya di platform HSSE Tech! 🚀 Tingkatkan skill Anda dan coba sendiri!`;
+        const shareUrl = 'https://hsse.tech'; // Or window.location.origin
         const shareTitle = `Insight HSSE Saya - ${observation.referenceId}`;
 
         if (navigator.share) {
-            // Generate the image
-            const canvas = await html2canvas(insightRef.current, {
-                useCORS: true,
-                backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#ffffff',
-                scale: 2, // Improve quality
+            await navigator.share({
+                title: shareTitle,
+                text: shareText,
+                url: shareUrl,
             });
-            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-            
-            if (!blob) {
-                throw new Error("Failed to create blob from canvas.");
-            }
-
-            const file = new File([blob], `hsse-insight-${observation.referenceId}.png`, { type: 'image/png' });
-            
-            // Check if files can be shared
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    title: shareTitle,
-                    text: shareText,
-                    url: shareUrl,
-                    files: [file],
-                });
-            } else {
-                // Fallback to sharing text only if files are not supported
-                await navigator.share({
-                    title: shareTitle,
-                    text: shareText,
-                    url: shareUrl,
-                });
-            }
         } else {
             // Fallback for browsers without navigator.share (e.g., desktop)
             await navigator.clipboard.writeText(`${shareText} Kunjungi ${shareUrl} untuk mendaftar. #HSSE #SafetyFirst #AI`);
@@ -225,7 +197,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                     {observation.aiStatus === 'completed' && (
                       <div className="space-y-4">
                         {observation.aiObserverSkillRating && observation.aiObserverSkillExplanation && (
-                          <div ref={insightRef} className="space-y-2 p-4 bg-card rounded-md shadow-sm">
+                          <div className="space-y-2 p-4 bg-card rounded-md shadow-sm">
                             <div className="flex items-center justify-between">
                               <h5 className="font-semibold flex items-center gap-2 text-sm">
                                 <UserCheck className="h-4 w-4 text-muted-foreground" />

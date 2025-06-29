@@ -28,6 +28,7 @@ export type Observation = {
   category: ObservationCategory;
   company: Company;
   photoUrl?: string;
+  scope?: 'public' | 'private';
   actionTakenDescription?: string;
   actionTakenPhotoUrl?: string;
   closedBy?: string;

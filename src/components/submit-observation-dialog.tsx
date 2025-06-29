@@ -27,6 +27,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -36,6 +37,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
@@ -51,7 +54,8 @@ const formSchema = z.object({
   recommendation: z.string().min(10, { message: 'Rekomendasi harus diisi minimal 10 karakter.' }),
   photo: z
     .instanceof(File, { message: 'Foto wajib diunggah.' })
-    .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`)
+    .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
+  isPrivate: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -113,6 +117,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       riskLevel: 'Low',
       findings: '',
       recommendation: '',
+      isPrivate: false,
     },
     mode: 'onChange',
   });
@@ -144,7 +149,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       return;
     }
     
-    // This check is now more robust thanks to zod.
     if (!values.photo) {
        toast({ variant: 'destructive', title: 'Foto Wajib', description: 'Silakan unggah foto temuan.' });
        return;
@@ -154,11 +158,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     setUploadProgress(0);
 
     try {
-      // Step 1: Upload the file first.
       const photoUrl = await uploadFile(values.photo, user.uid, setUploadProgress);
 
-      // Step 2: Once upload is successful, create the observation data.
-      // A new ID is generated on the client by Firestore SDK.
       const newObservationData: Omit<Observation, 'id'> = {
         userId: user.uid,
         date: new Date().toISOString(),
@@ -170,15 +171,15 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         riskLevel: values.riskLevel as RiskLevel,
         findings: values.findings,
         recommendation: values.recommendation,
-        photoUrl: photoUrl, // Use the URL from the successful upload.
+        photoUrl: photoUrl,
+        scope: values.isPrivate ? 'private' : 'public',
       };
 
-      // Step 3: Pass the complete data to the context to be saved.
       await onAddObservation(newObservationData);
 
       toast({
         title: 'Sukses!',
-        description: 'Laporan observasi baru berhasil dikirim.',
+        description: `Laporan observasi baru berhasil dikirim ke ${values.isPrivate ? 'Beranda' : 'Jurnal'}.`,
       });
       onOpenChange(false);
     } catch (error) {
@@ -354,6 +355,26 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                   </FormItem>
                 )}
               />
+               <FormField
+                  control={form.control}
+                  name="isPrivate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-4">
+                      <div className="space-y-0.5">
+                        <FormLabel>Simpan ke Beranda (Pribadi)</FormLabel>
+                        <FormDescription>
+                          Jika aktif, laporan ini hanya akan terlihat oleh Anda.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
             </form>
           </Form>
         </div>
