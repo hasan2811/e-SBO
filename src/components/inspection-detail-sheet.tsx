@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -11,6 +12,7 @@ import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, Ref
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
+import { useObservations } from '@/contexts/observation-context';
 
 interface InspectionDetailSheetProps {
     inspection: Inspection | null;
@@ -19,14 +21,12 @@ interface InspectionDetailSheetProps {
 }
 
 export function InspectionDetailSheet({ inspection, isOpen, onOpenChange }: InspectionDetailSheetProps) {
-  // const { retryInspectionAiAnalysis } = useObservations(); // This would be needed for a retry button
+  const { retryAiAnalysis } = useObservations();
   
   if (!inspection) return null;
 
   const handleRetry = () => {
-    // Implement retry logic if needed, similar to ObservationDetailSheet
-    // retryInspectionAiAnalysis(inspection);
-    console.log("Retry AI analysis for inspection:", inspection.id);
+    retryAiAnalysis(inspection);
   };
 
   const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
@@ -118,7 +118,7 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange }: Insp
                     {inspection.aiStatus === 'failed' && (
                       <div className="flex flex-col items-start gap-3 bg-destructive/10 p-4 rounded-lg border border-destructive/20">
                           <p className="text-sm text-destructive font-medium">The AI analysis could not be completed.</p>
-                          <Button variant="destructive" size="sm" onClick={handleRetry} disabled>
+                          <Button variant="destructive" size="sm" onClick={handleRetry}>
                               <RefreshCw className="mr-2 h-4 w-4" />
                               Retry Analysis
                           </Button>
