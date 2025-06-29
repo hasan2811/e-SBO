@@ -67,16 +67,14 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
             });
         }
     } catch (error) {
-        // Don't show toast if user cancels share dialog
+        // The most common error is 'AbortError' when the user cancels the share dialog.
+        // We will not show an error toast for this specific case to improve user experience.
         if (error instanceof Error && error.name === 'AbortError') {
             console.log('Share was cancelled by the user.');
         } else {
-            console.error('Share failed:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Berbagi',
-                description: 'Browser Anda tidak mendukung fitur ini atau terjadi kesalahan.',
-            });
+            // For other errors, we log them but avoid showing a disruptive toast.
+            // This prevents false positive error messages on different browser behaviors for cancellation.
+            console.error('Share or copy failed:', error);
         }
     } finally {
         setIsSharing(false);
