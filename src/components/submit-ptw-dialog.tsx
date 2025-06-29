@@ -34,7 +34,11 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-function uploadFile(file: File, userId: string, onProgress: (progress: number) => void): Promise<string> {
+function uploadFile(
+  file: File,
+  userId: string,
+  onProgress: (progress: number) => void
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const storageRef = ref(storage, `ptw-jsa/${userId}/${Date.now()}-${file.name}`);
     const uploadTask: UploadTask = uploadBytesResumable(storageRef, file);
@@ -45,10 +49,18 @@ function uploadFile(file: File, userId: string, onProgress: (progress: number) =
         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         onProgress(progress);
       },
-      (error) => reject(new Error('Gagal mengunggah file. Silakan periksa koneksi atau izin CORS Anda.')),
+      (error) => {
+        console.error('Firebase Storage upload error:', error);
+        reject(new Error('Gagal mengunggah file. Silakan periksa koneksi atau izin CORS Anda.'));
+      },
       async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        resolve(downloadURL);
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadURL);
+        } catch (error) {
+          console.error('Firebase Storage get URL error:', error);
+          reject(new Error('Gagal mendapatkan URL unduhan.'));
+        }
       }
     );
   });
