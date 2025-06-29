@@ -2,22 +2,30 @@
 
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useObservations } from '@/contexts/observation-context';
 import { DashboardHeader } from '@/components/dashboard-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { SubmitObservationDialog } from '@/components/submit-observation-dialog';
 import { CompleteProfileDialog } from '@/components/complete-profile-dialog';
-import type { Observation } from '@/lib/types';
+import type { Observation, Inspection, Ptw } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MultiActionButton } from '@/components/multi-action-button';
+import { SubmitInspectionDialog } from '@/components/submit-inspection-dialog';
+import { SubmitPtwDialog } from '@/components/submit-ptw-dialog';
+import { addInspection, addPtw } from '@/lib/actions';
+
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, userProfile, loading: authLoading } = useAuth();
   const { addObservation } = useObservations();
   const router = useRouter();
   const pathname = usePathname();
-  const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
+
+  const [isObservationDialogOpen, setObservationDialogOpen] = React.useState(false);
+  const [isInspectionDialogOpen, setInspectionDialogOpen] = React.useState(false);
+  const [isPtwDialogOpen, setPtwDialogOpen] = React.useState(false);
   const [isProfileDialogOpen, setProfileDialogOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -52,6 +60,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     await addObservation(observation);
   };
 
+  const handleAddInspection = async (inspection: Omit<Inspection, 'id'>) => {
+    await addInspection(inspection);
+  };
+
+  const handleAddPtw = async (ptw: Omit<Ptw, 'id'>) => {
+    await addPtw(ptw);
+  };
+
 
   return (
     <>
@@ -61,7 +77,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       />
 
       <div className="flex flex-col min-h-screen">
-        <DashboardHeader onAddNew={() => setAddDialogOpen(true)} />
+        <DashboardHeader onAddNew={() => setObservationDialogOpen(true)} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 overflow-y-auto">
           <div className="max-w-4xl mx-auto h-full">
             <AnimatePresence mode="wait">
@@ -81,18 +97,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <BottomNavBar />
       </div>
 
-      <button
-        onClick={() => setAddDialogOpen(true)}
-        className="fixed bottom-24 right-6 md:hidden h-14 w-14 bg-primary rounded-full flex items-center justify-center text-primary-foreground shadow-lg hover:bg-primary/90 transition-transform active:scale-95 z-40"
-        aria-label="Tambah Observasi Baru"
-      >
-        <Plus className="h-7 w-7" />
-      </button>
+      <MultiActionButton
+        onObservationClick={() => setObservationDialogOpen(true)}
+        onInspectionClick={() => setInspectionDialogOpen(true)}
+        onPtwClick={() => setPtwDialogOpen(true)}
+      />
 
       <SubmitObservationDialog
-        isOpen={isAddDialogOpen}
-        onOpenChange={setAddDialogOpen}
+        isOpen={isObservationDialogOpen}
+        onOpenChange={setObservationDialogOpen}
         onAddObservation={handleAddObservation}
+      />
+      <SubmitInspectionDialog
+        isOpen={isInspectionDialogOpen}
+        onOpenChange={setInspectionDialogOpen}
+        onAddInspection={handleAddInspection}
+      />
+      <SubmitPtwDialog
+        isOpen={isPtwDialogOpen}
+        onOpenChange={setPtwDialogOpen}
+        onAddPtw={handleAddPtw}
       />
     </>
   );

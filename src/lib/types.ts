@@ -1,4 +1,5 @@
 
+
 export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed';
 export type ObservationCategory = 'Structural' | 'Electrical' | 'Plumbing' | 'General';
 export type Company = 'Tambang' | 'Migas' | 'Konstruksi' | 'Manufaktur';
@@ -42,4 +43,41 @@ export type Observation = {
   aiRootCauseAnalysis?: string;
   aiObserverSkillRating?: number;
   aiObserverSkillExplanation?: string;
+};
+
+// New Types for Inspection and PTW
+export type InspectionStatus = 'Pass' | 'Fail' | 'Needs Repair';
+export type EquipmentType = 'Heavy Machinery' | 'Hand Tool' | 'Vehicle' | 'Electrical' | 'Other';
+
+export type Inspection = {
+  id: string;
+  referenceId?: string;
+  userId: string;
+  submittedBy: string;
+  date: string;
+  location: Location;
+  equipmentName: string;
+  equipmentType: EquipmentType;
+  findings: string; // Detailed findings from the inspection
+  status: InspectionStatus;
+  recommendation?: string;
+  photoUrl?: string;
+};
+
+export type PtwStatus = 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed';
+
+export type Ptw = {
+  id: string;
+  referenceId?: string;
+  userId: string;
+  submittedBy: string;
+  date: string;
+  location: Location;
+  workDescription: string;
+  contractor: string;
+  jsaPdfUrl: string;
+  status: PtwStatus;
+  approverId?: string;
+  approvedDate?: string;
+  rejectionReason?: string;
 };

@@ -2,7 +2,11 @@
 'use server';
 
 import { summarizeObservationData, SummarizeObservationDataOutput } from '@/ai/flows/summarize-observation-data';
-import type { Observation } from './types';
+import type { Observation, Inspection, Ptw } from './types';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
+
 
 export async function getAiSummary(observation: Observation): Promise<SummarizeObservationDataOutput> {
   // This function now correctly relies on the centralized Genkit configuration
@@ -30,5 +34,35 @@ export async function getAiSummary(observation: Observation): Promise<SummarizeO
       throw new Error(`Failed to generate AI summary. Reason: ${error.message}`);
     }
     throw new Error('Failed to generate AI summary due to an unknown error.');
+  }
+}
+
+export async function addInspection(newInspection: Omit<Inspection, 'id'>): Promise<void> {
+  try {
+    const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const inspectionToSave = {
+      ...newInspection,
+      referenceId,
+    };
+    const inspectionCollection = collection(db, 'inspections');
+    await addDoc(inspectionCollection, inspectionToSave);
+  } catch (error) {
+    console.error("Error adding inspection to Firestore: ", error);
+    throw new Error("Could not save inspection.");
+  }
+}
+
+export async function addPtw(newPtw: Omit<Ptw, 'id'>): Promise<void> {
+  try {
+    const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const ptwToSave = {
+      ...newPtw,
+      referenceId,
+    };
+    const ptwCollection = collection(db, 'ptws');
+    await addDoc(ptwCollection, ptwToSave);
+  } catch (error) {
+    console.error("Error adding PTW to Firestore: ", error);
+    throw new Error("Could not save PTW.");
   }
 }
