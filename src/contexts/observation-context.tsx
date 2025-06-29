@@ -53,194 +53,216 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const { user } = useAuth();
     const [loading, setLoading] = React.useState(true);
 
-    const [allObservations, setAllObservations] = React.useState<Observation[]>([]);
-    const [allInspections, setAllInspections] = React.useState<Inspection[]>([]);
-    const [allPtws, setAllPtws] = React.useState<Ptw[]>([]);
-    
+    // States for private (user-specific) data
+    const [privateObservations, setPrivateObservations] = React.useState<Observation[]>([]);
+    const [privateInspections, setPrivateInspections] = React.useState<Inspection[]>([]);
+    const [privatePtws, setPrivatePtws] = React.useState<Ptw[]>([]);
+
+    // States for public data
+    const [publicObservations, setPublicObservations] = React.useState<Observation[]>([]);
+    const [publicInspections, setPublicInspections] = React.useState<Inspection[]>([]);
+    const [publicPtws, setPublicPtws] = React.useState<Ptw[]>([]);
+
+    // Effect for fetching user's private data
     React.useEffect(() => {
         if (user) {
-            setLoading(true);
-            const collectionsToWatch = [
-                { name: 'observations', setter: setAllObservations },
-                { name: 'inspections', setter: setAllInspections },
-                { name: 'ptws', setter: setAllPtws },
+            const unsubs: (() => void)[] = [];
+            const collections = [
+                { name: 'observations', setter: setPrivateObservations },
+                { name: 'inspections', setter: setPrivateInspections },
+                { name: 'ptws', setter: setPrivatePtws },
             ];
-            
-            const unsubs: (()=>void)[] = [];
-
-            const createListener = <T,>(collectionName: string, setter: React.Dispatch<React.SetStateAction<T[]>>, q: any) => {
+            collections.forEach(({ name, setter }) => {
+                const q = query(collection(db, name), where('userId', '==', user.uid));
                 const unsub = onSnapshot(q, (snapshot) => {
-                    const data = snapshot.docs.map(d => ({...d.data(), id: d.id})) as T[];
-                    setter(prev => {
-                        const newMap = new Map(prev.map((i: any) => [i.id, i]));
-                        data.forEach((item: any) => newMap.set(item.id, item));
-                        return Array.from(newMap.values());
-                    });
-                }, (error) => console.error(`Error fetching ${collectionName}:`, error));
-                return unsub;
-            };
-
-            collectionsToWatch.forEach(c => {
-                const userQuery = query(collection(db, c.name), where('userId', '==', user.uid));
-                unsubs.push(createListener(c.name, c.setter, userQuery));
-
-                const publicQuery = query(collection(db, c.name), where('scope', '==', 'public'));
-                unsubs.push(createListener(c.name, c.setter, publicQuery));
+                    const data = snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as any[];
+                    setter(data);
+                }, (error) => console.error(`Error fetching private ${name}:`, error));
+                unsubs.push(unsub);
             });
-
-            setLoading(false);
             return () => unsubs.forEach(unsub => unsub());
-
         } else {
-            setAllObservations([]);
-            setAllInspections([]);
-            setAllPtws([]);
-            setLoading(false);
+            setPrivateObservations([]);
+            setPrivateInspections([]);
+            setPrivatePtws([]);
         }
-  }, [user]);
+    }, [user]);
+    
+    // Effect for fetching public data
+    React.useEffect(() => {
+        setLoading(true);
+        const collections = [
+            { name: 'observations', setter: setPublicObservations },
+            { name: 'inspections', setter: setPublicInspections },
+            { name: 'ptws', setter: setPublicPtws },
+        ];
+        
+        let loadedCount = 0;
+        const unsubs = collections.map(({ name, setter }) => {
+            const q = query(collection(db, name), where('scope', '==', 'public'));
+            const unsub = onSnapshot(q, (snapshot) => {
+                const data = snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as any[];
+                setter(data);
+                loadedCount++;
+                if (loadedCount === collections.length) {
+                    setLoading(false);
+                }
+            }, (error) => {
+                console.error(`Error fetching public ${name}:`, error)
+                loadedCount++;
+                if (loadedCount === collections.length) {
+                    setLoading(false);
+                }
+            });
+            return unsub;
+        });
 
-  const allItems = React.useMemo(() => {
-    const combinedMap = new Map<string, AllItems>();
+        return () => unsubs.forEach(unsub => unsub());
+    }, []);
 
-    allObservations.forEach(o => combinedMap.set(o.id, { ...o, itemType: 'observation' as const }));
-    allInspections.forEach(i => combinedMap.set(i.id, { ...i, itemType: 'inspection' as const }));
-    allPtws.forEach(p => combinedMap.set(p.id, { ...p, itemType: 'ptw' as const }));
 
-    return Array.from(combinedMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [allObservations, allInspections, allPtws]);
-  
-  const _runObservationAiAnalysis = React.useCallback((observation: Observation) => {
-    const observationDocRef = doc(db, 'observations', observation.id);
+    const allItems = React.useMemo(() => {
+        const combinedMap = new Map<string, AllItems>();
 
-    const observationData = `
-      Location: ${observation.location}
-      Company: ${observation.company}
-      Category: ${observation.category}
-      Status: ${observation.status}
-      Risk Level: ${observation.riskLevel}
-      Submitted By: ${observation.submittedBy}
-      Date: ${new Date(observation.date).toLocaleString()}
-      Findings: ${observation.findings}
-      Recommendation: ${observation.recommendation}
-    `;
-
-    summarizeObservationData({ observationData })
-      .then(summary => {
-        const aiData = {
-          aiSummary: summary.summary,
-          aiRisks: summary.risks,
-          aiSuggestedActions: summary.suggestedActions,
-          aiRelevantRegulations: summary.relevantRegulations,
-          aiSuggestedRiskLevel: summary.suggestedRiskLevel,
-          aiRootCauseAnalysis: summary.rootCauseAnalysis,
-          aiObserverSkillRating: summary.observerAssessment.rating,
-          aiObserverSkillExplanation: summary.observerAssessment.explanation,
-          aiStatus: 'completed' as const,
+        const addItemsToMap = (items: any[], itemType: 'observation' | 'inspection' | 'ptw') => {
+            items.forEach(item => combinedMap.set(item.id, { ...item, itemType }));
         };
-        updateDoc(observationDocRef, aiData);
-      })
-      .catch(error => {
-        console.error("Failed to generate AI summary for observation:", error);
-        updateDoc(observationDocRef, { aiStatus: 'failed' });
-        toast({ variant: 'destructive', title: 'Observation AI Failed', description: 'Could not generate AI analysis.'});
-      });
-  }, []);
 
-  const _runInspectionAiAnalysis = React.useCallback((inspection: Inspection) => {
-    const inspectionDocRef = doc(db, 'inspections', inspection.id);
+        addItemsToMap(publicObservations, 'observation');
+        addItemsToMap(publicInspections, 'inspection');
+        addItemsToMap(publicPtws, 'ptw');
+        // Add private items last to ensure they overwrite public ones if IDs are duplicated (for the owner)
+        addItemsToMap(privateObservations, 'observation');
+        addItemsToMap(privateInspections, 'inspection');
+        addItemsToMap(privatePtws, 'ptw');
 
-    const inspectionData = `
-      Equipment Name: ${inspection.equipmentName}
-      Equipment Type: ${inspection.equipmentType}
-      Location: ${inspection.location}
-      Status: ${inspection.status}
-      Submitted By: ${inspection.submittedBy}
-      Date: ${new Date(inspection.date).toLocaleString()}
-      Findings: ${inspection.findings}
-      Recommendation: ${inspection.recommendation || 'N/A'}
-    `;
+        return Array.from(combinedMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [publicObservations, publicInspections, publicPtws, privateObservations, privateInspections, privatePtws]);
 
-    analyzeInspectionData({ inspectionData })
-      .then(analysis => {
-        const aiData = {
-            aiSummary: analysis.summary,
-            aiRisks: analysis.risks,
-            aiSuggestedActions: analysis.suggestedActions,
+    const observations = React.useMemo(() => allItems.filter((i): i is Observation & { itemType: 'observation' } => i.itemType === 'observation'), [allItems]);
+    const inspections = React.useMemo(() => allItems.filter((i): i is Inspection & { itemType: 'inspection' } => i.itemType === 'inspection'), [allItems]);
+    const ptws = React.useMemo(() => allItems.filter((i): i is Ptw & { itemType: 'ptw' } => i.itemType === 'ptw'), [allItems]);
+    
+    // AI Analysis Logic
+    const _runObservationAiAnalysis = React.useCallback((observation: Observation) => {
+      const observationDocRef = doc(db, 'observations', observation.id);
+      const observationData = `
+        Location: ${observation.location}
+        Company: ${observation.company}
+        Category: ${observation.category}
+        Status: ${observation.status}
+        Risk Level: ${observation.riskLevel}
+        Submitted By: ${observation.submittedBy}
+        Date: ${new Date(observation.date).toLocaleString()}
+        Findings: ${observation.findings}
+        Recommendation: ${observation.recommendation}
+      `;
+
+      summarizeObservationData({ observationData })
+        .then(summary => {
+          const aiData = {
+            aiSummary: summary.summary,
+            aiRisks: summary.risks,
+            aiSuggestedActions: summary.suggestedActions,
+            aiRelevantRegulations: summary.relevantRegulations,
+            aiSuggestedRiskLevel: summary.suggestedRiskLevel,
+            aiRootCauseAnalysis: summary.rootCauseAnalysis,
+            aiObserverSkillRating: summary.observerAssessment.rating,
+            aiObserverSkillExplanation: summary.observerAssessment.explanation,
             aiStatus: 'completed' as const,
-        };
-        updateDoc(inspectionDocRef, aiData);
-      })
-      .catch(error => {
-        console.error("Failed to generate AI analysis for inspection:", error);
-        updateDoc(inspectionDocRef, { aiStatus: 'failed' });
-        toast({ variant: 'destructive', title: 'Inspection AI Failed', description: 'Could not generate AI analysis.'});
-      });
-  }, []);
+          };
+          updateDoc(observationDocRef, aiData);
+        })
+        .catch(error => {
+          console.error("Failed to generate AI summary for observation:", error);
+          updateDoc(observationDocRef, { aiStatus: 'failed' });
+          toast({ variant: 'destructive', title: 'Observation AI Failed', description: 'Could not generate AI analysis.'});
+        });
+    }, []);
 
-  const retryAiAnalysis = React.useCallback(async (observation: Observation) => {
-    const observationDocRef = doc(db, 'observations', observation.id);
-    await updateDoc(observationDocRef, { aiStatus: 'processing' });
-    _runObservationAiAnalysis(observation);
-  }, [_runObservationAiAnalysis]);
+    const _runInspectionAiAnalysis = React.useCallback((inspection: Inspection) => {
+      const inspectionDocRef = doc(db, 'inspections', inspection.id);
 
-  const addObservation = React.useCallback(async (newObservation: Omit<Observation, 'id' | 'referenceId'>) => {
-    if(!user) throw new Error("User not authenticated");
-    const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    const observationToSave = { 
-      ...newObservation,
-      referenceId,
-      aiStatus: 'processing' as const,
-      userId: user.uid
-    };
-    const observationCollection = collection(db, 'observations');
-    const docRef = await addDoc(observationCollection, observationToSave);
-    _runObservationAiAnalysis({ ...observationToSave, id: docRef.id });
-  }, [user, _runObservationAiAnalysis]);
+      const inspectionData = `
+        Equipment Name: ${inspection.equipmentName}
+        Equipment Type: ${inspection.equipmentType}
+        Location: ${inspection.location}
+        Status: ${inspection.status}
+        Submitted By: ${inspection.submittedBy}
+        Date: ${new Date(inspection.date).toLocaleString()}
+        Findings: ${inspection.findings}
+        Recommendation: ${inspection.recommendation || 'N/A'}
+      `;
 
-  const addInspection = React.useCallback(async (newInspection: Omit<Inspection, 'id' | 'referenceId'>) => {
-    if(!user) throw new Error("User not authenticated");
-    const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    const inspectionToSave = {
-      ...newInspection,
-      referenceId,
-      aiStatus: 'processing' as const,
-      userId: user.uid,
-    };
-    const inspectionCollection = collection(db, 'inspections');
-    const docRef = await addDoc(inspectionCollection, inspectionToSave);
-    _runInspectionAiAnalysis({ ...inspectionToSave, id: docRef.id });
-  }, [user, _runInspectionAiAnalysis]);
+      analyzeInspectionData({ inspectionData })
+        .then(analysis => {
+          const aiData = {
+              aiSummary: analysis.summary,
+              aiRisks: analysis.risks,
+              aiSuggestedActions: analysis.suggestedActions,
+              aiStatus: 'completed' as const,
+          };
+          updateDoc(inspectionDocRef, aiData);
+        })
+        .catch(error => {
+          console.error("Failed to generate AI analysis for inspection:", error);
+          updateDoc(inspectionDocRef, { aiStatus: 'failed' });
+          toast({ variant: 'destructive', title: 'Inspection AI Failed', description: 'Could not generate AI analysis.'});
+        });
+    }, []);
+    
+    // Add/Update Logic
+    const addObservation = React.useCallback(async (newObservation: Omit<Observation, 'id' | 'referenceId'>) => {
+      if(!user) throw new Error("User not authenticated");
+      const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      const observationToSave = { ...newObservation, referenceId, aiStatus: 'processing' as const, userId: user.uid };
+      const observationCollection = collection(db, 'observations');
+      const docRef = await addDoc(observationCollection, observationToSave);
+      _runObservationAiAnalysis({ ...observationToSave, id: docRef.id });
+    }, [user, _runObservationAiAnalysis]);
 
-  const addPtw = React.useCallback(async (newPtw: Omit<Ptw, 'id' | 'referenceId'>) => {
-    if(!user) throw new Error("User not authenticated");
-    const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    const ptwToSave = { ...newPtw, referenceId, userId: user.uid };
-    const ptwCollection = collection(db, 'ptws');
-    await addDoc(ptwCollection, ptwToSave);
-  }, [user]);
+    const addInspection = React.useCallback(async (newInspection: Omit<Inspection, 'id' | 'referenceId'>) => {
+      if(!user) throw new Error("User not authenticated");
+      const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      const inspectionToSave = { ...newInspection, referenceId, aiStatus: 'processing' as const, userId: user.uid };
+      const inspectionCollection = collection(db, 'inspections');
+      const docRef = await addDoc(inspectionCollection, inspectionToSave);
+      _runInspectionAiAnalysis({ ...inspectionToSave, id: docRef.id });
+    }, [user, _runInspectionAiAnalysis]);
 
-  const updateObservation = React.useCallback(async (id: string, updatedData: Partial<Observation>) => {
-    const observationDocRef = doc(db, 'observations', id);
-    await updateDoc(observationDocRef, updatedData);
-  }, []);
+    const addPtw = React.useCallback(async (newPtw: Omit<Ptw, 'id' | 'referenceId'>) => {
+        if(!user) throw new Error("User not authenticated");
+        const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        const ptwToSave = { ...newPtw, referenceId, userId: user.uid };
+        const ptwCollection = collection(db, 'ptws');
+        await addDoc(ptwCollection, ptwToSave);
+    }, [user]);
 
-  const approvePtw = React.useCallback(async (id: string, signatureDataUrl: string, approver: string) => {
-    const ptwDocRef = doc(db, 'ptws', id);
-    await updateDoc(ptwDocRef, {
-      status: 'Approved',
-      signatureDataUrl,
-      approver,
-      approvedDate: new Date().toISOString(),
-    });
-  }, []);
+    const updateObservation = React.useCallback(async (id: string, updatedData: Partial<Observation>) => {
+        const observationDocRef = doc(db, 'observations', id);
+        await updateDoc(observationDocRef, updatedData);
+    }, []);
 
-  const value = { allItems, observations: allObservations, inspections: allInspections, ptws: allPtws, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
+    const approvePtw = React.useCallback(async (id: string, signatureDataUrl: string, approver: string) => {
+        const ptwDocRef = doc(db, 'ptws', id);
+        await updateDoc(ptwDocRef, {
+        status: 'Approved', signatureDataUrl, approver, approvedDate: new Date().toISOString(),
+        });
+    }, []);
 
-  return (
-    <ObservationContext.Provider value={value}>
-      {children}
-    </ObservationContext.Provider>
-  );
+    const retryAiAnalysis = React.useCallback(async (observation: Observation) => {
+        const observationDocRef = doc(db, 'observations', observation.id);
+        await updateDoc(observationDocRef, { aiStatus: 'processing' });
+        _runObservationAiAnalysis(observation);
+    }, [_runObservationAiAnalysis]);
+
+    const value = { allItems, observations, inspections, ptws, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
+
+    return (
+        <ObservationContext.Provider value={value}>
+        {children}
+        </ObservationContext.Provider>
+    );
 }
 
 export function useObservations() {
