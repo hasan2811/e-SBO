@@ -165,17 +165,17 @@ export default function JurnalPage() {
 
     if (viewType === 'observations') {
        return observations
-        .filter(obs => obs.scope === 'public' || obs.scope === undefined)
+        .filter(obs => obs.scope === 'public')
         .filter(filterByDate);
     }
     if (viewType === 'inspections') {
       return inspections
-        .filter(insp => insp.scope === 'public' || insp.scope === undefined)
+        .filter(insp => insp.scope === 'public')
         .filter(filterByDate);
     }
     if (viewType === 'ptws') {
       return ptws
-        .filter(ptw => ptw.scope === 'public' || ptw.scope === undefined)
+        .filter(ptw => ptw.scope === 'public')
         .filter(filterByDate);
     }
     return [];

@@ -25,81 +25,65 @@ interface ObservationContextType {
 
 const ObservationContext = React.createContext<ObservationContextType | undefined>(undefined);
 
-// Helper function to manage combined data from public and private snapshots
-function combineSnapshots<T extends { id: string }>(
-  publicData: T[],
-  privateData: T[]
+// Helper function to combine and de-duplicate data from two sources
+function combineAndSort<T extends { id: string; date: string }>(
+  dataA: T[],
+  dataB: T[]
 ): T[] {
   const combined = new Map<string, T>();
-  publicData.forEach(item => combined.set(item.id, item));
-  privateData.forEach(item => combined.set(item.id, item));
-  return Array.from(combined.values());
+  dataA.forEach(item => combined.set(item.id, item));
+  dataB.forEach(item => combined.set(item.id, item));
+  return Array.from(combined.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
-  const [observations, setObservations] = React.useState<Observation[]>([]);
-  const [inspections, setInspections] = React.useState<Inspection[]>([]);
-  const [ptws, setPtws] = React.useState<Ptw[]>([]);
+  // Separate states for each data source to prevent race conditions
+  const [publicObservations, setPublicObservations] = React.useState<Observation[]>([]);
+  const [privateObservations, setPrivateObservations] = React.useState<Observation[]>([]);
+  const [publicInspections, setPublicInspections] = React.useState<Inspection[]>([]);
+  const [privateInspections, setPrivateInspections] = React.useState<Inspection[]>([]);
+  const [publicPtws, setPublicPtws] = React.useState<Ptw[]>([]);
+  const [privatePtws, setPrivatePtws] = React.useState<Ptw[]>([]);
+  
   const [loading, setLoading] = React.useState<boolean>(true);
   const { user } = useAuth();
 
+  // Effect for setting up Firestore listeners
   React.useEffect(() => {
     if (user) {
       setLoading(true);
-      
-      const collections = {
-        observations: collection(db, 'observations'),
-        inspections: collection(db, 'inspections'),
-        ptws: collection(db, 'ptws'),
+
+      const createListener = <T extends {id: string}>(
+        collectionPath: string,
+        setData: React.Dispatch<React.SetStateAction<T[]>>,
+        isPublic: boolean
+      ) => {
+        let q: Query<DocumentData>;
+        const collectionRef = collection(db, collectionPath);
+        if (isPublic) {
+          q = query(collectionRef, where('scope', '==', 'public'), orderBy('date', 'desc'));
+        } else {
+          q = query(collectionRef, where('userId', '==', user.uid), orderBy('date', 'desc'));
+        }
+        
+        return onSnapshot(q, (snapshot) => {
+          const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
+          setData(data);
+          if (isPublic) setLoading(false); // Consider loading finished after first public data arrives
+        }, (error) => {
+          console.error(`Error fetching ${isPublic ? 'public' : 'private'} ${collectionPath}:`, error);
+          toast({ variant: 'destructive', title: 'Data Fetch Error', description: `Could not fetch ${collectionPath}.` });
+          if (isPublic) setLoading(false);
+        });
       };
 
-      // --- Setting up dual listeners for each collection ---
-      let publicObservations: Observation[] = [], privateObservations: Observation[] = [];
-      let publicInspections: Inspection[] = [], privateInspections: Inspection[] = [];
-      let publicPtws: Ptw[] = [], privatePtws: Ptw[] = [];
-
-      const createListeners = <T extends {id: string}>(
-        collectionRef: Query<DocumentData>,
-        setData: React.Dispatch<React.SetStateAction<T[]>>,
-        publicStore: {current: T[]},
-        privateStore: {current: T[]}
-      ) => {
-        const publicQuery = query(collectionRef, where('scope', '==', 'public'), orderBy('date', 'desc'));
-        const privateQuery = query(collectionRef, where('userId', '==', user.uid), orderBy('date', 'desc'));
-
-        const unsubPublic = onSnapshot(publicQuery, (snapshot) => {
-          publicStore.current = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
-          setData(combineSnapshots(publicStore.current, privateStore.current) as T[]);
-          setLoading(false); // Stop loading after first data fetch
-        }, (error) => {
-          console.error(`Error fetching public data for ${collectionRef.path}:`, error);
-          toast({ variant: 'destructive', title: 'Data Fetch Error', description: `Could not fetch public ${collectionRef.path}.` });
-          setLoading(false);
-        });
-
-        const unsubPrivate = onSnapshot(privateQuery, (snapshot) => {
-          privateStore.current = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
-          setData(combineSnapshots(publicStore.current, privateStore.current) as T[]);
-        }, (error) => {
-          console.error(`Error fetching private data for ${collectionRef.path}:`, error);
-          toast({ variant: 'destructive', title: 'Data Fetch Error', description: `Could not fetch your private ${collectionRef.path}.` });
-        });
-
-        return [unsubPublic, unsubPrivate];
-      }
-      
-      const publicObsRef = React.useRef<Observation[]>([]);
-      const privateObsRef = React.useRef<Observation[]>([]);
-      const [unsubObsPublic, unsubObsPrivate] = createListeners(collections.observations, setObservations, publicObsRef, privateObsRef);
-
-      const publicInspRef = React.useRef<Inspection[]>([]);
-      const privateInspRef = React.useRef<Inspection[]>([]);
-      const [unsubInspPublic, unsubInspPrivate] = createListeners(collections.inspections, setInspections, publicInspRef, privateInspRef);
-      
-      const publicPtwRef = React.useRef<Ptw[]>([]);
-      const privatePtwRef = React.useRef<Ptw[]>([]);
-      const [unsubPtwPublic, unsubPtwPrivate] = createListeners(collections.ptws, setPtws, publicPtwRef, privatePtwRef);
+      const unsubObsPublic = createListener('observations', setPublicObservations, true);
+      const unsubObsPrivate = createListener('observations', setPrivateObservations, false);
+      const unsubInspPublic = createListener('inspections', setPublicInspections, true);
+      const unsubInspPrivate = createListener('inspections', setPrivateInspections, false);
+      const unsubPtwPublic = createListener('ptws', setPublicPtws, true);
+      const unsubPtwPrivate = createListener('ptws', setPrivatePtws, false);
 
       return () => {
         unsubObsPublic();
@@ -110,12 +94,22 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         unsubPtwPrivate();
       };
     } else {
-      setObservations([]);
-      setInspections([]);
-      setPtws([]);
+      // Clear all data if user logs out
+      setPublicObservations([]);
+      setPrivateObservations([]);
+      setPublicInspections([]);
+      setPrivateInspections([]);
+      setPublicPtws([]);
+      setPrivatePtws([]);
       setLoading(false);
     }
   }, [user]);
+  
+  // Combine states with useMemo for performance and consistency
+  const observations = React.useMemo(() => combineAndSort(publicObservations, privateObservations), [publicObservations, privateObservations]);
+  const inspections = React.useMemo(() => combineAndSort(publicInspections, privateInspections), [publicInspections, privateInspections]);
+  const ptws = React.useMemo(() => combineAndSort(publicPtws, privatePtws), [publicPtws, privatePtws]);
+
 
   const _runObservationAiAnalysis = (observation: Observation) => {
     const observationDocRef = doc(db, 'observations', observation.id);
