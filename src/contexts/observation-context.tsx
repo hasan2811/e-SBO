@@ -19,6 +19,7 @@ interface ObservationContextType {
   addInspection: (inspection: Omit<Inspection, 'id' | 'referenceId'>) => Promise<void>;
   addPtw: (ptw: Omit<Ptw, 'id' | 'referenceId'>) => Promise<void>;
   updateObservation: (id: string, updatedData: Partial<Observation>) => Promise<void>;
+  approvePtw: (id: string, signatureDataUrl: string, approver: string) => Promise<void>;
   retryAiAnalysis: (observation: Observation) => Promise<void>;
 }
 
@@ -190,7 +191,17 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     await updateDoc(observationDocRef, updatedData);
   };
 
-  const value = { observations, inspections, ptws, loading, addObservation, addInspection, addPtw, updateObservation, retryAiAnalysis };
+  const approvePtw = async (id: string, signatureDataUrl: string, approver: string) => {
+    const ptwDocRef = doc(db, 'ptws', id);
+    await updateDoc(ptwDocRef, {
+      status: 'Approved',
+      signatureDataUrl,
+      approver,
+      approvedDate: new Date().toISOString(),
+    });
+  };
+
+  const value = { observations, inspections, ptws, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
 
   return (
     <ObservationContext.Provider value={value}>

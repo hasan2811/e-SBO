@@ -82,7 +82,8 @@ export type Ptw = {
   jsaPdfUrl: string;
   status: PtwStatus;
   scope?: 'public' | 'private';
-  approverId?: string;
+  approver?: string;
   approvedDate?: string;
   rejectionReason?: string;
+  signatureDataUrl?: string;
 };
