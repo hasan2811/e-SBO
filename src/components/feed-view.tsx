@@ -4,7 +4,8 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { useObservations } from '@/contexts/observation-context';
-import type { AllItems, Observation, Inspection, Ptw, RiskLevel, InspectionStatus, ObservationStatus, ObservationCategory, RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
+import type { AllItems, Observation, Inspection, Ptw, RiskLevel, InspectionStatus, ObservationStatus, ObservationCategory } from '@/lib/types';
+import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { RiskBadge, StatusBadge, InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
 import { FileText, ChevronRight, Home, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX } from 'lucide-react';
