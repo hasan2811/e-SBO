@@ -79,12 +79,12 @@ export function TakeActionDialog({
   
   const userHasTyped = React.useRef(false);
 
-  const suggestedActions = React.useMemo(() => observation.aiSuggestedActions
-      ? observation.aiSuggestedActions
-          .split('\n')
-          .map(line => line.trim().replace(/^- /, ''))
-          .filter(line => line.length > 0)
-      : [], [observation.aiSuggestedActions]);
+  const suggestedActions = React.useMemo(() => {
+    return (observation?.aiSuggestedActions || '')
+      .split('\n')
+      .map(line => line.trim().replace(/^- /, ''))
+      .filter(line => line.length > 0);
+  }, [observation?.aiSuggestedActions]);
 
   React.useEffect(() => {
     if (!userHasTyped.current) {

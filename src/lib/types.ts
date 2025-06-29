@@ -81,6 +81,7 @@ export type Ptw = {
   contractor: string;
   jsaPdfUrl: string;
   status: PtwStatus;
+  scope?: 'public' | 'private';
   approverId?: string;
   approvedDate?: string;
   rejectionReason?: string;

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
+import { PtwDetailSheet } from '@/components/ptw-detail-sheet';
 import { StarRating } from '@/components/star-rating';
 import { useAuth } from '@/hooks/use-auth';
 import { exportToExcel } from '@/lib/export';
@@ -105,9 +106,9 @@ const InspectionListItem = ({ inspection }: { inspection: Inspection }) => {
   );
 };
 
-const PtwListItem = ({ ptw }: { ptw: Ptw }) => (
+const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => (
   <li>
-    <div className="relative flex items-center bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
+    <div onClick={onSelect} className="relative flex items-center bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
       <div className="flex-1 space-y-2 pr-4">
         <p className="text-xs text-muted-foreground">
           <span className="font-semibold text-foreground">{format(new Date(ptw.date), 'HH:mm')}</span> - {ptw.contractor}
@@ -130,6 +131,7 @@ export default function BerandaPage() {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
+  const [selectedPtw, setSelectedPtw] = React.useState<Ptw | null>(null);
   const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
   const { toast } = useToast();
 
@@ -153,7 +155,9 @@ export default function BerandaPage() {
       return inspections.filter(insp => insp.userId === user.uid).filter(filterByDate);
     }
     if (viewType === 'ptws') {
-      return ptws.filter(ptw => ptw.userId === user.uid).filter(filterByDate);
+      return ptws
+        .filter(ptw => ptw.scope === 'private' && ptw.userId === user.uid)
+        .filter(filterByDate);
     }
     return [];
   }, [observations, inspections, ptws, selectedDate, user, viewType]);
@@ -281,7 +285,7 @@ export default function BerandaPage() {
               <InspectionListItem key={(insp as Inspection).id} inspection={insp as Inspection} />
             ))}
             {viewType === 'ptws' && filteredData.map(ptw => (
-              <PtwListItem key={(ptw as Ptw).id} ptw={ptw as Ptw} />
+              <PtwListItem key={(ptw as Ptw).id} ptw={ptw as Ptw} onSelect={() => setSelectedPtw(ptw as Ptw)} />
             ))}
           </ul>
         ) : (
@@ -296,6 +300,17 @@ export default function BerandaPage() {
             onOpenChange={(isOpen) => {
                 if (!isOpen) {
                     setSelectedObservation(null);
+                }
+            }}
+        />
+    )}
+    {selectedPtw && (
+        <PtwDetailSheet 
+            ptw={selectedPtw}
+            isOpen={!!selectedPtw}
+            onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    setSelectedPtw(null);
                 }
             }}
         />

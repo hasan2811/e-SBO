@@ -14,11 +14,13 @@ import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 
@@ -30,6 +32,7 @@ const formSchema = z.object({
     .instanceof(File, { message: 'File JSA (PDF) wajib diunggah.' })
     .refine((file) => file.type === 'application/pdf', 'File harus dalam format PDF.')
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
+  isPrivate: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -55,6 +58,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
       location: LOCATIONS[0],
       workDescription: '',
       contractor: '',
+      isPrivate: false,
     },
     mode: 'onChange',
   });
@@ -95,10 +99,11 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
         contractor: values.contractor,
         jsaPdfUrl,
         status: 'Pending Approval',
+        scope: values.isPrivate ? 'private' : 'public',
       };
 
       await onAddPtw(newPtwData);
-      toast({ title: 'Sukses!', description: 'Permit to Work baru berhasil diajukan untuk persetujuan.' });
+      toast({ title: 'Sukses!', description: `Permit to Work baru berhasil diajukan ke ${values.isPrivate ? 'Beranda' : 'Jurnal'}.` });
       onOpenChange(false);
     } catch (error) {
       console.error("Submission failed: ", error);
@@ -150,6 +155,26 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
                   <FormMessage />
                 </FormItem>
               )} />
+               <FormField
+                  control={form.control}
+                  name="isPrivate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-4">
+                      <div className="space-y-0.5">
+                        <FormLabel>Simpan ke Beranda (Pribadi)</FormLabel>
+                        <FormDescription>
+                          Jika aktif, PTW ini hanya akan terlihat oleh Anda.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
             </form>
           </Form>
         </div>
