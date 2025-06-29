@@ -7,13 +7,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload } from 'lucide-react';
-import { ref, getDownloadURL, uploadBytesResumable, type UploadTask } from 'firebase/storage';
-import { doc } from 'firebase/firestore';
 
-import { storage, db } from '@/lib/firebase';
 import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -38,7 +36,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
@@ -59,39 +56,6 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-
-function uploadFile(
-  file: File,
-  userId: string,
-  onProgress: (progress: number) => void
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const storageRef = ref(storage, `observations/${userId}/${Date.now()}-${file.name}`);
-    const uploadTask: UploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        onProgress(progress);
-      },
-      (error) => {
-        console.error('Firebase Storage upload error:', error);
-        reject(new Error('Gagal mengunggah file. Silakan periksa koneksi atau izin CORS Anda.'));
-      },
-      async () => {
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve(downloadURL);
-        } catch (error) {
-          console.error('Firebase Storage get URL error:', error);
-          reject(new Error('Gagal mendapatkan URL unduhan.'));
-        }
-      }
-    );
-  });
-}
 
 interface SubmitObservationDialogProps {
   isOpen: boolean;
@@ -158,7 +122,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     setUploadProgress(0);
 
     try {
-      const photoUrl = await uploadFile(values.photo, user.uid, setUploadProgress);
+      const photoUrl = await uploadFile(values.photo, 'observations', user.uid, setUploadProgress);
 
       const newObservationData: Omit<Observation, 'id'> = {
         userId: user.uid,

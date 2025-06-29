@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -6,9 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Wrench } from 'lucide-react';
-import { ref, getDownloadURL, uploadBytesResumable, type UploadTask } from 'firebase/storage';
 
-import { storage } from '@/lib/firebase';
+import { uploadFile } from '@/lib/storage';
 import type { Inspection, InspectionStatus, EquipmentType, Location } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -38,38 +38,6 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-function uploadFile(
-  file: File,
-  userId: string,
-  onProgress: (progress: number) => void
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const storageRef = ref(storage, `inspections/${userId}/${Date.now()}-${file.name}`);
-    const uploadTask: UploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        onProgress(progress);
-      },
-      (error) => {
-        console.error('Firebase Storage upload error:', error);
-        reject(new Error('Gagal mengunggah file. Silakan periksa koneksi atau izin CORS Anda.'));
-      },
-      async () => {
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve(downloadURL);
-        } catch (error) {
-          console.error('Firebase Storage get URL error:', error);
-          reject(new Error('Gagal mendapatkan URL unduhan.'));
-        }
-      }
-    );
-  });
-}
 
 interface SubmitInspectionDialogProps {
   isOpen: boolean;
@@ -127,7 +95,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
     setUploadProgress(0);
 
     try {
-      const photoUrl = await uploadFile(values.photo, user.uid, setUploadProgress);
+      const photoUrl = await uploadFile(values.photo, 'inspections', user.uid, setUploadProgress);
       const newInspectionData: Omit<Inspection, 'id'> = {
         userId: user.uid,
         date: new Date().toISOString(),

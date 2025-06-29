@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -5,9 +6,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Upload, FileSignature, FileText } from 'lucide-react';
-import { ref, getDownloadURL, uploadBytesResumable, type UploadTask } from 'firebase/storage';
 
-import { storage } from '@/lib/firebase';
+import { uploadFile } from '@/lib/storage';
 import type { Ptw, Location } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -33,38 +33,6 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-function uploadFile(
-  file: File,
-  userId: string,
-  onProgress: (progress: number) => void
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const storageRef = ref(storage, `ptw-jsa/${userId}/${Date.now()}-${file.name}`);
-    const uploadTask: UploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        onProgress(progress);
-      },
-      (error) => {
-        console.error('Firebase Storage upload error:', error);
-        reject(new Error('Gagal mengunggah file. Silakan periksa koneksi atau izin CORS Anda.'));
-      },
-      async () => {
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve(downloadURL);
-        } catch (error) {
-          console.error('Firebase Storage get URL error:', error);
-          reject(new Error('Gagal mendapatkan URL unduhan.'));
-        }
-      }
-    );
-  });
-}
 
 interface SubmitPtwDialogProps {
   isOpen: boolean;
@@ -117,7 +85,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
     setUploadProgress(0);
 
     try {
-      const jsaPdfUrl = await uploadFile(values.jsaPdf, user.uid, setUploadProgress);
+      const jsaPdfUrl = await uploadFile(values.jsaPdf, 'ptw-jsa', user.uid, setUploadProgress);
       const newPtwData: Omit<Ptw, 'id'> = {
         userId: user.uid,
         date: new Date().toISOString(),

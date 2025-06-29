@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -6,9 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, ListChecks } from 'lucide-react';
-import { ref, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 
-import { storage } from '@/lib/firebase';
+import { uploadFile } from '@/lib/storage';
 import type { Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -45,41 +45,6 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-function uploadFile(
-  file: File,
-  userId: string,
-  onProgress: (progress: number) => void
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (!file || !userId) {
-      return reject(new Error('File or user ID is missing.'));
-    }
-    const storageRef = ref(storage, `actions/${userId}/${Date.now()}-${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        onProgress(progress);
-      },
-      (error) => {
-        console.error('Firebase Storage upload error:', error);
-        reject(new Error('Could not upload file to Firebase Storage.'));
-      },
-      async () => {
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve(downloadURL);
-        } catch (error) {
-          console.error('Firebase Storage get URL error:', error);
-          reject(new Error('Could not get download URL.'));
-        }
-      }
-    );
-  });
-}
 
 interface TakeActionDialogProps {
   isOpen: boolean;
@@ -187,7 +152,7 @@ export function TakeActionDialog({
         if (values.actionTakenPhoto) {
             const file = values.actionTakenPhoto as File;
             setUploadProgress(0);
-            const actionTakenPhotoUrl = await uploadFile(file, user.uid, setUploadProgress);
+            const actionTakenPhotoUrl = await uploadFile(file, 'actions', user.uid, setUploadProgress);
             updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
         }
 
