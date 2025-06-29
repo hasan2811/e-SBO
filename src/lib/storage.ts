@@ -5,7 +5,8 @@ import { ref, getDownloadURL, uploadBytesResumable, type UploadTask } from 'fire
 import { storage } from '@/lib/firebase';
 
 /**
- * Uploads a file to Firebase Storage and reports progress.
+ * Uploads a file to a specified path in Firebase Storage and reports progress.
+ * This is a generic function used for all file uploads (observations, inspections, PTWs, etc.).
  * @param file The file to upload.
  * @param path The storage path (e.g., 'observations', 'inspections').
  * @param userId The UID of the user uploading the file.
