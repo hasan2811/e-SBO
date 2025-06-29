@@ -98,6 +98,18 @@ export function MultiActionButton({
 
   return (
     <TooltipProvider>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30"
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
       <div className="fixed bottom-24 right-6 md:right-8 z-40">
         <motion.div
           className="flex flex-col items-center gap-4"
