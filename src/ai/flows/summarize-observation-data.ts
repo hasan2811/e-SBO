@@ -1,22 +1,25 @@
 'use server';
 /**
- * @fileOverview AI-powered analysis of HSSE observation data.
+ * @fileOverview AI-powered analysis of HSSE observation and inspection data.
  *
- * This file defines a Genkit flow that takes observation data and returns a structured analysis,
- * including a summary, risk assessment, suggested actions, and more.
+ * This file defines Genkit flows for analyzing different types of HSSE reports.
+ * - summarizeObservationData: Analyzes a standard observation report.
+ * - analyzeInspectionData: Analyzes an equipment inspection report.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { RISK_LEVELS } from '@/lib/types';
 
-// 1. Define the input schema for the AI flow.
+// =================================================================================
+// 1. OBSERVATION ANALYSIS FLOW
+// =================================================================================
+
 const SummarizeObservationDataInputSchema = z.object({
   observationData: z.string().describe('The raw text data of the observation report.'),
 });
 export type SummarizeObservationDataInput = z.infer<typeof SummarizeObservationDataInputSchema>;
 
-// 2. Define the structured output schema the AI must follow.
 const SummarizeObservationDataOutputSchema = z.object({
   summary: z.string().describe('Ringkasan singkat dari temuan inti dalam Bahasa Indonesia.'),
   risks: z.string().describe('Analisis potensi bahaya dan risiko dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
@@ -31,9 +34,7 @@ const SummarizeObservationDataOutputSchema = z.object({
 });
 export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservationDataOutputSchema>;
 
-
-// 3. Define the prompt object. This is the most stable method.
-const summarizePrompt = ai.definePrompt({
+const summarizeObservationPrompt = ai.definePrompt({
     name: 'summarizeObservationPrompt',
     model: 'googleai/gemini-2.0-flash',
     input: { schema: SummarizeObservationDataInputSchema },
@@ -65,8 +66,6 @@ Data Observasi:
 {{{observationData}}}`,
 });
 
-
-// 4. Define the flow. Its only job is to execute the pre-configured prompt.
 const summarizeObservationDataFlow = ai.defineFlow(
   {
     name: 'summarizeObservationDataFlow',
@@ -74,18 +73,80 @@ const summarizeObservationDataFlow = ai.defineFlow(
     outputSchema: SummarizeObservationDataOutputSchema,
   },
   async (input) => {
-    const response = await summarizePrompt(input);
+    const response = await summarizeObservationPrompt(input);
     const output = response.output;
 
     if (!output) {
-      throw new Error('AI analysis returned no structured output.');
+      throw new Error('AI analysis returned no structured output for observation.');
     }
     return output;
   }
 );
 
-
-// 5. Export a simple wrapper function for the client to call.
 export async function summarizeObservationData(input: SummarizeObservationDataInput): Promise<SummarizeObservationDataOutput> {
   return summarizeObservationDataFlow(input);
+}
+
+
+// =================================================================================
+// 2. INSPECTION ANALYSIS FLOW
+// =================================================================================
+
+const AnalyzeInspectionInputSchema = z.object({
+  inspectionData: z.string().describe('The raw text data of the equipment inspection report.'),
+});
+export type AnalyzeInspectionInput = z.infer<typeof AnalyzeInspectionInputSchema>;
+
+const AnalyzeInspectionOutputSchema = z.object({
+  summary: z.string().describe('Ringkasan singkat dari temuan inti inspeksi dalam Bahasa Indonesia.'),
+  risks: z.string().describe('Analisis potensi bahaya dan risiko dari temuan inspeksi, dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
+  suggestedActions: z.string().describe('Saran tindakan perbaikan atau pengecekan lebih lanjut, dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
+});
+export type AnalyzeInspectionOutput = z.infer<typeof AnalyzeInspectionOutputSchema>;
+
+const analyzeInspectionPrompt = ai.definePrompt({
+    name: 'analyzeInspectionPrompt',
+    model: 'googleai/gemini-2.0-flash',
+    input: { schema: AnalyzeInspectionInputSchema },
+    output: { schema: AnalyzeInspectionOutputSchema },
+    config: {
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+        ],
+    },
+    prompt: `Anda adalah seorang ahli inspeksi peralatan dan analis keselamatan. Tugas Anda adalah menganalisis data laporan inspeksi peralatan dan memberikan poin-poin analisis yang jelas dan praktis dalam Bahasa Indonesia.
+PENTING: Respons Anda harus berupa objek JSON mentah saja, tanpa penjelasan atau pemformatan tambahan.
+
+Berdasarkan data inspeksi yang diberikan, hasilkan objek JSON dengan format berikut. Semua respons harus dalam Bahasa Indonesia.
+
+1.  "summary": Berikan ringkasan yang sangat singkat (satu atau dua kalimat) dari temuan inti inspeksi.
+2.  "risks": Jelaskan potensi bahaya dan risiko keselamatan yang timbul dari kondisi peralatan yang dilaporkan. Sajikan dalam bentuk **poin-poin singkat yang diawali dengan tanda hubung (-)**.
+3.  "suggestedActions": Berikan saran tindakan yang jelas dan dapat dieksekusi untuk perbaikan atau mitigasi. Sajikan dalam bentuk **poin-poin singkat yang diawali dengan tanda hubung (-)**.
+
+Data Inspeksi:
+{{{inspectionData}}}`,
+});
+
+const analyzeInspectionDataFlow = ai.defineFlow(
+  {
+    name: 'analyzeInspectionDataFlow',
+    inputSchema: AnalyzeInspectionInputSchema,
+    outputSchema: AnalyzeInspectionOutputSchema,
+  },
+  async (input) => {
+    const response = await analyzeInspectionPrompt(input);
+    const output = response.output;
+
+    if (!output) {
+      throw new Error('AI analysis returned no structured output for inspection.');
+    }
+    return output;
+  }
+);
+
+export async function analyzeInspectionData(input: AnalyzeInspectionInput): Promise<AnalyzeInspectionOutput> {
+  return analyzeInspectionDataFlow(input);
 }

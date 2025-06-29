@@ -62,6 +62,10 @@ export type Inspection = {
   status: InspectionStatus;
   recommendation?: string;
   photoUrl?: string;
+  aiStatus?: 'processing' | 'completed' | 'failed';
+  aiSummary?: string;
+  aiRisks?: string;
+  aiSuggestedActions?: string;
 };
 
 export type PtwStatus = 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed';

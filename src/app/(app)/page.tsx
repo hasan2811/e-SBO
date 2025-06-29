@@ -2,12 +2,13 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import { useObservations } from '@/contexts/observation-context';
-import type { Observation, RiskLevel, Inspection, Ptw } from '@/lib/types';
+import type { Observation, RiskLevel, Inspection, Ptw, InspectionStatus } from '@/lib/types';
 import { RiskBadge, StatusBadge, InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format, isSameDay, subDays, isToday, addDays } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
-import { FileText, ChevronRight, ChevronLeft, Download, Wrench, FileSignature as PtwIcon, ChevronDown } from 'lucide-react';
+import { FileText, ChevronRight, ChevronLeft, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,12 @@ const riskColorMap: Record<RiskLevel, string> = {
   High: 'bg-chart-5',
   Medium: 'bg-chart-4',
   Low: 'bg-chart-2',
+};
+
+const inspectionStatusColorMap: Record<InspectionStatus, string> = {
+  'Pass': 'bg-chart-2',
+  'Fail': 'bg-destructive',
+  'Needs Repair': 'bg-chart-4',
 };
 
 const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
@@ -57,29 +64,48 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
   );
 };
 
-const InspectionListItem = ({ inspection }: { inspection: Inspection }) => (
-  <li>
-    <div className="relative flex items-center bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
-      <div className="flex-1 space-y-2 pr-4">
-        <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">{format(new Date(inspection.date), 'HH:mm')}</span> - {inspection.equipmentType}
-        </p>
-        <p className="font-semibold leading-snug line-clamp-2">{inspection.equipmentName}: {inspection.findings}</p>
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <InspectionStatusBadge status={inspection.status} />
-          <span className="text-xs text-muted-foreground">{inspection.location}</span>
+const InspectionListItem = ({ inspection }: { inspection: Inspection }) => {
+  const statusColor = inspectionStatusColorMap[inspection.status] || 'bg-muted';
+  return (
+    <li>
+      <div className="relative flex items-center gap-4 bg-card p-4 pl-6 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-not-allowed overflow-hidden">
+        <div className={cn("absolute left-0 top-0 h-full w-2", statusColor)} />
+        
+        {inspection.photoUrl && (
+          <div className="relative h-24 w-24 flex-shrink-0 rounded-md overflow-hidden border">
+            <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="96px" className="object-cover" data-ai-hint="equipment inspection" />
+             {inspection.aiStatus === 'processing' && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                </div>
+            )}
+             {inspection.aiStatus === 'completed' && (
+                <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
+                    <Sparkles className="h-3 w-3 text-primary-foreground" />
+                </div>
+            )}
+          </div>
+        )}
+        
+        <div className="flex-1 space-y-2 self-start">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{format(new Date(inspection.date), 'HH:mm')}</span> - {inspection.equipmentType}
+          </p>
+          <p className="font-semibold leading-snug line-clamp-2">{inspection.equipmentName}</p>
+          <p className="text-sm text-muted-foreground line-clamp-1">{inspection.findings}</p>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <InspectionStatusBadge status={inspection.status} />
+            <span className="text-xs text-muted-foreground">{inspection.location}</span>
+          </div>
         </div>
       </div>
-      <div className="ml-auto flex items-center pl-2">
-        <ChevronRight className="h-6 w-6 text-muted-foreground" />
-      </div>
-    </div>
-  </li>
-);
+    </li>
+  );
+};
 
 const PtwListItem = ({ ptw }: { ptw: Ptw }) => (
   <li>
-    <div className="relative flex items-center bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
+    <div className="relative flex items-center bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-not-allowed overflow-hidden">
       <div className="flex-1 space-y-2 pr-4">
         <p className="text-xs text-muted-foreground">
           <span className="font-semibold text-foreground">{format(new Date(ptw.date), 'HH:mm')}</span> - {ptw.contractor}

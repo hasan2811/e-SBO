@@ -14,12 +14,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MultiActionButton } from '@/components/multi-action-button';
 import { SubmitInspectionDialog } from '@/components/submit-inspection-dialog';
 import { SubmitPtwDialog } from '@/components/submit-ptw-dialog';
-import { addInspection, addPtw } from '@/lib/actions';
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, userProfile, loading: authLoading } = useAuth();
-  const { addObservation } = useObservations();
+  const { addObservation, addInspection, addPtw } = useObservations();
   const router = useRouter();
   const pathname = usePathname();
 

@@ -6,7 +6,7 @@ import { collection, doc, onSnapshot, query, updateDoc, orderBy, addDoc } from '
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { getAiSummary } from '@/lib/actions';
+import { summarizeObservationData, analyzeInspectionData } from '@/ai/flows/summarize-observation-data';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -16,6 +16,8 @@ interface ObservationContextType {
   ptws: Ptw[];
   loading: boolean;
   addObservation: (observation: Omit<Observation, 'id' | 'referenceId'>) => Promise<void>;
+  addInspection: (inspection: Omit<Inspection, 'id' | 'referenceId'>) => Promise<void>;
+  addPtw: (ptw: Omit<Ptw, 'id' | 'referenceId'>) => Promise<void>;
   updateObservation: (id: string, updatedData: Partial<Observation>) => Promise<void>;
   retryAiAnalysis: (observation: Observation) => Promise<void>;
 }
@@ -83,78 +85,112 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }
   }, [user]);
 
-  const _runAiAnalysis = (observation: Observation) => {
+  const _runObservationAiAnalysis = (observation: Observation) => {
     const observationDocRef = doc(db, 'observations', observation.id);
-    getAiSummary(observation)
+
+    const observationData = `
+      Location: ${observation.location}
+      Company: ${observation.company}
+      Category: ${observation.category}
+      Status: ${observation.status}
+      Risk Level: ${observation.riskLevel}
+      Submitted By: ${observation.submittedBy}
+      Date: ${new Date(observation.date).toLocaleString()}
+      Findings: ${observation.findings}
+      Recommendation: ${observation.recommendation}
+    `;
+
+    summarizeObservationData({ observationData })
       .then(summary => {
-        if (summary) {
-          const aiData = {
-            aiSummary: summary.summary,
-            aiRisks: summary.risks,
-            aiSuggestedActions: summary.suggestedActions,
-            aiRelevantRegulations: summary.relevantRegulations,
-            aiSuggestedRiskLevel: summary.suggestedRiskLevel,
-            aiRootCauseAnalysis: summary.rootCauseAnalysis,
-            aiObserverSkillRating: summary.observerAssessment.rating,
-            aiObserverSkillExplanation: summary.observerAssessment.explanation,
-            aiStatus: 'completed' as const,
-          };
-          updateDoc(observationDocRef, aiData);
-        } else {
-           updateDoc(observationDocRef, { aiStatus: 'failed' });
-        }
+        const aiData = {
+          ...summary,
+          aiStatus: 'completed' as const,
+        };
+        updateDoc(observationDocRef, aiData);
       })
       .catch(error => {
-        console.error("Failed to generate or save AI summary:", error);
+        console.error("Failed to generate AI summary for observation:", error);
         updateDoc(observationDocRef, { aiStatus: 'failed' });
-        toast({
-          variant: 'destructive',
-          title: 'AI Analysis Failed',
-          description: 'Could not generate AI analysis. Please try again.',
-        });
+        toast({ variant: 'destructive', title: 'Observation AI Failed', description: 'Could not generate AI analysis.'});
+      });
+  };
+
+  const _runInspectionAiAnalysis = (inspection: Inspection) => {
+    const inspectionDocRef = doc(db, 'inspections', inspection.id);
+
+    const inspectionData = `
+      Equipment Name: ${inspection.equipmentName}
+      Equipment Type: ${inspection.equipmentType}
+      Location: ${inspection.location}
+      Status: ${inspection.status}
+      Submitted By: ${inspection.submittedBy}
+      Date: ${new Date(inspection.date).toLocaleString()}
+      Findings: ${inspection.findings}
+      Recommendation: ${inspection.recommendation || 'N/A'}
+    `;
+
+    analyzeInspectionData({ inspectionData })
+      .then(analysis => {
+        const aiData = {
+            aiSummary: analysis.summary,
+            aiRisks: analysis.risks,
+            aiSuggestedActions: analysis.suggestedActions,
+            aiStatus: 'completed' as const,
+        };
+        updateDoc(inspectionDocRef, aiData);
+      })
+      .catch(error => {
+        console.error("Failed to generate AI analysis for inspection:", error);
+        updateDoc(inspectionDocRef, { aiStatus: 'failed' });
+        toast({ variant: 'destructive', title: 'Inspection AI Failed', description: 'Could not generate AI analysis.'});
       });
   };
 
   const retryAiAnalysis = async (observation: Observation) => {
     const observationDocRef = doc(db, 'observations', observation.id);
     await updateDoc(observationDocRef, { aiStatus: 'processing' });
-    _runAiAnalysis(observation);
+    _runObservationAiAnalysis(observation);
   };
 
   const addObservation = async (newObservation: Omit<Observation, 'id' | 'referenceId'>) => {
-    try {
-      const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      
-      const observationToSave = { 
-        ...newObservation,
-        scope: newObservation.scope || 'public',
-        referenceId,
-        aiStatus: 'processing' as const
-      };
+    const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const observationToSave = { 
+      ...newObservation,
+      scope: newObservation.scope || 'public',
+      referenceId,
+      aiStatus: 'processing' as const
+    };
+    const observationCollection = collection(db, 'observations');
+    const docRef = await addDoc(observationCollection, observationToSave);
+    _runObservationAiAnalysis({ ...observationToSave, id: docRef.id });
+  };
 
-      const observationCollection = collection(db, 'observations');
-      const observationDocRef = await addDoc(observationCollection, observationToSave);
+  const addInspection = async (newInspection: Omit<Inspection, 'id' | 'referenceId'>) => {
+    const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const inspectionToSave = {
+      ...newInspection,
+      referenceId,
+      aiStatus: 'processing' as const,
+    };
+    const inspectionCollection = collection(db, 'inspections');
+    const docRef = await addDoc(inspectionCollection, inspectionToSave);
+    _runInspectionAiAnalysis({ ...inspectionToSave, id: docRef.id });
+  };
 
-      const fullObservationData = { ...observationToSave, id: observationDocRef.id };
-      _runAiAnalysis(fullObservationData);
-
-    } catch (error) {
-      console.error("Error adding document to Firestore: ", error);
-      throw error;
-    }
+  const addPtw = async (newPtw: Omit<Ptw, 'id' | 'referenceId'>) => {
+    const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const ptwToSave = { ...newPtw, referenceId };
+    const ptwCollection = collection(db, 'ptws');
+    await addDoc(ptwCollection, ptwToSave);
+    // AI analysis for PTW can be added here in the future
   };
 
   const updateObservation = async (id: string, updatedData: Partial<Observation>) => {
-    try {
-      const observationDocRef = doc(db, 'observations', id);
-      await updateDoc(observationDocRef, updatedData);
-    } catch (error) {
-      console.error("Error updating document in Firestore: ", error);
-      throw error;
-    }
+    const observationDocRef = doc(db, 'observations', id);
+    await updateDoc(observationDocRef, updatedData);
   };
 
-  const value = { observations, inspections, ptws, loading, addObservation, updateObservation, retryAiAnalysis };
+  const value = { observations, inspections, ptws, loading, addObservation, addInspection, addPtw, updateObservation, retryAiAnalysis };
 
   return (
     <ObservationContext.Provider value={value}>
