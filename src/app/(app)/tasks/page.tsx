@@ -2,14 +2,12 @@
 'use client';
 
 import * as React from 'react';
-import { format, subDays, eachDayOfInterval, addDays, isToday } from 'date-fns';
-import type { DateRange } from 'react-day-picker';
-import { CheckCircle, PieChart as PieChartIcon, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format } from 'date-fns';
+import { BarChart2, PieChart as PieChartIcon } from 'lucide-react';
 
 import type { Observation, RiskLevel, Company, Location } from '@/lib/types';
 import { useObservations } from '@/contexts/observation-context';
 
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -148,7 +146,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
             </ChartContainer>
           ) : (
             <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-              <p>No data for this period.</p>
+              <p>No data available.</p>
             </div>
           )}
         </div>
@@ -160,90 +158,39 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
 
 export default function DashboardPage() {
   const { observations, loading } = useObservations();
-  
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: subDays(new Date(), 6),
-    to: new Date(),
-  });
-
-  const handlePrevWeek = () => {
-    if (date?.from && date?.to) {
-      setDate({
-        from: subDays(date.from, 7),
-        to: subDays(date.to, 7),
-      });
-    }
-  };
-  
-  const handleNextWeek = () => {
-    if (date?.from && date?.to) {
-      let newTo = addDays(date.to, 7);
-      if (newTo > new Date()) {
-        newTo = new Date();
-      }
-      const newFrom = subDays(newTo, 6);
-      setDate({ from: newFrom, to: newTo });
-    }
-  };
-
-  const isNextWeekDisabled = React.useMemo(() => {
-    if (!date?.to) return true;
-    return isToday(date.to);
-  }, [date]);
-  
-  const filteredObservations = React.useMemo(() => {
-    if (!date?.from) return observations;
-    const from = date.from;
-    const to = date.to && date.to > from ? date.to : from;
-
-    const startDate = new Date(from);
-    startDate.setHours(0, 0, 0, 0);
-
-    const endDate = new Date(to);
-    endDate.setHours(23, 59, 59, 999);
-
-    return observations.filter(obs => {
-      const obsDate = new Date(obs.date);
-      return obsDate >= startDate && obsDate <= endDate;
-    });
-  }, [observations, date]);
 
   const overviewData = React.useMemo(() => {
-    const total = filteredObservations.length;
+    const total = observations.length;
     if (total === 0) return { pendingPercentage: 0, pendingCount: 0 };
-
-    const pendingCount = filteredObservations.filter(o => o.status !== 'Completed').length;
-    
+    const pendingCount = observations.filter(o => o.status !== 'Completed').length;
     return {
       pendingPercentage: Math.round((pendingCount / total) * 100),
       pendingCount,
     };
-  }, [filteredObservations]);
+  }, [observations]);
 
   const criticalPercentageData = React.useMemo(() => {
-    const total = filteredObservations.length;
+    const total = observations.length;
     if (total === 0) return { percentage: 0, count: 0 };
-
-    const criticalCount = filteredObservations.filter(o => o.riskLevel === 'Critical').length;
-    
+    const criticalCount = observations.filter(o => o.riskLevel === 'Critical').length;
     return {
       percentage: Math.round((criticalCount / total) * 100),
       count: criticalCount,
     };
-  }, [filteredObservations]);
+  }, [observations]);
 
   const dailyData = React.useMemo(() => {
-    const from = date?.from ? date.from : new Date();
-    const to = date?.to && date.to > from ? date.to : from;
-    const daysInRange = eachDayOfInterval({ start: from, end: to });
-
     const dataMap = new Map<string, { pending: number, completed: number }>();
-     daysInRange.forEach(day => {
-        dataMap.set(format(day, 'yyyy-MM-dd'), { pending: 0, completed: 0 });
-    });
+    
+    // Initialize map for the last 30 days for trend analysis
+    for (let i = 29; i >= 0; i--) {
+      const day = new Date();
+      day.setDate(day.getDate() - i);
+      const dayKey = format(day, 'yyyy-MM-dd');
+      dataMap.set(dayKey, { pending: 0, completed: 0 });
+    }
 
-    for (const obs of filteredObservations) {
-        const dayKey = format(new Date(obs.date), 'yyyy-M-d');
+    for (const obs of observations) {
         const mapKey = format(new Date(obs.date), 'yyyy-MM-dd');
         if (dataMap.has(mapKey)) {
             const dayData = dataMap.get(mapKey)!;
@@ -256,14 +203,14 @@ export default function DashboardPage() {
     }
 
     return Array.from(dataMap.entries()).map(([dateStr, counts]) => ({
-        day: format(addDays(new Date(dateStr), 1), 'EEE'),
+        day: format(new Date(dateStr), 'd/M'),
         ...counts
     }));
-  }, [filteredObservations, date]);
+  }, [observations]);
 
 
   const riskDetailsData = React.useMemo(() => {
-    const counts = filteredObservations.reduce((acc, obs) => {
+    const counts = observations.reduce((acc, obs) => {
       acc[obs.riskLevel] = (acc[obs.riskLevel] || 0) + 1;
       return acc;
     }, {} as Record<RiskLevel, number>);
@@ -275,10 +222,10 @@ export default function DashboardPage() {
         fill: riskPieChartConfig[level].color
       }))
       .filter((item) => item.count > 0);
-  }, [filteredObservations]);
+  }, [observations]);
   
   const companyDistributionData = React.useMemo(() => {
-    const counts = filteredObservations.reduce((acc, obs) => {
+    const counts = observations.reduce((acc, obs) => {
       acc[obs.company] = (acc[obs.company] || 0) + 1;
       return acc;
     }, {} as Record<Company, number>);
@@ -286,10 +233,10 @@ export default function DashboardPage() {
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-  }, [filteredObservations]);
+  }, [observations]);
 
   const locationDistributionData = React.useMemo(() => {
-    const counts = filteredObservations.reduce((acc, obs) => {
+    const counts = observations.reduce((acc, obs) => {
       acc[obs.location] = (acc[obs.location] || 0) + 1;
       return acc;
     }, {} as Record<Location, number>);
@@ -297,7 +244,7 @@ export default function DashboardPage() {
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-  }, [filteredObservations]);
+  }, [observations]);
 
   const RADIAN = Math.PI / 180;
   const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
@@ -330,21 +277,6 @@ export default function DashboardPage() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-        <div className="flex items-center gap-2">
-            <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handlePrevWeek}>
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-
-            <div className="flex h-9 min-w-[240px] items-center justify-center rounded-md border border-primary/20 bg-primary/10 px-4 text-sm font-semibold text-primary shadow-sm">
-               {date?.from && date.to ? 
-                `${format(date.from, 'd MMM')} - ${format(date.to, 'd MMM yyyy')}` : 
-                'Memuat...'}
-            </div>
-          
-            <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handleNextWeek} disabled={isNextWeekDisabled}>
-              <ChevronRight className="h-5 w-5" />
-            </Button>
-          </div>
       </div>
       
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -407,14 +339,14 @@ export default function DashboardPage() {
         
         <Card className="col-span-1 lg:col-span-1">
             <CardHeader>
-            <CardTitle>Tren Observasi Harian</CardTitle>
+            <CardTitle>Tren Observasi Harian (30 Hari Terakhir)</CardTitle>
             </CardHeader>
             <CardContent>
             <div className="h-[250px] sm:h-[280px] w-full">
                 {loading ? <Skeleton className="h-full w-full" /> : (
                 <ChartContainer config={dailyChartConfig} className="h-full w-full">
                     <BarChart data={dailyData} accessibilityLayer>
-                    <ChartXAxis dataKey="day" tickLine={false} axisLine={false} />
+                    <ChartXAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={5} tick={{ fontSize: 10 }} />
                     <ChartYAxis tickLine={false} axisLine={false} allowDecimals={false} />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <ChartLegend content={<ChartLegendContent align="center" />} />

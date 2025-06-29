@@ -30,69 +30,88 @@ const ObservationContext = React.createContext<ObservationContextType | undefine
 
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
-  const [publicObservations, setPublicObservations] = React.useState<Observation[]>([]);
-  const [privateObservations, setPrivateObservations] = React.useState<Observation[]>([]);
-  const [publicInspections, setPublicInspections] = React.useState<Inspection[]>([]);
-  const [privateInspections, setPrivateInspections] = React.useState<Inspection[]>([]);
-  const [publicPtws, setPublicPtws] = React.useState<Ptw[]>([]);
-  const [privatePtws, setPrivatePtws] = React.useState<Ptw[]>([]);
-  
-  const [loading, setLoading] = React.useState<boolean>(true);
+  const [observations, setObservations] = React.useState<Observation[]>([]);
+  const [inspections, setInspections] = React.useState<Inspection[]>([]);
+  const [ptws, setPtws] = React.useState<Ptw[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const { user } = useAuth();
 
   React.useEffect(() => {
     if (user) {
       setLoading(true);
-      
-      const createListener = <T extends {id: string}>(
-        collectionPath: string,
-        setData: React.Dispatch<React.SetStateAction<T[]>>,
-        scope: 'public' | 'private'
-      ) => {
-        let q: Query<DocumentData>;
-        const collectionRef = collection(db, collectionPath);
-        
-        if (scope === 'public') {
-          q = query(collectionRef, where('scope', '==', 'public'), orderBy('date', 'desc'));
-        } else { // 'private'
-          q = query(collectionRef, where('userId', '==', user.uid), where('scope', '==', 'private'), orderBy('date', 'desc'));
+
+      const collectionsToWatch = ['observations', 'inspections', 'ptws'];
+      const totalListeners = collectionsToWatch.length * 2; // public + user for each
+      let loadedListeners = 0;
+
+      const unsubscribers: (() => void)[] = [];
+
+      const checkAllLoaded = () => {
+        loadedListeners++;
+        if (loadedListeners >= totalListeners) {
+          setLoading(false);
         }
-        
-        return onSnapshot(q, (snapshot) => {
-          const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
-          setData(data);
+      };
+      
+      const setupCollectionListeners = <T extends { id: string }>(
+        path: 'observations' | 'inspections' | 'ptws',
+        setData: React.Dispatch<React.SetStateAction<T[]>>
+      ) => {
+        const userDocs: Record<string, T> = {};
+        const publicDocs: Record<string, T> = {};
+
+        const mergeAndSetData = () => {
+          const combined = { ...publicDocs, ...userDocs }; // userDocs will overwrite publicDocs for same ID, which is fine.
+          const sortedData = Object.values(combined).sort((a, b) => 
+              new Date((b as any).date).getTime() - new Date((a as any).date).getTime()
+          );
+          setData(sortedData);
+        };
+
+        // Listener for user's own documents (private and public)
+        const userQuery = query(collection(db, path), where('userId', '==', user.uid));
+        const unsubUser = onSnapshot(userQuery, (snapshot) => {
+          snapshot.docs.forEach(doc => { userDocs[doc.id] = { ...doc.data(), id: doc.id } as T; });
+          if(snapshot.metadata.fromCache && snapshot.docs.length === 0) {} // Don't false-fire on initial cache read
+          else {
+            mergeAndSetData();
+            checkAllLoaded();
+          }
         }, (error) => {
-          console.error(`Error fetching ${scope} ${collectionPath}: `, error);
-          toast({ variant: 'destructive', title: `Error Fetching ${collectionPath}`, description: error.message });
+          console.error(`Error fetching user ${path}:`, error);
+          checkAllLoaded();
         });
+
+        // Listener for all public documents
+        const publicQuery = query(collection(db, path), where('scope', '==', 'public'));
+        const unsubPublic = onSnapshot(publicQuery, (snapshot) => {
+          snapshot.docs.forEach(doc => { publicDocs[doc.id] = { ...doc.data(), id: doc.id } as T; });
+          if(snapshot.metadata.fromCache && snapshot.docs.length === 0) {}
+          else {
+            mergeAndSetData();
+            checkAllLoaded();
+          }
+        }, (error) => {
+          console.error(`Error fetching public ${path}:`, error);
+          checkAllLoaded();
+        });
+        
+        unsubscribers.push(unsubUser, unsubPublic);
       };
 
-      const unsubscribers = [
-        createListener('observations', setPublicObservations, 'public'),
-        createListener('observations', setPrivateObservations, 'private'),
-        createListener('inspections', setPublicInspections, 'public'),
-        createListener('inspections', setPrivateInspections, 'private'),
-        createListener('ptws', setPublicPtws, 'public'),
-        createListener('ptws', setPrivatePtws, 'private'),
-      ];
+      setupCollectionListeners('observations', setObservations);
+      setupCollectionListeners('inspections', setInspections);
+      setupCollectionListeners('ptws', setPtws);
       
-      setLoading(false);
-
       return () => unsubscribers.forEach(unsub => unsub());
+
     } else {
-      setPublicObservations([]);
-      setPrivateObservations([]);
-      setPublicInspections([]);
-      setPrivateInspections([]);
-      setPublicPtws([]);
-      setPrivatePtws([]);
+      setObservations([]);
+      setInspections([]);
+      setPtws([]);
       setLoading(false);
     }
   }, [user]);
-  
-  const observations = React.useMemo(() => [...publicObservations, ...privateObservations].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [publicObservations, privateObservations]);
-  const inspections = React.useMemo(() => [...publicInspections, ...privateInspections].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [publicInspections, privateInspections]);
-  const ptws = React.useMemo(() => [...publicPtws, ...privatePtws].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [publicPtws, privatePtws]);
 
   const allItems = React.useMemo(() => {
     const typedObservations = observations.map(o => ({ ...o, itemType: 'observation' as const }));

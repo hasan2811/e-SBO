@@ -1,34 +1,32 @@
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users can only manage their own profile
+  
+    // Users can read and write their own profile
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // Rules for Observations
-    match /observations/{docId} {
-      allow read: if resource.data.scope == 'public' || (request.auth != null && resource.data.userId == request.auth.uid);
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    // Rules for observations
+    match /observations/{obsId} {
+      allow create: if request.auth != null;
+      allow read: if resource.data.scope == 'public' || request.auth.uid == resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
+    }
+
+    // Rules for inspections
+    match /inspections/{inspId} {
+      allow create: if request.auth != null;
+      allow read: if resource.data.scope == 'public' || request.auth.uid == resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
     }
     
-    // Rules for Inspections
-    match /inspections/{docId} {
-      allow read: if resource.data.scope == 'public' || (request.auth != null && resource.data.userId == request.auth.uid);
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-    }
-
     // Rules for PTWs
-    match /ptws/{docId} {
-      allow read: if resource.data.scope == 'public' || (request.auth != null && resource.data.userId == request.auth.uid);
-      // Anyone authenticated can approve a PTW, but only owner can create/delete
-      allow create, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null && (resource.data.userId == request.auth.uid || request.resource.data.status == 'Approved');
+    match /ptws/{ptwId} {
+      allow create: if request.auth != null;
+      allow read: if resource.data.scope == 'public' || request.auth.uid == resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
     }
   }
 }
