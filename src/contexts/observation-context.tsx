@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, doc, onSnapshot, query, updateDoc, orderBy, addDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, updateDoc, orderBy, addDoc, where, Query, DocumentData } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -25,6 +25,18 @@ interface ObservationContextType {
 
 const ObservationContext = React.createContext<ObservationContextType | undefined>(undefined);
 
+// Helper function to manage combined data from public and private snapshots
+function combineSnapshots<T extends { id: string }>(
+  publicData: T[],
+  privateData: T[]
+): T[] {
+  const combined = new Map<string, T>();
+  publicData.forEach(item => combined.set(item.id, item));
+  privateData.forEach(item => combined.set(item.id, item));
+  return Array.from(combined.values());
+}
+
+
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
   const [observations, setObservations] = React.useState<Observation[]>([]);
   const [inspections, setInspections] = React.useState<Inspection[]>([]);
@@ -42,41 +54,60 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         ptws: collection(db, 'ptws'),
       };
 
-      const qObs = query(collections.observations, orderBy('date', 'desc'));
-      const qInsp = query(collections.inspections, orderBy('date', 'desc'));
-      const qPtw = query(collections.ptws, orderBy('date', 'desc'));
+      // --- Setting up dual listeners for each collection ---
+      let publicObservations: Observation[] = [], privateObservations: Observation[] = [];
+      let publicInspections: Inspection[] = [], privateInspections: Inspection[] = [];
+      let publicPtws: Ptw[] = [], privatePtws: Ptw[] = [];
 
-      const unsubObs = onSnapshot(qObs, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Observation));
-        setObservations(data);
-        setLoading(false); // Set loading to false after the primary data loads
-      }, (error) => {
-        console.error("Error fetching observations: ", error);
-        toast({ variant: 'destructive', title: 'Error Fetching Data', description: 'Could not fetch observations.' });
-        setLoading(false);
-      });
+      const createListeners = <T extends {id: string}>(
+        collectionRef: Query<DocumentData>,
+        setData: React.Dispatch<React.SetStateAction<T[]>>,
+        publicStore: {current: T[]},
+        privateStore: {current: T[]}
+      ) => {
+        const publicQuery = query(collectionRef, where('scope', '==', 'public'), orderBy('date', 'desc'));
+        const privateQuery = query(collectionRef, where('userId', '==', user.uid), orderBy('date', 'desc'));
 
-      const unsubInsp = onSnapshot(qInsp, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Inspection));
-        setInspections(data);
-      }, (error) => {
-        console.error("Error fetching inspections: ", error);
-        toast({ variant: 'destructive', title: 'Error Fetching Data', description: 'Could not fetch inspections.' });
-      });
+        const unsubPublic = onSnapshot(publicQuery, (snapshot) => {
+          publicStore.current = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
+          setData(combineSnapshots(publicStore.current, privateStore.current) as T[]);
+          setLoading(false); // Stop loading after first data fetch
+        }, (error) => {
+          console.error(`Error fetching public data for ${collectionRef.path}:`, error);
+          toast({ variant: 'destructive', title: 'Data Fetch Error', description: `Could not fetch public ${collectionRef.path}.` });
+          setLoading(false);
+        });
 
-      const unsubPtw = onSnapshot(qPtw, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Ptw));
-        setPtws(data);
-      }, (error) => {
-        console.error("Error fetching PTWs: ", error);
-        toast({ variant: 'destructive', title: 'Error Fetching Data', description: 'Could not fetch PTWs.' });
-      });
+        const unsubPrivate = onSnapshot(privateQuery, (snapshot) => {
+          privateStore.current = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
+          setData(combineSnapshots(publicStore.current, privateStore.current) as T[]);
+        }, (error) => {
+          console.error(`Error fetching private data for ${collectionRef.path}:`, error);
+          toast({ variant: 'destructive', title: 'Data Fetch Error', description: `Could not fetch your private ${collectionRef.path}.` });
+        });
 
+        return [unsubPublic, unsubPrivate];
+      }
+      
+      const publicObsRef = React.useRef<Observation[]>([]);
+      const privateObsRef = React.useRef<Observation[]>([]);
+      const [unsubObsPublic, unsubObsPrivate] = createListeners(collections.observations, setObservations, publicObsRef, privateObsRef);
+
+      const publicInspRef = React.useRef<Inspection[]>([]);
+      const privateInspRef = React.useRef<Inspection[]>([]);
+      const [unsubInspPublic, unsubInspPrivate] = createListeners(collections.inspections, setInspections, publicInspRef, privateInspRef);
+      
+      const publicPtwRef = React.useRef<Ptw[]>([]);
+      const privatePtwRef = React.useRef<Ptw[]>([]);
+      const [unsubPtwPublic, unsubPtwPrivate] = createListeners(collections.ptws, setPtws, publicPtwRef, privatePtwRef);
 
       return () => {
-        unsubObs();
-        unsubInsp();
-        unsubPtw();
+        unsubObsPublic();
+        unsubObsPrivate();
+        unsubInspPublic();
+        unsubInspPrivate();
+        unsubPtwPublic();
+        unsubPtwPrivate();
       };
     } else {
       setObservations([]);
@@ -181,7 +212,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
   const addPtw = async (newPtw: Omit<Ptw, 'id' | 'referenceId'>) => {
     const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    const ptwToSave = { ...newPtw, referenceId };
+    const ptwToSave = { ...newPtw, referenceId, scope: newPtw.scope || 'public' };
     const ptwCollection = collection(db, 'ptws');
     await addDoc(ptwCollection, ptwToSave);
     // AI analysis for PTW can be added here in the future
