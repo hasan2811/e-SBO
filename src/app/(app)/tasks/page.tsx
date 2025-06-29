@@ -2,32 +2,31 @@
 'use client';
 
 import * as React from 'react';
+import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
-import { BarChart2, PieChart as PieChartIcon } from 'lucide-react';
-
 import type { Observation, RiskLevel, Company, Location } from '@/lib/types';
 import { useObservations } from '@/contexts/observation-context';
-
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  BarChart,
-  PieChart,
-  ChartPie,
-  RadialBarChart,
-  ChartRadialBar,
-  ChartBar,
-  ChartYAxis,
-  ChartXAxis,
-  ChartPolarAngleAxis,
-  ChartLegend,
-  ChartLegendContent,
-  ChartCell,
-} from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
+
+const ChartContainer = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartContainer), {
+  ssr: false,
+  loading: () => <Skeleton className="h-[250px] w-full" />,
+});
+const BarChart = dynamic(() => import('@/components/ui/chart').then(mod => mod.BarChart), { ssr: false });
+const PieChart = dynamic(() => import('@/components/ui/chart').then(mod => mod.PieChart), { ssr: false });
+const RadialBarChart = dynamic(() => import('@/components/ui/chart').then(mod => mod.RadialBarChart), { ssr: false });
+const ChartTooltip = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartTooltip), { ssr: false });
+const ChartTooltipContent = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartTooltipContent), { ssr: false });
+const ChartPie = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartPie), { ssr: false });
+const ChartRadialBar = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartRadialBar), { ssr: false });
+const ChartBar = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartBar), { ssr: false });
+const ChartYAxis = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartYAxis), { ssr: false });
+const ChartXAxis = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartXAxis), { ssr: false });
+const ChartPolarAngleAxis = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartPolarAngleAxis), { ssr: false });
+const ChartLegend = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartLegend), { ssr: false });
+const ChartLegendContent = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartLegendContent), { ssr: false });
+const ChartCell = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartCell), { ssr: false });
 
 const companyChartConfig = {
     value: { label: "Observations", color: "hsl(var(--chart-1))" },
@@ -50,6 +49,21 @@ const riskPieChartConfig = {
 };
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
+  if (loading) {
+    return (
+      <Card className="col-span-1 lg:col-span-1">
+        <CardHeader className="items-center pb-2">
+          <Skeleton className="h-6 w-24" />
+        </CardHeader>
+        <CardContent className="pb-4">
+          <div className="relative mx-auto aspect-square h-full max-h-[180px] sm:max-h-[200px]">
+            <Skeleton className="h-full w-full rounded-full" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const chartConfig = {
     metric: {
       label: title,

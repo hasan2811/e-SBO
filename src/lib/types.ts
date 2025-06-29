@@ -7,6 +7,9 @@ export type Location = 'International' | 'National' | 'Local' | 'Regional';
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 
 export const RISK_LEVELS: [RiskLevel, ...RiskLevel[]] = ['Low', 'Medium', 'High', 'Critical'];
+export const OBSERVATION_STATUSES: [ObservationStatus, ...ObservationStatus[]] = ['Pending', 'In Progress', 'Completed'];
+export const OBSERVATION_CATEGORIES: [ObservationCategory, ...ObservationCategory[]] = ['Structural', 'Electrical', 'Plumbing', 'General'];
+
 
 export type UserProfile = {
   uid: string;
@@ -88,3 +91,5 @@ export type Ptw = {
   rejectionReason?: string;
   signatureDataUrl?: string;
 };
+
+export type AllItems = ((Observation & { itemType: 'observation' }) | (Inspection & { itemType: 'inspection' }) | (Ptw & { itemType: 'ptw' }));
