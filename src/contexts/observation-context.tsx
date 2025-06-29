@@ -28,17 +28,6 @@ interface ObservationContextType {
 
 const ObservationContext = React.createContext<ObservationContextType | undefined>(undefined);
 
-// Helper function to combine and de-duplicate data from two sources
-function combineAndSort<T extends { id: string; date: string }>(
-  dataA: T[],
-  dataB: T[]
-): T[] {
-  const combined = new Map<string, T>();
-  dataA.forEach(item => combined.set(item.id, item));
-  dataB.forEach(item => combined.set(item.id, item));
-  return Array.from(combined.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-}
-
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
   const [publicObservations, setPublicObservations] = React.useState<Observation[]>([]);
@@ -87,13 +76,10 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         createListener('ptws', setPrivatePtws, 'private'),
       ];
       
-      // We can consider loading done once all listeners are set up.
-      // The UI will show skeletons until data arrives.
       setLoading(false);
 
       return () => unsubscribers.forEach(unsub => unsub());
     } else {
-      // Clear all data if user logs out
       setPublicObservations([]);
       setPrivateObservations([]);
       setPublicInspections([]);
@@ -104,9 +90,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }
   }, [user]);
   
-  const observations = React.useMemo(() => combineAndSort(publicObservations, privateObservations), [publicObservations, privateObservations]);
-  const inspections = React.useMemo(() => combineAndSort(publicInspections, privateInspections), [publicInspections, privateInspections]);
-  const ptws = React.useMemo(() => combineAndSort(publicPtws, privatePtws), [publicPtws, privatePtws]);
+  const observations = React.useMemo(() => [...publicObservations, ...privateObservations].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [publicObservations, privateObservations]);
+  const inspections = React.useMemo(() => [...publicInspections, ...privateInspections].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [publicInspections, privateInspections]);
+  const ptws = React.useMemo(() => [...publicPtws, ...privatePtws].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [publicPtws, privatePtws]);
 
   const allItems = React.useMemo(() => {
     const typedObservations = observations.map(o => ({ ...o, itemType: 'observation' as const }));

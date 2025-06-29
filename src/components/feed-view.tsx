@@ -6,9 +6,9 @@ import Image from 'next/image';
 import { useObservations } from '@/contexts/observation-context';
 import type { Observation, RiskLevel, Inspection, Ptw, InspectionStatus, AllItems } from '@/lib/types';
 import { RiskBadge, StatusBadge, InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
-import { format, isSameDay, subDays, isToday, addDays } from 'date-fns';
+import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
-import { FileText, ChevronRight, ChevronLeft, Home, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
+import { FileText, ChevronRight, Home, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -50,7 +50,7 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
 
         <div className="flex-1 space-y-2 pr-4">
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{format(new Date(observation.date), 'HH:mm')}</span> - {observation.category}
+            <span className="font-semibold text-foreground">{format(new Date(observation.date), 'd MMM yyyy, HH:mm')}</span> - {observation.category}
           </p>
           <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -92,7 +92,7 @@ const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, 
         
         <div className="flex-1 space-y-2 self-start">
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{format(new Date(inspection.date), 'HH:mm')}</span> - {inspection.equipmentType}
+            <span className="font-semibold text-foreground">{format(new Date(inspection.date), 'd MMM yyyy, HH:mm')}</span> - {inspection.equipmentType}
           </p>
           <p className="font-semibold leading-snug line-clamp-2">{inspection.equipmentName}</p>
           <p className="text-sm text-muted-foreground line-clamp-1">{inspection.findings}</p>
@@ -111,7 +111,7 @@ const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => (
     <div onClick={onSelect} className="relative flex items-center bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
       <div className="flex-1 space-y-2 pr-4">
         <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">{format(new Date(ptw.date), 'HH:mm')}</span> - {ptw.contractor}
+          <span className="font-semibold text-foreground">{format(new Date(ptw.date), 'd MMM yyyy, HH:mm')}</span> - {ptw.contractor}
         </p>
         <p className="font-semibold leading-snug line-clamp-2">{ptw.workDescription}</p>
         <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -133,7 +133,6 @@ interface FeedViewProps {
 export function FeedView({ mode }: FeedViewProps) {
   const { allItems, observations, inspections, ptws, loading } = useObservations();
   const { user } = useAuth();
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -142,16 +141,18 @@ export function FeedView({ mode }: FeedViewProps) {
   const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
   const { toast } = useToast();
 
-  const titlePrefix = mode === 'private' ? 'Beranda' : 'Jurnal';
+  const titlePrefix = mode === 'private' ? 'Beranda Saya' : 'Jurnal Publik';
 
   const viewConfig = {
-    observations: { label: `${titlePrefix} Observasi`, icon: Home, data: observations },
-    inspections: { label: `${titlePrefix} Inspeksi`, icon: Wrench, data: inspections },
-    ptws: { label: `${titlePrefix} PTW`, icon: PtwIcon, data: ptws },
+    observations: { label: 'Observasi', icon: Home },
+    inspections: { label: 'Inspeksi', icon: Wrench },
+    ptws: { label: 'PTW', icon: PtwIcon },
   };
 
+  const pageTitle = `${titlePrefix}: ${viewConfig[viewType].label}`;
+
   const filteredData = React.useMemo(() => {
-    if (!selectedDate || !user) return [];
+    if (!user) return [];
 
     let data: AllItems[] = allItems;
     
@@ -160,8 +161,6 @@ export function FeedView({ mode }: FeedViewProps) {
     } else { // 'private'
       data = data.filter(item => item.userId === user.uid);
     }
-    
-    data = data.filter(item => isSameDay(new Date(item.date), selectedDate));
     
     if (viewType === 'observations') {
       return data.filter((item): item is Observation & { itemType: 'observation' } => item.itemType === 'observation');
@@ -174,7 +173,7 @@ export function FeedView({ mode }: FeedViewProps) {
     }
     
     return [];
-  }, [allItems, selectedDate, user, mode, viewType]);
+  }, [allItems, user, mode, viewType]);
 
   const displayObservation = React.useMemo(() => 
     selectedObservationId ? observations.find(o => o.id === selectedObservationId) ?? null : null,
@@ -191,28 +190,6 @@ export function FeedView({ mode }: FeedViewProps) {
     [selectedPtwId, ptws]
   );
 
-  const handlePrevDay = () => {
-    if (selectedDate) {
-      setSelectedDate(subDays(selectedDate, 1));
-    }
-  };
-
-  const handleNextDay = () => {
-    if (selectedDate && !(isToday(selectedDate) || selectedDate > new Date())) {
-      setSelectedDate(addDays(selectedDate, 1));
-    }
-  };
-
-  const isNextDayDisabled = selectedDate ? isToday(selectedDate) || selectedDate > new Date() : true;
-
-  const dateButtonText = React.useMemo(() => {
-    if (!selectedDate) return 'Pilih tanggal';
-    const formattedDate = format(selectedDate, 'd MMMM yyyy', { locale: indonesianLocale });
-    if (isToday(selectedDate)) return `Hari ini, ${formattedDate}`;
-    if (isSameDay(selectedDate, subDays(new Date(), 1))) return `Kemarin, ${formattedDate}`;
-    return format(selectedDate, 'EEEE, d MMMM yyyy', { locale: indonesianLocale });
-  }, [selectedDate]);
-
   const handleExport = () => {
     if (viewType !== 'observations') {
       toast({ title: 'Fitur Dalam Pengembangan', description: 'Ekspor untuk tipe data ini akan segera hadir.' });
@@ -222,19 +199,19 @@ export function FeedView({ mode }: FeedViewProps) {
       toast({
         variant: 'destructive',
         title: 'Tidak Ada Data untuk Diekspor',
-        description: `Tidak ada data untuk tanggal yang dipilih.`,
+        description: `Tidak ada data observasi untuk diekspor.`,
       });
       return;
     }
-    const fileName = `${titlePrefix}_Observasi_${format(selectedDate!, 'yyyy-MM-dd')}`;
+    const fileName = `${titlePrefix}_Observasi_${format(new Date(), 'yyyy-MM-dd')}`;
     exportToExcel(filteredData as Observation[], fileName);
   };
 
   const EmptyState = () => {
     const config = viewConfig[viewType];
     const emptyText = mode === 'private' 
-        ? `Anda belum menyimpan ${config.label.replace(titlePrefix, '').trim().toLowerCase()} pribadi untuk tanggal ini.`
-        : `Tidak ada ${config.label.replace(titlePrefix, '').trim().toLowerCase()} publik untuk tanggal ini.`
+        ? `Anda belum membuat ${config.label.toLowerCase()} pribadi.`
+        : `Tidak ada ${config.label.toLowerCase()} publik yang tersedia.`
 
     return (
       <div className="text-center py-16 text-muted-foreground bg-card rounded-lg">
@@ -248,12 +225,11 @@ export function FeedView({ mode }: FeedViewProps) {
   return (
     <>
      <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="text-2xl font-bold tracking-tight -ml-2 p-2 h-auto">
-                  {viewConfig[viewType].label}
+                  {pageTitle}
                   <ChevronDown className="h-6 w-6 ml-2" />
                 </Button>
               </DropdownMenuTrigger>
@@ -263,25 +239,12 @@ export function FeedView({ mode }: FeedViewProps) {
                 <DropdownMenuItem onSelect={() => setViewType('ptws')}>{viewConfig.ptws.label}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredData.length === 0 || loading}>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredData.length === 0 || loading}>
               <Download className="mr-2 h-4 w-4" />
               Export
           </Button>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handlePrevDay}>
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex h-9 min-w-[240px] items-center justify-center rounded-md border border-primary/20 bg-primary/10 px-4 text-sm font-semibold text-primary shadow-sm">
-            {dateButtonText}
-          </div>
-          <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handleNextDay} disabled={isNextDayDisabled}>
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-        </div>
-      </div>
-
       <main>
         {loading ? (
           <ul className="space-y-3">
