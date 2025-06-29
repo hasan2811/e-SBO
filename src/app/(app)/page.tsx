@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
+import { InspectionDetailSheet } from '@/components/inspection-detail-sheet';
 import { PtwDetailSheet } from '@/components/ptw-detail-sheet';
 import { StarRating } from '@/components/star-rating';
 import { exportToExcel } from '@/lib/export';
@@ -65,11 +66,11 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
   );
 };
 
-const InspectionListItem = ({ inspection }: { inspection: Inspection }) => {
+const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, onSelect: () => void }) => {
   const statusColor = inspectionStatusColorMap[inspection.status] || 'bg-muted';
   return (
     <li>
-      <div className="relative flex items-center gap-4 bg-card p-4 pl-6 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-not-allowed overflow-hidden">
+      <div onClick={onSelect} className="relative flex items-center gap-4 bg-card p-4 pl-6 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
         <div className={cn("absolute left-0 top-0 h-full w-2", statusColor)} />
         
         {inspection.photoUrl && (
@@ -129,6 +130,7 @@ export default function JurnalPage() {
   const { observations, inspections, ptws, loading } = useObservations();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
+  const [selectedInspection, setSelectedInspection] = React.useState<Inspection | null>(null);
   const [selectedPtw, setSelectedPtw] = React.useState<Ptw | null>(null);
   const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
   const { toast } = useToast();
@@ -280,7 +282,7 @@ export default function JurnalPage() {
               <ObservationListItem key={(obs as Observation).id} observation={obs as Observation} onSelect={() => setSelectedObservation(obs as Observation)} />
             ))}
             {viewType === 'inspections' && filteredData.map(insp => (
-              <InspectionListItem key={(insp as Inspection).id} inspection={insp as Inspection} />
+              <InspectionListItem key={(insp as Inspection).id} inspection={insp as Inspection} onSelect={() => setSelectedInspection(insp as Inspection)} />
             ))}
             {viewType === 'ptws' && filteredData.map(ptw => (
               <PtwListItem key={(ptw as Ptw).id} ptw={ptw as Ptw} onSelect={() => setSelectedPtw(ptw as Ptw)} />
@@ -298,6 +300,17 @@ export default function JurnalPage() {
             onOpenChange={(isOpen) => {
                 if (!isOpen) {
                     setSelectedObservation(null);
+                }
+            }}
+        />
+    )}
+    {selectedInspection && (
+        <InspectionDetailSheet 
+            inspection={selectedInspection}
+            isOpen={!!selectedInspection}
+            onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    setSelectedInspection(null);
                 }
             }}
         />
