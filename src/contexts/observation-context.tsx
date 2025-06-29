@@ -2,11 +2,22 @@
 'use client';
 
 import * as React from 'react';
-import { collection, doc, onSnapshot, query, updateDoc, orderBy, addDoc, where, Query, DocumentData } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  onSnapshot,
+  query,
+  updateDoc,
+  addDoc,
+  where,
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { summarizeObservationData, analyzeInspectionData } from '@/ai/flows/summarize-observation-data';
+import {
+  summarizeObservationData,
+  analyzeInspectionData,
+} from '@/ai/flows/summarize-observation-data';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -18,112 +29,87 @@ interface ObservationContextType {
   ptws: Ptw[];
   allItems: AllItems[];
   loading: boolean;
-  addObservation: (observation: Omit<Observation, 'id' | 'referenceId'>) => Promise<void>;
-  addInspection: (inspection: Omit<Inspection, 'id' | 'referenceId'>) => Promise<void>;
+  addObservation: (
+    observation: Omit<Observation, 'id' | 'referenceId'>
+  ) => Promise<void>;
+  addInspection: (
+    inspection: Omit<Inspection, 'id' | 'referenceId'>
+  ) => Promise<void>;
   addPtw: (ptw: Omit<Ptw, 'id' | 'referenceId'>) => Promise<void>;
   updateObservation: (id: string, updatedData: Partial<Observation>) => Promise<void>;
-  approvePtw: (id: string, signatureDataUrl: string, approver: string) => Promise<void>;
+  approvePtw: (
+    id: string,
+    signatureDataUrl: string,
+    approver: string
+  ) => Promise<void>;
   retryAiAnalysis: (observation: Observation) => Promise<void>;
 }
 
-const ObservationContext = React.createContext<ObservationContextType | undefined>(undefined);
-
+const ObservationContext = React.createContext<
+  ObservationContextType | undefined
+>(undefined);
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
-  const [observations, setObservations] = React.useState<Observation[]>([]);
-  const [inspections, setInspections] = React.useState<Inspection[]>([]);
-  const [ptws, setPtws] = React.useState<Ptw[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const { user } = useAuth();
+    const { user } = useAuth();
+    const [loading, setLoading] = React.useState(true);
 
-  React.useEffect(() => {
-    if (user) {
-      setLoading(true);
+    const [allObservations, setAllObservations] = React.useState<Observation[]>([]);
+    const [allInspections, setAllInspections] = React.useState<Inspection[]>([]);
+    const [allPtws, setAllPtws] = React.useState<Ptw[]>([]);
+    
+    React.useEffect(() => {
+        if (user) {
+            setLoading(true);
+            const collectionsToWatch = [
+                { name: 'observations', setter: setAllObservations },
+                { name: 'inspections', setter: setAllInspections },
+                { name: 'ptws', setter: setAllPtws },
+            ];
+            
+            const unsubs: (()=>void)[] = [];
 
-      const collectionsToWatch = ['observations', 'inspections', 'ptws'];
-      const totalListeners = collectionsToWatch.length * 2; // public + user for each
-      let loadedListeners = 0;
+            const createListener = <T,>(collectionName: string, setter: React.Dispatch<React.SetStateAction<T[]>>, q: any) => {
+                const unsub = onSnapshot(q, (snapshot) => {
+                    const data = snapshot.docs.map(d => ({...d.data(), id: d.id})) as T[];
+                    setter(prev => {
+                        const newMap = new Map(prev.map((i: any) => [i.id, i]));
+                        data.forEach((item: any) => newMap.set(item.id, item));
+                        return Array.from(newMap.values());
+                    });
+                }, (error) => console.error(`Error fetching ${collectionName}:`, error));
+                return unsub;
+            };
 
-      const unsubscribers: (() => void)[] = [];
+            collectionsToWatch.forEach(c => {
+                const userQuery = query(collection(db, c.name), where('userId', '==', user.uid));
+                unsubs.push(createListener(c.name, c.setter, userQuery));
 
-      const checkAllLoaded = () => {
-        loadedListeners++;
-        if (loadedListeners >= totalListeners) {
-          setLoading(false);
+                const publicQuery = query(collection(db, c.name), where('scope', '==', 'public'));
+                unsubs.push(createListener(c.name, c.setter, publicQuery));
+            });
+
+            setLoading(false);
+            return () => unsubs.forEach(unsub => unsub());
+
+        } else {
+            setAllObservations([]);
+            setAllInspections([]);
+            setAllPtws([]);
+            setLoading(false);
         }
-      };
-      
-      const setupCollectionListeners = <T extends { id: string }>(
-        path: 'observations' | 'inspections' | 'ptws',
-        setData: React.Dispatch<React.SetStateAction<T[]>>
-      ) => {
-        const userDocs: Record<string, T> = {};
-        const publicDocs: Record<string, T> = {};
-
-        const mergeAndSetData = () => {
-          const combined = { ...publicDocs, ...userDocs }; // userDocs will overwrite publicDocs for same ID, which is fine.
-          const sortedData = Object.values(combined).sort((a, b) => 
-              new Date((b as any).date).getTime() - new Date((a as any).date).getTime()
-          );
-          setData(sortedData);
-        };
-
-        // Listener for user's own documents (private and public)
-        const userQuery = query(collection(db, path), where('userId', '==', user.uid));
-        const unsubUser = onSnapshot(userQuery, (snapshot) => {
-          snapshot.docs.forEach(doc => { userDocs[doc.id] = { ...doc.data(), id: doc.id } as T; });
-          if(snapshot.metadata.fromCache && snapshot.docs.length === 0) {} // Don't false-fire on initial cache read
-          else {
-            mergeAndSetData();
-            checkAllLoaded();
-          }
-        }, (error) => {
-          console.error(`Error fetching user ${path}:`, error);
-          checkAllLoaded();
-        });
-
-        // Listener for all public documents
-        const publicQuery = query(collection(db, path), where('scope', '==', 'public'));
-        const unsubPublic = onSnapshot(publicQuery, (snapshot) => {
-          snapshot.docs.forEach(doc => { publicDocs[doc.id] = { ...doc.data(), id: doc.id } as T; });
-          if(snapshot.metadata.fromCache && snapshot.docs.length === 0) {}
-          else {
-            mergeAndSetData();
-            checkAllLoaded();
-          }
-        }, (error) => {
-          console.error(`Error fetching public ${path}:`, error);
-          checkAllLoaded();
-        });
-        
-        unsubscribers.push(unsubUser, unsubPublic);
-      };
-
-      setupCollectionListeners('observations', setObservations);
-      setupCollectionListeners('inspections', setInspections);
-      setupCollectionListeners('ptws', setPtws);
-      
-      return () => unsubscribers.forEach(unsub => unsub());
-
-    } else {
-      setObservations([]);
-      setInspections([]);
-      setPtws([]);
-      setLoading(false);
-    }
   }, [user]);
 
   const allItems = React.useMemo(() => {
-    const typedObservations = observations.map(o => ({ ...o, itemType: 'observation' as const }));
-    const typedInspections = inspections.map(i => ({ ...i, itemType: 'inspection' as const }));
-    const typedPtws = ptws.map(p => ({ ...p, itemType: 'ptw' as const }));
-    
-    return [...typedObservations, ...typedInspections, ...typedPtws]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [observations, inspections, ptws]);
+    const combinedMap = new Map<string, AllItems>();
 
+    allObservations.forEach(o => combinedMap.set(o.id, { ...o, itemType: 'observation' as const }));
+    allInspections.forEach(i => combinedMap.set(i.id, { ...i, itemType: 'inspection' as const }));
+    allPtws.forEach(p => combinedMap.set(p.id, { ...p, itemType: 'ptw' as const }));
 
-  const _runObservationAiAnalysis = (observation: Observation) => {
+    return Array.from(combinedMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [allObservations, allInspections, allPtws]);
+  
+  const _runObservationAiAnalysis = React.useCallback((observation: Observation) => {
     const observationDocRef = doc(db, 'observations', observation.id);
 
     const observationData = `
@@ -141,7 +127,14 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     summarizeObservationData({ observationData })
       .then(summary => {
         const aiData = {
-          ...summary,
+          aiSummary: summary.summary,
+          aiRisks: summary.risks,
+          aiSuggestedActions: summary.suggestedActions,
+          aiRelevantRegulations: summary.relevantRegulations,
+          aiSuggestedRiskLevel: summary.suggestedRiskLevel,
+          aiRootCauseAnalysis: summary.rootCauseAnalysis,
+          aiObserverSkillRating: summary.observerAssessment.rating,
+          aiObserverSkillExplanation: summary.observerAssessment.explanation,
           aiStatus: 'completed' as const,
         };
         updateDoc(observationDocRef, aiData);
@@ -151,9 +144,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         updateDoc(observationDocRef, { aiStatus: 'failed' });
         toast({ variant: 'destructive', title: 'Observation AI Failed', description: 'Could not generate AI analysis.'});
       });
-  };
+  }, []);
 
-  const _runInspectionAiAnalysis = (inspection: Inspection) => {
+  const _runInspectionAiAnalysis = React.useCallback((inspection: Inspection) => {
     const inspectionDocRef = doc(db, 'inspections', inspection.id);
 
     const inspectionData = `
@@ -182,51 +175,56 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         updateDoc(inspectionDocRef, { aiStatus: 'failed' });
         toast({ variant: 'destructive', title: 'Inspection AI Failed', description: 'Could not generate AI analysis.'});
       });
-  };
+  }, []);
 
-  const retryAiAnalysis = async (observation: Observation) => {
+  const retryAiAnalysis = React.useCallback(async (observation: Observation) => {
     const observationDocRef = doc(db, 'observations', observation.id);
     await updateDoc(observationDocRef, { aiStatus: 'processing' });
     _runObservationAiAnalysis(observation);
-  };
+  }, [_runObservationAiAnalysis]);
 
-  const addObservation = async (newObservation: Omit<Observation, 'id' | 'referenceId'>) => {
+  const addObservation = React.useCallback(async (newObservation: Omit<Observation, 'id' | 'referenceId'>) => {
+    if(!user) throw new Error("User not authenticated");
     const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const observationToSave = { 
       ...newObservation,
       referenceId,
-      aiStatus: 'processing' as const
+      aiStatus: 'processing' as const,
+      userId: user.uid
     };
     const observationCollection = collection(db, 'observations');
     const docRef = await addDoc(observationCollection, observationToSave);
     _runObservationAiAnalysis({ ...observationToSave, id: docRef.id });
-  };
+  }, [user, _runObservationAiAnalysis]);
 
-  const addInspection = async (newInspection: Omit<Inspection, 'id' | 'referenceId'>) => {
+  const addInspection = React.useCallback(async (newInspection: Omit<Inspection, 'id' | 'referenceId'>) => {
+    if(!user) throw new Error("User not authenticated");
     const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const inspectionToSave = {
       ...newInspection,
       referenceId,
       aiStatus: 'processing' as const,
+      userId: user.uid,
     };
     const inspectionCollection = collection(db, 'inspections');
     const docRef = await addDoc(inspectionCollection, inspectionToSave);
     _runInspectionAiAnalysis({ ...inspectionToSave, id: docRef.id });
-  };
+  }, [user, _runInspectionAiAnalysis]);
 
-  const addPtw = async (newPtw: Omit<Ptw, 'id' | 'referenceId'>) => {
+  const addPtw = React.useCallback(async (newPtw: Omit<Ptw, 'id' | 'referenceId'>) => {
+    if(!user) throw new Error("User not authenticated");
     const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    const ptwToSave = { ...newPtw, referenceId };
+    const ptwToSave = { ...newPtw, referenceId, userId: user.uid };
     const ptwCollection = collection(db, 'ptws');
     await addDoc(ptwCollection, ptwToSave);
-  };
+  }, [user]);
 
-  const updateObservation = async (id: string, updatedData: Partial<Observation>) => {
+  const updateObservation = React.useCallback(async (id: string, updatedData: Partial<Observation>) => {
     const observationDocRef = doc(db, 'observations', id);
     await updateDoc(observationDocRef, updatedData);
-  };
+  }, []);
 
-  const approvePtw = async (id: string, signatureDataUrl: string, approver: string) => {
+  const approvePtw = React.useCallback(async (id: string, signatureDataUrl: string, approver: string) => {
     const ptwDocRef = doc(db, 'ptws', id);
     await updateDoc(ptwDocRef, {
       status: 'Approved',
@@ -234,9 +232,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       approver,
       approvedDate: new Date().toISOString(),
     });
-  };
+  }, []);
 
-  const value = { allItems, observations, inspections, ptws, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
+  const value = { allItems, observations: allObservations, inspections: allInspections, ptws: allPtws, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
 
   return (
     <ObservationContext.Provider value={value}>
