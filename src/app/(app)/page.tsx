@@ -7,12 +7,14 @@ import type { Observation, RiskLevel } from '@/lib/types';
 import { RiskBadge, StatusBadge } from '@/components/status-badges';
 import { format, isSameDay, subDays, isToday, addDays } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
-import { FileText, ChevronRight, ChevronLeft } from 'lucide-react';
+import { FileText, ChevronRight, ChevronLeft, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
 import { StarRating } from '@/components/star-rating';
+import { exportToExcel } from '@/lib/export';
+import { useToast } from '@/hooks/use-toast';
 
 const riskColorMap: Record<RiskLevel, string> = {
   Critical: 'bg-destructive',
@@ -58,6 +60,7 @@ export default function JurnalPage() {
   const { observations, loading } = useObservations();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [selectedObservation, setSelectedObservation] = React.useState<Observation | null>(null);
+  const { toast } = useToast();
 
   const filteredObservations = React.useMemo(() => {
     if (!selectedDate) return [];
@@ -98,6 +101,19 @@ export default function JurnalPage() {
     return format(selectedDate, 'EEEE, d MMMM yyyy', { locale: indonesianLocale });
   }, [selectedDate]);
 
+  const handleExport = () => {
+    if (filteredObservations.length === 0) {
+        toast({
+            variant: 'destructive',
+            title: 'Tidak Ada Data untuk Diekspor',
+            description: 'Tidak ada observasi untuk tanggal yang dipilih.',
+        });
+        return;
+    }
+    const fileName = `Jurnal_Observasi_${format(selectedDate!, 'yyyy-MM-dd')}`;
+    exportToExcel(filteredObservations, fileName);
+  };
+
 
   return (
     <>
@@ -107,17 +123,24 @@ export default function JurnalPage() {
             Jurnal Observasi
         </h2>
         
-        <div className="flex items-center gap-2">
-          <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handlePrevDay}>
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handlePrevDay}>
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
 
-          <div className="flex h-9 min-w-[240px] items-center justify-center rounded-md border border-primary/20 bg-primary/10 px-4 text-sm font-semibold text-primary shadow-sm">
-            {dateButtonText}
+            <div className="flex h-9 min-w-[240px] items-center justify-center rounded-md border border-primary/20 bg-primary/10 px-4 text-sm font-semibold text-primary shadow-sm">
+              {dateButtonText}
+            </div>
+          
+            <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handleNextDay} disabled={isNextDayDisabled}>
+              <ChevronRight className="h-5 w-5" />
+            </Button>
           </div>
-        
-          <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handleNextDay} disabled={isNextDayDisabled}>
-            <ChevronRight className="h-5 w-5" />
+
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredObservations.length === 0 || loading}>
+              <Download className="mr-2 h-4 w-4" />
+              Export
           </Button>
         </div>
       </div>
