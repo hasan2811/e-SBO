@@ -120,28 +120,27 @@ export default function BerandaPage() {
     <>
      <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <h2 className="text-2xl font-bold tracking-tight">
-            Beranda
-        </h2>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handlePrevDay}>
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-
-            <div className="flex h-9 min-w-[240px] items-center justify-center rounded-md border border-primary/20 bg-primary/10 px-4 text-sm font-semibold text-primary shadow-sm">
-              {dateButtonText}
-            </div>
-          
-            <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handleNextDay} disabled={isNextDayDisabled}>
-              <ChevronRight className="h-5 w-5" />
-            </Button>
-          </div>
-
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold tracking-tight">
+              Beranda
+          </h2>
           <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredObservations.length === 0 || loading}>
               <Download className="mr-2 h-4 w-4" />
               Export
+          </Button>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handlePrevDay}>
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+
+          <div className="flex h-9 min-w-[240px] items-center justify-center rounded-md border border-primary/20 bg-primary/10 px-4 text-sm font-semibold text-primary shadow-sm">
+            {dateButtonText}
+          </div>
+        
+          <Button variant="default" size="icon" className="h-9 w-9 shadow-sm" onClick={handleNextDay} disabled={isNextDayDisabled}>
+            <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
       </div>
