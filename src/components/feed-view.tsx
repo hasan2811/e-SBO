@@ -27,10 +27,10 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/comp
 const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
     return (
       <li>
-        <div onClick={onSelect} className="flex items-center gap-4 bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
+        <div onClick={onSelect} className="flex items-center gap-4 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
           {observation.photoUrl && (
-            <div className="relative h-24 w-24 flex-shrink-0 rounded-md overflow-hidden border">
-              <Image src={observation.photoUrl} alt={observation.findings} fill sizes="96px" className="object-cover" data-ai-hint="site observation" />
+            <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border">
+              <Image src={observation.photoUrl} alt={observation.findings} fill sizes="80px" className="object-cover" data-ai-hint="site observation" />
               {observation.aiStatus === 'processing' && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                       <Loader2 className="h-5 w-5 animate-spin text-white" />
@@ -44,7 +44,7 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
             </div>
           )}
   
-          <div className="flex-1 space-y-2 self-start">
+          <div className="flex-1 space-y-1.5 self-start">
             <div className="flex justify-between items-start">
                 <p className="text-xs text-muted-foreground">
                     <span className="font-semibold text-foreground">{format(new Date(observation.date), 'd MMM yyyy, HH:mm')}</span> - {observation.category}
@@ -70,10 +70,10 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
 const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, onSelect: () => void }) => {
   return (
     <li>
-      <div onClick={onSelect} className="flex items-center gap-4 bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
+      <div onClick={onSelect} className="flex items-center gap-4 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
         {inspection.photoUrl && (
-          <div className="relative h-24 w-24 flex-shrink-0 rounded-md overflow-hidden border">
-            <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="96px" className="object-cover" data-ai-hint="equipment inspection" />
+          <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border">
+            <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="80px" className="object-cover" data-ai-hint="equipment inspection" />
              {inspection.aiStatus === 'processing' && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <Loader2 className="h-5 w-5 animate-spin text-white" />
@@ -87,7 +87,7 @@ const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, 
           </div>
         )}
         
-        <div className="flex-1 space-y-2 self-start">
+        <div className="flex-1 space-y-1.5 self-start">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{format(new Date(inspection.date), 'd MMM yyyy, HH:mm')}</span> - {inspection.equipmentType}
           </p>
@@ -253,7 +253,7 @@ export function FeedView({ mode }: FeedViewProps) {
   return (
     <>
      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex justify-between items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="text-2xl font-bold tracking-tight -ml-2 p-2 h-auto text-left">
@@ -269,7 +269,7 @@ export function FeedView({ mode }: FeedViewProps) {
             </DropdownMenu>
             
             <TooltipProvider>
-              <div className="flex items-center gap-2 self-end sm:self-center">
+              <div className="flex items-center gap-2">
                   {viewType === 'observations' && (
                       <Popover>
                         <Tooltip>
@@ -359,10 +359,10 @@ export function FeedView({ mode }: FeedViewProps) {
       <main>
         {loading ? (
           <ul className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {Array.from({ length: 4 }).map((_, i) => (
               <li key={i}>
-                <div className="flex items-center bg-card p-4 rounded-lg shadow-sm h-[120px]">
-                  <Skeleton className="h-24 w-24 rounded-md" />
+                <div className="flex items-center bg-card p-3 rounded-lg shadow-sm h-[104px]">
+                  <Skeleton className="h-20 w-20 rounded-md" />
                   <div className="flex-1 space-y-3 ml-4"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-full" /><Skeleton className="h-5 w-2/3" /></div>
                 </div>
               </li>
