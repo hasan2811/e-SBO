@@ -19,6 +19,7 @@ import { exportToExcel } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -177,10 +178,9 @@ export function FeedView({ mode }: FeedViewProps) {
   
   const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
   
-  // Filters for observations
-  const [statusFilter, setStatusFilter] = React.useState('all');
-  const [riskFilter, setRiskFilter] = React.useState('all');
-  const [categoryFilter, setCategoryFilter] = React.useState('all');
+  // New state for robust filtering
+  const [filterType, setFilterType] = React.useState<'status' | 'risk' | 'category' | 'all'>('all');
+  const [filterValue, setFilterValue] = React.useState('all');
   
   const { toast } = useToast();
 
@@ -189,13 +189,18 @@ export function FeedView({ mode }: FeedViewProps) {
     inspections: { label: 'Inspeksi', icon: Wrench, itemType: 'inspection' },
     ptws: { label: 'PTW', icon: PtwIcon, itemType: 'ptw' },
   };
+  
+  const filterOptions = {
+    status: OBSERVATION_STATUSES,
+    risk: RISK_LEVELS,
+    category: OBSERVATION_CATEGORIES,
+  };
 
   const pageTitle = mode === 'public' ? 'Publik' : 'Project';
   
   const clearFilters = () => {
-    setStatusFilter('all');
-    setRiskFilter('all');
-    setCategoryFilter('all');
+    setFilterType('all');
+    setFilterValue('all');
   };
 
   const fetchPublicItems = React.useCallback(async (reset = false) => {
@@ -208,16 +213,9 @@ export function FeedView({ mode }: FeedViewProps) {
     try {
         let q: Query<DocumentData> = query(collection(db, viewType));
 
-        if (viewType === 'observations') {
-            if (statusFilter !== 'all') {
-                q = query(q, where('status', '==', statusFilter));
-            }
-            if (riskFilter !== 'all') {
-                q = query(q, where('riskLevel', '==', riskFilter));
-            }
-            if (categoryFilter !== 'all') {
-                q = query(q, where('category', '==', categoryFilter));
-            }
+        if (viewType === 'observations' && filterType !== 'all' && filterValue !== 'all') {
+            const fieldMap = { status: 'status', risk: 'riskLevel', category: 'category' };
+            q = query(q, where(fieldMap[filterType], '==', filterValue));
         }
 
         q = query(q, orderBy('date', 'desc'), limit(PAGE_SIZE));
@@ -251,7 +249,7 @@ export function FeedView({ mode }: FeedViewProps) {
     } finally {
         setLoading(false);
     }
-  }, [viewType, statusFilter, riskFilter, categoryFilter, toast]);
+  }, [viewType, filterType, filterValue, toast]);
 
 
   React.useEffect(() => {
@@ -259,7 +257,7 @@ export function FeedView({ mode }: FeedViewProps) {
       fetchPublicItems(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, viewType, statusFilter, riskFilter, categoryFilter]);
+  }, [mode, viewType, filterType, filterValue]);
 
 
   const data = mode === 'public' ? items : myItems;
@@ -276,20 +274,17 @@ export function FeedView({ mode }: FeedViewProps) {
 
     if (viewType === 'observations') {
         let observationData = dataToFilter as Observation[];
-        if (statusFilter !== 'all') {
-            observationData = observationData.filter(obs => obs.status === statusFilter);
-        }
-        if (riskFilter !== 'all') {
-            observationData = observationData.filter(obs => obs.riskLevel === riskFilter);
-        }
-        if (categoryFilter !== 'all') {
-            observationData = observationData.filter(obs => obs.category === categoryFilter);
+        if (filterType !== 'all' && filterValue !== 'all') {
+            const fieldMap = { status: 'status', risk: 'riskLevel', category: 'category' };
+            const key = fieldMap[filterType as 'status' | 'risk' | 'category'];
+            // @ts-ignore
+            observationData = observationData.filter(obs => obs[key] === filterValue);
         }
         return observationData;
     }
     
     return dataToFilter;
-  }, [data, mode, viewType, statusFilter, riskFilter, categoryFilter]);
+  }, [data, mode, viewType, filterType, filterValue]);
   
   const displayObservation = React.useMemo(() => 
     selectedObservationId ? data.find(o => o.id === selectedObservationId) as Observation : null,
@@ -307,6 +302,7 @@ export function FeedView({ mode }: FeedViewProps) {
   );
 
   const handleExport = () => {
+    // Note: Export will use client-side filtered data for personal, and currently loaded page data for public.
     const dataToExport = filteredData as Observation[];
     if (dataToExport.length === 0) {
       toast({
@@ -320,7 +316,7 @@ export function FeedView({ mode }: FeedViewProps) {
     exportToExcel(dataToExport, fileName);
   };
   
-  const areFiltersActive = statusFilter !== 'all' || riskFilter !== 'all' || categoryFilter !== 'all';
+  const areFiltersActive = filterType !== 'all' && filterValue !== 'all';
   const isExportDisabled = viewType !== 'observations' || isLoading;
 
   function EmptyState() {
@@ -390,40 +386,46 @@ export function FeedView({ mode }: FeedViewProps) {
                             <div className="space-y-1">
                               <h4 className="font-medium leading-none">Filter Observasi</h4>
                               <p className="text-sm text-muted-foreground">
-                                Persempit hasil berdasarkan kriteria.
+                                Pilih satu jenis filter untuk diterapkan.
                               </p>
                             </div>
                             <div className="grid gap-4">
-                              <div className="space-y-2">
-                                <Label>Status</Label>
-                                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                  <SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="all">Semua Status</SelectItem>
-                                    {(OBSERVATION_STATUSES as readonly ObservationStatus[]).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Tingkat Risiko</Label>
-                                <Select value={riskFilter} onValueChange={setRiskFilter}>
-                                  <SelectTrigger><SelectValue placeholder="Pilih risiko" /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="all">Semua Risiko</SelectItem>
-                                    {(RISK_LEVELS as readonly RiskLevel[]).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Kategori</Label>
-                                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                                  <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="all">Semua Kategori</SelectItem>
-                                    {(OBSERVATION_CATEGORIES as readonly ObservationCategory[]).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                               <RadioGroup value={filterType} onValueChange={(value) => {
+                                   setFilterType(value as 'status' | 'risk' | 'category' | 'all');
+                                   setFilterValue('all');
+                               }}>
+                                 <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="all" id="r-all" />
+                                    <Label htmlFor="r-all">Semua</Label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="status" id="r-status" />
+                                    <Label htmlFor="r-status">Status</Label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="risk" id="r-risk" />
+                                    <Label htmlFor="r-risk">Tingkat Risiko</Label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="category" id="r-category" />
+                                    <Label htmlFor="r-category">Kategori</Label>
+                                  </div>
+                               </RadioGroup>
+
+                               {filterType !== 'all' && (
+                                 <div className="space-y-2">
+                                    <Label>Pilih Nilai</Label>
+                                     <Select value={filterValue} onValueChange={setFilterValue}>
+                                       <SelectTrigger><SelectValue placeholder="Pilih nilai..." /></SelectTrigger>
+                                       <SelectContent>
+                                         <SelectItem value="all">Semua</SelectItem>
+                                         {(filterOptions[filterType]).map((option) => (
+                                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                                         ))}
+                                       </SelectContent>
+                                     </Select>
+                                 </div>
+                               )}
                             </div>
                             <div className="flex justify-between items-center pt-2 border-t -mx-4 px-4 pb-0">
                               <Button variant="ghost" onClick={clearFilters} disabled={!areFiltersActive}>
