@@ -12,7 +12,7 @@ import { createProject } from '@/lib/actions/project-actions';
 interface ProjectContextType {
   projects: Project[];
   loading: boolean;
-  addProject: (projectName: string, memberEmails: string) => Promise<void>;
+  addProject: (projectName: string) => Promise<void>;
 }
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -25,7 +25,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     let unsubscribe: Unsubscribe | undefined;
 
-    // If no user is logged in, clear projects and stop loading.
     if (!user) {
       setProjects([]);
       setLoading(false);
@@ -34,8 +33,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
     setLoading(true);
     
-    // This query is efficient and works with the new security rules.
-    // It fetches all projects where the current user's UID is in the memberUids array.
     const projectsQuery = query(
       collection(db, 'projects'),
       where('memberUids', 'array-contains', user.uid)
@@ -59,8 +56,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Cleanup function to unsubscribe from the listener when the component unmounts
-    // or when the user changes.
     return () => {
       if (unsubscribe) {
         unsubscribe();
@@ -68,13 +63,14 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user]);
 
-  const addProject = React.useCallback(async (projectName: string, memberEmailsStr: string) => {
+  // Simplified addProject signature to match the new, more secure server action.
+  const addProject = React.useCallback(async (projectName: string) => {
     if (!user || !user.email) {
       toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to create a project.' });
       return;
     }
     try {
-      const result = await createProject({ uid: user.uid, email: user.email }, projectName, memberEmailsStr);
+      const result = await createProject({ uid: user.uid, email: user.email }, projectName);
       if (result.success) {
         toast({ title: 'Success!', description: result.message });
       } else {
