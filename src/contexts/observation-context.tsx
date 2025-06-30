@@ -14,6 +14,7 @@ import {
   QuerySnapshot,
   DocumentReference,
   CollectionReference,
+  orderBy,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw, AllItems } from '@/lib/types';
@@ -37,12 +38,11 @@ interface ObservationContextType {
     inspection: Omit<Inspection, 'id' | 'referenceId'>
   ) => Promise<void>;
   addPtw: (ptw: Omit<Ptw, 'id' | 'referenceId'>) => Promise<void>;
-  updateObservation: (id: string, updatedData: Partial<Observation>) => Promise<void>;
+  updateObservation: (observation: Observation, updatedData: Partial<Observation>) => Promise<void>;
   approvePtw: (
-    id: string,
+    ptw: Ptw,
     signatureDataUrl: string,
     approver: string,
-    ptw: Ptw,
   ) => Promise<void>;
   retryAiAnalysis: (item: Observation | Inspection) => Promise<void>;
 }
@@ -63,13 +63,12 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const collectionsToWatch: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
 
     // Listener for public data.
-    React.useEffect(() => {
+     React.useEffect(() => {
         setLoading(true);
         const itemMap = new Map<string, AllItems>();
 
-        const processSnapshot = (snapshot: QuerySnapshot) => {
+        const processSnapshot = (snapshot: QuerySnapshot, itemType: 'observation' | 'inspection' | 'ptw') => {
             snapshot.docs.forEach((doc) => {
-                const itemType = doc.ref.parent.id.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
                 itemMap.set(doc.id, { ...doc.data(), id: doc.id, itemType } as AllItems);
             });
             const sortedItems = Array.from(itemMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -77,8 +76,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         };
 
         const unsubs = collectionsToWatch.flatMap(colName => {
+            const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
             const publicQuery = query(collection(db, colName), where('scope', '==', 'public'));
-            return onSnapshot(publicQuery, processSnapshot, (error) => console.error(`Error fetching public ${colName}:`, error));
+            return onSnapshot(publicQuery, (snapshot) => processSnapshot(snapshot, itemType), (error) => console.error(`Error fetching public ${colName}:`, error));
         });
         
         const timer = setTimeout(() => setLoading(false), 1500);
@@ -94,6 +94,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         if (projectsLoading) return;
         if (!user) {
             setMyItems([]);
+            setLoading(false); // Stop loading if no user
             return;
         }
 
@@ -113,7 +114,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                     ...change.doc.data(), 
                     id: change.doc.id, 
                     itemType,
-                    ...(projectId && { projectId, scope: 'project' }) // Add project context back
+                    // Re-add projectId for items coming from project subcollections
+                    ...(projectId && { projectId, scope: 'project' }) 
                 } as AllItems;
 
                 if (change.type === "removed") {
@@ -124,8 +126,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             });
             processAndSort();
         };
-
-        // 1. Listen to the user's private items in the root collections
+        
+        // 1. Listen to the user's private items (scope is explicitly 'private')
         collectionsToWatch.forEach(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
             const privateQuery = query(collection(db, colName), where('userId', '==', user.uid), where('scope', '==', 'private'));
@@ -141,6 +143,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             });
         });
         
+        // If the user has no projects, we still need to finalize the loading state
         if (!projectsLoading && projects.length === 0) {
             processAndSort();
         }
@@ -268,16 +271,12 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         await addDoc(collectionRef, dataToSave);
     }, [user]);
 
-    const updateObservation = React.useCallback(async (id: string, updatedData: Partial<Observation>) => {
-        // This function might need the full observation object to determine the path
-        // For simplicity, we assume updates only happen from the detail sheet, which has the full object
-        // And for now, updates are only for observations in the root collection.
-        // A more robust solution would require passing the full object to get the correct path.
-        const observationDocRef = doc(db, 'observations', id);
+    const updateObservation = React.useCallback(async (observation: Observation, updatedData: Partial<Observation>) => {
+        const observationDocRef = getDocRef(observation);
         await updateDoc(observationDocRef, updatedData);
     }, []);
 
-    const approvePtw = React.useCallback(async (id: string, signatureDataUrl: string, approver: string, ptw: Ptw) => {
+    const approvePtw = React.useCallback(async (ptw: Ptw, signatureDataUrl: string, approver: string) => {
         const ptwDocRef = getDocRef(ptw);
         await updateDoc(ptwDocRef, {
             status: 'Approved', signatureDataUrl, approver, approvedDate: new Date().toISOString(),

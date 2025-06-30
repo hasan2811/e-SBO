@@ -4,62 +4,69 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // =================================
+    // Helper Functions
+    // =================================
+
+    // Returns true if the user is authenticated
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // Returns true if the user is the owner of a document
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    // --- User Profiles ---
-    // Users can be read by any authenticated user (to find emails for invites).
-    // Users can only be updated by themselves.
+    // Returns true if the user is a member of a specific project
+    function isProjectMember(projectId) {
+      // The user's UID must exist in the `memberUids` array of the project document.
+      return request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
+    }
+
+
+    // =================================
+    // Collection Rules
+    // =================================
+
+    // Rule: User Profiles
+    // Users can read/update their own profile.
+    // Any authenticated user can list users to find their UID for invites.
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId);
+      allow read, update: if isOwner(userId);
+      allow list: if isSignedIn();
     }
 
-    // --- Projects ---
-    // Any signed-in user can create a project.
-    // Only members can read or update a project's details.
-    // Only the owner can delete a project.
-    match /projects/{projectId} {
-      function isMember() {
-        return request.auth.uid in resource.data.memberUids;
-      }
-
+    // Rule: Root Data Collections (for public and private items)
+    // Covers observations, inspections, and ptws at the top level.
+    match /{collectionName}/{docId} where collectionName in ['observations', 'inspections', 'ptws'] {
+      // Read: Anyone can read public items. Owners can read their private items.
+      allow read: if resource.data.scope == 'public' || (resource.data.scope == 'private' && isOwner(resource.data.userId));
+      
+      // Create: Any signed-in user can create an item.
       allow create: if isSignedIn();
-      allow read, update: if isMember();
-      allow delete: if request.auth.uid == resource.data.ownerUid;
 
-      // --- Project Subcollections ---
-      // This is the "folder" logic. Access is granted if the user is a member of the parent project.
-      match /{collectionName}/{docId}
-        where collectionName in ['observations', 'inspections', 'ptws'] {
-        function isProjectMemberFromPath() {
-          return request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
-        }
-        allow read, write: if isProjectMemberFromPath();
-      }
+      // Update, Delete: Only the owner of the item can modify or delete it.
+      allow update, delete: if isOwner(resource.data.userId);
     }
 
-    // --- Root Collections (for Public and Private items) ---
-    // This rule now applies only to the root collections for items not in a project.
-    match /{collectionName}/{docId}
-      where collectionName in ['observations', 'inspections', 'ptws'] {
+    // Rule: Project Documents
+    match /projects/{projectId} {
+      // Read: Only members of the project can read its details.
+      allow read: if isProjectMember(projectId);
 
-      // Allow anyone to read documents marked as 'public'.
-      // Allow authenticated users to read their own 'private' documents.
-      allow read: if resource.data.scope == 'public' || 
-                   (resource.data.scope == 'private' && isOwner(resource.data.userId));
+      // Create: Any signed-in user can create a new project document.
+      allow create: if isSignedIn();
+      
+      // Update, Delete: For simplicity and security, only the project's original owner can modify or delete the project document itself.
+      allow update, delete: if isOwner(get(/databases/$(database)/documents/projects/$(projectId)).data.ownerUid);
+    }
 
-      // An authenticated user can create a document, but they must set themselves as the owner.
-      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-
-      // Only the original owner can update or delete their documents.
-      allow update, delete: if isOwner(resource.data.userId);
+    // Rule: Project Sub-Collections (Data within a project)
+    match /projects/{projectId}/{subcollection}/{itemId}
+      where subcollection in ['observations', 'inspections', 'ptws'] {
+        // Read, Write, Update, Delete: Any member of the project can perform any action on items within that project.
+        allow read, write: if isProjectMember(projectId);
     }
   }
 }

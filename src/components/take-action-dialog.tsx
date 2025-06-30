@@ -50,7 +50,7 @@ interface TakeActionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   observation: Observation;
-  onUpdate: (id: string, data: Partial<Observation>) => Promise<void>;
+  onUpdate: (data: Partial<Observation>) => Promise<void>;
 }
 
 export function TakeActionDialog({
@@ -156,7 +156,7 @@ export function TakeActionDialog({
             updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
         }
 
-        await onUpdate(observation.id, updatedData);
+        await onUpdate(updatedData);
         
         toast({
             title: 'Success!',

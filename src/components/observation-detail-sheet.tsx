@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -36,8 +37,9 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
 
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
 
-  const handleUpdate = async (obsId: string, data: Partial<Observation>) => {
-    await updateObservation(obsId, data);
+  const handleUpdate = async (data: Partial<Observation>) => {
+    if (!observation) return;
+    await updateObservation(observation, data);
     setActionDialogOpen(false);
   };
   
