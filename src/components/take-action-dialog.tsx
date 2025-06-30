@@ -74,9 +74,10 @@ export function TakeActionDialog({
       actionTakenPhoto: undefined,
     },
   });
-
+  
   const [checkedActions, setCheckedActions] = React.useState<string[]>([]);
   
+  // Ref to prevent checkbox updates from overwriting user's manual input.
   const userHasTyped = React.useRef(false);
 
   const suggestedActions = React.useMemo(() => {
@@ -86,6 +87,7 @@ export function TakeActionDialog({
       .filter(line => line.length > 0);
   }, [observation?.aiSuggestedActions]);
 
+  // Effect to update the textarea based on checkboxes, but only if the user hasn't typed manually.
   React.useEffect(() => {
     if (!userHasTyped.current) {
       const combinedDescription = checkedActions.length > 0

@@ -57,7 +57,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     
     const [publicItems, setPublicItems] = React.useState<AllItems[]>([]);
     const [myItems, setMyItems] = React.useState<AllItems[]>([]);
-    const [loading, setLoading] = React.useState(true);
+
+    const [publicItemsLoading, setPublicItemsLoading] = React.useState(true);
+    const [myItemsLoading, setMyItemsLoading] = React.useState(true);
+    
+    const loading = publicItemsLoading || myItemsLoading || projectsLoading;
 
     const collectionsToWatch: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
     
@@ -80,8 +84,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
     // Listener for public data. This is kept separate for clarity.
     React.useEffect(() => {
-        setLoading(true);
+        setPublicItemsLoading(true);
         const itemMap = new Map<string, AllItems>();
+        const isInitialLoad = React.useRef(true);
 
         const processSnapshot = (snapshot: QuerySnapshot, itemType: 'observation' | 'inspection' | 'ptw') => {
             snapshot.docChanges().forEach((change) => {
@@ -93,55 +98,66 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
               }
             });
             setPublicItems(sortItemsByDate(Array.from(itemMap.values())));
+            
+            if (isInitialLoad.current) {
+                setPublicItemsLoading(false);
+                isInitialLoad.current = false;
+            }
         };
         
-        // This query is simple and will not require a composite index.
         const unsubs = collectionsToWatch.map(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
             const publicQuery = query(collection(db, colName), where('scope', '==', 'public'));
             
             return onSnapshot(publicQuery, 
               (snapshot) => processSnapshot(snapshot, itemType),
-              (error) => console.error(`Error fetching public ${colName}:`, error)
+              (error) => {
+                console.error(`Error fetching public ${colName}:`, error);
+                setPublicItemsLoading(false);
+              }
             );
         });
 
-        // Set a timeout to ensure loading state doesn't persist indefinitely on error.
-        const timer = setTimeout(() => setLoading(false), 5000);
-
         return () => {
             unsubs.forEach(unsub => unsub());
-            clearTimeout(timer);
         };
     }, []);
 
     // Listener for "My Items" (Personal & Project-based data).
     React.useEffect(() => {
-        // Wait until we know which projects the user belongs to.
         if (projectsLoading) return; 
         if (!user) {
             setMyItems([]);
+            setMyItemsLoading(false);
             return;
         }
 
+        setMyItemsLoading(true);
         const itemMap = new Map<string, AllItems>();
         const allUnsubs: Unsubscribe[] = [];
+        
+        let listenerCount = collectionsToWatch.length + (projects.length * collectionsToWatch.length);
+        let loadedListenerCount = 0;
 
-        const processAndSort = () => {
+        const processAndSort = (isInitial: boolean) => {
              setMyItems(sortItemsByDate(Array.from(itemMap.values())));
+             if(isInitial) {
+                loadedListenerCount++;
+                if(loadedListenerCount >= listenerCount) {
+                    setMyItemsLoading(false);
+                }
+             }
         }
 
-        // 1. Listen to the user's private items from top-level collections.
         collectionsToWatch.forEach(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-            // This simple query fetches all items by the user, client-side will filter for private scope.
             const privateQuery = query(collection(db, colName), where('userId', '==', user.uid));
+            let isInitial = true;
             
             const unsub = onSnapshot(privateQuery, (snapshot) => {
                 snapshot.docChanges().forEach((change) => {
                     const docId = change.doc.id;
                     const itemData = { ...change.doc.data(), id: docId, itemType } as AllItems;
-                    // Important: Filter for 'private' scope on the client to avoid complex query.
                     if (itemData.scope === 'private') {
                         if (change.type === 'removed') {
                             itemMap.delete(docId);
@@ -150,16 +166,21 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                         }
                     }
                 });
-                processAndSort();
-            }, (e) => console.error(`Error fetching private ${colName}: `, e));
+                processAndSort(isInitial);
+                isInitial = false;
+            }, (e) => {
+                console.error(`Error fetching private ${colName}: `, e);
+                processAndSort(isInitial);
+                isInitial = false;
+            });
             allUnsubs.push(unsub);
         });
 
-        // 2. Listen to items in subcollections for each project the user is a member of.
         projects.forEach(project => {
             collectionsToWatch.forEach(colName => {
                 const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
                 const projectItemsQuery = query(collection(db, 'projects', project.id, colName));
+                let isInitial = true;
                 
                 const unsub = onSnapshot(projectItemsQuery, (snapshot) => {
                      snapshot.docChanges().forEach((change) => {
@@ -171,16 +192,26 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                                 ...change.doc.data(),
                                 id: docId,
                                 itemType,
-                                scope: 'project', // Assign scope and projectId for context
+                                scope: 'project',
                                 projectId: project.id,
                             } as AllItems);
                         }
                     });
-                    processAndSort();
-                }, (e) => console.error(`Error fetching from project ${project.id}/${colName}: `, e));
+                    processAndSort(isInitial);
+                    isInitial = false;
+                }, (e) => {
+                    console.error(`Error fetching from project ${project.id}/${colName}: `, e);
+                    processAndSort(isInitial);
+                    isInitial = false;
+                });
                 allUnsubs.push(unsub);
             });
         });
+
+        // Fallback in case no listeners fire
+        if (listenerCount === 0) {
+            setMyItemsLoading(false);
+        }
 
         return () => {
             allUnsubs.forEach(unsub => unsub());
