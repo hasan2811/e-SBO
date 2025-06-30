@@ -27,10 +27,10 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/comp
 const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
     return (
       <li>
-        <div onClick={onSelect} className="flex items-center gap-4 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
+        <div onClick={onSelect} className="flex items-start gap-3 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
           {observation.photoUrl && (
-            <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border">
-              <Image src={observation.photoUrl} alt={observation.findings} fill sizes="80px" className="object-cover" data-ai-hint="site observation" />
+            <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border">
+              <Image src={observation.photoUrl} alt={observation.findings} fill sizes="64px" className="object-cover" data-ai-hint="site observation" />
               {observation.aiStatus === 'processing' && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                       <Loader2 className="h-5 w-5 animate-spin text-white" />
@@ -44,7 +44,7 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
             </div>
           )}
   
-          <div className="flex-1 space-y-1.5 self-start">
+          <div className="flex-1 space-y-1 self-start">
             <div className="flex justify-between items-start">
                 <p className="text-xs text-muted-foreground">
                     <span className="font-semibold text-foreground">{format(new Date(observation.date), 'd MMM yyyy, HH:mm')}</span> - {observation.category}
@@ -70,10 +70,10 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
 const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, onSelect: () => void }) => {
   return (
     <li>
-      <div onClick={onSelect} className="flex items-center gap-4 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
+      <div onClick={onSelect} className="flex items-start gap-3 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
         {inspection.photoUrl && (
-          <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border">
-            <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="80px" className="object-cover" data-ai-hint="equipment inspection" />
+          <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border">
+            <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="64px" className="object-cover" data-ai-hint="equipment inspection" />
              {inspection.aiStatus === 'processing' && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <Loader2 className="h-5 w-5 animate-spin text-white" />
@@ -87,7 +87,7 @@ const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, 
           </div>
         )}
         
-        <div className="flex-1 space-y-1.5 self-start">
+        <div className="flex-1 space-y-1 self-start">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{format(new Date(inspection.date), 'd MMM yyyy, HH:mm')}</span> - {inspection.equipmentType}
           </p>
@@ -361,9 +361,9 @@ export function FeedView({ mode }: FeedViewProps) {
           <ul className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <li key={i}>
-                <div className="flex items-center bg-card p-3 rounded-lg shadow-sm h-[104px]">
-                  <Skeleton className="h-20 w-20 rounded-md" />
-                  <div className="flex-1 space-y-3 ml-4"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-full" /><Skeleton className="h-5 w-2/3" /></div>
+                <div className="flex items-start bg-card p-3 rounded-lg shadow-sm h-[88px]">
+                  <Skeleton className="h-16 w-16 rounded-md" />
+                  <div className="flex-1 space-y-2 ml-3"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-full" /><Skeleton className="h-5 w-2/3" /></div>
                 </div>
               </li>
             ))}
