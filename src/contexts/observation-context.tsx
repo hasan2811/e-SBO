@@ -110,28 +110,41 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
         const createSnapshotProcessor = (itemType: 'observation' | 'inspection' | 'ptw', projectId?: string) => (snapshot: QuerySnapshot) => {
              snapshot.docChanges().forEach((change) => {
+                const docData = change.doc.data();
+                const docId = change.doc.id;
+
+                // When fetching from root collections, only include 'private' scope items for the 'myItems' feed.
+                // This logic does not apply to sub-collection (project) queries.
+                if (!projectId && docData.scope !== 'private') {
+                    // If an item's scope changes away from private, ensure it's removed from the map
+                    if (change.type !== 'removed' && itemMap.has(docId)) {
+                        itemMap.delete(docId);
+                    }
+                    return; 
+                }
+
                 const itemData = { 
-                    ...change.doc.data(), 
-                    id: change.doc.id, 
+                    ...docData, 
+                    id: docId, 
                     itemType,
-                    // Re-add projectId for items coming from project subcollections
                     ...(projectId && { projectId, scope: 'project' }) 
                 } as AllItems;
 
                 if (change.type === "removed") {
-                    itemMap.delete(change.doc.id);
+                    itemMap.delete(docId);
                 } else {
-                    itemMap.set(change.doc.id, itemData);
+                    itemMap.set(docId, itemData);
                 }
             });
             processAndSort();
         };
         
-        // 1. Listen to the user's private items (scope is explicitly 'private')
+        // 1. Listen to the user's private items
+        // Query by userId only to avoid needing a composite index. Client-side filtering handles the scope.
         collectionsToWatch.forEach(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid), where('scope', '==', 'private'));
-            allUnsubs.push(onSnapshot(privateQuery, createSnapshotProcessor(itemType), (e) => console.error(`Error fetching private ${colName}: `, e)));
+            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid));
+            allUnsubs.push(onSnapshot(privateQuery, createSnapshotProcessor(itemType), (e) => console.error(`Error fetching personal ${colName}: `, e)));
         });
 
         // 2. Listen to items in subcollections for each project the user is a member of
