@@ -1,104 +1,73 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // =================================================================
-    // Helper Functions
-    // =================================================================
     
-    // Is the user authenticated?
-    function isSignedIn() {
-      return request.auth != null;
+    function isOwner(doc) {
+      return request.auth != null && request.auth.uid == doc.userId;
     }
     
-    // Does the incoming data belong to the user making the request?
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    // Is the user a member of a specific project?
-    function isProjectMember(projectId) {
-      return isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
+    function isPublic(doc) {
+      // A document is considered public if its scope is explicitly 'public'.
+      // Checking for the key's existence first makes the rule robust against older data
+      // that might be missing the 'scope' field, preventing permission errors.
+      return doc.keys().has('scope') && doc.scope == 'public';
     }
 
-    // Is the user the owner of a specific project?
-    function isProjectOwner(projectId) {
-      return isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/projects/$(projectId)).data.ownerUid;
-    }
-    
-    // =================================================================
-    // User Profiles
-    // =================================================================
+    // --- USER DATA ---
+    // Users can read their own profile.
+    // Users can only create their own profile.
+    // Users can only update their own display name and position.
     match /users/{userId} {
-      // Users can only read their own profile.
-      // Users can create their own profile upon signup.
-      // Users can only update their own profile (displayName, position).
-      allow read, update: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn();
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId
+                      && request.resource.data.keys().hasOnly(['displayName', 'position']);
     }
-    
-    // =================================================================
-    // Projects
-    // =================================================================
-    match /projects/{projectId} {
-      // Allow reading project data ONLY if the user is a member of that project.
-      allow read: if isProjectMember(projectId);
-      
-      // Allow creating a project if the user is signed in and they are the owner.
-      allow create: if isSignedIn() && isOwner(resource.data.ownerUid);
 
-      // Only the project OWNER can update project details (e.g., add/remove members later).
-      allow update: if isProjectOwner(projectId);
-      
-      // Deny deletion of projects for safety.
+    // --- PROJECTS ---
+    // Anyone authenticated can create a project. The createProject server action validates ownership.
+    // Only members can read project details.
+    // Only the owner can update the project (e.g., name, members).
+    // Deleting projects is disallowed for safety.
+    match /projects/{projectId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && request.auth.uid in resource.data.memberUids;
+      allow update: if request.auth != null && request.auth.uid == resource.data.ownerUid;
       allow delete: if false;
 
-      // =================================================================
-      // Items within Project Sub-collections
-      // =================================================================
-      
-      // Generic rule for all item types within a project.
-      // This covers observations, inspections, and ptws.
-      match /{itemCollection}/{itemId} {
-        // Allow members of the project to read, create, and update any item within it.
-        allow read, create, update: if isProjectMember(projectId);
-        allow delete: if false; // Deletion is generally disabled for record-keeping.
+      // Project Subcollections (Observations, Inspections, PTWs)
+      // Any member of the project can create, read, update, or delete items within that project.
+      match /{collection}/{docId} {
+         allow read, write: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
       }
     }
-    
-    // =================================================================
-    // Root Collections for Public/Private Items
-    // =================================================================
 
-    // --- Observations ---
-    match /observations/{observationId} {
-      // Read: Allow if scope is public, or if scope is private and user is the owner.
-      allow read: if resource.data.scope == 'public' || (resource.data.scope == 'private' && isOwner(resource.data.userId));
-      
-      // Create: Allow if user is signed in and is the owner of the new document.
-      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+    // --- PUBLIC & PRIVATE ROOT COLLECTIONS ---
 
-      // Update: Allow only if user is the owner.
-      allow update: if isSignedIn() && isOwner(resource.data.userId);
-
-      allow delete: if false;
+    // Observations
+    match /observations/{obsId} {
+      allow read: if isPublic(resource.data) || isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow update: if isOwner(resource.data);
+      allow delete: if isOwner(resource.data);
     }
 
-    // --- Inspections ---
-    match /inspections/{inspectionId} {
-      allow read: if resource.data.scope == 'public' || (resource.data.scope == 'private' && isOwner(resource.data.userId));
-      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-      allow update: if isSignedIn() && isOwner(resource.data.userId);
-      allow delete: if false;
+    // Inspections
+    match /inspections/{inspId} {
+      allow read: if isPublic(resource.data) || isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow update: if isOwner(resource.data);
+      allow delete: if isOwner(resource.data);
     }
 
-    // --- PTWs ---
+    // PTWs
     match /ptws/{ptwId} {
-      allow read: if resource.data.scope == 'public' || (resource.data.scope == 'private' && isOwner(resource.data.userId));
-      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-      allow update: if isSignedIn() && isOwner(resource.data.userId);
-      allow delete: if false;
+      allow read: if isPublic(resource.data) || isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow update: if isOwner(resource.data);
+      allow delete: if isOwner(resource.data);
     }
   }
 }

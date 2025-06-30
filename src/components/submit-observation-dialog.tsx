@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -82,7 +83,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       riskLevel: 'Low',
       findings: '',
       recommendation: '',
-      scopeAndProjectId: 'private',
+      scopeAndProjectId: 'public',
     },
     mode: 'onChange',
   });
@@ -388,8 +389,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="private">Pribadi (Hanya Saya)</SelectItem>
                         <SelectItem value="public">Publik (Semua Pengguna)</SelectItem>
+                        <SelectItem value="private">Pribadi (Hanya Saya)</SelectItem>
                         {projects.length > 0 && (
                           <SelectGroup>
                             <SelectLabel>Proyek</SelectLabel>

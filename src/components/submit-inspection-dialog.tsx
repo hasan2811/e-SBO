@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -65,7 +66,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
       status: INSPECTION_STATUSES[0],
       findings: '',
       recommendation: '',
-      scopeAndProjectId: 'private',
+      scopeAndProjectId: 'public',
     },
     mode: 'onChange',
   });
@@ -201,8 +202,8 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="private">Pribadi (Hanya Saya)</SelectItem>
                         <SelectItem value="public">Publik (Semua Pengguna)</SelectItem>
+                        <SelectItem value="private">Pribadi (Hanya Saya)</SelectItem>
                         {projects.length > 0 && (
                           <SelectGroup>
                             <SelectLabel>Proyek</SelectLabel>

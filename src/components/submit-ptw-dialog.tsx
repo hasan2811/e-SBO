@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -58,7 +59,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
       location: LOCATIONS[0],
       workDescription: '',
       contractor: '',
-      scopeAndProjectId: 'private',
+      scopeAndProjectId: 'public',
     },
     mode: 'onChange',
   });
@@ -179,8 +180,8 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="private">Pribadi (Hanya Saya)</SelectItem>
                         <SelectItem value="public">Publik (Semua Pengguna)</SelectItem>
+                        <SelectItem value="private">Pribadi (Hanya Saya)</SelectItem>
                         {projects.length > 0 && (
                           <SelectGroup>
                             <SelectLabel>Proyek</SelectLabel>
