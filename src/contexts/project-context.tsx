@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -14,7 +13,7 @@ interface ProjectContextType {
   addProject: (projectName: string) => Promise<void>;
 }
 
-const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
+export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -77,12 +76,4 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       {children}
     </ProjectContext.Provider>
   );
-}
-
-export function useProjects() {
-  const context = React.useContext(ProjectContext);
-  if (context === undefined) {
-    throw new Error('useProjects must be used within a ProjectProvider');
-  }
-  return context;
 }
