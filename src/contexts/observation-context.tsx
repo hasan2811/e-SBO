@@ -66,10 +66,12 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     };
 
-    // Listener for public data.
-     React.useEffect(() => {
+    // Listener for public data. This is now robust and avoids composite indexes.
+    React.useEffect(() => {
         setLoading(true);
         const itemMap = new Map<string, AllItems>();
+        let listenersInitialized = 0;
+        const totalListeners = collectionsToWatch.length;
 
         const processSnapshot = (snapshot: QuerySnapshot, itemType: 'observation' | 'inspection' | 'ptw') => {
             snapshot.docChanges().forEach((change) => {
@@ -82,87 +84,107 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             });
             setPublicItems(sortItemsByDate(Array.from(itemMap.values())));
         };
-
-        const unsubs = collectionsToWatch.flatMap(colName => {
-            const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-            const publicQuery = query(collection(db, colName), where('scope', '==', 'public'));
-            return onSnapshot(publicQuery, (snapshot) => processSnapshot(snapshot, itemType), (error) => console.error(`Error fetching public ${colName}:`, error));
-        });
         
-        const timer = setTimeout(() => setLoading(false), 1500);
+        // This function will be called once per listener on its initial run to manage loading state.
+        const onInitialLoad = () => {
+            listenersInitialized++;
+            if (listenersInitialized >= totalListeners) {
+                setLoading(false);
+            }
+        };
+
+        const unsubs = collectionsToWatch.map(colName => {
+            const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
+            // Simple query: one "where" clause, no "orderBy". This is efficient and needs no custom index.
+            const publicQuery = query(collection(db, colName), where('scope', '==', 'public'));
+            
+            let initialLoadHandled = false;
+            return onSnapshot(publicQuery, (snapshot) => {
+                processSnapshot(snapshot, itemType);
+                if (!initialLoadHandled) {
+                    onInitialLoad();
+                    initialLoadHandled = true;
+                }
+            }, (error) => {
+                console.error(`Error fetching public ${colName}:`, error);
+                if (!initialLoadHandled) {
+                    onInitialLoad();
+                    initialLoadHandled = true;
+                }
+            });
+        });
+
+        // Fallback for loading state if no listeners fire
+        const timer = setTimeout(() => setLoading(false), 3000);
 
         return () => {
             unsubs.forEach(unsub => unsub());
             clearTimeout(timer);
         };
-    }, []);
+    }, []); // Empty dependency array means this runs once on mount.
 
-    // Listener for personal and project data.
+    // Listener for "My Items" (Personal & Project). This is also now robust.
     React.useEffect(() => {
-        if (projectsLoading) return;
+        if (projectsLoading) return; // Wait for projects to be loaded
         if (!user) {
             setMyItems([]);
-            setLoading(false);
             return;
         }
 
-        setLoading(true);
         const itemMap = new Map<string, AllItems>();
-        let allUnsubs: Unsubscribe[] = [];
 
         const processAndSort = () => {
              setMyItems(sortItemsByDate(Array.from(itemMap.values())));
-             setLoading(false);
         }
 
-        const createSnapshotProcessor = (itemType: 'observation' | 'inspection' | 'ptw', isProject: boolean, projectId?: string) => (snapshot: QuerySnapshot) => {
+        const createSnapshotProcessor = (itemType: 'observation' | 'inspection' | 'ptw', context: 'private' | 'project', projectId?: string) => (snapshot: QuerySnapshot) => {
              snapshot.docChanges().forEach((change) => {
                 const docData = change.doc.data();
                 const docId = change.doc.id;
                 
-                // Only include 'private' scope items from root collections in "My Items" feed
-                if (!isProject && docData.scope !== 'private') {
+                // CLIENT-SIDE FILTER: For private items, ensure they are not public as well.
+                // This avoids needing a composite index on the query.
+                if (context === 'private' && docData.scope !== 'private') {
                     if (itemMap.has(docId)) {
                         itemMap.delete(docId);
                     }
                     return; 
                 }
 
-                const itemData = { 
-                    ...docData, 
-                    id: docId, 
-                    itemType,
-                    ...(isProject && { projectId, scope: 'project' }) 
-                } as AllItems;
-
                 if (change.type === "removed") {
                     itemMap.delete(docId);
                 } else {
+                    const itemData = { 
+                        ...docData, 
+                        id: docId, 
+                        itemType,
+                        scope: context,
+                        ...(projectId && { projectId }) 
+                    } as AllItems;
                     itemMap.set(docId, itemData);
                 }
             });
             processAndSort();
         };
         
-        // 1. Listen to the user's private items from root collections
+        const allUnsubs: Unsubscribe[] = [];
+
+        // 1. Listen to the user's private items using a simple, non-composite query.
         collectionsToWatch.forEach(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
+            // Simple query: one "where" clause for the user's content.
             const privateQuery = query(collection(db, colName), where('userId', '==', user.uid));
-            allUnsubs.push(onSnapshot(privateQuery, createSnapshotProcessor(itemType, false), (e) => console.error(`Error fetching personal ${colName}: `, e)));
+            allUnsubs.push(onSnapshot(privateQuery, createSnapshotProcessor(itemType, 'private'), (e) => console.error(`Error fetching private ${colName}: `, e)));
         });
 
-        // 2. Listen to items in subcollections for each project
+        // 2. Listen to items in subcollections for each project. This query is inherently simple.
         projects.forEach(project => {
             collectionsToWatch.forEach(colName => {
                 const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
                 const projectCollectionQuery = query(collection(db, 'projects', project.id, colName));
-                allUnsubs.push(onSnapshot(projectCollectionQuery, createSnapshotProcessor(itemType, true, project.id), (e) => console.error(`Error fetching from project ${project.id}/${colName}: `, e)));
+                allUnsubs.push(onSnapshot(projectCollectionQuery, createSnapshotProcessor(itemType, 'project', project.id), (e) => console.error(`Error fetching from project ${project.id}/${colName}: `, e)));
             });
         });
-        
-        if (!projectsLoading && projects.length === 0) {
-            processAndSort();
-        }
 
         return () => {
             allUnsubs.forEach(unsub => unsub());
@@ -237,6 +259,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
       if (observationToSave.scope === 'project' && observationToSave.projectId) {
         collectionRef = collection(db, 'projects', observationToSave.projectId, 'observations');
+        // When saving to a project subcollection, we don't need to store the projectId and scope inside the document itself.
         const { projectId, scope, ...rest } = observationToSave;
         dataToSave = rest;
       } else {
