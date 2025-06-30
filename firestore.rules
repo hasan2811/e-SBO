@@ -1,51 +1,44 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Helper function to check if a user is a member of a project
-    function isProjectMember(projectId) {
-      // Use get() for checking single documents, typically in `allow get` rules.
-      let projectData = get(/databases/$(database)/documents/projects/$(projectId)).data;
-      return isAuthenticated() && ('memberUids' in projectData) && request.auth.uid in projectData.memberUids;
-    }
-
-    // Profiles: Users can read any profile but only update their own.
+    
+    // Users can manage their own profile.
+    // Authenticated users can query the users collection to find others by email for invitations.
     match /users/{userId} {
-      allow read, create: if isAuthenticated();
-      allow update: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
     }
 
-    // Projects: Users can create projects. They can read projects they are a member of.
+    // Projects can be read by members.
+    // The owner can update/delete it.
+    // An authenticated user can create a project and becomes the owner.
     match /projects/{projectId} {
-      allow create: if isAuthenticated();
-      // This rule is now more robust. It checks for the existence of 'memberUids'.
-      // This supports the 'array-contains' query used in the app.
-      allow read: if isAuthenticated() && 'memberUids' in resource.data && request.auth.uid in resource.data.memberUids;
+      allow read: if request.auth.uid in resource.data.memberUids;
+      allow create: if request.auth.uid != null && request.auth.uid == request.resource.data.ownerUid;
+      allow update, delete: if request.auth.uid == resource.data.ownerUid;
     }
 
-    // Generic rule for collections (observations, inspections, ptws)
-    match /{collection}/{docId}
-      where collection in ['observations', 'inspections', 'ptws'] {
-
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
-
-      // Allow reading documents under these conditions:
-      // 1. The document is public.
-      // 2. The user is the owner of the document.
-      // 3. The document belongs to a project the user is a member of.
-      // This rule works for both single `get` requests and collection `list` queries
-      // as long as the queries are structured correctly (which we will ensure in the app).
+    // Generic rules for collections that can be public, private, or project-scoped.
+    match /{collectionName}/{docId} 
+        where collectionName in ['observations', 'inspections', 'ptws'] {
+          
+      // Helper function to check for project membership.
+      function isMember() {
+        return request.auth.uid in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.memberUids;
+      }
+      
+      // Allow reads based on scope: public, user's own, or project member.
       allow read: if resource.data.scope == 'public'
-                   || (isAuthenticated() && request.auth.uid == resource.data.userId)
-                   || (isAuthenticated() && resource.data.scope == 'project' && isProjectMember(resource.data.projectId));
+                  || (request.auth != null && request.auth.uid == resource.data.userId)
+                  || (resource.data.scope == 'project' && resource.data.projectId != null && isMember());
+
+      // Allow creation if the user is the one submitting.
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+
+      // Allow updates from the owner or any project member for observations and PTWs.
+      allow update: if (collectionName == 'observations' || collectionName == 'ptws')
+                    && request.auth != null
+                    && (request.auth.uid == resource.data.userId || (resource.data.scope == 'project' && resource.data.projectId != null && isMember()));
     }
   }
 }

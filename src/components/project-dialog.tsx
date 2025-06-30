@@ -16,11 +16,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from './ui/textarea';
 
 const formSchema = z.object({
   name: z.string().min(3, { message: 'Project name must be at least 3 characters.' }),
+  memberEmails: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -28,7 +30,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface ProjectDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddProject: (projectName: string) => Promise<void>;
+  onAddProject: (projectName: string, memberEmails: string) => Promise<void>;
 }
 
 export function ProjectDialog({ isOpen, onOpenChange, onAddProject }: ProjectDialogProps) {
@@ -40,13 +42,14 @@ export function ProjectDialog({ isOpen, onOpenChange, onAddProject }: ProjectDia
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
+      memberEmails: '',
     },
   });
 
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
-      await onAddProject(values.name);
+      await onAddProject(values.name, values.memberEmails || '');
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to create project:', error);
@@ -75,7 +78,7 @@ export function ProjectDialog({ isOpen, onOpenChange, onAddProject }: ProjectDia
             Create New Project
           </DialogTitle>
           <DialogDescription>
-            Give your new project a name to start collaborating with others.
+            Give your new project a name and invite members to start collaborating.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -89,6 +92,22 @@ export function ProjectDialog({ isOpen, onOpenChange, onAddProject }: ProjectDia
                   <FormControl>
                     <Input placeholder="e.g., Q1 Safety Audit" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="memberEmails"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Invite Members (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Enter member emails, separated by commas..." {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Add users to this project by their email address.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

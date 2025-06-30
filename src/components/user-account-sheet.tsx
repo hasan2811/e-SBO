@@ -60,8 +60,8 @@ export function UserAccountSheet() {
     }
   }
 
-  const handleAddProject = async (projectName: string) => {
-    await addProject(projectName);
+  const handleAddProject = async (projectName: string, memberEmails: string) => {
+    await addProject(projectName, memberEmails);
   };
 
   const getInitials = (name: string | null | undefined) => {

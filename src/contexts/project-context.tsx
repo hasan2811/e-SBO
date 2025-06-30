@@ -1,16 +1,17 @@
 'use client';
 
 import * as React from 'react';
-import { collection, onSnapshot, query, where, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Project } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from '@/hooks/use-toast';
+import { createProject } from '@/lib/actions/project-actions';
 
 interface ProjectContextType {
   projects: Project[];
   loading: boolean;
-  addProject: (projectName: string) => Promise<void>;
+  addProject: (projectName: string, memberEmails: string) => Promise<void>;
 }
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -50,22 +51,22 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  const addProject = React.useCallback(async (projectName: string) => {
-    if (!user) {
+  const addProject = React.useCallback(async (projectName: string, memberEmailsStr: string) => {
+    if (!user || !user.email) {
       toast({ variant: 'destructive', title: 'Not Authenticated' });
       return;
     }
     try {
-      await addDoc(collection(db, 'projects'), {
-        name: projectName,
-        ownerUid: user.uid,
-        memberUids: [user.uid],
-        createdAt: new Date().toISOString(),
-      });
-      toast({ title: 'Project Created!', description: `Project "${projectName}" was successfully created.` });
+      const result = await createProject({ uid: user.uid, email: user.email }, projectName, memberEmailsStr);
+      if (result.success) {
+        toast({ title: 'Success!', description: result.message });
+      } else {
+        toast({ variant: 'destructive', title: 'Project Creation Failed', description: result.message });
+      }
     } catch (error) {
       console.error("Error creating project:", error);
-      toast({ variant: 'destructive', title: 'Project Creation Failed' });
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+      toast({ variant: 'destructive', title: 'Project Creation Failed', description: errorMessage });
     }
   }, [user]);
 
