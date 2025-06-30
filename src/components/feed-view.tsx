@@ -178,7 +178,6 @@ export function FeedView({ mode }: FeedViewProps) {
   
   const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
   
-  // New state for robust filtering
   const [filterType, setFilterType] = React.useState<'status' | 'risk' | 'category' | 'all'>('all');
   const [filterValue, setFilterValue] = React.useState('all');
   
@@ -211,7 +210,7 @@ export function FeedView({ mode }: FeedViewProps) {
     }
 
     try {
-        let q: Query<DocumentData> = query(collection(db, viewType));
+        let q: Query<DocumentData> = query(collection(db, viewType), where('scope', '==', 'public'));
 
         if (viewType === 'observations' && filterType !== 'all' && filterValue !== 'all') {
             const fieldMap = { status: 'status', risk: 'riskLevel', category: 'category' };
@@ -226,7 +225,6 @@ export function FeedView({ mode }: FeedViewProps) {
 
         const documentSnapshots = await getDocs(q);
         const newItems = documentSnapshots.docs
-            .filter(doc => doc.data().scope !== 'private' && doc.data().scope !== 'project')
             .map(doc => ({
                 ...doc.data(),
                 id: doc.id,
@@ -268,7 +266,6 @@ export function FeedView({ mode }: FeedViewProps) {
     if (mode === 'public') {
         return data;
     }
-    // Personal mode filtering logic remains client-side as it's a smaller dataset
     let dataToFilter: AllItems[] = [...data];
     dataToFilter = dataToFilter.filter(item => item.itemType === viewType.slice(0, -1));
 
@@ -277,8 +274,7 @@ export function FeedView({ mode }: FeedViewProps) {
         if (filterType !== 'all' && filterValue !== 'all') {
             const fieldMap = { status: 'status', risk: 'riskLevel', category: 'category' };
             const key = fieldMap[filterType as 'status' | 'risk' | 'category'];
-            // @ts-ignore
-            observationData = observationData.filter(obs => obs[key] === filterValue);
+            observationData = observationData.filter(obs => obs[key as keyof Observation] === filterValue);
         }
         return observationData;
     }
@@ -302,7 +298,6 @@ export function FeedView({ mode }: FeedViewProps) {
   );
 
   const handleExport = () => {
-    // Note: Export will use client-side filtered data for personal, and currently loaded page data for public.
     const dataToExport = filteredData as Observation[];
     if (dataToExport.length === 0) {
       toast({
