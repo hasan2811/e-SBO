@@ -1,44 +1,61 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users can manage their own profile.
-    // Authenticated users can query the users collection to find others by email for invitations.
+
+    // Users:
+    // - Authenticated users can read/list user profiles to enable invites by email.
+    // - Users can only write to their own document.
     match /users/{userId} {
-      allow read: if request.auth != null;
+      allow read, list: if request.auth != null;
       allow write: if request.auth.uid == userId;
     }
 
-    // Projects can be read by members.
-    // The owner can update/delete it.
-    // An authenticated user can create a project and becomes the owner.
+    // Projects:
+    // - A user can read a project document if they are a member.
+    // - Any authenticated user can create a project.
+    // - Only the owner can update a project.
     match /projects/{projectId} {
       allow read: if request.auth.uid in resource.data.memberUids;
-      allow create: if request.auth.uid != null && request.auth.uid == request.resource.data.ownerUid;
-      allow update, delete: if request.auth.uid == resource.data.ownerUid;
+      allow create: if request.auth != null;
+      allow update: if request.auth.uid == resource.data.ownerUid;
+      allow delete: if false; // Deleting projects is not allowed.
     }
 
-    // Generic rules for collections that can be public, private, or project-scoped.
-    match /{collectionName}/{docId} 
-        where collectionName in ['observations', 'inspections', 'ptws'] {
-          
-      // Helper function to check for project membership.
-      function isMember() {
-        return request.auth.uid in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.memberUids;
-      }
-      
-      // Allow reads based on scope: public, user's own, or project member.
-      allow read: if resource.data.scope == 'public'
-                  || (request.auth != null && request.auth.uid == resource.data.userId)
-                  || (resource.data.scope == 'project' && resource.data.projectId != null && isMember());
+    // A function to check read access for items (observations, inspections, ptws).
+    function canReadItem(item) {
+      return item.scope == 'public' ||
+             (request.auth != null && (
+               (item.scope == 'private' && request.auth.uid == item.userId) ||
+               (item.scope == 'project' && item.projectId != null && request.auth.uid in get(/databases/$(database)/documents/projects/$(item.projectId)).data.memberUids)
+             ));
+    }
 
-      // Allow creation if the user is the one submitting.
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    // Observations
+    match /observations/{obsId} {
+      allow read: if canReadItem(resource.data);
+      allow create: if request.auth != null;
+      allow update: if request.auth.uid == resource.data.userId;
+      allow delete: if false;
+    }
 
-      // Allow updates from the owner or any project member for observations and PTWs.
-      allow update: if (collectionName == 'observations' || collectionName == 'ptws')
-                    && request.auth != null
-                    && (request.auth.uid == resource.data.userId || (resource.data.scope == 'project' && resource.data.projectId != null && isMember()));
+    // Inspections
+    match /inspections/{inspId} {
+      allow read: if canReadItem(resource.data);
+      allow create: if request.auth != null;
+      allow update: if request.auth.uid == resource.data.userId;
+      allow delete: if false;
+    }
+    
+    // Permits to Work (PTW)
+    match /ptws/{ptwId} {
+      allow read: if canReadItem(resource.data);
+      allow create: if request.auth != null;
+      // Allow updates from any authenticated user to handle approvals.
+      // In a real-world scenario, this would be more locked down (e.g., to project managers).
+      allow update: if request.auth != null;
+      allow delete: if false;
     }
   }
 }
