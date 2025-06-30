@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { StatusBadge, InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Home, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter } from 'lucide-react';
+import { FileText, ChevronRight, Home, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -32,6 +32,16 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
         High: 'border-l-chart-5',
         Critical: 'border-l-destructive',
     };
+    
+    const statusIcons: Record<ObservationStatus, { icon: React.ElementType, className: string, label: string }> = {
+        'Pending': { icon: CircleAlert, className: 'text-chart-5', label: 'Pending' },
+        'In Progress': { icon: RefreshCw, className: 'text-chart-4 animate-spin-slow', label: 'In Progress' },
+        'Completed': { icon: CheckCircle2, className: 'text-chart-2', label: 'Completed' },
+    };
+    const StatusIcon = statusIcons[observation.status].icon;
+    const statusClassName = statusIcons[observation.status].className;
+    const statusLabel = statusIcons[observation.status].label;
+
 
     return (
       <li>
@@ -40,8 +50,8 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
             riskColorStyles[observation.riskLevel]
         )}>
           {observation.photoUrl && (
-            <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border">
-              <Image src={observation.photoUrl} alt={observation.findings} fill sizes="64px" className="object-cover" data-ai-hint="site observation" />
+            <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border">
+              <Image src={observation.photoUrl} alt={observation.findings} fill sizes="80px" className="object-cover" data-ai-hint="site observation" />
               {observation.aiStatus === 'processing' && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                       <Loader2 className="h-5 w-5 animate-spin text-white" />
@@ -55,23 +65,32 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
             </div>
           )}
   
-          <div className="flex-1 space-y-1 self-start">
-            <div className="flex justify-between items-start">
-                <p className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">{format(new Date(observation.date), 'd MMM yyyy, HH:mm')}</span> - {observation.category}
-                </p>
-                {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
-                    <div title={`Observer Rating: ${observation.aiObserverSkillRating}/5`}>
-                        <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
+            <div className="flex-1 space-y-1 self-start">
+                <div className="flex justify-between items-start">
+                    <p className="text-xs text-muted-foreground font-semibold">{observation.location}</p>
+                    <div className="flex items-center gap-2">
+                        {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
+                            <div title={`Observer Rating: ${observation.aiObserverSkillRating}/5`}>
+                                <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
+                            </div>
+                        )}
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <StatusIcon className={cn("h-4 w-4", statusClassName)} />
+                                </TooltipTrigger>
+                                <TooltipContent><p>{statusLabel}</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
-                )}
+                </div>
+                <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
+                <div className="flex flex-wrap items-center gap-x-2 pt-1">
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(observation.date), 'd MMM yyy, HH:mm')} &bull; {observation.category} &bull; {observation.company}
+                  </p>
+                </div>
             </div>
-            <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <StatusBadge status={observation.status} />
-              <span className="text-xs text-muted-foreground">{observation.company}</span>
-            </div>
-          </div>
         </div>
       </li>
     );
@@ -82,8 +101,8 @@ const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, 
     <li>
       <div onClick={onSelect} className="flex items-start gap-3 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
         {inspection.photoUrl && (
-          <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border">
-            <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="64px" className="object-cover" data-ai-hint="equipment inspection" />
+          <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border">
+            <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="80px" className="object-cover" data-ai-hint="equipment inspection" />
              {inspection.aiStatus === 'processing' && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <Loader2 className="h-5 w-5 animate-spin text-white" />
@@ -369,8 +388,8 @@ export function FeedView({ mode }: FeedViewProps) {
           <ul className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <li key={i}>
-                <div className="flex items-start bg-card p-3 rounded-lg shadow-sm h-[88px]">
-                  <Skeleton className="h-16 w-16 rounded-md" />
+                <div className="flex items-start bg-card p-3 rounded-lg shadow-sm h-[104px]">
+                  <Skeleton className="h-20 w-20 rounded-md" />
                   <div className="flex-1 space-y-2 ml-3"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-full" /><Skeleton className="h-5 w-2/3" /></div>
                 </div>
               </li>

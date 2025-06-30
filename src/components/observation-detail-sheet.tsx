@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { useObservations } from '@/contexts/observation-context';
-import type { Observation } from '@/lib/types';
+import type { Observation, RiskLevel } from '@/lib/types';
 import { TakeActionDialog } from '@/components/take-action-dialog';
 import { RiskBadge, StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
@@ -95,6 +95,13 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
       ))}
     </div>
   );
+  
+  const riskColorClasses: Record<RiskLevel, string> = {
+    Low: 'text-chart-2',
+    Medium: 'text-chart-4',
+    High: 'text-chart-5',
+    Critical: 'text-destructive',
+  };
 
   return (
     <>
