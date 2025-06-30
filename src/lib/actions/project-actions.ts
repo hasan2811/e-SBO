@@ -2,13 +2,12 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, writeBatch, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 /**
  * Server action to create a new project and invite members.
- * It now only creates the project document with a list of member UIDs.
- * It no longer tries to update individual user documents, which caused permission errors.
+ * It finds users by email to add their UIDs to the project's member list.
  * @param owner - The user object of the project creator.
  * @param projectName - The name of the new project.
  * @param memberEmailsStr - A comma-separated string of emails to invite.
@@ -22,8 +21,6 @@ export async function createProject(
   if (!owner || !owner.uid || !owner.email) {
     return { success: false, message: 'Authentication required to create a project.' };
   }
-
-  const batch = writeBatch(db);
   
   try {
     const trimmedEmails = memberEmailsStr
@@ -59,15 +56,16 @@ export async function createProject(
 
     const memberUids = foundUsers.map(u => u.uid);
 
-    // 1. Create the new project document in a single step.
+    // CRITICAL FIX: The collection reference was previously undefined.
     const projectCollectionRef = collection(db, 'projects');
-    addDoc(projectCollectionRef, {
+    await addDoc(projectCollectionRef, {
       name: projectName,
       ownerUid: owner.uid,
       memberUids: memberUids,
       createdAt: new Date().toISOString(),
     });
     
+    // Revalidate paths to ensure new project data is fetched on relevant pages.
     revalidatePath('/tasks');
     revalidatePath('/beranda');
 

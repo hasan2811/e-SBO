@@ -85,7 +85,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
         const unsubs = collectionsToWatch.flatMap(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-            // REMOVED orderBy to prevent index errors
             const publicQuery = query(collection(db, colName), where('scope', '==', 'public'));
             return onSnapshot(publicQuery, (snapshot) => processSnapshot(snapshot, itemType), (error) => console.error(`Error fetching public ${colName}:`, error));
         });
@@ -121,7 +120,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 const docData = change.doc.data();
                 const docId = change.doc.id;
                 
-                // For root collection queries, only include 'private' scope items.
+                // Only include 'private' scope items from root collections in "My Items" feed
                 if (!isProject && docData.scope !== 'private') {
                     if (itemMap.has(docId)) {
                         itemMap.delete(docId);
@@ -148,7 +147,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         // 1. Listen to the user's private items from root collections
         collectionsToWatch.forEach(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-            // REMOVED orderBy and scope filter to prevent index errors. Scope is filtered in the processor.
             const privateQuery = query(collection(db, colName), where('userId', '==', user.uid));
             allUnsubs.push(onSnapshot(privateQuery, createSnapshotProcessor(itemType, false), (e) => console.error(`Error fetching personal ${colName}: `, e)));
         });
@@ -157,13 +155,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         projects.forEach(project => {
             collectionsToWatch.forEach(colName => {
                 const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-                // REMOVED orderBy to prevent index errors
                 const projectCollectionQuery = query(collection(db, 'projects', project.id, colName));
                 allUnsubs.push(onSnapshot(projectCollectionQuery, createSnapshotProcessor(itemType, true, project.id), (e) => console.error(`Error fetching from project ${project.id}/${colName}: `, e)));
             });
         });
         
-        // Finalize loading state if no projects
         if (!projectsLoading && projects.length === 0) {
             processAndSort();
         }
@@ -237,14 +233,15 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       const observationToSave = { ...newObservation, referenceId, aiStatus: 'processing' as const, userId: user.uid };
       
       let collectionRef: CollectionReference;
-      let dataToSave: any = observationToSave;
+      let dataToSave: Omit<typeof observationToSave, 'scope' | 'projectId'> | typeof observationToSave;
 
       if (observationToSave.scope === 'project' && observationToSave.projectId) {
         collectionRef = collection(db, 'projects', observationToSave.projectId, 'observations');
-        const { projectId, ...rest } = observationToSave;
+        const { projectId, scope, ...rest } = observationToSave;
         dataToSave = rest;
       } else {
         collectionRef = collection(db, 'observations');
+        dataToSave = observationToSave;
       }
 
       const docRef = await addDoc(collectionRef, dataToSave);
@@ -257,14 +254,15 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       const inspectionToSave = { ...newInspection, referenceId, aiStatus: 'processing' as const, userId: user.uid };
 
       let collectionRef: CollectionReference;
-      let dataToSave: any = inspectionToSave;
+      let dataToSave: Omit<typeof inspectionToSave, 'scope' | 'projectId'> | typeof inspectionToSave;
 
       if (inspectionToSave.scope === 'project' && inspectionToSave.projectId) {
         collectionRef = collection(db, 'projects', inspectionToSave.projectId, 'inspections');
-        const { projectId, ...rest } = inspectionToSave;
+        const { projectId, scope, ...rest } = inspectionToSave;
         dataToSave = rest;
       } else {
         collectionRef = collection(db, 'inspections');
+        dataToSave = inspectionToSave;
       }
 
       const docRef = await addDoc(collectionRef, dataToSave);
@@ -277,14 +275,15 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         const ptwToSave = { ...newPtw, referenceId, userId: user.uid };
 
         let collectionRef: CollectionReference;
-        let dataToSave: any = ptwToSave;
+        let dataToSave: Omit<typeof ptwToSave, 'scope' | 'projectId'> | typeof ptwToSave;
 
         if (ptwToSave.scope === 'project' && ptwToSave.projectId) {
             collectionRef = collection(db, 'projects', ptwToSave.projectId, 'ptws');
-            const { projectId, ...rest } = ptwToSave;
+            const { projectId, scope, ...rest } = ptwToSave;
             dataToSave = rest;
         } else {
             collectionRef = collection(db, 'ptws');
+            dataToSave = ptwToSave;
         }
 
         await addDoc(collectionRef, dataToSave);
