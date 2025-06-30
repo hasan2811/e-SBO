@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, ThumbsUp } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -269,8 +269,7 @@ export function FeedView({ mode }: FeedViewProps) {
     if (mode === 'public' && isIntersecting && hasMore && !loading) {
       fetchPublicItems();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isIntersecting, hasMore, loading, mode]);
+  }, [isIntersecting, hasMore, loading, mode, fetchPublicItems]);
 
 
   const data = mode === 'public' ? items : myItems;
