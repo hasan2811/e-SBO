@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, Plus, ThumbsUp } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, ThumbsUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -25,6 +25,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/comp
 import { cn } from '@/lib/utils';
 import { collection, query, where, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useIntersection } from '@/hooks/use-intersection';
 
 const PAGE_SIZE = 10;
 
@@ -184,6 +185,9 @@ export function FeedView({ mode }: FeedViewProps) {
   
   const { toast } = useToast();
 
+  const observerOptions = React.useMemo(() => ({ threshold: 0.1 }), []);
+  const [loaderRef, isIntersecting] = useIntersection(observerOptions);
+
   const viewConfig = {
     observations: { label: 'Observasi', icon: Briefcase, itemType: 'observation' },
     inspections: { label: 'Inspeksi', icon: Wrench, itemType: 'inspection' },
@@ -248,15 +252,25 @@ export function FeedView({ mode }: FeedViewProps) {
     } finally {
         setLoading(false);
     }
-}, [viewType, statusFilter, riskFilter, categoryFilter, lastVisible]);
+}, [viewType, statusFilter, riskFilter, categoryFilter, lastVisible, toast]);
 
 
   React.useEffect(() => {
     if (mode === 'public') {
+      setItems([]);
+      setLastVisible(null);
+      setHasMore(true);
       fetchPublicItems(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, viewType, statusFilter, riskFilter, categoryFilter]);
+  
+  React.useEffect(() => {
+    if (mode === 'public' && isIntersecting && hasMore && !loading) {
+      fetchPublicItems();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isIntersecting, hasMore, loading, mode]);
 
 
   const data = mode === 'public' ? items : myItems;
@@ -317,7 +331,7 @@ export function FeedView({ mode }: FeedViewProps) {
   };
   
   const areFiltersActive = statusFilter !== 'all' || riskFilter !== 'all' || categoryFilter !== 'all';
-  const isExportDisabled = viewType !== 'observations' || loading;
+  const isExportDisabled = viewType !== 'observations' || isLoading;
 
   function EmptyState() {
     const config = viewConfig[viewType];
@@ -478,22 +492,16 @@ export function FeedView({ mode }: FeedViewProps) {
           <EmptyState />
         )}
         
-        {mode === 'public' && hasMore && (
-            <div className="mt-6 flex justify-center">
-                <Button 
-                    variant="outline"
-                    onClick={() => fetchPublicItems()}
-                    disabled={loading}
-                >
-                    {loading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <Plus className="mr-2 h-4 w-4" />
-                    )}
-                    Tampilkan Lebih Banyak
-                </Button>
+        <div ref={loaderRef} />
+        {mode === 'public' && loading && hasMore && (
+            <div className="mt-6 flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
         )}
+        {!hasMore && mode === 'public' && filteredData.length > 0 && (
+            <p className="mt-6 text-center text-sm text-muted-foreground py-4">You have reached the end.</p>
+        )}
+
       </main>
     </div>
 
