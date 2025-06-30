@@ -3,58 +3,37 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is a member of a specific project.
-    // This is crucial for securing project-scoped data.
     function isProjectMember(projectId) {
-      return get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
+      return request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
     }
 
-    // USER PROFILES
-    // Users can update their own profile.
-    // Any authenticated user can read other user profiles to enable inviting members by email.
-    // This is safe as profiles only contain non-sensitive data like name and email.
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth.uid == userId;
     }
 
-    // PROJECTS
-    // Defines who can read, create, or update project documents.
     match /projects/{projectId} {
-      // READ: Only project members can read the project document.
-      allow read: if isProjectMember(projectId);
-      // CREATE: Any authenticated user can create a new project.
-      allow create: if request.auth != null;
-      // UPDATE: Only project members can update (e.g., add new members in the future).
-      allow update: if isProjectMember(projectId);
-      // DELETE: Deleting projects is disabled for data integrity.
-      allow delete: if false;
+      allow read: if request.auth.uid in resource.data.memberUids;
+      allow create: if request.auth.uid == request.resource.data.ownerUid;
+      allow update: if request.auth.uid in resource.data.memberUids;
     }
 
-    // DATA COLLECTIONS (Observations, Inspections, PTWs)
-    // A single, powerful rule for all data-related collections.
-    match /{collection}/{docId} where collection in ['observations', 'inspections', 'ptws'] {
-      // CREATE: A user can only create documents under their own user ID.
+    match /observations/{obsId} {
+      allow read: if resource.data.scope == 'public' || (request.auth != null && (resource.data.userId == request.auth.uid || isProjectMember(resource.data.projectId)));
       allow create: if request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null && (resource.data.userId == request.auth.uid || isProjectMember(resource.data.projectId));
+    }
 
-      // READ: Determines who can view a specific document based on its scope.
-      allow read: if 
-        // Anyone can read public documents.
-        resource.data.scope == 'public' ||
-        // Only the owner can read their private documents.
-        (resource.data.scope == 'private' && resource.data.userId == request.auth.uid) ||
-        // Only project members can read project-scoped documents.
-        (resource.data.scope == 'project' && isProjectMember(resource.data.projectId));
+    match /inspections/{inspId} {
+      allow read: if resource.data.scope == 'public' || (request.auth != null && (resource.data.userId == request.auth.uid || isProjectMember(resource.data.projectId)));
+      allow create: if request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null && (resource.data.userId == request.auth.uid || isProjectMember(resource.data.projectId));
+    }
 
-      // UPDATE: Determines who can modify a document.
-      allow update: if 
-        // The original creator can always update their own document.
-        request.auth.uid == resource.data.userId ||
-        // Any member of the associated project can also update the document (e.g., to take action).
-        (resource.data.scope == 'project' && isProjectMember(resource.data.projectId));
-      
-      // DELETE: Deleting documents is disabled to preserve historical records.
-      allow delete: if false;
+    match /ptws/{ptwId} {
+      allow read: if resource.data.scope == 'public' || (request.auth != null && (resource.data.userId == request.auth.uid || isProjectMember(resource.data.projectId)));
+      allow create: if request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null && (resource.data.userId == request.auth.uid || isProjectMember(resource.data.projectId));
     }
   }
 }

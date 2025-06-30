@@ -22,33 +22,40 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
+    let unsubscribe: () => void = () => {};
+
     if (user?.uid) {
       setLoading(true);
-      const q = query(
-        collection(db, 'projects'),
-        where('memberUids', 'array-contains', user.uid)
-      );
+      try {
+        const q = query(
+          collection(db, 'projects'),
+          where('memberUids', 'array-contains', user.uid)
+        );
 
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
-        setProjects(userProjects);
-        setLoading(false);
-      }, (error) => {
-        console.error("Error fetching projects:", error);
-        toast({
-          variant: 'destructive',
-          title: 'Error Fetching Projects',
-          description: 'Could not load your projects. Please try again later.',
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
+          setProjects(userProjects);
+          setLoading(false);
+        }, (error) => {
+          console.error("Error fetching projects:", error);
+          toast({
+            variant: 'destructive',
+            title: 'Error Fetching Projects',
+            description: 'Could not load your projects. Please check your Firestore security rules.',
+          });
+          setLoading(false);
         });
+      } catch (error) {
+        console.error("Error setting up project listener:", error);
         setLoading(false);
-      });
-
-      return () => unsubscribe();
+      }
     } else {
       // Not logged in, clear projects and stop loading
       setProjects([]);
       setLoading(false);
     }
+
+    return () => unsubscribe();
   }, [user]);
 
   const addProject = React.useCallback(async (projectName: string, memberEmailsStr: string) => {
