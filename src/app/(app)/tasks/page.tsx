@@ -6,12 +6,15 @@ import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
 import type { Observation, RiskLevel, Company, Location } from '@/lib/types';
 import { useObservations } from '@/contexts/observation-context';
+import { useAuth } from '@/hooks/use-auth';
+import { useProjects } from '@/hooks/use-projects';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FolderPlus } from 'lucide-react';
 
 const ChartContainer = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartContainer), {
   ssr: false,
-  loading: () => <Skeleton className="h-[250px] w-full" />,
+  loading: () => <Skeleton className="h-[220px] w-full" />,
 });
 const BarChart = dynamic(() => import('@/components/ui/chart').then(mod => mod.BarChart), { ssr: false });
 const PieChart = dynamic(() => import('@/components/ui/chart').then(mod => mod.PieChart), { ssr: false });
@@ -56,7 +59,7 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
           <Skeleton className="h-6 w-24" />
         </CardHeader>
         <CardContent className="pb-4">
-          <div className="relative mx-auto aspect-square h-full max-h-[180px] sm:max-h-[200px]">
+          <div className="relative mx-auto aspect-square h-full max-h-[160px] sm:max-h-[180px]">
             <Skeleton className="h-full w-full rounded-full" />
           </div>
         </CardContent>
@@ -78,7 +81,7 @@ const RadialChartCard = ({ loading, value, title, count, color }: { loading: boo
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
-        <div className="relative mx-auto aspect-square h-full max-h-[180px] sm:max-h-[200px]">
+        <div className="relative mx-auto aspect-square h-full max-h-[160px] sm:max-h-[180px]">
             <ChartContainer
               config={chartConfig}
               className="h-full w-full"
@@ -125,7 +128,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="p-0 sm:p-4 sm:pt-0">
-        <div className="h-[250px] sm:h-[280px] w-full">
+        <div className="h-[220px] sm:h-[250px] w-full">
           {loading ? (
             <Skeleton className="h-full w-full" />
           ) : data.length > 0 ? (
@@ -171,40 +174,51 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
 
 
 export default function DashboardPage() {
-  const { observations, loading } = useObservations();
+  const { user } = useAuth();
+  const { observations, loading: observationsLoading } = useObservations();
+  const { projects, loading: projectsLoading } = useProjects();
+
+  const loading = observationsLoading || projectsLoading;
+
+  const projectObservations = React.useMemo(() => {
+    if (!user || projects.length === 0) return [];
+    const userProjectIds = projects.map(p => p.id);
+    return observations.filter(obs => obs.projectId && userProjectIds.includes(obs.projectId));
+  }, [observations, projects, user]);
+
 
   const overviewData = React.useMemo(() => {
-    const total = observations.length;
+    const total = projectObservations.length;
     if (total === 0) return { pendingPercentage: 0, pendingCount: 0 };
-    const pendingCount = observations.filter(o => o.status !== 'Completed').length;
+    const pendingCount = projectObservations.filter(o => o.status !== 'Completed').length;
     return {
       pendingPercentage: Math.round((pendingCount / total) * 100),
       pendingCount,
     };
-  }, [observations]);
+  }, [projectObservations]);
 
   const criticalPercentageData = React.useMemo(() => {
-    const total = observations.length;
+    const total = projectObservations.length;
     if (total === 0) return { percentage: 0, count: 0 };
-    const criticalCount = observations.filter(o => o.riskLevel === 'Critical').length;
+    const criticalCount = projectObservations.filter(o => o.riskLevel === 'Critical').length;
     return {
       percentage: Math.round((criticalCount / total) * 100),
       count: criticalCount,
     };
-  }, [observations]);
+  }, [projectObservations]);
 
   const dailyData = React.useMemo(() => {
     const dataMap = new Map<string, { pending: number, completed: number }>();
     
-    // Initialize map for the last 30 days for trend analysis
-    for (let i = 29; i >= 0; i--) {
+    // Initialize map for the last 7 days for trend analysis
+    for (let i = 6; i >= 0; i--) {
       const day = new Date();
       day.setDate(day.getDate() - i);
       const dayKey = format(day, 'yyyy-MM-dd');
       dataMap.set(dayKey, { pending: 0, completed: 0 });
     }
 
-    for (const obs of observations) {
+    for (const obs of projectObservations) {
         const mapKey = format(new Date(obs.date), 'yyyy-MM-dd');
         if (dataMap.has(mapKey)) {
             const dayData = dataMap.get(mapKey)!;
@@ -220,11 +234,11 @@ export default function DashboardPage() {
         day: format(new Date(dateStr), 'd/M'),
         ...counts
     }));
-  }, [observations]);
+  }, [projectObservations]);
 
 
   const riskDetailsData = React.useMemo(() => {
-    const counts = observations.reduce((acc, obs) => {
+    const counts = projectObservations.reduce((acc, obs) => {
       acc[obs.riskLevel] = (acc[obs.riskLevel] || 0) + 1;
       return acc;
     }, {} as Record<RiskLevel, number>);
@@ -236,10 +250,10 @@ export default function DashboardPage() {
         fill: riskPieChartConfig[level].color
       }))
       .filter((item) => item.count > 0);
-  }, [observations]);
+  }, [projectObservations]);
   
   const companyDistributionData = React.useMemo(() => {
-    const counts = observations.reduce((acc, obs) => {
+    const counts = projectObservations.reduce((acc, obs) => {
       acc[obs.company] = (acc[obs.company] || 0) + 1;
       return acc;
     }, {} as Record<Company, number>);
@@ -247,10 +261,10 @@ export default function DashboardPage() {
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-  }, [observations]);
+  }, [projectObservations]);
 
   const locationDistributionData = React.useMemo(() => {
-    const counts = observations.reduce((acc, obs) => {
+    const counts = projectObservations.reduce((acc, obs) => {
       acc[obs.location] = (acc[obs.location] || 0) + 1;
       return acc;
     }, {} as Record<Location, number>);
@@ -258,7 +272,7 @@ export default function DashboardPage() {
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-  }, [observations]);
+  }, [projectObservations]);
 
   const RADIAN = Math.PI / 180;
   const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
@@ -285,12 +299,24 @@ export default function DashboardPage() {
       </text>
     );
   };
+  
+  if (!loading && projects.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-card p-8 rounded-lg">
+        <FolderPlus className="h-16 w-16 text-muted-foreground" />
+        <h3 className="mt-4 text-2xl font-bold">Mulai dengan Proyek Pertama Anda</h3>
+        <p className="mt-2 max-w-md text-muted-foreground">
+          Dashboard ini akan menampilkan analitik dari laporan observasi di dalam proyek Anda. Buat proyek baru untuk mulai melacak data.
+        </p>
+      </div>
+    );
+  }
 
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Dashboard Proyek</h2>
       </div>
       
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -316,7 +342,7 @@ export default function DashboardPage() {
                 <CardTitle>Detail Risiko</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-[250px] sm:h-[280px] w-full">
+                <div className="h-[220px] sm:h-[250px] w-full">
                 {loading ? (
                     <Skeleton className="h-full w-full" />
                 ) : riskDetailsData.length > 0 ? (
@@ -353,10 +379,10 @@ export default function DashboardPage() {
         
         <Card className="col-span-1 lg:col-span-1">
             <CardHeader>
-            <CardTitle>Tren Observasi Harian (30 Hari Terakhir)</CardTitle>
+            <CardTitle>Tren Observasi Harian (7 Hari Terakhir)</CardTitle>
             </CardHeader>
             <CardContent>
-            <div className="h-[250px] sm:h-[280px] w-full">
+            <div className="h-[220px] sm:h-[250px] w-full">
                 {loading ? <Skeleton className="h-full w-full" /> : (
                 <ChartContainer config={dailyChartConfig} className="h-full w-full">
                     <BarChart data={dailyData} accessibilityLayer>
