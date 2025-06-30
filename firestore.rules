@@ -2,75 +2,59 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
-    // Helper function to check if a user is a member of a specific project.
-    // It verifies that the user's UID is present in the project's memberUids array.
+    function isUser(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Correctly checks if the requesting user is a member of a given project.
+    // This was the source of a critical bug.
     function isProjectMember(projectId) {
-      return get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
+      // The `get()` call reads the project document.
+      // We check if the user's UID is present in the `memberUids` array using the `in` operator.
+      return isSignedIn() && projectId != null && request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
     }
-    
-    //----------------------------------------------------------------------
-    //  USERS Collection
-    //----------------------------------------------------------------------
+
+    // --- Collection Rules ---
+
+    // Users: Can only read/update their own profile. Authenticated users can list them for invites.
     match /users/{userId} {
-      // ANY authenticated user can READ any user's profile.
-      // This is necessary to allow searching for users by email to invite them to projects.
-      // The data in user profiles (name, email, position) is not considered highly sensitive.
-      allow read: if request.auth != null;
-
-      // ONLY the user themselves can CREATE or UPDATE their own profile.
-      allow write: if request.auth.uid == userId;
+      allow read, update: if isUser(userId);
+      // This allows the createProject server action to find users by email.
+      allow list: if isSignedIn(); 
     }
 
-    //----------------------------------------------------------------------
-    //  PROJECTS Collection
-    //----------------------------------------------------------------------
+    // Projects: Members can read/update. Only the owner can create.
     match /projects/{projectId} {
-      // READ access is granted if the user is a member of the project.
-      allow read: if request.auth != null && isProjectMember(projectId);
-      
-      // CREATE access is granted if the requesting user is the owner of the new project document.
-      // This prevents users from creating projects on behalf of others.
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.ownerUid;
-
-      // UPDATE access is granted only to the project owner.
-      // (For future features like adding/removing members).
-      allow update: if request.auth != null && get(/databases/$(database)/documents/projects/$(projectId)).data.ownerUid == request.auth.uid;
-
-      // DELETE access is disabled for now to prevent accidental data loss.
-      allow delete: if false;
+      allow read, update: if isProjectMember(projectId);
+      allow create: if isSignedIn() && 
+                     request.resource.data.ownerUid == request.auth.uid && 
+                     request.auth.uid in request.resource.data.memberUids;
     }
-    
-    //----------------------------------------------------------------------
-    //  DATA Collections (Observations, Inspections, PTWs)
-    //  Generic rules apply to all three data types.
-    //----------------------------------------------------------------------
-    match /{collection}/{docId} where collection in ['observations', 'inspections', 'ptws'] {
-    
-      // READ access logic:
-      // A user can read a document if:
-      // 1. The document is marked as 'public'.
-      // 2. The user is a member of the project the document belongs to.
-      // 3. The document is the user's own private document (scope is 'private' or 'project' and userId matches).
-      allow read: if request.auth != null && 
-                   (resource.data.scope == 'public' || 
-                    (resource.data.projectId != null && isProjectMember(resource.data.projectId)) ||
-                    (resource.data.scope == 'private' && resource.data.userId == request.auth.uid));
 
-      // CREATE access is granted if the user creating the document is the same user
-      // assigned to the 'userId' field in the document.
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    // Generic Rules for all item collections (observations, inspections, ptws)
+    match /{itemCollection}/{itemId} {
+       // READ: An item can be read if:
+       // 1. It's public.
+       // 2. It's private AND you are the owner.
+       // 3. It's a project item AND you are a member of that project.
+       allow read: if resource.data.scope == 'public' ||
+                      (resource.data.scope == 'private' && isUser(resource.data.userId)) || 
+                      (resource.data.scope == 'project' && isProjectMember(resource.data.projectId));
 
-      // UPDATE access logic:
-      // A user can update a document if:
-      // 1. They are a member of the project the document belongs to.
-      // 2. It is their own private document.
-      allow update: if request.auth != null &&
-                     ((resource.data.projectId != null && isProjectMember(resource.data.projectId)) ||
-                      (resource.data.scope == 'private' && resource.data.userId == request.auth.uid));
-                      
-      // DELETE access is disabled for data integrity.
-      allow delete: if false;
+       // CREATE: An item can be created if you are signed in and you are the author.
+       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+
+       // UPDATE: An item can be updated if you are the original author OR a member of its project.
+       allow update: if isUser(resource.data.userId) || isProjectMember(resource.data.projectId);
+       
+       // DELETE: Only the creator can delete their own reports.
+       allow delete: if isUser(resource.data.userId);
     }
   }
 }
