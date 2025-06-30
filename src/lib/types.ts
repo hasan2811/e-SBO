@@ -4,6 +4,7 @@ export type ObservationCategory = 'Structural' | 'Electrical' | 'Plumbing' | 'Ge
 export type Company = 'Tambang' | 'Migas' | 'Konstruksi' | 'Manufaktur';
 export type Location = 'International' | 'National' | 'Local' | 'Regional';
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
+export type Scope = 'public' | 'private' | 'project';
 
 export const RISK_LEVELS: [RiskLevel, ...RiskLevel[]] = ['Low', 'Medium', 'High', 'Critical'];
 export const OBSERVATION_STATUSES: [ObservationStatus, ...ObservationStatus[]] = ['Pending', 'In Progress', 'Completed'];
@@ -27,6 +28,7 @@ export type Project = {
 
 export type Observation = {
   id: string;
+  itemType: 'observation';
   referenceId?: string; // Professional, user-facing ID
   userId: string;
   location: Location;
@@ -39,7 +41,7 @@ export type Observation = {
   category: ObservationCategory;
   company: Company;
   photoUrl?: string;
-  scope: 'public' | 'private' | 'project';
+  scope: Scope;
   projectId?: string | null;
   actionTakenDescription?: string;
   actionTakenPhotoUrl?: string;
@@ -62,6 +64,7 @@ export type EquipmentType = 'Heavy Machinery' | 'Hand Tool' | 'Vehicle' | 'Elect
 
 export type Inspection = {
   id: string;
+  itemType: 'inspection';
   referenceId?: string;
   userId: string;
   submittedBy: string;
@@ -73,7 +76,7 @@ export type Inspection = {
   status: InspectionStatus;
   recommendation?: string;
   photoUrl?: string;
-  scope: 'public' | 'private' | 'project';
+  scope: Scope;
   projectId?: string | null;
   aiStatus?: 'processing' | 'completed' | 'failed';
   aiSummary?: string;
@@ -85,6 +88,7 @@ export type PtwStatus = 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed';
 
 export type Ptw = {
   id: string;
+  itemType: 'ptw';
   referenceId?: string;
   userId: string;
   submittedBy: string;
@@ -94,7 +98,7 @@ export type Ptw = {
   contractor: string;
   jsaPdfUrl: string;
   status: PtwStatus;
-  scope: 'public' | 'private' | 'project';
+  scope: Scope;
   projectId?: string | null;
   approver?: string;
   approvedDate?: string;
@@ -102,4 +106,4 @@ export type Ptw = {
   signatureDataUrl?: string;
 };
 
-export type AllItems = ((Observation & { itemType: 'observation' }) | (Inspection & { itemType: 'inspection' }) | (Ptw & { itemType: 'ptw' }));
+export type AllItems = Observation | Inspection | Ptw;

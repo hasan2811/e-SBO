@@ -1,51 +1,74 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isSignedIn() {
+
+    // Helper Functions
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Users: Can read any profile (for inviting), but only write to their own.
-    match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == userId;
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+		
+    function isProjectMember(projectId) {
+      return isAuthenticated() && get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.hasAny([request.auth.uid]);
     }
 
-    // Projects: 
-    // - To read/update a project, you must be a member. This rule works for both
-    //   single-document gets and collection queries using "array-contains".
-    // - To create a project, you must be the owner specified in the new document.
+    // Rules for 'users' collection
+    match /users/{userId} {
+      // Anyone authenticated can see a user's profile (for display names etc.)
+      allow get: if isAuthenticated();
+      // Only the user themselves can create or update their own profile
+      allow write: if isOwner(userId);
+    }
+
+    // Rules for 'projects' collection
     match /projects/{projectId} {
-      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow read, update: if isSignedIn() && request.auth.uid in resource.data.memberUids;
-      allow delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      // Anyone authenticated can create a new project document
+      allow create: if isAuthenticated() && isOwner(request.resource.data.ownerUid);
+      // Only members of the project can read its details
+      allow get, list: if isProjectMember(projectId);
+      // Only the owner can update a project (e.g., to add members in the future)
+      allow update: if isOwner(get(/databases/$(database)/documents/projects/$(projectId)).data.ownerUid);
+      // Nobody can delete projects from the client for safety
+      allow delete: if false;
     }
-    
-    // Generic rule for data collections (observations, inspections, ptw)
-    function canAccess(item) {
-      let isOwner = isSignedIn() && item.userId == request.auth.uid;
-      let isPublic = item.scope == 'public';
-      // projectId can be null, so check for it before trying to access it.
-      let isProjectScope = item.projectId != null && (request.auth.uid in get(/databases/$(database)/documents/projects/$(item.projectId)).data.memberUids);
+
+    // Generic rules for data collections (observations, inspections, ptws)
+    match /{collectionName}/{docId} where collectionName in ['observations', 'inspections', 'ptws'] {
       
-      return isOwner || isPublic || isProjectScope;
-    }
-    
-    match /observations/{observationId} {
-      allow create: if canAccess(request.resource.data);
-      allow read, write: if canAccess(resource.data);
-    }
-    
-    match /inspections/{inspectionId} {
-      allow create: if canAccess(request.resource.data);
-      allow read, write: if canAccess(resource.data);
-    }
-    
-    match /ptws/{ptwId} {
-      allow create: if canAccess(request.resource.data);
-      allow read, write: if canAccess(resource.data);
+      function canRead() {
+        // Allow read if:
+        // 1. The document is public
+        return resource.data.scope == 'public'
+        // 2. The user is authenticated and is the owner
+        || (isAuthenticated() && isOwner(resource.data.userId))
+        // 3. The user is a member of the linked project
+        || (resource.data.projectId != null && isProjectMember(resource.data.projectId));
+      }
+
+      function canWrite() {
+        // Allow write if:
+        // 1. Creating a new document and is authenticated
+        return isAuthenticated() && isOwner(request.resource.data.userId);
+      }
+      
+      function canUpdate() {
+        // Allow update if:
+        // 1. Authenticated and is owner
+        return isAuthenticated() && isOwner(resource.data.userId)
+        // 2. Or is a member of the project it belongs to
+        || (resource.data.projectId != null && isProjectMember(resource.data.projectId));
+      }
+
+      allow get, list: if canRead();
+      allow create: if canWrite();
+      allow update: if canUpdate();
+      // Nobody can delete for data integrity
+      allow delete: if false;
     }
   }
 }

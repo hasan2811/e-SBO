@@ -26,7 +26,6 @@ import { format } from 'date-fns';
 interface ObservationContextType {
   publicItems: AllItems[];
   myItems: AllItems[];
-  allItems: AllItems[];
   loading: boolean;
   addObservation: (
     observation: Omit<Observation, 'id' | 'referenceId'>
@@ -53,112 +52,60 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const { user } = useAuth();
     const { projects, loading: projectsLoading } = useProjects();
     
-    const [observations, setObservations] = React.useState<Observation[]>([]);
-    const [inspections, setInspections] = React.useState<Inspection[]>([]);
-    const [ptws, setPtws] = React.useState<Ptw[]>([]);
+    const [publicItems, setPublicItems] = React.useState<AllItems[]>([]);
+    const [myItems, setMyItems] = React.useState<AllItems[]>([]);
     const [loading, setLoading] = React.useState(true);
 
+    const collectionsToWatch = ['observations', 'inspections', 'ptws'];
+
+    // Listener for Public Data
     React.useEffect(() => {
-        // Master listener that reacts to changes in authentication or project membership
-        let unsubs: (() => void)[] = [];
-        
-        const setupListeners = () => {
-          setLoading(true);
+        setLoading(true);
+        const unsubs = collectionsToWatch.map(colName => {
+            const q = query(collection(db, colName), where('scope', '==', 'public'));
+            return onSnapshot(q, (snapshot) => {
+                const items = snapshot.docs.map(d => ({ ...d.data(), id: d.id, itemType: colName.slice(0, -1) })) as AllItems[];
+                setPublicItems(prev => {
+                    const otherItems = prev.filter(item => item.itemType !== colName.slice(0, -1));
+                    return [...otherItems, ...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                });
+            }, (error) => console.error(`Error fetching public ${colName}:`, error));
+        });
+        setLoading(false);
+        return () => unsubs.forEach(unsub => unsub());
+    }, []);
 
-          // Clean up previous listeners before setting up new ones
-          unsubs.forEach(unsub => unsub());
-          unsubs = [];
-          
-          const userProjectIds = projects.map(p => p.id);
+    // Listener for Personal and Project Data
+    React.useEffect(() => {
+        if (projectsLoading) return; // Wait until projects are loaded
 
-          const collectionsToWatch: { [key: string]: React.Dispatch<React.SetStateAction<any[]>> } = {
-              observations: setObservations,
-              inspections: setInspections,
-              ptws: setPtws,
-          };
-
-          Object.entries(collectionsToWatch).forEach(([colName, setter]) => {
-              const baseCollection = collection(db, colName);
-              let masterQuery;
-
-              // Build the query based on user status
-              if (!user) {
-                  // Not logged in: only see public items
-                  masterQuery = query(baseCollection, where('scope', '==', 'public'));
-              } else {
-                  // Logged in: build a complex query
-                  const conditions = [
-                      where('scope', '==', 'public'),
-                      where('userId', '==', user.uid)
-                  ];
-                  // Only add the 'in' clause if there are projects, otherwise it errors
-                  if (userProjectIds.length > 0) {
-                      conditions.push(where('projectId', 'in', userProjectIds));
-                  }
-                  masterQuery = query(baseCollection, or(...conditions));
-              }
-
-              const unsub = onSnapshot(masterQuery, (snapshot) => {
-                  const items = snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as any[];
-                  setter(items);
-              }, (err) => {
-                  console.error(`Error fetching ${colName}:`, err);
-                  toast({
-                    variant: 'destructive',
-                    title: `Failed to load ${colName}`,
-                    description: err.message, // Use the actual error message
-                  });
-                  setter([]);
-              });
-              unsubs.push(unsub);
-          });
-          
-          setLoading(false);
+        if (!user) {
+            setMyItems([]);
+            return; // No user, no personal data
         }
 
-        // We run setupListeners only when auth or project loading is complete
-        if (!projectsLoading) {
-            setupListeners();
-        }
+        setLoading(true);
+        const userProjectIds = projects.map(p => p.id);
+        const unsubs = collectionsToWatch.map(colName => {
+            const conditions = [where('userId', '==', user.uid)];
+            if (userProjectIds.length > 0) {
+                conditions.push(where('projectId', 'in', userProjectIds));
+            }
+            const q = query(collection(db, colName), or(...conditions));
+            
+            return onSnapshot(q, (snapshot) => {
+                const items = snapshot.docs.map(d => ({ ...d.data(), id: d.id, itemType: colName.slice(0, -1) })) as AllItems[];
+                 setMyItems(prev => {
+                    const otherItems = prev.filter(item => item.itemType !== colName.slice(0, -1));
+                    return [...otherItems, ...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                });
+            }, (error) => console.error(`Error fetching personal ${colName}:`, error));
+        });
 
-        return () => {
-            unsubs.forEach(unsub => unsub());
-        };
-    // Re-run this entire effect if the user logs in/out, or their project list changes.
+        setLoading(false);
+        return () => unsubs.forEach(unsub => unsub());
     }, [user, projects, projectsLoading]);
 
-    const allItems = React.useMemo(() => {
-      const combined = [
-        ...observations.map(o => ({...o, itemType: 'observation' as const})),
-        ...inspections.map(i => ({...i, itemType: 'inspection' as const})),
-        ...ptws.map(p => ({...p, itemType: 'ptw' as const})),
-      ];
-      return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [observations, inspections, ptws]);
-
-    // Refined logic to separate items based on scope and ownership
-    const { publicItems, myItems } = React.useMemo(() => {
-        const publicData: AllItems[] = [];
-        const myData: AllItems[] = [];
-        const userProjectIds = projects.map(p => p.id);
-
-        allItems.forEach(item => {
-            const isPublic = item.scope === 'public';
-            const isMine = user && item.userId === user.uid;
-            const isMyProject = user && item.projectId && userProjectIds.includes(item.projectId);
-
-            if (isPublic) {
-                publicData.push(item);
-            }
-            if (isMine || isMyProject) {
-                myData.push(item);
-            }
-        });
-        
-        const myItemsUnique = Array.from(new Map(myData.map(item => [item.id, item])).values());
-        
-        return { publicItems: publicData, myItems: myItemsUnique };
-    }, [allItems, user, projects]);
 
     const _runObservationAiAnalysis = React.useCallback(async (observation: Observation) => {
       const observationDocRef = doc(db, 'observations', observation.id);
@@ -248,18 +195,18 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }, []);
 
     const retryAiAnalysis = React.useCallback(async (item: Observation | Inspection) => {
-      if ('riskLevel' in item) {
+      if (item.itemType === 'observation') {
         const observationDocRef = doc(db, 'observations', item.id);
         await updateDoc(observationDocRef, { aiStatus: 'processing' });
         _runObservationAiAnalysis(item as Observation);
-      } else if ('equipmentName' in item) {
+      } else if (item.itemType === 'inspection') {
         const inspectionDocRef = doc(db, 'inspections', item.id);
         await updateDoc(inspectionDocRef, { aiStatus: 'processing' });
         _runInspectionAiAnalysis(item as Inspection);
       }
     }, [_runObservationAiAnalysis, _runInspectionAiAnalysis]);
 
-    const value = { allItems, publicItems, myItems, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
+    const value = { publicItems, myItems, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
 
     return (
         <ObservationContext.Provider value={value}>

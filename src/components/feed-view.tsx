@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Home, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -23,6 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/compone
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { Home } from 'lucide-react';
 
 const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
     const riskColorStyles: Record<RiskLevel, string> = {
@@ -177,7 +178,11 @@ export function FeedView({ mode }: FeedViewProps) {
     ptws: { label: 'PTW', icon: PtwIcon },
   };
 
-  const pageTitle = viewConfig[viewType].label;
+  const pageTitle = viewType === 'observations' && mode === 'public' 
+    ? 'Jurnal Publik' 
+    : viewType === 'observations' && mode === 'personal'
+    ? 'Observasi Proyek'
+    : viewConfig[viewType].label;
   
   const clearFilters = () => {
     setStatusFilter('all');
@@ -187,9 +192,18 @@ export function FeedView({ mode }: FeedViewProps) {
 
   const filteredData = React.useMemo(() => {
     const sourceData = mode === 'public' ? publicItems : myItems;
-    
+    let dataToFilter = [];
+
     if (viewType === 'observations') {
-        let observationData = sourceData.filter((item): item is Observation & { itemType: 'observation' } => item.itemType === 'observation');
+        dataToFilter = sourceData.filter((item): item is Observation & { itemType: 'observation' } => item.itemType === 'observation');
+    } else if (viewType === 'inspections') {
+        dataToFilter = sourceData.filter((item): item is Inspection & { itemType: 'inspection' } => item.itemType === 'inspection');
+    } else if (viewType === 'ptws') {
+        dataToFilter = sourceData.filter((item): item is Ptw & { itemType: 'ptw' } => item.itemType === 'ptw');
+    }
+
+    if (viewType === 'observations') {
+        let observationData = dataToFilter as (Observation & { itemType: 'observation' })[];
         if (statusFilter !== 'all') {
             observationData = observationData.filter(obs => obs.status === statusFilter);
         }
@@ -201,14 +215,8 @@ export function FeedView({ mode }: FeedViewProps) {
         }
         return observationData;
     }
-    if (viewType === 'inspections') {
-      return sourceData.filter((item): item is Inspection & { itemType: 'inspection' } => item.itemType === 'inspection');
-    }
-    if (viewType === 'ptws') {
-      return sourceData.filter((item): item is Ptw & { itemType: 'ptw' } => item.itemType === 'ptw');
-    }
     
-    return [];
+    return dataToFilter;
   }, [publicItems, myItems, mode, viewType, statusFilter, riskFilter, categoryFilter]);
 
   const displayObservation = React.useMemo(() => 
@@ -227,11 +235,11 @@ export function FeedView({ mode }: FeedViewProps) {
   );
 
   const handleExport = () => {
-    const dataToExport = filteredData;
     if (viewType !== 'observations') {
       toast({ title: 'Fitur Dalam Pengembangan', description: 'Ekspor untuk tipe data ini akan segera hadir.' });
       return;
     }
+    const dataToExport = filteredData as Observation[];
     if (dataToExport.length === 0) {
       toast({
         variant: 'destructive',
@@ -240,8 +248,8 @@ export function FeedView({ mode }: FeedViewProps) {
       });
       return;
     }
-    const fileName = `${pageTitle}_${format(new Date(), 'yyyy-MM-dd')}`;
-    exportToExcel(dataToExport as Observation[], fileName);
+    const fileName = `${pageTitle.replace(/\s/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}`;
+    exportToExcel(dataToExport, fileName);
   };
   
   const areFiltersActive = statusFilter !== 'all' || riskFilter !== 'all' || categoryFilter !== 'all';
@@ -276,7 +284,7 @@ export function FeedView({ mode }: FeedViewProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem onSelect={() => setViewType('observations')}>{viewConfig.observations.label}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setViewType('observations')}>Observasi</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setViewType('inspections')}>{viewConfig.inspections.label}</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setViewType('ptws')}>{viewConfig.ptws.label}</DropdownMenuItem>
               </DropdownMenuContent>
