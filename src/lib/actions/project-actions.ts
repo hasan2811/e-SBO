@@ -1,7 +1,8 @@
+
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, writeBatch } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -21,37 +22,41 @@ export async function createProject(
   }
 
   try {
-    const memberEmailsInput = memberEmailsStr
+    const trimmedEmails = memberEmailsStr
       .split(',')
       .map((email) => email.trim().toLowerCase())
-      .filter((email) => email.length > 0 && email.includes('@') && email !== owner.email.toLowerCase());
+      .filter((email) => email.length > 0 && email.includes('@'));
+      
+    const memberEmailsInput = [...new Set(trimmedEmails)];
 
-    const allEmailsToFind = [...new Set(memberEmailsInput)];
+    const allEmailsToFind = memberEmailsInput.filter(email => email !== owner.email.toLowerCase());
+
     const ownerUid = owner.uid;
     const foundUserUids = new Set<string>([ownerUid]);
     const notFoundEmails = new Set<string>();
 
     if (allEmailsToFind.length > 0) {
-      // Firestore 'in' queries are limited to 30 items. Chunk the emails to handle more.
-      const emailChunks = [];
+      const emailChunks: string[][] = [];
       for (let i = 0; i < allEmailsToFind.length; i += 30) {
         emailChunks.push(allEmailsToFind.slice(i, i + 30));
       }
 
-      const userQueries = emailChunks.map(chunk => getDocs(query(collection(db, 'users'), where('email', 'in', chunk))));
+      const userQueries = emailChunks.map(chunk => 
+        getDocs(query(collection(db, 'users'), where('email', 'in', chunk)))
+      );
       const querySnapshots = await Promise.all(userQueries);
 
-      const foundEmails = new Set<string>();
+      const foundEmailsInDb = new Set<string>();
       for (const snapshot of querySnapshots) {
         snapshot.forEach((doc) => {
           const userData = doc.data();
           foundUserUids.add(doc.id);
-          foundEmails.add(userData.email.toLowerCase());
+          foundEmailsInDb.add(userData.email.toLowerCase());
         });
       }
       
       allEmailsToFind.forEach(email => {
-        if (!foundEmails.has(email)) {
+        if (!foundEmailsInDb.has(email)) {
           notFoundEmails.add(email);
         }
       });
@@ -64,7 +69,6 @@ export async function createProject(
       createdAt: new Date().toISOString(),
     });
     
-    // Revalidate paths to ensure fresh data is shown on relevant pages.
     revalidatePath('/tasks');
     revalidatePath('/beranda');
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -24,41 +25,35 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     let unsubscribe: () => void = () => {};
 
-    // Only set up the listener if we have a user ID.
     if (user?.uid) {
       setLoading(true);
-      try {
-        const q = query(
-          collection(db, 'projects'),
-          where('memberUids', 'array-contains', user.uid)
-        );
+      const projectsQuery = query(
+        collection(db, 'projects'),
+        where('memberUids', 'array-contains', user.uid)
+      );
 
-        unsubscribe = onSnapshot(q, (snapshot) => {
+      unsubscribe = onSnapshot(projectsQuery, 
+        (snapshot) => {
           const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
           setProjects(userProjects);
           setLoading(false);
-        }, (error) => {
+        }, 
+        (error) => {
           console.error("Error fetching projects:", error);
           toast({
             variant: 'destructive',
             title: 'Error Fetching Projects',
-            description: error.message,
+            description: "Could not retrieve project list. This might be a permissions issue. " + error.message,
           });
           setProjects([]);
           setLoading(false);
-        });
-      } catch (error) {
-        console.error("Error setting up project listener:", error);
-        setProjects([]);
-        setLoading(false);
-      }
+        }
+      );
     } else {
-      // If there's no user, clear projects and stop loading.
       setProjects([]);
       setLoading(false);
     }
 
-    // Cleanup function to unsubscribe from the listener when the component unmounts or user changes.
     return () => unsubscribe();
   }, [user]);
 
