@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { useObservations } from '@/contexts/observation-context';
-import type { AllItems, Observation, Inspection, Ptw } from '@/lib/types';
+import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCategory, ObservationStatus } from '@/lib/types';
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { RiskBadge, StatusBadge, InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
@@ -20,7 +20,7 @@ import { exportToExcel } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
@@ -161,13 +161,16 @@ export function FeedView({ mode }: FeedViewProps) {
   };
 
   const filteredData = React.useMemo(() => {
-    if (mode === 'personal' && !user) return [];
-
     let data: AllItems[] = allItems;
     
-    if (mode === 'personal' && user) {
-        data = data.filter(item => item.scope === 'private' && item.userId === user.uid);
-    } else {
+    if (mode === 'personal') {
+        if (!user) return [];
+        const userProjectIds = user.projectIds || [];
+        data = data.filter(item => 
+            (item.scope === 'private' && item.userId === user.uid) ||
+            (item.scope === 'project' && item.projectId && userProjectIds.includes(item.projectId))
+        );
+    } else { // mode === 'public'
         data = data.filter(item => item.scope === 'public');
     }
     
@@ -232,7 +235,7 @@ export function FeedView({ mode }: FeedViewProps) {
   const EmptyState = () => {
     const config = viewConfig[viewType];
     const emptyText = mode === 'personal' 
-        ? `Anda belum membuat ${config.label.toLowerCase()} pribadi.`
+        ? `Anda belum membuat ${config.label.toLowerCase()} atau belum ada laporan di proyek Anda.`
         : `Tidak ada ${config.label.toLowerCase()} publik yang tersedia.`
     
     const filterText = `Tidak ada ${config.label.toLowerCase()} yang cocok dengan filter Anda.`;
@@ -288,21 +291,21 @@ export function FeedView({ mode }: FeedViewProps) {
                         </Tooltip>
 
                         <PopoverContent className="w-80" align="end">
-                            <div className="space-y-4">
+                            <div className="grid gap-4">
                                 <div className="space-y-1">
                                     <h4 className="font-medium leading-none">Filter Observasi</h4>
                                     <p className="text-sm text-muted-foreground">
                                         Persempit hasil berdasarkan kriteria.
                                     </p>
                                 </div>
-                                <div className="space-y-4">
+                                <div className="grid gap-4">
                                     <div className="space-y-2">
                                         <Label>Status</Label>
                                         <Select value={statusFilter} onValueChange={setStatusFilter}>
                                             <SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="all">Semua Status</SelectItem>
-                                                {OBSERVATION_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                                {(OBSERVATION_STATUSES as readonly ObservationStatus[]).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -312,7 +315,7 @@ export function FeedView({ mode }: FeedViewProps) {
                                             <SelectTrigger><SelectValue placeholder="Pilih risiko" /></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="all">Semua Risiko</SelectItem>
-                                                {RISK_LEVELS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                                {(RISK_LEVELS as readonly RiskLevel[]).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -322,17 +325,20 @@ export function FeedView({ mode }: FeedViewProps) {
                                             <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="all">Semua Kategori</SelectItem>
-                                                {OBSERVATION_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                                {(OBSERVATION_CATEGORIES as readonly ObservationCategory[]).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                 </div>
-                                {areFiltersActive && (
-                                    <Button variant="ghost" onClick={clearFilters} disabled={!areFiltersActive} className="w-full justify-center mt-4">
+                                <div className="flex justify-between items-center pt-2 border-t -mx-4 px-4 pb-0">
+                                    <Button variant="ghost" onClick={clearFilters} disabled={!areFiltersActive}>
                                         <FilterX className="mr-2 h-4 w-4" />
                                         Hapus Filter
                                     </Button>
-                                )}
+                                    <PopoverClose asChild>
+                                        <Button>Selesai</Button>
+                                    </PopoverClose>
+                                </div>
                             </div>
                         </PopoverContent>
                     </Popover>
@@ -407,5 +413,3 @@ export function FeedView({ mode }: FeedViewProps) {
    </>
   );
 }
-
-    
