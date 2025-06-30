@@ -11,7 +11,7 @@ export function BottomNavBar() {
 
   const navItems = [
     { href: '/', label: 'Publik', icon: Home },
-    { href: '/beranda', label: 'Proyek Saya', icon: Briefcase },
+    { href: '/beranda', label: 'Project', icon: Briefcase },
     { href: '/tasks', label: 'Dashboard', icon: LayoutDashboard },
   ];
 

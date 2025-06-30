@@ -182,8 +182,8 @@ export function FeedView({ mode }: FeedViewProps) {
   };
 
   const pageTitle = mode === 'public' 
-    ? 'Jurnal Publik' 
-    : 'Proyek Saya';
+    ? 'Publik' 
+    : 'Project';
   
   const clearFilters = () => {
     setStatusFilter('all');
