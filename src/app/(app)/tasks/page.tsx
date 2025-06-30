@@ -9,7 +9,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { useProjects } from '@/hooks/use-projects';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FolderPlus } from 'lucide-react';
+import { FolderPlus, TrendingUp, AlertTriangle, CheckCircle, Sparkles } from 'lucide-react';
+import { analyzeDashboardData, AnalyzeDashboardDataOutput } from '@/ai/flows/analyze-dashboard-data';
 
 const ChartContainer = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartContainer), {
   ssr: false,
@@ -48,6 +49,79 @@ const riskPieChartConfig = {
     Medium: { label: "Medium", color: "hsl(var(--chart-4))", icon: 'circle' },
     High: { label: "High", color: "hsl(var(--chart-5))", icon: 'circle' },
     Critical: { label: "Critical", color: "hsl(var(--destructive))", icon: 'circle' },
+};
+
+const AiAnalysisCard = ({ analysis, loading }: { analysis: AnalyzeDashboardDataOutput | null, loading: boolean }) => {
+    if (loading) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span>Analisis Tren AI</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <div className="space-y-2">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+            </div>
+             <div className="space-y-2">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-4 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+  
+    if (!analysis) return null;
+
+    const renderInsightList = (text: string) => (
+        <ul className="space-y-1 pl-1">
+          {text.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((item, index) => (
+            <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+              <span className="text-primary mt-1">&bull;</span>
+              <span>{item.replace(/^- /, '')}</span>
+            </li>
+          ))}
+        </ul>
+    );
+  
+    return (
+      <Card className="bg-primary/5 border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-primary">
+            <Sparkles className="h-5 w-5" />
+            <span>Analisis Tren AI</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <h4 className="font-semibold flex items-center gap-2 mb-1">
+              <TrendingUp className="h-4 w-4" />
+              Tren Utama
+            </h4>
+            {renderInsightList(analysis.keyTrends)}
+          </div>
+          <div>
+            <h4 className="font-semibold flex items-center gap-2 mb-1">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Potensi Risiko
+            </h4>
+            {renderInsightList(analysis.emergingRisks)}
+          </div>
+          <div>
+            <h4 className="font-semibold flex items-center gap-2 mb-1">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              Perkembangan Positif
+            </h4>
+            {renderInsightList(analysis.positiveHighlights)}
+          </div>
+        </CardContent>
+      </Card>
+    );
 };
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
@@ -177,6 +251,8 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { myItems, loading: observationsLoading } = useObservations();
   const { projects, loading: projectsLoading } = useProjects();
+  const [analysis, setAnalysis] = React.useState<AnalyzeDashboardDataOutput | null>(null);
+  const [analysisLoading, setAnalysisLoading] = React.useState(true);
 
   const loading = observationsLoading || projectsLoading;
 
@@ -210,7 +286,6 @@ export default function DashboardPage() {
   const dailyData = React.useMemo(() => {
     const dataMap = new Map<string, { pending: number, completed: number }>();
     
-    // Initialize map for the last 7 days for trend analysis
     for (let i = 6; i >= 0; i--) {
       const day = new Date();
       day.setDate(day.getDate() - i);
@@ -274,6 +349,34 @@ export default function DashboardPage() {
       .sort((a, b) => b.value - a.value);
   }, [projectObservations]);
 
+  React.useEffect(() => {
+    const getAnalysis = async () => {
+      if (loading || projectObservations.length === 0) {
+        if (projectObservations.length === 0) setAnalysisLoading(false);
+        return;
+      }
+      setAnalysisLoading(true);
+      try {
+        const result = await analyzeDashboardData({
+          totalObservations: projectObservations.length,
+          pendingPercentage: overviewData.pendingPercentage,
+          criticalPercentage: criticalPercentageData.percentage,
+          riskDistribution: riskDetailsData.map(d => ({ name: d.name, count: d.count })),
+          companyDistribution: companyDistributionData,
+          dailyTrend: dailyData,
+        });
+        setAnalysis(result);
+      } catch (error) {
+        console.error("Failed to get AI dashboard analysis:", error);
+        setAnalysis(null); // Clear previous analysis on error
+      } finally {
+        setAnalysisLoading(false);
+      }
+    };
+    getAnalysis();
+  }, [projectObservations, loading]);
+
+
   const RADIAN = Math.PI / 180;
   const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
     if (!percent || percent < 0.05) { 
@@ -314,10 +417,14 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard Proyek</h2>
       </div>
+
+      {!loading && projectObservations.length > 0 && (
+         <AiAnalysisCard analysis={analysis} loading={analysisLoading} />
+      )}
       
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
          <RadialChartCard 
