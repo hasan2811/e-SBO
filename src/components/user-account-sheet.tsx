@@ -36,9 +36,11 @@ export function UserAccountSheet() {
 
   const [displayName, setDisplayName] = React.useState('');
   const [position, setPosition] = React.useState('');
+  
+  const isLoading = authLoading || projectsLoading;
 
   React.useEffect(() => {
-    if (userProfile) {
+    if (userProfile && !isEditing) {
       setDisplayName(userProfile.displayName);
       setPosition(userProfile.position);
     }
@@ -72,13 +74,17 @@ export function UserAccountSheet() {
     }
     return name[0].toUpperCase();
   };
+  
+  const handleOpenChange = (open: boolean) => {
+    setIsSheetOpen(open);
+    if (!open) {
+      setIsEditing(false);
+    }
+  };
 
   return (
     <>
-    <Sheet open={isSheetOpen} onOpenChange={(open) => {
-        setIsSheetOpen(open);
-        if (!open) setIsEditing(false);
-    }}>
+    <Sheet open={isSheetOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-9 w-9">
@@ -101,13 +107,18 @@ export function UserAccountSheet() {
           </SheetDescription>
         </SheetHeader>
         <div className="py-8">
-          {authLoading ? (
-             <div className="flex items-center space-x-4">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-[200px]" />
-                  <Skeleton className="h-4 w-[150px]" />
+          {isLoading ? (
+             <div className="space-y-6">
+                <div className="flex items-center space-x-4">
+                  <Skeleton className="h-16 w-16 rounded-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-[200px]" />
+                    <Skeleton className="h-4 w-[150px]" />
+                  </div>
                 </div>
+                <Skeleton className="h-10 w-full" />
+                <Separator/>
+                <Skeleton className="h-10 w-full" />
               </div>
           ) : user && userProfile ? (
             <div className="flex flex-col gap-6">
@@ -153,15 +164,14 @@ export function UserAccountSheet() {
 
               <div>
                 <h3 className="font-semibold mb-3 flex items-center gap-2"><Users className="h-5 w-5"/>My Projects</h3>
-                {projectsLoading ? <Skeleton className="h-10 w-full" /> : (
-                  projects.length > 0 ? (
-                    <ul className="space-y-2">
-                      {projects.map(project => (
-                        <li key={project.id} className="text-sm flex items-center gap-2 text-muted-foreground"><Folder className="h-4 w-4" />{project.name}</li>
-                      ))}
-                    </ul>
-                  ) : <p className="text-sm text-muted-foreground">You are not a member of any projects yet.</p>
-                )}
+                {projects.length > 0 ? (
+                  <ul className="space-y-2">
+                    {projects.map(project => (
+                      <li key={project.id} className="text-sm flex items-center gap-2 text-muted-foreground"><Folder className="h-4 w-4" />{project.name}</li>
+                    ))}
+                  </ul>
+                ) : <p className="text-sm text-muted-foreground">You are not a member of any projects yet.</p>
+                }
                 <Button variant="outline" className="w-full mt-4" onClick={() => setProjectDialogOpen(true)}>
                   <PlusCircle className="mr-2" />
                   Create New Project

@@ -41,12 +41,14 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
           toast({
             variant: 'destructive',
             title: 'Error Fetching Projects',
-            description: 'Could not load your projects. Please check your Firestore security rules.',
+            description: 'Could not load your projects. Please check permissions.',
           });
+          setProjects([]); // Clear projects on error
           setLoading(false);
         });
       } catch (error) {
         console.error("Error setting up project listener:", error);
+        setProjects([]);
         setLoading(false);
       }
     } else {

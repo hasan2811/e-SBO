@@ -59,58 +59,72 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
-        setLoading(true);
-        if (projectsLoading) return; // Wait until projects are loaded
+        // Master listener that reacts to changes in authentication or project membership
+        let unsubs: (() => void)[] = [];
+        
+        const setupListeners = () => {
+          setLoading(true);
 
-        const userProjectIds = projects.map(p => p.id);
+          // Clean up previous listeners before setting up new ones
+          unsubs.forEach(unsub => unsub());
+          unsubs = [];
+          
+          const userProjectIds = projects.map(p => p.id);
 
-        const collectionsToWatch = {
-            observations: setObservations,
-            inspections: setInspections,
-            ptws: setPtws,
-        };
+          const collectionsToWatch: { [key: string]: React.Dispatch<React.SetStateAction<any[]>> } = {
+              observations: setObservations,
+              inspections: setInspections,
+              ptws: setPtws,
+          };
 
-        const createQueryForCollection = (collectionName: string) => {
-            const baseCollection = collection(db, collectionName);
-            if (!user) {
-                return query(baseCollection, where('scope', '==', 'public'));
-            }
+          Object.entries(collectionsToWatch).forEach(([colName, setter]) => {
+              const baseCollection = collection(db, colName);
+              let masterQuery;
 
-            const conditions = [
-                where('scope', '==', 'public'),
-                where('userId', '==', user.uid)
-            ];
+              // Build the query based on user status
+              if (!user) {
+                  // Not logged in: only see public items
+                  masterQuery = query(baseCollection, where('scope', '==', 'public'));
+              } else {
+                  // Logged in: build a complex query
+                  const conditions = [
+                      where('scope', '==', 'public'),
+                      where('userId', '==', user.uid)
+                  ];
+                  // Only add the 'in' clause if there are projects, otherwise it errors
+                  if (userProjectIds.length > 0) {
+                      conditions.push(where('projectId', 'in', userProjectIds));
+                  }
+                  masterQuery = query(baseCollection, or(...conditions));
+              }
 
-            if (userProjectIds.length > 0) {
-                conditions.push(where('projectId', 'in', userProjectIds));
-            }
+              const unsub = onSnapshot(masterQuery, (snapshot) => {
+                  const items = snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as any[];
+                  setter(items);
+              }, (err) => {
+                  console.error(`Error fetching ${colName}:`, err);
+                  toast({
+                    variant: 'destructive',
+                    title: `Failed to load ${colName}`,
+                    description: err.message, // Use the actual error message
+                  });
+                  setter([]);
+              });
+              unsubs.push(unsub);
+          });
+          
+          setLoading(false);
+        }
 
-            return query(baseCollection, or(...conditions));
-        };
-
-        const unsubs = Object.entries(collectionsToWatch).map(([colName, setter]) => {
-            const masterQuery = createQueryForCollection(colName);
-            return onSnapshot(masterQuery, (snapshot) => {
-                const items = snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as any[];
-                const itemMap = new Map<string, any>();
-                items.forEach((item) => itemMap.set(item.id, item));
-                setter(Array.from(itemMap.values()));
-            }, (err) => {
-                console.error(`Error fetching ${colName}:`, err);
-                toast({
-                  variant: 'destructive',
-                  title: `Failed to load ${colName}`,
-                  description: 'Please check your connection and security rules.',
-                });
-                setter([]);
-            });
-        });
-
-        setLoading(false);
+        // We run setupListeners only when auth or project loading is complete
+        if (!projectsLoading) {
+            setupListeners();
+        }
 
         return () => {
             unsubs.forEach(unsub => unsub());
         };
+    // Re-run this entire effect if the user logs in/out, or their project list changes.
     }, [user, projects, projectsLoading]);
 
     const allItems = React.useMemo(() => {
@@ -122,8 +136,29 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [observations, inspections, ptws]);
 
-    const publicItems = React.useMemo(() => allItems.filter(item => item.scope === 'public'), [allItems]);
-    const myItems = React.useMemo(() => allItems.filter(item => item.scope !== 'public'), [allItems]);
+    // Refined logic to separate items based on scope and ownership
+    const { publicItems, myItems } = React.useMemo(() => {
+        const publicData: AllItems[] = [];
+        const myData: AllItems[] = [];
+        const userProjectIds = projects.map(p => p.id);
+
+        allItems.forEach(item => {
+            const isPublic = item.scope === 'public';
+            const isMine = user && item.userId === user.uid;
+            const isMyProject = user && item.projectId && userProjectIds.includes(item.projectId);
+
+            if (isPublic) {
+                publicData.push(item);
+            }
+            if (isMine || isMyProject) {
+                myData.push(item);
+            }
+        });
+        
+        const myItemsUnique = Array.from(new Map(myData.map(item => [item.id, item])).values());
+        
+        return { publicItems: publicData, myItems: myItemsUnique };
+    }, [allItems, user, projects]);
 
     const _runObservationAiAnalysis = React.useCallback(async (observation: Observation) => {
       const observationDocRef = doc(db, 'observations', observation.id);
