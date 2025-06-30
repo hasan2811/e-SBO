@@ -11,6 +11,8 @@ import {
   where,
   orderBy,
   Unsubscribe,
+  QuerySnapshot,
+  docChanges,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw, AllItems } from '@/lib/types';
@@ -75,55 +77,54 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             unsubs.push(unsub);
         });
         
-        // This is a proxy for all public listeners being set up
-        const timer = setTimeout(() => setLoading(false), 800);
+        const timer = setTimeout(() => setLoading(false), 1200);
 
         return () => {
             unsubs.forEach(unsub => unsub());
             clearTimeout(timer);
         };
-    }, []); // Runs once
+    }, []);
 
     // Listener for personal and project data
     React.useEffect(() => {
-        if (projectsLoading) return; // Wait until projects are loaded
+        if (projectsLoading) return;
 
         if (!user) {
             setMyItems([]);
             return;
         }
 
-        const allUnsubs: Unsubscribe[] = [];
         const itemMap = new Map<string, AllItems>();
 
-        const processSnapshot = (snapshot: any, itemType: string) => {
-            snapshot.docs.forEach((d: any) => {
-                const item = { ...d.data(), id: d.id, itemType };
-                itemMap.set(item.id, item);
+        const processSnapshot = (snapshot: QuerySnapshot) => {
+            // Use docChanges to efficiently update the map
+            snapshot.docChanges().forEach((change) => {
+                const itemType = change.doc.ref.parent.id.slice(0, -1);
+                const itemData = { ...change.doc.data(), id: change.doc.id, itemType };
+
+                if (change.type === "removed") {
+                    itemMap.delete(change.doc.id);
+                } else {
+                    itemMap.set(change.doc.id, itemData as AllItems);
+                }
             });
+
             const sortedItems = Array.from(itemMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setMyItems(sortedItems);
         };
         
+        const allUnsubs: Unsubscribe[] = [];
+
         collectionsToWatch.forEach(colName => {
-            const itemType = colName.slice(0, -1);
+            // Query 1: Get the user's private items
+            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid), where('scope', '==', 'private'), orderBy('date', 'desc'));
+            allUnsubs.push(onSnapshot(privateQuery, processSnapshot, (e) => console.error(`Error fetching private ${colName}:`, e)));
 
-            // Query 1: Get all items created by the user
-            const myItemsQuery = query(collection(db, colName), where('userId', '==', user.uid), orderBy('date', 'desc'));
-            const myItemsUnsub = onSnapshot(myItemsQuery, (snapshot) => processSnapshot(snapshot, itemType), 
-                (err) => console.error(`Error fetching personal ${colName}: `, err)
-            );
-            allUnsubs.push(myItemsUnsub);
-
-            // Query 2: Get all items from projects the user is a member of
-            const projectIds = projects.map(p => p.id);
-            if (projectIds.length > 0) {
-                 const projectItemsQuery = query(collection(db, colName), where('projectId', 'in', projectIds), orderBy('date', 'desc'));
-                 const projectItemsUnsub = onSnapshot(projectItemsQuery, (snapshot) => processSnapshot(snapshot, itemType),
-                    (err) => console.error(`Error fetching project ${colName}: `, err)
-                 );
-                 allUnsubs.push(projectItemsUnsub);
-            }
+            // Query 2: For each project the user is in, get its items
+            projects.forEach(project => {
+                const projectQuery = query(collection(db, colName), where('projectId', '==', project.id), orderBy('date', 'desc'));
+                allUnsubs.push(onSnapshot(projectQuery, processSnapshot, (e) => console.error(`Error fetching project ${project.id} ${colName}:`, e)));
+            });
         });
 
         return () => {

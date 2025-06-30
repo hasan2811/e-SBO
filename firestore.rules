@@ -2,79 +2,74 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // =================================
+  
     // Helper Functions
-    // =================================
     function isSignedIn() {
       return request.auth != null;
     }
-
-    // Checks if the requesting user is a member of a specific project.
-    // Used for GET requests on single documents.
-    function isProjectMember(projectId) {
-      return isSignedIn() && get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.hasAny([request.auth.uid]);
-    }
-
-    // =================================
-    // User Profiles
-    // =================================
-    match /users/{userId} {
-      // Any authenticated user can read user profiles (needed for inviting members).
-      allow read: if isSignedIn();
-      // A user can only create their own profile document.
-      allow create: if request.auth.uid == userId;
-      // A user can only update their own profile.
-      allow update: if request.auth.uid == userId;
-      allow delete: if false;
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
     
-    // =================================
-    // Projects
-    // =================================
+    // Checks if the requesting user is a member of a specific project.
+    function isProjectMember(projectId) {
+      // Use exists() for security and efficiency instead of get()
+      return isSignedIn() && exists(/databases/$(database)/documents/projects/$(projectId)) &&
+             get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.hasAny([request.auth.uid]);
+    }
+    
+    // User Profiles
+    match /users/{userId} {
+      // Anyone signed in can read user profiles. Needed for inviting members to projects.
+      allow read: if isSignedIn();
+      // A user can only create or update their own profile.
+      allow create, update: if isOwner(userId);
+    }
+    
+    // Projects Collection
     match /projects/{projectId} {
-      // Allow reading a project's details only if you are a member.
+      // A user can read a project's details only if they are a member.
       allow get: if isProjectMember(projectId);
       
-      // Allow LISTING projects only if the query explicitly asks for projects
-      // where the current user is a member. This forces secure client queries.
-      allow list: if isSignedIn() && request.query.where.get('memberUids') != null && request.query.where.get('memberUids')[2][0] == request.auth.uid;
+      // A user can list only the projects they are a member of.
+      allow list: if isSignedIn() && request.query.where.get('memberUids').get('array-contains').get(0) == request.auth.uid;
       
-      // Allow creating a project if the requester is the owner and is in the members list.
-      allow create: if isSignedIn() &&
-                       request.auth.uid == request.resource.data.ownerUid &&
-                       request.auth.uid in request.resource.data.memberUids;
-                       
-      // Allow updating a project only if you are the owner (for future use).
-      allow update: if resource.data.ownerUid == request.auth.uid;
-      allow delete: if false;
+      // A user can create a project if they are signed in, listed as the owner, and included in the member list.
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid && request.auth.uid in request.resource.data.memberUids;
+      
+      // Only the project owner can update a project (e.g., add members).
+      allow update: if isOwner(get(/databases/$(database)/documents/projects/$(projectId)).data.ownerUid);
     }
     
-    // =================================
-    // Generic Item Collections (Observations, Inspections, PTWs)
-    // =================================
-    match /{itemCollection}/{itemId} where itemCollection in ['observations', 'inspections', 'ptws'] {
+    // Generic Data Rule for Observations, Inspections, PTWs
+    match /{collection}/{itemId} {
     
-      // Allow creating an item if you are the author.
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
-      
-      // Allow reading a single item if it's public, you are the author, or you are a member of its project.
-      allow get: if (resource.data.scope == 'public') ||
-                    (resource.data.userId == request.auth.uid) ||
+      // READ access control
+      // A user can read a document if:
+      // 1. It's public.
+      // 2. It's their own private document.
+      // 3. They are a member of the project it belongs to.
+      allow get: if (resource.data.scope == 'public') || 
+                    (resource.data.scope == 'private' && isOwner(resource.data.userId)) || 
                     (resource.data.scope == 'project' && isProjectMember(resource.data.projectId));
                     
-      // Allow LISTING items only for specific, secure queries from the client.
-      allow list: if 
-          // 1. Allow querying the public feed.
-          (request.query.where.get('scope') == 'public') ||
-          // 2. Allow a user to query for items they authored.
-          (isSignedIn() && request.query.where.get('userId') == request.auth.uid) ||
-          // 3. Allow a user to query for items within a specific project they are a member of.
-          (isSignedIn() && request.query.where.get('projectId') != null && isProjectMember(request.query.where.get('projectId')[2][0]));
-          
-      // Allow updates if you are the author or a member of the item's project.
-      allow update: if isSignedIn() && (request.auth.uid == resource.data.userId || (resource.data.scope == 'project' && isProjectMember(resource.data.projectId)));
-      allow delete: if false;
+      // LIST (Query) access control
+      // A user can query a collection if the query targets:
+      // 1. Public documents.
+      // 2. Their own private documents (by userId and scope).
+      // 3. Documents from a specific project they are a member of.
+      allow list: if (request.query.where.get('scope') != null && request.query.where.get('scope').get('==') == 'public') ||
+                     (request.query.where.get('userId') != null && request.query.where.get('userId').get('==') == request.auth.uid) ||
+                     (request.query.where.get('projectId') != null && isProjectMember(request.query.where.get('projectId').get('==')));
+
+      // WRITE access control
+      // A user can create a document if they are signed in and are the owner of the new document.
+      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+      // A user can update a document only if they are its owner, or a member of the project for project-scoped items.
+      allow update: if isSignedIn() && (isOwner(resource.data.userId) || (resource.data.scope == 'project' && isProjectMember(resource.data.projectId)));
+      // A user can delete a document only if they are its owner.
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
     }
   }
 }
