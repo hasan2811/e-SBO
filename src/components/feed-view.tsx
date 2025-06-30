@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -7,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, FolderKanban, ClipboardList } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, FolderKanban, ClipboardList, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -169,6 +170,8 @@ export function FeedView({ mode }: FeedViewProps) {
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [riskFilter, setRiskFilter] = React.useState('all');
   const [categoryFilter, setCategoryFilter] = React.useState('all');
+
+  const [visibleCount, setVisibleCount] = React.useState(10);
   
   const { toast } = useToast();
 
@@ -210,6 +213,10 @@ export function FeedView({ mode }: FeedViewProps) {
     return dataToFilter;
   }, [items, viewType, statusFilter, riskFilter, categoryFilter]);
 
+  const paginatedData = React.useMemo(() => {
+    return filteredData.slice(0, visibleCount);
+  }, [filteredData, visibleCount]);
+
   const displayObservation = React.useMemo(() => 
     selectedObservationId ? items.find(o => o.id === selectedObservationId) as Observation : null,
     [selectedObservationId, items]
@@ -244,6 +251,12 @@ export function FeedView({ mode }: FeedViewProps) {
   };
   
   const areFiltersActive = statusFilter !== 'all' || riskFilter !== 'all' || categoryFilter !== 'all';
+
+  // Reset pagination when filters change
+  React.useEffect(() => {
+    setVisibleCount(10);
+  }, [viewType, statusFilter, riskFilter, categoryFilter]);
+
 
   function EmptyState() {
     const config = viewConfig[viewType];
@@ -385,9 +398,9 @@ export function FeedView({ mode }: FeedViewProps) {
               </li>
             ))}
           </ul>
-        ) : filteredData.length > 0 ? (
+        ) : paginatedData.length > 0 ? (
           <ul className="space-y-3">
-             {filteredData.map(item => {
+             {paginatedData.map(item => {
                 switch(item.itemType) {
                   case 'observation':
                     return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} />;
@@ -402,6 +415,18 @@ export function FeedView({ mode }: FeedViewProps) {
           </ul>
         ) : (
           <EmptyState />
+        )}
+        
+        {!loading && filteredData.length > visibleCount && (
+            <div className="mt-6 flex justify-center">
+                <Button 
+                    variant="outline"
+                    onClick={() => setVisibleCount(prev => prev + 10)}
+                >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Tampilkan Lebih Banyak ({visibleCount}/{filteredData.length})
+                </Button>
+            </div>
         )}
       </main>
     </div>
