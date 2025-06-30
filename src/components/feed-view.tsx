@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -152,7 +151,7 @@ export function FeedView({ mode }: FeedViewProps) {
     ptws: { label: 'PTW', icon: PtwIcon },
   };
 
-  const pageTitle = `${titlePrefix}: ${viewConfig[viewType].label}`;
+  const pageTitle = viewConfig[viewType].label;
   
   const clearFilters = () => {
     setStatusFilter('all');
