@@ -152,19 +152,17 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
         collectionsToWatch.forEach(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid));
+            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid), where('scope', '==', 'private'));
             let isInitial = true;
             
             const unsub = onSnapshot(privateQuery, (snapshot) => {
                 snapshot.docChanges().forEach((change) => {
                     const docId = change.doc.id;
                     const itemData = { ...change.doc.data(), id: docId, itemType } as AllItems;
-                    if (itemData.scope === 'private') {
-                        if (change.type === 'removed') {
-                            itemMap.delete(docId);
-                        } else {
-                            itemMap.set(docId, itemData);
-                        }
+                    if (change.type === 'removed') {
+                        itemMap.delete(docId);
+                    } else {
+                        itemMap.set(docId, itemData);
                     }
                 });
                 processAndSort(isInitial);
