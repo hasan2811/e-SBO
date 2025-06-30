@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -8,44 +9,43 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if a user is the owner of a data document
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    // Helper function to check if a user is a member of a project
+    function isProjectMember(projectId) {
+      // Use get() for checking single documents, typically in `allow get` rules.
+      let projectData = get(/databases/$(database)/documents/projects/$(projectId)).data;
+      return isAuthenticated() && ('memberUids' in projectData) && request.auth.uid in projectData.memberUids;
     }
 
-    // Rule for the 'users' collection
+    // Profiles: Users can read any profile but only update their own.
     match /users/{userId} {
-      // Any authenticated user can read profile data (for names, etc.)
-      allow read: if isAuthenticated();
-      // Only the owner can update their own profile
-      allow write: if request.auth.uid == userId;
+      allow read, create: if isAuthenticated();
+      allow update: if isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Generic rule for data collections (observations, inspections, ptws)
-    match /{dataCollection}/{docId}
-      where dataCollection in ['observations', 'inspections', 'ptws'] {
-      
-      // READ:
-      // A user can read a document if:
-      // 1. It is marked as 'public'
-      // 2. OR they are the owner of the document.
-      allow read: if resource.data.scope == 'public' || isOwner(resource.data.userId);
+    // Projects: Users can create projects. They can read projects they are a member of.
+    match /projects/{projectId} {
+      allow create: if isAuthenticated();
+      // This rule is now more robust. It checks for the existence of 'memberUids'.
+      // This supports the 'array-contains' query used in the app.
+      allow read: if isAuthenticated() && 'memberUids' in resource.data && request.auth.uid in resource.data.memberUids;
+    }
 
-      // CREATE:
-      // A user can create a document if:
-      // 1. They are authenticated.
-      // 2. They are the owner specified in the new document.
-      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+    // Generic rule for collections (observations, inspections, ptws)
+    match /{collection}/{docId}
+      where collection in ['observations', 'inspections', 'ptws'] {
 
-      // UPDATE:
-      // A user can update a document if:
-      // 1. They are authenticated.
-      // 2. They are the owner of the document being updated.
-      allow update: if isAuthenticated() && isOwner(resource.data.userId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
 
-      // DELETE:
-      // Deletes are disallowed to preserve data integrity.
-      allow delete: if false;
+      // Allow reading documents under these conditions:
+      // 1. The document is public.
+      // 2. The user is the owner of the document.
+      // 3. The document belongs to a project the user is a member of.
+      // This rule works for both single `get` requests and collection `list` queries
+      // as long as the queries are structured correctly (which we will ensure in the app).
+      allow read: if resource.data.scope == 'public'
+                   || (isAuthenticated() && request.auth.uid == resource.data.userId)
+                   || (isAuthenticated() && resource.data.scope == 'project' && isProjectMember(resource.data.projectId));
     }
   }
 }

@@ -10,10 +10,12 @@ import {
   updateDoc,
   addDoc,
   where,
+  or,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
+import { useProjects } from '@/hooks/use-projects';
 import {
   summarizeObservationData,
   analyzeInspectionData,
@@ -49,91 +51,102 @@ const ObservationContext = React.createContext<
   ObservationContextType | undefined
 >(undefined);
 
+// Helper to combine and deduplicate data arrays
+function combineAndDeduplicate<T extends { id: string }>(...arrays: T[][]): T[] {
+    const map = new Map<string, T>();
+    arrays.forEach(arr => {
+        arr.forEach(item => {
+            map.set(item.id, item);
+        });
+    });
+    return Array.from(map.values());
+}
+
+
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
-    const [loading, setLoading] = React.useState(true);
-
-    // Separate states for each data stream to prevent race conditions
-    const [privateObservations, setPrivateObservations] = React.useState<Observation[]>([]);
-    const [privateInspections, setPrivateInspections] = React.useState<Inspection[]>([]);
-    const [privatePtws, setPrivatePtws] = React.useState<Ptw[]>([]);
+    const { projects, loading: projectsLoading } = useProjects();
+    
+    // States for each data source
     const [publicObservations, setPublicObservations] = React.useState<Observation[]>([]);
+    const [personalObservations, setPersonalObservations] = React.useState<Observation[]>([]);
+    const [projectObservations, setProjectObservations] = React.useState<Observation[]>([]);
+    
     const [publicInspections, setPublicInspections] = React.useState<Inspection[]>([]);
+    const [personalInspections, setPersonalInspections] = React.useState<Inspection[]>([]);
+    const [projectInspections, setProjectInspections] = React.useState<Inspection[]>([]);
+
     const [publicPtws, setPublicPtws] = React.useState<Ptw[]>([]);
+    const [personalPtws, setPersonalPtws] = React.useState<Ptw[]>([]);
+    const [projectPtws, setProjectPtws] = React.useState<Ptw[]>([]);
 
-    // Memoize the combined and deduplicated data lists
-    const observations = React.useMemo(() => {
-        const all = new Map<string, Observation>();
-        publicObservations.forEach(o => all.set(o.id, o));
-        privateObservations.forEach(o => all.set(o.id, o)); // Overwrites public if user is owner
-        return Array.from(all.values());
-    }, [publicObservations, privateObservations]);
+    const [authLoading, setAuthLoading] = React.useState(true);
 
-    const inspections = React.useMemo(() => {
-        const all = new Map<string, Inspection>();
-        publicInspections.forEach(i => all.set(i.id, i));
-        privateInspections.forEach(i => all.set(i.id, i));
-        return Array.from(all.values());
-    }, [publicInspections, privateInspections]);
-    
-    const ptws = React.useMemo(() => {
-        const all = new Map<string, Ptw>();
-        publicPtws.forEach(p => all.set(p.id, p));
-        privatePtws.forEach(p => all.set(p.id, p));
-        return Array.from(all.values());
-    }, [publicPtws, privatePtws]);
-
-    // Effect for fetching user's private data
+    // Effect for public data
     React.useEffect(() => {
-        if (user) {
-            const unsubs: (() => void)[] = [];
-            const collections = [
-                { name: 'observations', setter: setPrivateObservations },
-                { name: 'inspections', setter: setPrivateInspections },
-                { name: 'ptws', setter: setPrivatePtws },
-            ];
-            collections.forEach(({ name, setter }) => {
-                const q = query(collection(db, name), where('userId', '==', user.uid));
-                const unsub = onSnapshot(q, (snapshot) => {
-                    const data = snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as any[];
-                    setter(data);
-                }, (error) => console.error(`Error fetching private ${name}:`, error));
-                unsubs.push(unsub);
-            });
-            return () => unsubs.forEach(unsub => unsub());
-        } else {
-            // Clear private data on logout
-            setPrivateObservations([]);
-            setPrivateInspections([]);
-            setPrivatePtws([]);
-        }
-    }, [user]);
-    
-    // Effect for fetching public data
-    React.useEffect(() => {
-        setLoading(true);
-        const collections = [
-            { name: 'observations', setter: setPublicObservations },
-            { name: 'inspections', setter: setPublicInspections },
-            { name: 'ptws', setter: setPublicPtws },
-        ];
-        
-        let loadedCount = 0;
-        const unsubs = collections.map(({ name, setter }) => {
-            const q = query(collection(db, name), where('scope', '==', 'public'));
-            const unsub = onSnapshot(q, (snapshot) => {
-                const data = snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as any[];
-                setter(data);
-                if (++loadedCount === collections.length) setLoading(false);
-            }, (error) => {
-                console.error(`Error fetching public ${name}:`, error);
-                if (++loadedCount === collections.length) setLoading(false);
-            });
-            return unsub;
+        const collections = {
+            observations: setPublicObservations,
+            inspections: setPublicInspections,
+            ptws: setPublicPtws
+        };
+        const unsubs = Object.entries(collections).map(([colName, setter]) => {
+            const q = query(collection(db, colName), where('scope', '==', 'public'));
+            return onSnapshot(q, (snapshot) => {
+                setter(snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as any);
+            }, (err) => console.error(`Error fetching public ${colName}:`, err));
         });
-
         return () => unsubs.forEach(unsub => unsub());
     }, []);
+
+    // Effect for personal and project data
+    React.useEffect(() => {
+        setAuthLoading(true);
+        if (!user || projectsLoading) {
+            if (!user) { // Clear personal/project data if logged out
+                setPersonalObservations([]); setProjectObservations([]);
+                setPersonalInspections([]); setProjectInspections([]);
+                setPersonalPtws([]); setProjectPtws([]);
+            }
+            if (!projectsLoading) setAuthLoading(false);
+            return;
+        }
+
+        const projectIds = projects.map(p => p.id);
+        const collections = {
+            observations: { personal: setPersonalObservations, project: setProjectObservations },
+            inspections: { personal: setPersonalInspections, project: setProjectInspections },
+            ptws: { personal: setPersonalPtws, project: setProjectPtws }
+        };
+
+        const unsubs = Object.entries(collections).flatMap(([colName, setters]) => {
+            // Personal Data Query
+            const personalQuery = query(collection(db, colName), where('userId', '==', user.uid));
+            const unsubPersonal = onSnapshot(personalQuery, (snapshot) => {
+                setters.personal(snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as any);
+            }, (err) => console.error(`Error fetching personal ${colName}:`, err));
+
+            // Project Data Query
+            let unsubProject = () => {};
+            if (projectIds.length > 0) {
+                const projectQuery = query(collection(db, colName), where('projectId', 'in', projectIds));
+                unsubProject = onSnapshot(projectQuery, (snapshot) => {
+                    setters.project(snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as any);
+                }, (err) => console.error(`Error fetching project ${colName}:`, err));
+            } else {
+                 setters.project([]); // Clear project data if user has no projects
+            }
+            
+            return [unsubPersonal, unsubProject];
+        });
+        
+        setAuthLoading(false);
+        return () => unsubs.forEach(unsub => unsub());
+    }, [user, projects, projectsLoading]);
+    
+    // Memoize the combined data to prevent re-renders
+    const observations = React.useMemo(() => combineAndDeduplicate(publicObservations, projectObservations, personalObservations), [publicObservations, projectObservations, personalObservations]);
+    const inspections = React.useMemo(() => combineAndDeduplicate(publicInspections, projectInspections, personalInspections), [publicInspections, projectInspections, personalInspections]);
+    const ptws = React.useMemo(() => combineAndDeduplicate(publicPtws, projectPtws, personalPtws), [publicPtws, projectPtws, personalPtws]);
 
     const allItems = React.useMemo(() => {
       const combined = [
@@ -144,7 +157,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [observations, inspections, ptws]);
 
-    // AI Analysis Logic RESTORED
+    const loading = authLoading || projectsLoading;
+
+    // AI Analysis Logic
     const _runObservationAiAnalysis = React.useCallback(async (observation: Observation) => {
       const observationDocRef = doc(db, 'observations', observation.id);
       const observationData = `
@@ -201,7 +216,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       const observationToSave = { ...newObservation, referenceId, aiStatus: 'processing' as const, userId: user.uid };
       const observationCollection = collection(db, 'observations');
       const docRef = await addDoc(observationCollection, observationToSave);
-      // Run AI analysis on the newly created document
       _runObservationAiAnalysis({ ...observationToSave, id: docRef.id });
     }, [user, _runObservationAiAnalysis]);
 
@@ -211,7 +225,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       const inspectionToSave = { ...newInspection, referenceId, aiStatus: 'processing' as const, userId: user.uid };
       const inspectionCollection = collection(db, 'inspections');
       const docRef = await addDoc(inspectionCollection, inspectionToSave);
-      // Run AI analysis on the newly created document
       _runInspectionAiAnalysis({ ...inspectionToSave, id: docRef.id });
     }, [user, _runInspectionAiAnalysis]);
 
@@ -236,11 +249,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }, []);
 
     const retryAiAnalysis = React.useCallback(async (item: Observation | Inspection) => {
-      if ('riskLevel' in item) { // It's an Observation
+      if ('riskLevel' in item) {
         const observationDocRef = doc(db, 'observations', item.id);
         await updateDoc(observationDocRef, { aiStatus: 'processing' });
         _runObservationAiAnalysis(item as Observation);
-      } else if ('equipmentName' in item) { // It's an Inspection
+      } else if ('equipmentName' in item) {
         const inspectionDocRef = doc(db, 'inspections', item.id);
         await updateDoc(inspectionDocRef, { aiStatus: 'processing' });
         _runInspectionAiAnalysis(item as Inspection);
