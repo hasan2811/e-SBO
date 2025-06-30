@@ -22,6 +22,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
     return (
@@ -264,21 +265,28 @@ export function FeedView({ mode }: FeedViewProps) {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            <div className="flex items-center gap-2 self-end sm:self-center">
-                {viewType === 'observations' && (
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className="relative">
-                                <Filter className="mr-2 h-4 w-4" />
-                                Filter
-                                {areFiltersActive && (
-                                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                                    </span>
-                                )}
-                            </Button>
-                        </PopoverTrigger>
+            <TooltipProvider>
+              <div className="flex items-center gap-2 self-end sm:self-center">
+                  {viewType === 'observations' && (
+                      <Popover>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" size="icon" className="relative">
+                                    <Filter className="h-4 w-4" />
+                                    {areFiltersActive && (
+                                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                                        </span>
+                                    )}
+                                    <span className="sr-only">Filter</span>
+                                </Button>
+                            </PopoverTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Filter</p></TooltipContent>
+                        </Tooltip>
+
                         <PopoverContent className="w-80" align="end">
                             <div className="space-y-4">
                                 <div className="space-y-1">
@@ -328,12 +336,18 @@ export function FeedView({ mode }: FeedViewProps) {
                             </div>
                         </PopoverContent>
                     </Popover>
-                )}
-                <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredData.length === 0 || loading}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export
-              </Button>
-            </div>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="icon" onClick={handleExport} disabled={filteredData.length === 0 || loading}>
+                        <Download className="h-4 w-4" />
+                        <span className="sr-only">Export</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Export</p></TooltipContent>
+                  </Tooltip>
+              </div>
+            </TooltipProvider>
         </div>
 
       <main>
@@ -393,3 +407,5 @@ export function FeedView({ mode }: FeedViewProps) {
    </>
   );
 }
+
+    
