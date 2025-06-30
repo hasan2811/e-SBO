@@ -1,59 +1,58 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // USERS COLLECTION
-    // Needed for inviting members to projects by email.
+    // Users can read other user profiles to find members for projects.
+    // They can only create and modify their own profile.
     match /users/{userId} {
-      // Any authenticated user can query the collection to find others.
-      allow list: if request.auth != null;
-      // Users can get and update their own document.
-      allow get, update: if request.auth.uid == userId;
+      allow read: if request.auth != null;
+      allow create, update: if request.auth.uid == userId;
+      allow delete: if false;
     }
 
-    // PROJECTS COLLECTION
+    // Projects can be created by an authenticated user, but the owner must be the creator.
+    // Only members can read the project, and only the owner can update/delete it.
     match /projects/{projectId} {
-      // Allow any authenticated user to create a project.
-      allow create: if request.auth != null;
-      // Allow a user to read a project if they are a member.
-      // This rule works with the client query: `where('memberUids', 'array-contains', user.uid)`
-      allow read: if request.auth != null && request.auth.uid in resource.data.memberUids;
-      // Only the project owner can update or delete it.
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
+      allow read: if request.auth.uid in resource.data.memberUids;
+      allow create: if request.auth.uid == request.resource.data.ownerUid && request.auth.uid in request.resource.data.memberUids;
+      allow update, delete: if request.auth.uid == resource.data.ownerUid;
     }
 
-    // --- SHARED RULES FOR ITEMS (Observations, Inspections, PTWs) ---
-
-    // Helper function to check if the user is the owner of an item.
-    function isItemOwner() {
-      return request.auth.uid == resource.data.userId;
-    }
-
-    // Helper function to check if the user is a member of the item's project.
-    function isProjectMember() {
-      // Ensure the item is actually part of a project.
-      if (resource.data.scope != 'project' || resource.data.projectId == null) {
-        return false;
+    // Observations, Inspections, and PTWs
+    match /{collectionName}/{docId} where collectionName in ['observations', 'inspections', 'ptws'] {
+      
+      function isOwner() {
+        return request.auth.uid == resource.data.userId;
       }
-      // Check if the user's UID is in the project's member list.
-      return request.auth.uid in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.memberUids;
-    }
+      
+      function isPublic() {
+        return resource.data.scope == 'public';
+      }
+      
+      function isProjectMember() {
+        // Check if the document belongs to a project
+        let projectId = resource.data.get('projectId', null);
+        
+        // If there's no project ID, this rule doesn't apply
+        if (projectId == null) {
+          return false;
+        }
 
-    // OBSERVATIONS, INSPECTIONS, and PTWs
-    match /{collectionName}/{itemId}
-    where collectionName in ['observations', 'inspections', 'ptws'] {
+        // Check if the user is a member of that project by checking if their UID is in the memberUids array.
+        return request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
+      }
+
+      // Allow read if the doc is public, or if the user is authenticated and is the owner OR a project member
+      allow read: if isPublic() || (request.auth != null && (isOwner() || isProjectMember()));
       
-      // CREATE: Any authenticated user can create an item.
-      allow create: if request.auth != null;
-      
-      // READ: Allow if the item is public, or if the user is the owner or a project member.
-      allow read: if request.auth != null && (resource.data.scope == 'public' || isItemOwner() || isProjectMember());
-      
-      // UPDATE: Allow if the user is the owner or a project member (e.g., for taking action or approving).
-      allow update: if request.auth != null && (isItemOwner() || isProjectMember());
-      
-      // DELETE: Only the owner of the item can delete it.
-      allow delete: if request.auth != null && isItemOwner();
+      // Allow create only if the userId on the new document matches the creator's ID
+      allow create: if request.auth.uid == request.resource.data.userId;
+
+      // Allow update only by the original creator
+      allow update: if isOwner();
+
+      allow delete: if false;
     }
   }
 }
