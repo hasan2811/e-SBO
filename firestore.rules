@@ -1,66 +1,81 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+  
     // =================================
     // Helper Functions
     // =================================
-    function isOwner(doc) {
-      return request.auth.uid == doc.userId;
-    }
-    
+
+    // Helper function to check if the requesting user is a member of a specific project.
+    // It verifies that the project exists and the user's UID is in the memberUids array.
     function isProjectMember(projectId) {
-      // Allow access if the user's UID is in the project's memberUids list.
-      return request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
+      return exists(/databases/$(database)/documents/projects/$(projectId)) &&
+             request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
     }
 
     // =================================
-    // User Profiles
+    // Collection Rules
     // =================================
+
+    // Rules for the 'users' collection.
     match /users/{userId} {
-      // Anyone can read user profiles to get names, etc. for display.
-      allow read;
-      // A user can only write to their own profile.
-      allow update: if request.auth.uid == userId;
-      // Allow authenticated users to look up other users by email for project invites.
-      allow list: if request.auth != null;
+      // Allow any authenticated user to read user profiles (for names, positions, etc.).
+      // This is needed for creating projects and displaying user info.
+      allow list, get: if request.auth != null;
+      
+      // A user can only create their own document or update their own profile.
+      allow create, update: if request.auth.uid == userId;
     }
 
-    // =================================
-    // Projects
-    // =================================
+    // Rules for the 'projects' collection itself.
     match /projects/{projectId} {
-      // Users can read/write project details if they are a member.
-      allow read, write: if isProjectMember(projectId);
-      // A user can list projects they are a member of.
-      allow list: if request.auth.uid in resource.data.memberUids;
-      // A user can create a project if they are listed as the owner in the new document.
-      allow create: if request.auth.uid == request.resource.data.ownerUid;
+      // Any authenticated user can create a project.
+      allow create: if request.auth != null;
+      
+      // A user can read a project document only if they are a member of that project.
+      allow read: if isProjectMember(projectId);
+      
+      // A user can update a project only if they are the owner.
+      allow update: if isProjectMember(projectId) && resource.data.ownerUid == request.auth.uid;
     }
 
-    // =================================
-    // Items in Project Subcollections (Observations, Inspections, PTWs)
-    // =================================
-    match /projects/{projectId}/{itemCollection}/{itemId} {
-       // Allow full access to any member of the project.
-       allow read, create, update, delete: if isProjectMember(projectId);
+    // This function defines a set of reusable rules for any item collection 
+    // (e.g., observations, inspections, ptws).
+    function itemCollectionRules(collectionName) {
+      return {
+        // Rules for TOP-LEVEL item collections (e.g., /observations/{itemId}).
+        // These are for public or private (non-project) items.
+        match /$(collectionName)/{itemId} {
+          // Anyone can read if the scope is public. A user can read their own private items.
+          allow read: if resource.data.scope == 'public' || resource.data.userId == request.auth.uid;
+
+          // Allow authenticated users to list items. Filtering for public/private is done client-side.
+          // This simplified query prevents index errors.
+          allow list: if request.auth != null;
+
+          // A user can create an item if they are the owner of the new item.
+          allow create: if request.auth.uid == request.resource.data.userId;
+
+          // A user can update an item only if they are the original owner.
+          allow update: if request.auth.uid == resource.data.userId;
+        },
+
+        // Rules for item SUB-COLLECTIONS within a project (e.g., /projects/{projectId}/observations/{itemId}).
+        match /projects/{projectId}/$(collectionName)/{itemId} {
+          // Allow full read/write access to any item inside a project
+          // if the requesting user is a member of that project.
+          allow read, write: if isProjectMember(projectId);
+        }
+      }
     }
     
-    // =================================
-    // Root Collections (Public or Private Items)
-    // =================================
-    match /{itemCollection}/{itemId} {
-       // Allow anyone to read public items.
-       // Allow owner to read their own private items.
-       allow read: if resource.data.scope == 'public' || (resource.data.scope == 'private' && isOwner(resource.data));
-       
-       // Allow authenticated users to create items for themselves.
-       // This fixes the critical bug where `isOwner()` was used incorrectly.
-       allow create: if request.auth.uid == request.resource.data.userId;
-       
-       // Allow owner to update their own items.
-       allow update: if isOwner(resource.data);
+    // Apply the generic rules defined above to each specific item collection.
+    // This keeps the rules DRY (Don't Repeat Yourself) and easy to manage.
+    match /databases/{database}/documents {
+      {...itemCollectionRules("observations")}
+      {...itemCollectionRules("inspections")}
+      {...itemCollectionRules("ptws")}
     }
   }
 }

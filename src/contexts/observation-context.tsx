@@ -61,16 +61,27 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
     const collectionsToWatch: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
     
+    // Client-side sorting function to avoid complex Firestore queries.
     const sortItemsByDate = (items: AllItems[]) => {
       return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     };
 
-    // Listener for public data.
+    /**
+     * Helper function to get the correct Firestore document reference for an item,
+     * whether it's in a top-level collection or a project sub-collection.
+     */
+    const getDocRef = (item: AllItems): DocumentReference => {
+        const itemTypePlural = `${item.itemType}s` as 'observations' | 'inspections' | 'ptws';
+        if (item.scope === 'project' && item.projectId) {
+            return doc(db, 'projects', item.projectId, itemTypePlural, item.id);
+        }
+        return doc(db, itemTypePlural, item.id);
+    };
+
+    // Listener for public data. This is kept separate for clarity.
     React.useEffect(() => {
         setLoading(true);
         const itemMap = new Map<string, AllItems>();
-        let listenersInitialized = 0;
-        const totalListeners = collectionsToWatch.length;
 
         const processSnapshot = (snapshot: QuerySnapshot, itemType: 'observation' | 'inspection' | 'ptw') => {
             snapshot.docChanges().forEach((change) => {
@@ -84,33 +95,18 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             setPublicItems(sortItemsByDate(Array.from(itemMap.values())));
         };
         
-        const onInitialLoad = () => {
-            listenersInitialized++;
-            if (listenersInitialized >= totalListeners) {
-                setLoading(false);
-            }
-        };
-
+        // This query is simple and will not require a composite index.
         const unsubs = collectionsToWatch.map(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
             const publicQuery = query(collection(db, colName), where('scope', '==', 'public'));
             
-            let initialLoadHandled = false;
-            return onSnapshot(publicQuery, (snapshot) => {
-                processSnapshot(snapshot, itemType);
-                if (!initialLoadHandled) {
-                    onInitialLoad();
-                    initialLoadHandled = true;
-                }
-            }, (error) => {
-                console.error(`Error fetching public ${colName}:`, error);
-                if (!initialLoadHandled) {
-                    onInitialLoad();
-                    initialLoadHandled = true;
-                }
-            });
+            return onSnapshot(publicQuery, 
+              (snapshot) => processSnapshot(snapshot, itemType),
+              (error) => console.error(`Error fetching public ${colName}:`, error)
+            );
         });
 
+        // Set a timeout to ensure loading state doesn't persist indefinitely on error.
         const timer = setTimeout(() => setLoading(false), 5000);
 
         return () => {
@@ -119,8 +115,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         };
     }, []);
 
-    // Listener for "My Items" (Personal & Project).
+    // Listener for "My Items" (Personal & Project-based data).
     React.useEffect(() => {
+        // Wait until we know which projects the user belongs to.
         if (projectsLoading) return; 
         if (!user) {
             setMyItems([]);
@@ -128,64 +125,60 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
 
         const itemMap = new Map<string, AllItems>();
+        const allUnsubs: Unsubscribe[] = [];
 
         const processAndSort = () => {
              setMyItems(sortItemsByDate(Array.from(itemMap.values())));
         }
 
-        const createSnapshotProcessor = (itemType: 'observation' | 'inspection' | 'ptw') => (snapshot: QuerySnapshot) => {
-             snapshot.docChanges().forEach((change) => {
-                const docId = change.doc.id;
-                if (change.type === "removed") {
-                    itemMap.delete(docId);
-                } else {
-                    const itemData = { ...change.doc.data(), id: docId, itemType } as AllItems;
-                     if(itemData.scope === 'private' && itemData.userId === user.uid) {
-                        itemMap.set(docId, itemData);
-                    } else if (itemData.scope === 'project') {
-                         const project = projects.find(p => p.id === itemData.projectId);
-                         if (project) {
-                             itemMap.set(docId, itemData);
-                         }
-                    }
-                }
-            });
-            processAndSort();
-        };
-
-        const createProjectSnapshotProcessor = (itemType: 'observation' | 'inspection' | 'ptw', projectId: string) => (snapshot: QuerySnapshot) => {
-            snapshot.docChanges().forEach((change) => {
-                const docId = change.doc.id;
-                if (change.type === 'removed') {
-                    itemMap.delete(docId);
-                } else {
-                    itemMap.set(docId, {
-                        ...change.doc.data(),
-                        id: docId,
-                        itemType,
-                        scope: 'project',
-                        projectId,
-                    } as AllItems);
-                }
-            });
-            processAndSort();
-        };
-        
-        const allUnsubs: Unsubscribe[] = [];
-
-        // 1. Listen to the user's private items.
+        // 1. Listen to the user's private items from top-level collections.
         collectionsToWatch.forEach(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid), where('scope', '==', 'private'));
-            allUnsubs.push(onSnapshot(privateQuery, createSnapshotProcessor(itemType), (e) => console.error(`Error fetching private ${colName}: `, e)));
+            // This simple query fetches all items by the user, client-side will filter for private scope.
+            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid));
+            
+            const unsub = onSnapshot(privateQuery, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    const docId = change.doc.id;
+                    const itemData = { ...change.doc.data(), id: docId, itemType } as AllItems;
+                    // Important: Filter for 'private' scope on the client to avoid complex query.
+                    if (itemData.scope === 'private') {
+                        if (change.type === 'removed') {
+                            itemMap.delete(docId);
+                        } else {
+                            itemMap.set(docId, itemData);
+                        }
+                    }
+                });
+                processAndSort();
+            }, (e) => console.error(`Error fetching private ${colName}: `, e));
+            allUnsubs.push(unsub);
         });
 
-        // 2. Listen to items in subcollections for each project.
+        // 2. Listen to items in subcollections for each project the user is a member of.
         projects.forEach(project => {
             collectionsToWatch.forEach(colName => {
                 const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-                const projectCollectionQuery = query(collection(db, 'projects', project.id, colName));
-                allUnsubs.push(onSnapshot(projectCollectionQuery, createProjectSnapshotProcessor(itemType, project.id), (e) => console.error(`Error fetching from project ${project.id}/${colName}: `, e)));
+                const projectItemsQuery = query(collection(db, 'projects', project.id, colName));
+                
+                const unsub = onSnapshot(projectItemsQuery, (snapshot) => {
+                     snapshot.docChanges().forEach((change) => {
+                        const docId = change.doc.id;
+                        if (change.type === 'removed') {
+                            itemMap.delete(docId);
+                        } else {
+                            itemMap.set(docId, {
+                                ...change.doc.data(),
+                                id: docId,
+                                itemType,
+                                scope: 'project', // Assign scope and projectId for context
+                                projectId: project.id,
+                            } as AllItems);
+                        }
+                    });
+                    processAndSort();
+                }, (e) => console.error(`Error fetching from project ${project.id}/${colName}: `, e));
+                allUnsubs.push(unsub);
             });
         });
 
@@ -195,13 +188,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
     }, [user, projects, projectsLoading]);
 
-    const getDocRef = (item: AllItems): DocumentReference => {
-        const itemTypePlural = `${item.itemType}s` as 'observations' | 'inspections' | 'ptws';
-        if (item.scope === 'project' && item.projectId) {
-            return doc(db, 'projects', item.projectId, itemTypePlural, item.id);
-        }
-        return doc(db, itemTypePlural, item.id);
-    };
     
     const _runObservationAiAnalysis = React.useCallback(async (observation: Observation) => {
       const observationDocRef = getDocRef(observation);
@@ -262,6 +248,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
       if (observationToSave.scope === 'project' && observationToSave.projectId) {
         collectionRef = collection(db, 'projects', observationToSave.projectId, 'observations');
+        // Omit scope and projectId for sub-collection documents to keep data clean.
         const { scope, projectId, ...rest } = observationToSave;
         dataToSave = rest;
       } else {
@@ -270,6 +257,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       }
 
       const docRef = await addDoc(collectionRef, dataToSave);
+      // Reconstruct the full object for the AI analysis function.
       _runObservationAiAnalysis({ ...observationToSave, id: docRef.id, itemType: 'observation' });
     }, [user, _runObservationAiAnalysis]);
 

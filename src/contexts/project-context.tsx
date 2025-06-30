@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Project } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -23,7 +23,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    // If no user is logged in, there's nothing to fetch.
+    let unsubscribe: Unsubscribe | undefined;
+
+    // If no user is logged in, clear projects and stop loading.
     if (!user) {
       setProjects([]);
       setLoading(false);
@@ -33,12 +35,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     
     // This query is efficient and works with the new security rules.
+    // It fetches all projects where the current user's UID is in the memberUids array.
     const projectsQuery = query(
       collection(db, 'projects'),
       where('memberUids', 'array-contains', user.uid)
     );
 
-    const unsubscribe = onSnapshot(projectsQuery, 
+    unsubscribe = onSnapshot(projectsQuery, 
       (snapshot) => {
         const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
         setProjects(userProjects);
@@ -56,7 +59,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    return () => unsubscribe();
+    // Cleanup function to unsubscribe from the listener when the component unmounts
+    // or when the user changes.
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user]);
 
   const addProject = React.useCallback(async (projectName: string, memberEmailsStr: string) => {
