@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -5,7 +6,7 @@ import Image from 'next/image';
 import { useObservations } from '@/contexts/observation-context';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCategory, ObservationStatus } from '@/lib/types';
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
-import { RiskBadge, StatusBadge, InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
+import { StatusBadge, InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
 import { FileText, ChevronRight, Home, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,11 +23,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
+    const riskColorStyles: Record<RiskLevel, string> = {
+        Low: 'border-l-chart-2',
+        Medium: 'border-l-chart-4',
+        High: 'border-l-chart-5',
+        Critical: 'border-l-destructive',
+    };
+
     return (
       <li>
-        <div onClick={onSelect} className="flex items-start gap-3 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
+        <div onClick={onSelect} className={cn(
+            "flex items-start gap-3 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden border-l-4",
+            riskColorStyles[observation.riskLevel]
+        )}>
           {observation.photoUrl && (
             <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border">
               <Image src={observation.photoUrl} alt={observation.findings} fill sizes="64px" className="object-cover" data-ai-hint="site observation" />
@@ -57,7 +69,6 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
             <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <StatusBadge status={observation.status} />
-              <RiskBadge riskLevel={observation.riskLevel} />
               <span className="text-xs text-muted-foreground">{observation.company}</span>
             </div>
           </div>
@@ -143,8 +154,6 @@ export function FeedView({ mode }: FeedViewProps) {
   
   const { toast } = useToast();
 
-  const titlePrefix = mode === 'personal' ? 'Proyek Saya' : 'Publik';
-
   const viewConfig = {
     observations: { label: 'Observasi', icon: Home },
     inspections: { label: 'Inspeksi', icon: Wrench },
@@ -225,7 +234,7 @@ export function FeedView({ mode }: FeedViewProps) {
       });
       return;
     }
-    const fileName = `${titlePrefix}_Observasi_${format(new Date(), 'yyyy-MM-dd')}`;
+    const fileName = `${pageTitle}_${format(new Date(), 'yyyy-MM-dd')}`;
     exportToExcel(dataToExport as Observation[], fileName);
   };
   
