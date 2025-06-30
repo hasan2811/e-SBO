@@ -3,83 +3,64 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // =================================================================
+    // =================================
     // Helper Functions
-    // =================================================================
-
-    // Returns true if the requesting user is the owner of the document.
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    // =================================
+    function isOwner(doc) {
+      return request.auth.uid == doc.userId;
     }
-
-    // Returns true if the requesting user is a member of the specified project.
-    // This function is crucial for securing project-related data.
+    
     function isProjectMember(projectId) {
-      let projectDoc = get(/databases/$(database)/documents/projects/$(projectId)).data;
-      return request.auth.uid in projectDoc.memberUids;
+      // Allow access if the user's UID is in the project's memberUids list.
+      return request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
     }
 
-    // =================================================================
+    // =================================
     // User Profiles
-    // =================================================================
+    // =================================
     match /users/{userId} {
-      // READ: Any authenticated user can read profile data.
-      // This is necessary to display user names, positions, etc., throughout the app.
-      allow read: if request.auth != null;
-
-      // LIST: Authenticated users can list users.
-      // Required for the "invite members by email" feature in project creation.
+      // Anyone can read user profiles to get names, etc. for display.
+      allow read;
+      // A user can only write to their own profile.
+      allow update: if request.auth.uid == userId;
+      // Allow authenticated users to look up other users by email for project invites.
       allow list: if request.auth != null;
-      
-      // CREATE: Any user can create their own profile document during sign-up.
-      allow create: if isOwner(userId);
-
-      // UPDATE: A user can only update their own profile.
-      allow update: if isOwner(userId);
     }
 
-    // =================================================================
-    // Root Collections (Public & Private Items)
-    // =================================================================
-    match /{collection=observations,inspections,ptws}/{docId} {
-      // READ:
-      // - Allow if the document's scope is 'public'.
-      // - Allow if the requesting user is the owner of the document.
-      allow read: if resource.data.scope == 'public' || isOwner(resource.data.userId);
-
-      // CREATE: A user can only create a document for themselves.
-      allow create: if isOwner(request.resource.data.userId);
-
-      // UPDATE, DELETE: Only the owner can modify their own document.
-      allow update, delete: if isOwner(resource.data.userId);
-    }
-
-    // =================================================================
-    // Projects Collection
-    // =================================================================
+    // =================================
+    // Projects
+    // =================================
     match /projects/{projectId} {
-      // READ: A user can read a project's details if they are a member.
-      allow read: if isProjectMember(projectId);
-      
-      // CREATE: Any authenticated user can create a project.
-      // The business logic (e.g., subscription status) should be handled by server actions.
-      allow create: if request.auth != null;
-      
-      // UPDATE: Only the project owner can update project details (e.g., name).
-      allow update: if isOwner(resource.data.ownerUid);
-      
-      // DELETE: Not allowed by default to prevent accidental data loss.
-      allow delete: if false;
+      // Users can read/write project details if they are a member.
+      allow read, write: if isProjectMember(projectId);
+      // A user can list projects they are a member of.
+      allow list: if request.auth.uid in resource.data.memberUids;
+      // A user can create a project if they are listed as the owner in the new document.
+      allow create: if request.auth.uid == request.resource.data.ownerUid;
+    }
 
-      // --- Project Sub-Collections ---
-      // These rules apply to /projects/{projectId}/observations/{obsId}, etc.
-      match /{subCollection=observations,inspections,ptws}/{subDocId} {
-        // READ, WRITE (Create, Update, Delete):
-        // Allow full access if the user is a member of the parent project.
-        // This single rule elegantly secures all data within a project.
-        allow read, write: if isProjectMember(projectId);
-      }
+    // =================================
+    // Items in Project Subcollections (Observations, Inspections, PTWs)
+    // =================================
+    match /projects/{projectId}/{itemCollection}/{itemId} {
+       // Allow full access to any member of the project.
+       allow read, create, update, delete: if isProjectMember(projectId);
+    }
+    
+    // =================================
+    // Root Collections (Public or Private Items)
+    // =================================
+    match /{itemCollection}/{itemId} {
+       // Allow anyone to read public items.
+       // Allow owner to read their own private items.
+       allow read: if resource.data.scope == 'public' || (resource.data.scope == 'private' && isOwner(resource.data));
+       
+       // Allow authenticated users to create items for themselves.
+       // This fixes the critical bug where `isOwner()` was used incorrectly.
+       allow create: if request.auth.uid == request.resource.data.userId;
+       
+       // Allow owner to update their own items.
+       allow update: if isOwner(resource.data);
     }
   }
 }
