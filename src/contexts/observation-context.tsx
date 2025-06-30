@@ -9,8 +9,8 @@ import {
   updateDoc,
   addDoc,
   where,
-  or,
   orderBy,
+  Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw, AllItems } from '@/lib/types';
@@ -58,53 +58,78 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
     const collectionsToWatch: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
 
-    // Combined listener for all data
+    // Listener for public data
     React.useEffect(() => {
         setLoading(true);
+        const unsubs: Unsubscribe[] = [];
 
-        const unsubs = collectionsToWatch.flatMap(colName => {
-            // Listener for Public Data
+        collectionsToWatch.forEach(colName => {
             const publicQuery = query(collection(db, colName), where('scope', '==', 'public'), orderBy('date', 'desc'));
-            const unsubPublic = onSnapshot(publicQuery, (snapshot) => {
-                const items = snapshot.docs.map(d => ({ ...d.data(), id: d.id, itemType: colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw' })) as AllItems[];
+            const unsub = onSnapshot(publicQuery, (snapshot) => {
+                const fetchedItems = snapshot.docs.map(d => ({ ...d.data(), id: d.id, itemType: colName.slice(0, -1) as any }));
                 setPublicItems(prev => {
                     const otherItems = prev.filter(item => item.itemType !== colName.slice(0, -1));
-                    return [...otherItems, ...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    return [...otherItems, ...fetchedItems].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
                 });
             }, (error) => console.error(`Error fetching public ${colName}:`, error));
-
-            // Listener for Personal & Project Data
-            let unsubMyStuff = () => {};
-            if (user && !projectsLoading) {
-                 const projectIds = projects.map(p => p.id);
-                 const conditions = [where('userId', '==', user.uid)];
-                 if (projectIds.length > 0) {
-                     conditions.push(where('projectId', 'in', projectIds));
-                 }
-
-                const myQuery = query(collection(db, colName), or(...conditions), orderBy('date', 'desc'));
-                unsubMyStuff = onSnapshot(myQuery, (snapshot) => {
-                    const items = snapshot.docs.map(d => ({ ...d.data(), id: d.id, itemType: colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw' })) as AllItems[];
-                    setMyItems(prev => {
-                        const otherItems = prev.filter(item => item.itemType !== colName.slice(0, -1));
-                        return [...otherItems, ...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                    });
-                }, (error) => console.error(`Error fetching personal ${colName}:`, error));
-
-            } else if (!user) {
-                setMyItems([]);
-            }
-            
-            return [unsubPublic, unsubMyStuff];
+            unsubs.push(unsub);
         });
         
-        // This pattern ensures loading is false only after initial checks.
-        const timer = setTimeout(() => setLoading(false), 500);
+        // This is a proxy for all public listeners being set up
+        const timer = setTimeout(() => setLoading(false), 800);
 
         return () => {
             unsubs.forEach(unsub => unsub());
             clearTimeout(timer);
         };
+    }, []); // Runs once
+
+    // Listener for personal and project data
+    React.useEffect(() => {
+        if (projectsLoading) return; // Wait until projects are loaded
+
+        if (!user) {
+            setMyItems([]);
+            return;
+        }
+
+        const allUnsubs: Unsubscribe[] = [];
+        const itemMap = new Map<string, AllItems>();
+
+        const processSnapshot = (snapshot: any, itemType: string) => {
+            snapshot.docs.forEach((d: any) => {
+                const item = { ...d.data(), id: d.id, itemType };
+                itemMap.set(item.id, item);
+            });
+            const sortedItems = Array.from(itemMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setMyItems(sortedItems);
+        };
+        
+        collectionsToWatch.forEach(colName => {
+            const itemType = colName.slice(0, -1);
+
+            // Query 1: Get all items created by the user
+            const myItemsQuery = query(collection(db, colName), where('userId', '==', user.uid), orderBy('date', 'desc'));
+            const myItemsUnsub = onSnapshot(myItemsQuery, (snapshot) => processSnapshot(snapshot, itemType), 
+                (err) => console.error(`Error fetching personal ${colName}: `, err)
+            );
+            allUnsubs.push(myItemsUnsub);
+
+            // Query 2: Get all items from projects the user is a member of
+            const projectIds = projects.map(p => p.id);
+            if (projectIds.length > 0) {
+                 const projectItemsQuery = query(collection(db, colName), where('projectId', 'in', projectIds), orderBy('date', 'desc'));
+                 const projectItemsUnsub = onSnapshot(projectItemsQuery, (snapshot) => processSnapshot(snapshot, itemType),
+                    (err) => console.error(`Error fetching project ${colName}: `, err)
+                 );
+                 allUnsubs.push(projectItemsUnsub);
+            }
+        });
+
+        return () => {
+            allUnsubs.forEach(unsub => unsub());
+        };
+
     }, [user, projects, projectsLoading]);
 
 
@@ -207,7 +232,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       }
     }, [_runObservationAiAnalysis, _runInspectionAiAnalysis]);
 
-    const value = { publicItems, myItems, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
+    const value = { publicItems, myItems, loading: loading || projectsLoading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
 
     return (
         <ObservationContext.Provider value={value}>
