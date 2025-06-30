@@ -27,7 +27,6 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
 interface ObservationContextType {
-  publicItems: AllItems[];
   myItems: AllItems[];
   loading: boolean;
   addObservation: (
@@ -55,27 +54,17 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const { user } = useAuth();
     const { projects, loading: projectsLoading } = useProjects();
     
-    const [publicItems, setPublicItems] = React.useState<AllItems[]>([]);
     const [myItems, setMyItems] = React.useState<AllItems[]>([]);
-
-    const [publicItemsLoading, setPublicItemsLoading] = React.useState(true);
     const [myItemsLoading, setMyItemsLoading] = React.useState(true);
-    
-    const isInitialPublicLoad = React.useRef(true);
 
-    const loading = publicItemsLoading || myItemsLoading || projectsLoading;
+    const loading = myItemsLoading || projectsLoading;
 
     const collectionsToWatch: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
     
-    // Client-side sorting function to avoid complex Firestore queries.
     const sortItemsByDate = (items: AllItems[]) => {
       return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     };
 
-    /**
-     * Helper function to get the correct Firestore document reference for an item,
-     * whether it's in a top-level collection or a project sub-collection.
-     */
     const getDocRef = (item: AllItems): DocumentReference => {
         const itemTypePlural = `${item.itemType}s` as 'observations' | 'inspections' | 'ptws';
         if (item.scope === 'project' && item.projectId) {
@@ -83,46 +72,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
         return doc(db, itemTypePlural, item.id);
     };
-
-    // Listener for public data. This is kept separate for clarity.
-    React.useEffect(() => {
-        setPublicItemsLoading(true);
-        const itemMap = new Map<string, AllItems>();
-
-        const processSnapshot = (snapshot: QuerySnapshot, itemType: 'observation' | 'inspection' | 'ptw') => {
-            snapshot.docChanges().forEach((change) => {
-              const docId = change.doc.id;
-              if (change.type === 'removed') {
-                itemMap.delete(docId);
-              } else {
-                itemMap.set(docId, { ...change.doc.data(), id: docId, itemType } as AllItems);
-              }
-            });
-            setPublicItems(sortItemsByDate(Array.from(itemMap.values())));
-            
-            if (isInitialPublicLoad.current) {
-                setPublicItemsLoading(false);
-                isInitialPublicLoad.current = false;
-            }
-        };
-        
-        const unsubs = collectionsToWatch.map(colName => {
-            const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-            const publicQuery = query(collection(db, colName), where('scope', '==', 'public'));
-            
-            return onSnapshot(publicQuery, 
-              (snapshot) => processSnapshot(snapshot, itemType),
-              (error) => {
-                console.error(`Error fetching public ${colName}:`, error);
-                setPublicItemsLoading(false);
-              }
-            );
-        });
-
-        return () => {
-            unsubs.forEach(unsub => unsub());
-        };
-    }, []);
 
     // Listener for "My Items" (Personal & Project-based data).
     React.useEffect(() => {
@@ -207,7 +156,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             });
         });
 
-        // Fallback in case no listeners fire
         if (listenerCount === 0) {
             setMyItemsLoading(false);
         }
@@ -278,7 +226,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
       if (observationToSave.scope === 'project' && observationToSave.projectId) {
         collectionRef = collection(db, 'projects', observationToSave.projectId, 'observations');
-        // Omit scope and projectId for sub-collection documents to keep data clean.
         const { scope, projectId, ...rest } = observationToSave;
         dataToSave = rest;
       } else {
@@ -287,7 +234,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       }
 
       const docRef = await addDoc(collectionRef, dataToSave);
-      // Reconstruct the full object for the AI analysis function.
       _runObservationAiAnalysis({ ...observationToSave, id: docRef.id, itemType: 'observation' });
     }, [user, _runObservationAiAnalysis]);
 
@@ -354,7 +300,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
     }, [_runObservationAiAnalysis, _runInspectionAiAnalysis]);
 
-    const value = { publicItems, myItems, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
+    const value = { myItems, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
 
     return (
         <ObservationContext.Provider value={value}>

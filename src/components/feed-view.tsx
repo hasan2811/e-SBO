@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, Plus } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, Plus, ThumbsUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -23,7 +23,10 @@ import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/compone
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { collection, query, where, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
+const PAGE_SIZE = 10;
 
 const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
     const riskColorStyles: Record<RiskLevel, string> = {
@@ -161,9 +164,13 @@ interface FeedViewProps {
 }
 
 export function FeedView({ mode }: FeedViewProps) {
-  const { publicItems, myItems, loading } = useObservations();
-  const items = mode === 'public' ? publicItems : myItems;
+  const { myItems, loading: myItemsLoading } = useObservations();
   
+  const [items, setItems] = React.useState<AllItems[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [lastVisible, setLastVisible] = React.useState<QueryDocumentSnapshot | null>(null);
+  const [hasMore, setHasMore] = React.useState(true);
+
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
   const [selectedPtwId, setSelectedPtwId] = React.useState<string | null>(null);
@@ -174,20 +181,16 @@ export function FeedView({ mode }: FeedViewProps) {
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [riskFilter, setRiskFilter] = React.useState('all');
   const [categoryFilter, setCategoryFilter] = React.useState('all');
-
-  const [visibleCount, setVisibleCount] = React.useState(10);
   
   const { toast } = useToast();
 
   const viewConfig = {
-    observations: { label: 'Observasi', icon: Briefcase },
-    inspections: { label: 'Inspeksi', icon: Wrench },
-    ptws: { label: 'PTW', icon: PtwIcon },
+    observations: { label: 'Observasi', icon: Briefcase, itemType: 'observation' },
+    inspections: { label: 'Inspeksi', icon: Wrench, itemType: 'inspection' },
+    ptws: { label: 'PTW', icon: PtwIcon, itemType: 'ptw' },
   };
 
-  const pageTitle = mode === 'public' 
-    ? 'Publik' 
-    : 'Project';
+  const pageTitle = mode === 'public' ? 'Publik' : 'Project';
   
   const clearFilters = () => {
     setStatusFilter('all');
@@ -195,9 +198,76 @@ export function FeedView({ mode }: FeedViewProps) {
     setCategoryFilter('all');
   };
 
-  const filteredData = React.useMemo(() => {
-    let dataToFilter: AllItems[] = [...items];
+  const fetchPublicItems = React.useCallback(async (reset = false) => {
+    setLoading(true);
 
+    try {
+        let q: Query<DocumentData> = query(
+            collection(db, viewType),
+            where('scope', '==', 'public')
+        );
+
+        if (viewType === 'observations') {
+            if (statusFilter !== 'all') {
+                q = query(q, where('status', '==', statusFilter));
+            }
+            if (riskFilter !== 'all') {
+                q = query(q, where('riskLevel', '==', riskFilter));
+            }
+            if (categoryFilter !== 'all') {
+                q = query(q, where('category', '==', categoryFilter));
+            }
+        }
+
+        q = query(q, orderBy('date', 'desc'), limit(PAGE_SIZE));
+
+        if (lastVisible && !reset) {
+            q = query(q, startAfter(lastVisible));
+        }
+
+        const documentSnapshots = await getDocs(q);
+        const newItems = documentSnapshots.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id,
+            itemType: viewConfig[viewType].itemType,
+        })) as AllItems[];
+
+        const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+        setLastVisible(lastDoc || null);
+        setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
+        setItems(prevItems => (reset ? newItems : [...prevItems, ...newItems]));
+
+    } catch (error) {
+        console.error("Error fetching public items:", error);
+        toast({
+            variant: "destructive",
+            title: "Gagal Memuat Data",
+            description: "Tidak dapat mengambil data publik. Coba lagi nanti."
+        });
+        setHasMore(false);
+    } finally {
+        setLoading(false);
+    }
+}, [viewType, statusFilter, riskFilter, categoryFilter, lastVisible]);
+
+
+  React.useEffect(() => {
+    if (mode === 'public') {
+      fetchPublicItems(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, viewType, statusFilter, riskFilter, categoryFilter]);
+
+
+  const data = mode === 'public' ? items : myItems;
+  const isLoading = mode === 'public' ? loading : myItemsLoading;
+
+  const filteredData = React.useMemo(() => {
+    if (mode === 'public') {
+        return data;
+    }
+    // Personal mode filtering logic remains client-side as it's a smaller dataset
+    let dataToFilter: AllItems[] = [...data];
     dataToFilter = dataToFilter.filter(item => item.itemType === viewType.slice(0, -1));
 
     if (viewType === 'observations') {
@@ -215,25 +285,21 @@ export function FeedView({ mode }: FeedViewProps) {
     }
     
     return dataToFilter;
-  }, [items, viewType, statusFilter, riskFilter, categoryFilter]);
-
-  const paginatedData = React.useMemo(() => {
-    return filteredData.slice(0, visibleCount);
-  }, [filteredData, visibleCount]);
-
+  }, [data, mode, viewType, statusFilter, riskFilter, categoryFilter]);
+  
   const displayObservation = React.useMemo(() => 
-    selectedObservationId ? items.find(o => o.id === selectedObservationId) as Observation : null,
-    [selectedObservationId, items]
+    selectedObservationId ? data.find(o => o.id === selectedObservationId) as Observation : null,
+    [selectedObservationId, data]
   );
   
   const displayInspection = React.useMemo(() =>
-    selectedInspectionId ? items.find(i => i.id === selectedInspectionId) as Inspection : null,
-    [selectedInspectionId, items]
+    selectedInspectionId ? data.find(i => i.id === selectedInspectionId) as Inspection : null,
+    [selectedInspectionId, data]
   );
   
   const displayPtw = React.useMemo(() =>
-    selectedPtwId ? items.find(p => p.id === selectedPtwId) as Ptw : null,
-    [selectedPtwId, items]
+    selectedPtwId ? data.find(p => p.id === selectedPtwId) as Ptw : null,
+    [selectedPtwId, data]
   );
 
   const handleExport = () => {
@@ -252,12 +318,6 @@ export function FeedView({ mode }: FeedViewProps) {
   
   const areFiltersActive = statusFilter !== 'all' || riskFilter !== 'all' || categoryFilter !== 'all';
   const isExportDisabled = viewType !== 'observations' || loading;
-
-  // Reset pagination when filters change
-  React.useEffect(() => {
-    setVisibleCount(10);
-  }, [viewType, statusFilter, riskFilter, categoryFilter]);
-
 
   function EmptyState() {
     const config = viewConfig[viewType];
@@ -388,7 +448,7 @@ export function FeedView({ mode }: FeedViewProps) {
         </div>
 
       <main>
-        {loading ? (
+        {isLoading && filteredData.length === 0 ? (
           <ul className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <li key={i}>
@@ -399,9 +459,9 @@ export function FeedView({ mode }: FeedViewProps) {
               </li>
             ))}
           </ul>
-        ) : paginatedData.length > 0 ? (
+        ) : filteredData.length > 0 ? (
           <ul className="space-y-3">
-             {paginatedData.map(item => {
+             {filteredData.map(item => {
                 switch(item.itemType) {
                   case 'observation':
                     return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} />;
@@ -418,14 +478,19 @@ export function FeedView({ mode }: FeedViewProps) {
           <EmptyState />
         )}
         
-        {!loading && filteredData.length > visibleCount && (
+        {mode === 'public' && hasMore && (
             <div className="mt-6 flex justify-center">
                 <Button 
                     variant="outline"
-                    onClick={() => setVisibleCount(prev => prev + 10)}
+                    onClick={() => fetchPublicItems()}
+                    disabled={loading}
                 >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Tampilkan Lebih Banyak ({visibleCount}/{filteredData.length})
+                    {loading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <Plus className="mr-2 h-4 w-4" />
+                    )}
+                    Tampilkan Lebih Banyak
                 </Button>
             </div>
         )}
