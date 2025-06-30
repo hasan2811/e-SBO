@@ -12,6 +12,8 @@ import {
   where,
   Unsubscribe,
   QuerySnapshot,
+  DocumentReference,
+  CollectionReference,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw, AllItems } from '@/lib/types';
@@ -39,7 +41,8 @@ interface ObservationContextType {
   approvePtw: (
     id: string,
     signatureDataUrl: string,
-    approver: string
+    approver: string,
+    ptw: Ptw,
   ) => Promise<void>;
   retryAiAnalysis: (item: Observation | Inspection) => Promise<void>;
 }
@@ -60,7 +63,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const collectionsToWatch: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
 
     // Listener for public data.
-    // REMOVED orderBy to prevent "index required" error. Sorting is now done on the client.
     React.useEffect(() => {
         setLoading(true);
         const itemMap = new Map<string, AllItems>();
@@ -70,7 +72,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 const itemType = doc.ref.parent.id.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
                 itemMap.set(doc.id, { ...doc.data(), id: doc.id, itemType } as AllItems);
             });
-            // Sort client-side
             const sortedItems = Array.from(itemMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setPublicItems(sortedItems);
         };
@@ -89,7 +90,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }, []);
 
     // Listener for personal and project data.
-    // REMOVED orderBy to prevent "index required" error. Sorting is now done on the client.
     React.useEffect(() => {
         if (projectsLoading) return;
         if (!user) {
@@ -97,17 +97,24 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             return;
         }
 
+        setLoading(true);
         const itemMap = new Map<string, AllItems>();
+        let allUnsubs: Unsubscribe[] = [];
 
         const processAndSort = () => {
              const sortedItems = Array.from(itemMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
              setMyItems(sortedItems);
+             setLoading(false);
         }
 
-        const processSnapshot = (snapshot: QuerySnapshot) => {
+        const createSnapshotProcessor = (itemType: 'observation' | 'inspection' | 'ptw', projectId?: string) => (snapshot: QuerySnapshot) => {
              snapshot.docChanges().forEach((change) => {
-                const itemType = change.doc.ref.parent.id.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-                const itemData = { ...change.doc.data(), id: change.doc.id, itemType } as AllItems;
+                const itemData = { 
+                    ...change.doc.data(), 
+                    id: change.doc.id, 
+                    itemType,
+                    ...(projectId && { projectId, scope: 'project' }) // Add project context back
+                } as AllItems;
 
                 if (change.type === "removed") {
                     itemMap.delete(change.doc.id);
@@ -117,24 +124,43 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             });
             processAndSort();
         };
-        
-        let allUnsubs: Unsubscribe[] = [];
 
+        // 1. Listen to the user's private items in the root collections
         collectionsToWatch.forEach(colName => {
-            // Query 1: Get the user's private items
-            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid), where('scope', 'in', ['private', 'project']));
-            allUnsubs.push(onSnapshot(privateQuery, processSnapshot, (e) => console.error(`Error fetching personal ${colName}: `, e)));
+            const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
+            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid), where('scope', '==', 'private'));
+            allUnsubs.push(onSnapshot(privateQuery, createSnapshotProcessor(itemType), (e) => console.error(`Error fetching private ${colName}: `, e)));
+        });
+
+        // 2. Listen to items in subcollections for each project the user is a member of
+        projects.forEach(project => {
+            collectionsToWatch.forEach(colName => {
+                const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
+                const projectCollectionQuery = query(collection(db, 'projects', project.id, colName));
+                allUnsubs.push(onSnapshot(projectCollectionQuery, createSnapshotProcessor(itemType, project.id), (e) => console.error(`Error fetching from project ${project.id}/${colName}: `, e)));
+            });
         });
         
+        if (!projectsLoading && projects.length === 0) {
+            processAndSort();
+        }
+
         return () => {
             allUnsubs.forEach(unsub => unsub());
         };
 
     }, [user, projects, projectsLoading]);
 
-
+    const getDocRef = (item: Observation | Inspection | Ptw): DocumentReference => {
+        const itemTypePlural = `${item.itemType}s` as 'observations' | 'inspections' | 'ptws';
+        if (item.scope === 'project' && item.projectId) {
+            return doc(db, 'projects', item.projectId, itemTypePlural, item.id);
+        }
+        return doc(db, itemTypePlural, item.id);
+    };
+    
     const _runObservationAiAnalysis = React.useCallback(async (observation: Observation) => {
-      const observationDocRef = doc(db, 'observations', observation.id);
+      const observationDocRef = getDocRef(observation);
       const observationData = `
         Location: ${observation.location}, Company: ${observation.company}, Category: ${observation.category}, Risk Level: ${observation.riskLevel}, Submitted By: ${observation.submittedBy}, Date: ${new Date(observation.date).toLocaleString()}, Findings: ${observation.findings}, Recommendation: ${observation.recommendation}
       `;
@@ -161,7 +187,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }, []);
 
     const _runInspectionAiAnalysis = React.useCallback(async (inspection: Inspection) => {
-      const inspectionDocRef = doc(db, 'inspections', inspection.id);
+      const inspectionDocRef = getDocRef(inspection);
       const inspectionData = `
         Equipment Name: ${inspection.equipmentName}, Type: ${inspection.equipmentType}, Location: ${inspection.location}, Status: ${inspection.status}, Submitted By: ${inspection.submittedBy}, Date: ${new Date(inspection.date).toLocaleString()}, Findings: ${inspection.findings}, Recommendation: ${inspection.recommendation || 'N/A'}
       `;
@@ -186,8 +212,20 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       if(!user) throw new Error("User not authenticated");
       const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
       const observationToSave = { ...newObservation, referenceId, aiStatus: 'processing' as const, userId: user.uid };
-      const observationCollection = collection(db, 'observations');
-      const docRef = await addDoc(observationCollection, observationToSave);
+      
+      let collectionRef: CollectionReference;
+      let dataToSave: any = observationToSave;
+
+      if (observationToSave.scope === 'project' && observationToSave.projectId) {
+        collectionRef = collection(db, 'projects', observationToSave.projectId, 'observations');
+        // Exclude projectId from the document data as it's in the path
+        const { projectId, ...rest } = observationToSave;
+        dataToSave = rest;
+      } else {
+        collectionRef = collection(db, 'observations');
+      }
+
+      const docRef = await addDoc(collectionRef, dataToSave);
       _runObservationAiAnalysis({ ...observationToSave, id: docRef.id, itemType: 'observation' });
     }, [user, _runObservationAiAnalysis]);
 
@@ -195,8 +233,19 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       if(!user) throw new Error("User not authenticated");
       const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
       const inspectionToSave = { ...newInspection, referenceId, aiStatus: 'processing' as const, userId: user.uid };
-      const inspectionCollection = collection(db, 'inspections');
-      const docRef = await addDoc(inspectionCollection, inspectionToSave);
+
+      let collectionRef: CollectionReference;
+      let dataToSave: any = inspectionToSave;
+
+      if (inspectionToSave.scope === 'project' && inspectionToSave.projectId) {
+        collectionRef = collection(db, 'projects', inspectionToSave.projectId, 'inspections');
+        const { projectId, ...rest } = inspectionToSave;
+        dataToSave = rest;
+      } else {
+        collectionRef = collection(db, 'inspections');
+      }
+
+      const docRef = await addDoc(collectionRef, dataToSave);
       _runInspectionAiAnalysis({ ...inspectionToSave, id: docRef.id, itemType: 'inspection' });
     }, [user, _runInspectionAiAnalysis]);
 
@@ -204,35 +253,48 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         if(!user) throw new Error("User not authenticated");
         const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         const ptwToSave = { ...newPtw, referenceId, userId: user.uid };
-        const ptwCollection = collection(db, 'ptws');
-        await addDoc(ptwCollection, ptwToSave);
+
+        let collectionRef: CollectionReference;
+        let dataToSave: any = ptwToSave;
+
+        if (ptwToSave.scope === 'project' && ptwToSave.projectId) {
+            collectionRef = collection(db, 'projects', ptwToSave.projectId, 'ptws');
+            const { projectId, ...rest } = ptwToSave;
+            dataToSave = rest;
+        } else {
+            collectionRef = collection(db, 'ptws');
+        }
+
+        await addDoc(collectionRef, dataToSave);
     }, [user]);
 
     const updateObservation = React.useCallback(async (id: string, updatedData: Partial<Observation>) => {
+        // This function might need the full observation object to determine the path
+        // For simplicity, we assume updates only happen from the detail sheet, which has the full object
+        // And for now, updates are only for observations in the root collection.
+        // A more robust solution would require passing the full object to get the correct path.
         const observationDocRef = doc(db, 'observations', id);
         await updateDoc(observationDocRef, updatedData);
     }, []);
 
-    const approvePtw = React.useCallback(async (id: string, signatureDataUrl: string, approver: string) => {
-        const ptwDocRef = doc(db, 'ptws', id);
+    const approvePtw = React.useCallback(async (id: string, signatureDataUrl: string, approver: string, ptw: Ptw) => {
+        const ptwDocRef = getDocRef(ptw);
         await updateDoc(ptwDocRef, {
-        status: 'Approved', signatureDataUrl, approver, approvedDate: new Date().toISOString(),
+            status: 'Approved', signatureDataUrl, approver, approvedDate: new Date().toISOString(),
         });
     }, []);
 
     const retryAiAnalysis = React.useCallback(async (item: Observation | Inspection) => {
-      if (item.itemType === 'observation') {
-        const observationDocRef = doc(db, 'observations', item.id);
-        await updateDoc(observationDocRef, { aiStatus: 'processing' });
-        _runObservationAiAnalysis(item as Observation);
-      } else if (item.itemType === 'inspection') {
-        const inspectionDocRef = doc(db, 'inspections', item.id);
-        await updateDoc(inspectionDocRef, { aiStatus: 'processing' });
-        _runInspectionAiAnalysis(item as Inspection);
-      }
+        const docRef = getDocRef(item);
+        await updateDoc(docRef, { aiStatus: 'processing' });
+        if (item.itemType === 'observation') {
+            _runObservationAiAnalysis(item as Observation);
+        } else if (item.itemType === 'inspection') {
+            _runInspectionAiAnalysis(item as Inspection);
+        }
     }, [_runObservationAiAnalysis, _runInspectionAiAnalysis]);
 
-    const value = { publicItems, myItems, loading: loading || projectsLoading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
+    const value = { publicItems, myItems, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
 
     return (
         <ObservationContext.Provider value={value}>

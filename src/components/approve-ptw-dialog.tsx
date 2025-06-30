@@ -51,7 +51,7 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialog
       const signatureDataUrl = sigCanvasRef.current?.getTrimmedCanvas().toDataURL('image/png') || '';
       const approverName = `${userProfile.displayName} (${userProfile.position})`;
       
-      await approvePtw(ptw.id, signatureDataUrl, approverName);
+      await approvePtw(ptw.id, signatureDataUrl, approverName, ptw);
 
       toast({
         title: 'PTW Approved!',
