@@ -2,12 +2,13 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, writeBatch, documentId, arrayUnion, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, writeBatch, doc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 /**
  * Server action to create a new project and invite members.
- * It now updates each member's user document with the new project ID.
+ * It now only creates the project document with a list of member UIDs.
+ * It no longer tries to update individual user documents, which caused permission errors.
  * @param owner - The user object of the project creator.
  * @param projectName - The name of the new project.
  * @param memberEmailsStr - A comma-separated string of emails to invite.
@@ -58,25 +59,14 @@ export async function createProject(
 
     const memberUids = foundUsers.map(u => u.uid);
 
-    // 1. Create the new project document
-    const projectRef = doc(collection(db, 'projects'));
-    batch.set(projectRef, {
+    // 1. Create the new project document in a single step.
+    const projectCollectionRef = collection(db, 'projects');
+    addDoc(projectCollectionRef, {
       name: projectName,
       ownerUid: owner.uid,
       memberUids: memberUids,
       createdAt: new Date().toISOString(),
     });
-
-    // 2. Update each member's user document to add the new project ID
-    foundUsers.forEach(member => {
-      const userRef = doc(db, 'users', member.uid);
-      batch.update(userRef, {
-        projectIds: arrayUnion(projectRef.id)
-      });
-    });
-    
-    // Commit all writes at once
-    await batch.commit();
     
     revalidatePath('/tasks');
     revalidatePath('/beranda');
