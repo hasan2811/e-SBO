@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -48,6 +49,16 @@ export function UserAccountSheet() {
 
   const handleSave = async () => {
     if (!user) return;
+    
+    if (!displayName.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Validation Error',
+        description: 'Display name cannot be empty.',
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
       await updateUserProfile(user.uid, { displayName, position });

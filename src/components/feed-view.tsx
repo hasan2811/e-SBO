@@ -233,10 +233,6 @@ export function FeedView({ mode }: FeedViewProps) {
   );
 
   const handleExport = () => {
-    if (viewType !== 'observations') {
-      toast({ title: 'Fitur Dalam Pengembangan', description: 'Ekspor untuk tipe data ini akan segera hadir.' });
-      return;
-    }
     const dataToExport = filteredData as Observation[];
     if (dataToExport.length === 0) {
       toast({
@@ -251,6 +247,7 @@ export function FeedView({ mode }: FeedViewProps) {
   };
   
   const areFiltersActive = statusFilter !== 'all' || riskFilter !== 'all' || categoryFilter !== 'all';
+  const isExportDisabled = viewType !== 'observations' || loading;
 
   // Reset pagination when filters change
   React.useEffect(() => {
@@ -375,12 +372,12 @@ export function FeedView({ mode }: FeedViewProps) {
                   )}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" onClick={handleExport} disabled={filteredData.length === 0 || loading}>
+                      <Button variant="outline" size="icon" onClick={handleExport} disabled={isExportDisabled}>
                         <Download className="h-4 w-4" />
                         <span className="sr-only">Export</span>
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent><p>Export</p></TooltipContent>
+                    <TooltipContent><p>{viewType === 'observations' ? "Export Observasi" : "Hanya tersedia untuk Observasi"}</p></TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
             </div>
