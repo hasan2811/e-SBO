@@ -41,9 +41,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
           toast({
             variant: 'destructive',
             title: 'Error Fetching Projects',
-            description: 'Could not load your projects. Please check permissions.',
+            description: error.message,
           });
-          setProjects([]); // Clear projects on error
+          setProjects([]);
           setLoading(false);
         });
       } catch (error) {
@@ -52,7 +52,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     } else {
-      // Not logged in, clear projects and stop loading
       setProjects([]);
       setLoading(false);
     }
