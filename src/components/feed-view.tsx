@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useObservations } from '@/contexts/observation-context';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCategory, ObservationStatus } from '@/lib/types';
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
-import { StatusBadge, InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
+import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
 import { FileText, ChevronRight, Home, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { InspectionDetailSheet } from '@/components/inspection-detail-sheet';
 import { PtwDetailSheet } from '@/components/ptw-detail-sheet';
 import { StarRating } from '@/components/star-rating';
 import { useAuth } from '@/hooks/use-auth';
+import { useProjects } from '@/hooks/use-projects';
 import { exportToExcel } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -159,6 +160,7 @@ interface FeedViewProps {
 export function FeedView({ mode }: FeedViewProps) {
   const { allItems, loading } = useObservations();
   const { user } = useAuth();
+  const { projects } = useProjects();
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -192,7 +194,7 @@ export function FeedView({ mode }: FeedViewProps) {
     
     if (mode === 'personal') {
         if (!user) return [];
-        const userProjectIds = user.projectIds || [];
+        const userProjectIds = projects.map(p => p.id);
         data = data.filter(item => 
             (item.scope === 'private' && item.userId === user.uid) ||
             (item.scope === 'project' && item.projectId && userProjectIds.includes(item.projectId))
@@ -222,7 +224,7 @@ export function FeedView({ mode }: FeedViewProps) {
     }
     
     return [];
-  }, [allItems, user, mode, viewType, statusFilter, riskFilter, categoryFilter]);
+  }, [allItems, user, projects, mode, viewType, statusFilter, riskFilter, categoryFilter]);
 
   const displayObservation = React.useMemo(() => 
     selectedObservationId ? allItems.find(o => o.id === selectedObservationId) as Observation : null,

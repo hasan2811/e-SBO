@@ -15,7 +15,6 @@ export type UserProfile = {
   displayName: string;
   email: string;
   position: string;
-  projectIds?: string[];
 };
 
 export type Project = {
