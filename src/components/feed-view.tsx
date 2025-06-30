@@ -49,21 +49,23 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
             "flex items-start gap-3 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden border-l-4",
             riskColorStyles[observation.riskLevel]
         )}>
-          {observation.photoUrl && (
-            <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border">
-              <Image src={observation.photoUrl} alt={observation.findings} fill sizes="80px" className="object-cover" data-ai-hint="site observation" />
-              {observation.aiStatus === 'processing' && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <Loader2 className="h-5 w-5 animate-spin text-white" />
-                  </div>
-              )}
-               {observation.aiStatus === 'completed' && (
-                  <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
-                      <Sparkles className="h-3 w-3 text-primary-foreground" />
-                  </div>
-              )}
-            </div>
-          )}
+          <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
+            {observation.photoUrl ? (
+                <Image src={observation.photoUrl} alt={observation.findings} fill sizes="80px" className="object-cover" data-ai-hint="site observation" />
+            ) : (
+                <FileText className="h-8 w-8 text-muted-foreground/50" />
+            )}
+            {observation.aiStatus === 'processing' && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                </div>
+            )}
+            {observation.aiStatus === 'completed' && (
+                <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
+                    <Sparkles className="h-3 w-3 text-primary-foreground" />
+                </div>
+            )}
+          </div>
   
             <div className="flex-1 space-y-1 self-start">
                 <div className="flex justify-between items-start">
@@ -100,21 +102,23 @@ const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, 
   return (
     <li>
       <div onClick={onSelect} className="flex items-start gap-3 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
-        {inspection.photoUrl && (
-          <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border">
+        <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
+          {inspection.photoUrl ? (
             <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="80px" className="object-cover" data-ai-hint="equipment inspection" />
-             {inspection.aiStatus === 'processing' && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <Loader2 className="h-5 w-5 animate-spin text-white" />
-                </div>
-            )}
-             {inspection.aiStatus === 'completed' && (
-                <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
-                    <Sparkles className="h-3 w-3 text-primary-foreground" />
-                </div>
-            )}
-          </div>
-        )}
+          ) : (
+            <Wrench className="h-8 w-8 text-muted-foreground/50" />
+          )}
+          {inspection.aiStatus === 'processing' && (
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-white" />
+              </div>
+          )}
+          {inspection.aiStatus === 'completed' && (
+              <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
+                  <Sparkles className="h-3 w-3 text-primary-foreground" />
+              </div>
+          )}
+        </div>
         
         <div className="flex-1 space-y-1 self-start">
           <p className="text-xs text-muted-foreground">
