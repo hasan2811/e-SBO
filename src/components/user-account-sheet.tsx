@@ -72,7 +72,6 @@ export function UserAccountSheet() {
     }
   }
 
-  // Updated to match the new simplified server action
   const handleAddProject = async (projectName: string) => {
     await addProject(projectName);
   };
@@ -93,6 +92,26 @@ export function UserAccountSheet() {
     }
   };
 
+  const renderSkeleton = () => (
+    <div className="p-6 space-y-6">
+        <div className="flex items-center space-x-4">
+        <Skeleton className="h-16 w-16 rounded-full" />
+        <div className="space-y-2">
+            <Skeleton className="h-5 w-[200px]" />
+            <Skeleton className="h-4 w-[150px]" />
+        </div>
+        </div>
+        <Skeleton className="h-10 w-full" />
+        <Separator/>
+        <div className="space-y-3">
+            <Skeleton className="h-5 w-1/3" />
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-5 w-1/2" />
+        </div>
+        <Skeleton className="h-10 w-full" />
+    </div>
+  );
+
   return (
     <>
     <Sheet open={isSheetOpen} onOpenChange={handleOpenChange}>
@@ -110,29 +129,17 @@ export function UserAccountSheet() {
             </Avatar>
         </Button>
       </SheetTrigger>
-      <SheetContent>
-        <SheetHeader>
+      <SheetContent className="flex flex-col h-full p-0">
+        <SheetHeader className="p-6 pb-4 border-b">
           <SheetTitle>My Account</SheetTitle>
           <SheetDescription>
-            Manage your account settings and preferences.
+            Manage your account settings and project memberships.
           </SheetDescription>
         </SheetHeader>
-        <div className="py-8">
-          {authLoading ? ( // Use authLoading for the initial skeleton
-             <div className="space-y-6">
-                <div className="flex items-center space-x-4">
-                  <Skeleton className="h-16 w-16 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-[200px]" />
-                    <Skeleton className="h-4 w-[150px]" />
-                  </div>
-                </div>
-                <Skeleton className="h-10 w-full" />
-                <Separator/>
-                <Skeleton className="h-10 w-full" />
-              </div>
-          ) : user && userProfile ? (
-            <div className="flex flex-col gap-6">
+        
+        <div className="flex-1 overflow-y-auto">
+          {isLoading ? renderSkeleton() : user && userProfile ? (
+            <div className="p-6 space-y-6">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
                   <AvatarImage src={user.photoURL || undefined} alt={user.displayName ?? ''} data-ai-hint="user avatar" />
@@ -160,7 +167,7 @@ export function UserAccountSheet() {
                       <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancel</Button>
                       <Button onClick={handleSave} disabled={isSaving}>
                           {isSaving && <Loader2 className="mr-2 animate-spin" />}
-                          Save
+                          Save Changes
                       </Button>
                   </div>
                 </div>
@@ -173,35 +180,25 @@ export function UserAccountSheet() {
               
               <Separator />
 
-              <div>
-                <h3 className="font-semibold mb-3 flex items-center gap-2"><Users className="h-5 w-5"/>My Projects</h3>
-                {projectsLoading ? (
-                    <div className="space-y-2">
-                        <Skeleton className="h-5 w-3/4" />
-                        <Skeleton className="h-5 w-1/2" />
-                    </div>
-                ) : projects.length > 0 ? (
+              <div className="space-y-4">
+                <h3 className="font-semibold flex items-center gap-2"><Users className="h-5 w-5 text-muted-foreground"/>My Projects</h3>
+                {projects.length > 0 ? (
                   <ul className="space-y-2">
                     {projects.map(project => (
-                      <li key={project.id} className="text-sm flex items-center gap-2 text-muted-foreground"><Folder className="h-4 w-4" />{project.name}</li>
+                      <li key={project.id} className="text-sm flex items-center gap-3 text-muted-foreground"><Folder className="h-4 w-4 text-primary" />{project.name}</li>
                     ))}
                   </ul>
-                ) : <p className="text-sm text-muted-foreground">You are not a member of any projects yet.</p>
+                ) : <p className="text-sm text-muted-foreground pl-3">You are not a member of any projects yet.</p>
                 }
-                <Button variant="outline" className="w-full mt-4" onClick={() => setProjectDialogOpen(true)}>
+                <Button variant="outline" className="w-full" onClick={() => setProjectDialogOpen(true)}>
                   <PlusCircle className="mr-2" />
                   Create New Project
                 </Button>
               </div>
 
-            </div>
-          ) : (
-            <div className="text-center">
-              <p className="text-muted-foreground">You are not signed in. Please go to the login page.</p>
-            </div>
-          )}
-          <Separator className="my-6" />
-            <div className="text-center text-xs text-muted-foreground space-y-1">
+              <Separator />
+
+              <div className="text-center text-xs text-muted-foreground space-y-1">
                 <p className="font-semibold text-sm text-foreground">HSSE Tech v1.001</p>
                 <div className="pt-2">
                 <p>Copyright © 2024 CV Arzan Sirah Persada</p>
@@ -210,18 +207,26 @@ export function UserAccountSheet() {
                 <div className="pt-2">
                 <p>Design by: Arzan (+971502861769)</p>
                 </div>
+              </div>
+
             </div>
+          ) : (
+            <div className="text-center p-6">
+              <p className="text-muted-foreground">You are not signed in.</p>
+            </div>
+          )}
         </div>
-        <SheetFooter className="mt-auto">
-            {user ? (
+        
+        {user && (
+            <SheetFooter className="p-4 border-t mt-auto">
                 <SheetClose asChild>
                     <Button onClick={logout} className="w-full" variant="outline">
                         <LogOut className="mr-2" />
                         Sign Out
                     </Button>
                 </SheetClose>
-            ) : null}
-        </SheetFooter>
+            </SheetFooter>
+        )}
       </SheetContent>
     </Sheet>
     
