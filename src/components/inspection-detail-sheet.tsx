@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -8,11 +7,13 @@ import { InspectionStatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft, Folder } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
 import { useObservations } from '@/contexts/observation-context';
+import { useProjects } from '@/hooks/use-projects';
+
 
 interface InspectionDetailSheetProps {
     inspection: Inspection | null;
@@ -22,8 +23,11 @@ interface InspectionDetailSheetProps {
 
 export function InspectionDetailSheet({ inspection, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { retryAiAnalysis } = useObservations();
+  const { projects } = useProjects();
   
   if (!inspection) return null;
+
+  const projectName = inspection.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
 
   const handleRetry = () => {
     retryAiAnalysis(inspection);
@@ -81,6 +85,13 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange }: Insp
               <div className="font-semibold text-muted-foreground">Location</div>
               <div>{inspection.location}</div>
               
+              {projectName && (
+                <>
+                  <div className="font-semibold text-muted-foreground flex items-center gap-1.5"><Folder className="h-4 w-4"/>Project</div>
+                  <div>{projectName}</div>
+                </>
+              )}
+
               <div className="font-semibold text-muted-foreground">Equipment</div>
               <div>{inspection.equipmentName} ({inspection.equipmentType})</div>
 

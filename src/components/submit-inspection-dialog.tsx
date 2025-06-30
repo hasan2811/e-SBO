@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -9,18 +8,18 @@ import Image from 'next/image';
 import { Loader2, Upload, Wrench } from 'lucide-react';
 
 import { uploadFile } from '@/lib/storage';
-import type { Inspection, InspectionStatus, EquipmentType, Location } from '@/lib/types';
+import type { Inspection, InspectionStatus, EquipmentType, Location, Scope } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useProjects } from '@/hooks/use-projects';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Switch } from '@/components/ui/switch';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const EQUIPMENT_TYPES = ['Heavy Machinery', 'Hand Tool', 'Vehicle', 'Electrical', 'Other'] as const;
@@ -36,7 +35,7 @@ const formSchema = z.object({
   photo: z
     .instanceof(File, { message: 'Foto wajib diunggah.' })
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
-  isPrivate: z.boolean().default(false),
+  scopeAndProjectId: z.string().min(1, 'Pilihan berbagi harus ditentukan.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -53,6 +52,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { projects, loading: projectsLoading } = useProjects();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
 
@@ -65,7 +65,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
       status: INSPECTION_STATUSES[0],
       findings: '',
       recommendation: '',
-      isPrivate: false,
+      scopeAndProjectId: 'private',
     },
     mode: 'onChange',
   });
@@ -99,6 +99,16 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
 
     try {
       const photoUrl = await uploadFile(values.photo, 'inspections', user.uid, setUploadProgress);
+
+      let scope: Scope = 'private';
+      let projectId: string | null = null;
+      if (values.scopeAndProjectId === 'public') {
+        scope = 'public';
+      } else if (values.scopeAndProjectId !== 'private') {
+        scope = 'project';
+        projectId = values.scopeAndProjectId;
+      }
+
       const newInspectionData: Omit<Inspection, 'id'> = {
         userId: user.uid,
         date: new Date().toISOString(),
@@ -110,11 +120,12 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
         findings: values.findings,
         recommendation: values.recommendation,
         photoUrl: photoUrl,
-        scope: values.isPrivate ? 'private' : 'public',
+        scope,
+        projectId,
       };
 
       await onAddInspection(newInspectionData);
-      toast({ title: 'Sukses!', description: `Laporan inspeksi baru berhasil dikirim ke ${values.isPrivate ? 'Beranda' : 'Jurnal'}.` });
+      toast({ title: 'Sukses!', description: `Laporan inspeksi baru berhasil dikirim.` });
       onOpenChange(false);
     } catch (error) {
       console.error("Submission failed: ", error);
@@ -178,25 +189,36 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
                 </FormItem>
               )} />
               <FormField
-                  control={form.control}
-                  name="isPrivate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-4">
-                      <div className="space-y-0.5">
-                        <FormLabel>Simpan ke Beranda (Pribadi)</FormLabel>
-                        <FormDescription>
-                          Jika aktif, laporan ini hanya akan terlihat oleh Anda.
-                        </FormDescription>
-                      </div>
+                control={form.control}
+                name="scopeAndProjectId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bagikan Ke</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih target laporan..." />
+                        </SelectTrigger>
                       </FormControl>
-                    </FormItem>
-                  )}
-                />
+                      <SelectContent>
+                        <SelectItem value="private">Pribadi (Hanya Saya)</SelectItem>
+                        <SelectItem value="public">Publik (Semua Pengguna)</SelectItem>
+                        {projects.length > 0 && (
+                          <SelectGroup>
+                            <SelectLabel>Proyek</SelectLabel>
+                            {projects.map((project) => (
+                              <SelectItem key={project.id} value={project.id}>
+                                {project.name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </form>
           </Form>
         </div>

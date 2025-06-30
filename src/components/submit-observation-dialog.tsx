@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -8,9 +7,10 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload } from 'lucide-react';
 
-import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel } from '@/lib/types';
+import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel, Scope } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useProjects } from '@/hooks/use-projects';
 import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -33,9 +32,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Switch } from '@/components/ui/switch';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
@@ -52,7 +50,7 @@ const formSchema = z.object({
   photo: z
     .instanceof(File, { message: 'Foto wajib diunggah.' })
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
-  isPrivate: z.boolean().default(false),
+  scopeAndProjectId: z.string().min(1, 'Pilihan berbagi harus ditentukan.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -69,6 +67,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { projects, loading: projectsLoading } = useProjects();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
 
@@ -81,7 +80,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       riskLevel: 'Low',
       findings: '',
       recommendation: '',
-      isPrivate: false,
+      scopeAndProjectId: 'private',
     },
     mode: 'onChange',
   });
@@ -123,6 +122,15 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
 
     try {
       const photoUrl = await uploadFile(values.photo, 'observations', user.uid, setUploadProgress);
+      
+      let scope: Scope = 'private';
+      let projectId: string | null = null;
+      if (values.scopeAndProjectId === 'public') {
+        scope = 'public';
+      } else if (values.scopeAndProjectId !== 'private') {
+        scope = 'project';
+        projectId = values.scopeAndProjectId;
+      }
 
       const newObservationData: Omit<Observation, 'id'> = {
         userId: user.uid,
@@ -136,14 +144,15 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         findings: values.findings,
         recommendation: values.recommendation,
         photoUrl: photoUrl,
-        scope: values.isPrivate ? 'private' : 'public',
+        scope,
+        projectId,
       };
 
       await onAddObservation(newObservationData);
 
       toast({
         title: 'Sukses!',
-        description: `Laporan observasi baru berhasil dikirim ke ${values.isPrivate ? 'Beranda' : 'Jurnal'}.`,
+        description: `Laporan observasi baru berhasil dikirim.`,
       });
       onOpenChange(false);
     } catch (error) {
@@ -319,26 +328,37 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                   </FormItem>
                 )}
               />
-               <FormField
-                  control={form.control}
-                  name="isPrivate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-4">
-                      <div className="space-y-0.5">
-                        <FormLabel>Simpan ke Beranda (Pribadi)</FormLabel>
-                        <FormDescription>
-                          Jika aktif, laporan ini hanya akan terlihat oleh Anda.
-                        </FormDescription>
-                      </div>
+              <FormField
+                control={form.control}
+                name="scopeAndProjectId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bagikan Ke</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih target laporan..." />
+                        </SelectTrigger>
                       </FormControl>
-                    </FormItem>
-                  )}
-                />
+                      <SelectContent>
+                        <SelectItem value="private">Pribadi (Hanya Saya)</SelectItem>
+                        <SelectItem value="public">Publik (Semua Pengguna)</SelectItem>
+                        {projects.length > 0 && (
+                          <SelectGroup>
+                            <SelectLabel>Proyek</SelectLabel>
+                            {projects.map((project) => (
+                              <SelectItem key={project.id} value={project.id}>
+                                {project.name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </form>
           </Form>
         </div>

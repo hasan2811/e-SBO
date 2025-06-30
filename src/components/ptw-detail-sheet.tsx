@@ -6,11 +6,12 @@ import type { Ptw } from '@/lib/types';
 import { PtwStatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Gavel, ArrowLeft, FileText, User, Building, MapPin, Calendar, ExternalLink, PenSquare, Check } from 'lucide-react';
+import { Gavel, ArrowLeft, FileText, User, Building, MapPin, Calendar, ExternalLink, PenSquare, Check, Folder } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { ApprovePtwDialog } from './approve-ptw-dialog';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
+import { useProjects } from '@/hooks/use-projects';
 
 interface PtwDetailSheetProps {
     ptw: Ptw | null;
@@ -20,8 +21,11 @@ interface PtwDetailSheetProps {
 
 export function PtwDetailSheet({ ptw, isOpen, onOpenChange }: PtwDetailSheetProps) {
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
+  const { projects } = useProjects();
 
   if (!ptw) return null;
+
+  const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
 
   const handleApproveClick = () => {
     setApproveDialogOpen(true);
@@ -63,6 +67,9 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange }: PtwDetailSheetProp
                 <DetailRow icon={User} label="Submitted By" value={ptw.submittedBy} />
                 <DetailRow icon={Building} label="Contractor" value={ptw.contractor} />
                 <DetailRow icon={MapPin} label="Location" value={ptw.location} />
+                {projectName && (
+                    <DetailRow icon={Folder} label="Project" value={projectName} />
+                )}
             </div>
 
             <div className="space-y-2">

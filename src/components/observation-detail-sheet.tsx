@@ -5,17 +5,18 @@ import Image from 'next/image';
 import { useObservations } from '@/contexts/observation-context';
 import type { Observation, RiskLevel } from '@/lib/types';
 import { TakeActionDialog } from '@/components/take-action-dialog';
-import { RiskBadge, StatusBadge } from '@/components/status-badges';
+import { StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Share2, ArrowLeft } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Share2, ArrowLeft, Folder } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { StarRating } from './star-rating';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
+import { useProjects } from '@/hooks/use-projects';
 
 
 interface ObservationDetailSheetProps {
@@ -26,11 +27,14 @@ interface ObservationDetailSheetProps {
 
 export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { updateObservation, retryAiAnalysis } = useObservations();
+  const { projects } = useProjects();
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isSharing, setIsSharing] = React.useState(false);
   const { toast } = useToast();
   
   if (!observation) return null;
+
+  const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
 
   const handleUpdate = async (obsId: string, data: Partial<Observation>) => {
     await updateObservation(obsId, data);
@@ -96,11 +100,11 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
     </div>
   );
   
-  const riskColorClasses: Record<RiskLevel, string> = {
-    Low: 'text-chart-2',
-    Medium: 'text-chart-4',
-    High: 'text-chart-5',
-    Critical: 'text-destructive',
+  const riskStyles: Record<RiskLevel, string> = {
+    Low: 'bg-chart-2 border-transparent text-primary-foreground',
+    Medium: 'bg-chart-4 border-transparent text-secondary-foreground',
+    High: 'bg-chart-5 border-transparent text-secondary-foreground',
+    Critical: 'bg-destructive border-transparent text-destructive-foreground',
   };
 
   return (
@@ -156,6 +160,13 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
               <div className="font-semibold text-muted-foreground">Location</div>
               <div>{observation.location}</div>
 
+              {projectName && (
+                <>
+                  <div className="font-semibold text-muted-foreground flex items-center gap-1.5"><Folder className="h-4 w-4"/>Project</div>
+                  <div>{projectName}</div>
+                </>
+              )}
+
               <div className="font-semibold text-muted-foreground">Category</div>
               <div>{observation.category}</div>
 
@@ -163,7 +174,11 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
               <div><StatusBadge status={observation.status} /></div>
 
               <div className="font-semibold text-muted-foreground">Risk Level</div>
-              <div><RiskBadge riskLevel={observation.riskLevel} /></div>
+              <div>
+                 <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", riskStyles[observation.riskLevel])}>
+                    {observation.riskLevel}
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -239,7 +254,9 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2 pl-8">
-                              <RiskBadge riskLevel={observation.aiSuggestedRiskLevel} />
+                                <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", riskStyles[observation.aiSuggestedRiskLevel])}>
+                                    {observation.aiSuggestedRiskLevel}
+                                </div>
                             </AccordionContent>
                           </AccordionItem>
                         )}
