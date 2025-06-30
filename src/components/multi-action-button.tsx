@@ -92,14 +92,16 @@ export function MultiActionButton({
 
   const mainButtonVariants = {
     open: {
-      rotate: 405,
+      rotate: 405, // 360 (full spin) + 45 (to make a cross)
       backgroundColor: 'hsl(var(--card))',
       color: 'hsl(var(--primary))',
+      borderColor: 'hsl(var(--primary))'
     },
     closed: {
       rotate: 0,
       backgroundColor: 'hsl(var(--primary))',
       color: 'hsl(var(--primary-foreground))',
+      borderColor: 'hsl(var(--primary))'
     },
   };
 
@@ -121,7 +123,7 @@ export function MultiActionButton({
       
       <div className="fixed bottom-20 right-6 md:right-8 z-40">
         <motion.div
-          className="flex flex-col-reverse items-center gap-4"
+          className="flex flex-col-reverse items-end gap-4"
           initial="closed"
           animate={isOpen ? 'open' : 'closed'}
           variants={menuVariants}
@@ -130,7 +132,7 @@ export function MultiActionButton({
             <TooltipTrigger asChild>
               <motion.button
                 onClick={() => setIsOpen(!isOpen)}
-                className="h-16 w-16 rounded-full flex items-center justify-center shadow-lg border-2 border-primary"
+                className="h-16 w-16 rounded-full flex items-center justify-center shadow-lg border-2"
                 aria-label="Toggle Actions Menu"
                 aria-expanded={isOpen}
                 variants={mainButtonVariants}
