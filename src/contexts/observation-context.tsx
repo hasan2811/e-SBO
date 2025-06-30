@@ -61,6 +61,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const [publicItemsLoading, setPublicItemsLoading] = React.useState(true);
     const [myItemsLoading, setMyItemsLoading] = React.useState(true);
     
+    const isInitialPublicLoad = React.useRef(true);
+
     const loading = publicItemsLoading || myItemsLoading || projectsLoading;
 
     const collectionsToWatch: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
@@ -86,7 +88,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     React.useEffect(() => {
         setPublicItemsLoading(true);
         const itemMap = new Map<string, AllItems>();
-        const isInitialLoad = React.useRef(true);
 
         const processSnapshot = (snapshot: QuerySnapshot, itemType: 'observation' | 'inspection' | 'ptw') => {
             snapshot.docChanges().forEach((change) => {
@@ -99,9 +100,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             });
             setPublicItems(sortItemsByDate(Array.from(itemMap.values())));
             
-            if (isInitialLoad.current) {
+            if (isInitialPublicLoad.current) {
                 setPublicItemsLoading(false);
-                isInitialLoad.current = false;
+                isInitialPublicLoad.current = false;
             }
         };
         
