@@ -1,17 +1,18 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, Sparkles } from 'lucide-react';
 
 import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel, Scope } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useProjects } from '@/hooks/use-projects';
 import { uploadFile } from '@/lib/storage';
+import { getAIAssistance } from '@/lib/actions/ai-actions';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -63,6 +64,7 @@ interface SubmitObservationDialogProps {
 
 export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation }: SubmitObservationDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isAiLoading, setIsAiLoading] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
@@ -84,6 +86,43 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     },
     mode: 'onChange',
   });
+
+  const findingsValue = useWatch({ control: form.control, name: 'findings' });
+  const showAiButton = findingsValue && findingsValue.length >= 20;
+
+  const handleAiAssist = async () => {
+    const findings = form.getValues('findings');
+    if (findings.length < 20) {
+      toast({
+        variant: 'destructive',
+        title: 'Teks Kurang',
+        description: 'Mohon tulis temuan minimal 20 karakter untuk bantuan AI.',
+      });
+      return;
+    }
+
+    setIsAiLoading(true);
+    try {
+      const result = await getAIAssistance({ findings });
+      form.setValue('category', result.suggestedCategory, { shouldValidate: true });
+      form.setValue('riskLevel', result.suggestedRiskLevel, { shouldValidate: true });
+      form.setValue('findings', result.improvedFindings, { shouldValidate: true });
+      form.setValue('recommendation', result.suggestedRecommendation, { shouldValidate: true });
+      toast({
+        title: 'Bantuan AI Diterapkan!',
+        description: 'Formulir telah diperbarui dengan saran dari AI.',
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Bantuan AI Gagal',
+        description: 'Tidak dapat memproses permintaan Anda saat ini.',
+      });
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -240,7 +279,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Kategori</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
                         </FormControl>
@@ -256,7 +295,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tingkat Risiko</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger><SelectValue placeholder="Pilih tingkat risiko" /></SelectTrigger>
                         </FormControl>
@@ -272,7 +311,15 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                 name="findings"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Temuan</FormLabel>
+                    <div className="flex justify-between items-center">
+                      <FormLabel>Temuan</FormLabel>
+                      {showAiButton && (
+                        <Button type="button" variant="outline" size="sm" onClick={handleAiAssist} disabled={isAiLoading}>
+                          {isAiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                          Bantuan AI
+                        </Button>
+                      )}
+                    </div>
                     <FormControl>
                       <Textarea placeholder="Jelaskan detail temuan observasi." rows={3} {...field} />
                     </FormControl>
