@@ -92,7 +92,7 @@ export function MultiActionButton({
 
   const mainButtonVariants = {
     open: {
-      rotate: 405, // 360 (full spin) + 45 (to make an 'X')
+      rotate: 405,
       backgroundColor: 'hsl(var(--card))',
       color: 'hsl(var(--primary))',
     },
@@ -105,28 +105,27 @@ export function MultiActionButton({
 
   return (
     <TooltipProvider>
-      <div className="fixed bottom-24 right-6 md:right-8 z-40">
-        <AnimatePresence>
-          {isOpen && (
-            <motion.div
-              key="overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.2 } }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30"
-              aria-hidden="true"
-            />
-          )}
-        </AnimatePresence>
-        
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            key="overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30"
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+      
+      <div className="fixed bottom-20 right-6 md:right-8 z-40">
         <motion.div
           className="flex flex-col-reverse items-center gap-4"
           initial="closed"
           animate={isOpen ? 'open' : 'closed'}
           variants={menuVariants}
         >
-          {/* Main button is rendered first, so it's at the bottom of flex-col-reverse */}
           <Tooltip>
             <TooltipTrigger asChild>
               <motion.button
@@ -145,7 +144,6 @@ export function MultiActionButton({
             </TooltipContent>
           </Tooltip>
 
-          {/* Action items are rendered next, appearing above the button */}
           {actionItems.map((item) => (
             <motion.div
               key={item.key}
