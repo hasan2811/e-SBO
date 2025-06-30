@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Project } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -18,44 +18,56 @@ interface ProjectContextType {
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     let unsubscribe: () => void = () => {};
 
-    if (user?.uid) {
+    // Ensure we have a user and their profile, specifically the projectIds array.
+    if (user?.uid && userProfile) {
       setLoading(true);
-      const projectsQuery = query(
-        collection(db, 'projects'),
-        where('memberUids', 'array-contains', user.uid)
-      );
+      const projectIds = userProfile.projectIds || [];
 
-      unsubscribe = onSnapshot(projectsQuery, 
-        (snapshot) => {
-          const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
-          setProjects(userProjects);
-          setLoading(false);
-        }, 
-        (error) => {
-          console.error("Error fetching projects:", error);
-          toast({
-            variant: 'destructive',
-            title: 'Error Fetching Projects',
-            description: "Could not retrieve project list. This might be a permissions issue. " + error.message,
-          });
-          setProjects([]);
-          setLoading(false);
-        }
-      );
-    } else {
+      if (projectIds.length > 0) {
+        // Use the highly efficient `in` query on document IDs.
+        const projectsQuery = query(
+          collection(db, 'projects'),
+          where(documentId(), 'in', projectIds)
+        );
+
+        unsubscribe = onSnapshot(projectsQuery, 
+          (snapshot) => {
+            const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
+            setProjects(userProjects);
+            setLoading(false);
+          }, 
+          (error) => {
+            console.error("Error fetching projects:", error);
+            toast({
+              variant: 'destructive',
+              title: 'Error Fetching Projects',
+              description: "Could not retrieve project list. " + error.message,
+            });
+            setProjects([]);
+            setLoading(false);
+          }
+        );
+      } else {
+        // If the user has no projects, don't query and just set to empty.
+        setProjects([]);
+        setLoading(false);
+      }
+    } else if (!user) {
+      // If there's no user, clear projects and stop loading.
       setProjects([]);
       setLoading(false);
     }
+    // Note: This effect depends on `userProfile`, so it will re-run when the profile is loaded.
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, userProfile]); // Depend on userProfile to get projectIds
 
   const addProject = React.useCallback(async (projectName: string, memberEmailsStr: string) => {
     if (!user || !user.email) {

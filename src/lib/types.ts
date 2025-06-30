@@ -16,6 +16,7 @@ export type UserProfile = {
   displayName: string;
   email: string;
   position: string;
+  projectIds?: string[]; // Added to store project memberships for efficient querying.
 };
 
 export type Project = {

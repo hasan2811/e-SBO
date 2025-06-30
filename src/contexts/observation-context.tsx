@@ -10,7 +10,6 @@ import {
   updateDoc,
   addDoc,
   where,
-  orderBy,
   Unsubscribe,
   QuerySnapshot,
 } from 'firebase/firestore';
@@ -60,7 +59,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
     const collectionsToWatch: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
 
-    // Listener for public data
+    // Listener for public data.
+    // REMOVED orderBy to prevent "index required" error. Sorting is now done on the client.
     React.useEffect(() => {
         setLoading(true);
         const itemMap = new Map<string, AllItems>();
@@ -70,16 +70,17 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 const itemType = doc.ref.parent.id.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
                 itemMap.set(doc.id, { ...doc.data(), id: doc.id, itemType } as AllItems);
             });
+            // Sort client-side
             const sortedItems = Array.from(itemMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setPublicItems(sortedItems);
         };
 
         const unsubs = collectionsToWatch.flatMap(colName => {
-            const publicQuery = query(collection(db, colName), where('scope', '==', 'public'), orderBy('date', 'desc'));
+            const publicQuery = query(collection(db, colName), where('scope', '==', 'public'));
             return onSnapshot(publicQuery, processSnapshot, (error) => console.error(`Error fetching public ${colName}:`, error));
         });
         
-        const timer = setTimeout(() => setLoading(false), 1500); // Give a bit of time for initial load
+        const timer = setTimeout(() => setLoading(false), 1500);
 
         return () => {
             unsubs.forEach(unsub => unsub());
@@ -87,16 +88,21 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         };
     }, []);
 
-    // Listener for personal and project data
+    // Listener for personal and project data.
+    // REMOVED orderBy to prevent "index required" error. Sorting is now done on the client.
     React.useEffect(() => {
         if (projectsLoading) return;
-
         if (!user) {
             setMyItems([]);
             return;
         }
 
         const itemMap = new Map<string, AllItems>();
+
+        const processAndSort = () => {
+             const sortedItems = Array.from(itemMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+             setMyItems(sortedItems);
+        }
 
         const processSnapshot = (snapshot: QuerySnapshot) => {
              snapshot.docChanges().forEach((change) => {
@@ -109,27 +115,17 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                     itemMap.set(change.doc.id, itemData);
                 }
             });
-
-            const sortedItems = Array.from(itemMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setMyItems(sortedItems);
+            processAndSort();
         };
         
         let allUnsubs: Unsubscribe[] = [];
 
         collectionsToWatch.forEach(colName => {
             // Query 1: Get the user's private items
-            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid), where('scope', '==', 'private'), orderBy('date', 'desc'));
-            allUnsubs.push(onSnapshot(privateQuery, processSnapshot, (e) => console.error(`Error fetching private ${colName}:`, e)));
-
-            // Query 2: Get the user's project items
-            if (projects.length > 0) {
-              const projectIds = projects.map(p => p.id);
-              // Firestore 'in' query limitation is 30. If more projects, chunking is needed.
-              const projectQuery = query(collection(db, colName), where('projectId', 'in', projectIds), orderBy('date', 'desc'));
-              allUnsubs.push(onSnapshot(projectQuery, processSnapshot, (e) => console.error(`Error fetching project items for ${colName}:`, e)));
-            }
+            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid), where('scope', 'in', ['private', 'project']));
+            allUnsubs.push(onSnapshot(privateQuery, processSnapshot, (e) => console.error(`Error fetching personal ${colName}: `, e)));
         });
-
+        
         return () => {
             allUnsubs.forEach(unsub => unsub());
         };

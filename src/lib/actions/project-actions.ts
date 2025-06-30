@@ -2,11 +2,12 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, writeBatch, documentId, arrayUnion, doc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 /**
  * Server action to create a new project and invite members.
+ * It now updates each member's user document with the new project ID.
  * @param owner - The user object of the project creator.
  * @param projectName - The name of the new project.
  * @param memberEmailsStr - A comma-separated string of emails to invite.
@@ -21,53 +22,61 @@ export async function createProject(
     return { success: false, message: 'Authentication required to create a project.' };
   }
 
+  const batch = writeBatch(db);
+  
   try {
     const trimmedEmails = memberEmailsStr
       .split(',')
       .map((email) => email.trim().toLowerCase())
       .filter((email) => email.length > 0 && email.includes('@'));
       
-    const memberEmailsInput = [...new Set(trimmedEmails)];
+    const memberEmailsInput = [...new Set([owner.email.toLowerCase(), ...trimmedEmails])];
 
-    const allEmailsToFind = memberEmailsInput.filter(email => email !== owner.email.toLowerCase());
+    const foundUsers: { uid: string; email: string }[] = [];
+    const notFoundEmails = new Set<string>(memberEmailsInput);
 
-    const ownerUid = owner.uid;
-    const foundUserUids = new Set<string>([ownerUid]);
-    const notFoundEmails = new Set<string>();
-
-    if (allEmailsToFind.length > 0) {
+    // Find users by email in chunks of 30 (Firestore 'in' query limit)
+    if (memberEmailsInput.length > 0) {
       const emailChunks: string[][] = [];
-      for (let i = 0; i < allEmailsToFind.length; i += 30) {
-        emailChunks.push(allEmailsToFind.slice(i, i + 30));
+      for (let i = 0; i < memberEmailsInput.length; i += 30) {
+        emailChunks.push(memberEmailsInput.slice(i, i + 30));
       }
 
       const userQueries = emailChunks.map(chunk => 
         getDocs(query(collection(db, 'users'), where('email', 'in', chunk)))
       );
       const querySnapshots = await Promise.all(userQueries);
-
-      const foundEmailsInDb = new Set<string>();
+      
       for (const snapshot of querySnapshots) {
         snapshot.forEach((doc) => {
           const userData = doc.data();
-          foundUserUids.add(doc.id);
-          foundEmailsInDb.add(userData.email.toLowerCase());
+          foundUsers.push({ uid: doc.id, email: userData.email });
+          notFoundEmails.delete(userData.email.toLowerCase());
         });
       }
-      
-      allEmailsToFind.forEach(email => {
-        if (!foundEmailsInDb.has(email)) {
-          notFoundEmails.add(email);
-        }
-      });
     }
 
-    await addDoc(collection(db, 'projects'), {
+    const memberUids = foundUsers.map(u => u.uid);
+
+    // 1. Create the new project document
+    const projectRef = doc(collection(db, 'projects'));
+    batch.set(projectRef, {
       name: projectName,
-      ownerUid: ownerUid,
-      memberUids: Array.from(foundUserUids),
+      ownerUid: owner.uid,
+      memberUids: memberUids,
       createdAt: new Date().toISOString(),
     });
+
+    // 2. Update each member's user document to add the new project ID
+    foundUsers.forEach(member => {
+      const userRef = doc(db, 'users', member.uid);
+      batch.update(userRef, {
+        projectIds: arrayUnion(projectRef.id)
+      });
+    });
+    
+    // Commit all writes at once
+    await batch.commit();
     
     revalidatePath('/tasks');
     revalidatePath('/beranda');

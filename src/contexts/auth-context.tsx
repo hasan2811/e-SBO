@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
@@ -64,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: user.email!,
             displayName: user.displayName || 'New User',
             position: 'Not Set',
+            projectIds: [], // Initialize projectIds array
           };
           await setDoc(userDocRef, newUserProfile);
           setUserProfile(newUserProfile);
@@ -91,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: user.email!,
         displayName: displayName,
         position: 'Not Set',
+        projectIds: [], // Initialize projectIds array for new sign-ups
       };
       await setDoc(userDocRef, newUserProfile);
        // The onAuthStateChanged listener will then pick this up.
