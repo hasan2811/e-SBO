@@ -3,15 +3,15 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ClipboardList, FolderKanban } from 'lucide-react';
+import { LayoutDashboard, Home, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function BottomNavBar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'Publik', icon: ClipboardList },
-    { href: '/beranda', label: 'Proyek Saya', icon: FolderKanban },
+    { href: '/', label: 'Publik', icon: Home },
+    { href: '/beranda', label: 'Proyek Saya', icon: Briefcase },
     { href: '/tasks', label: 'Dashboard', icon: LayoutDashboard },
   ];
 

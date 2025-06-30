@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, FolderKanban, ClipboardList, Plus } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -176,7 +176,7 @@ export function FeedView({ mode }: FeedViewProps) {
   const { toast } = useToast();
 
   const viewConfig = {
-    observations: { label: 'Observasi', icon: ClipboardList },
+    observations: { label: 'Observasi', icon: Briefcase },
     inspections: { label: 'Inspeksi', icon: Wrench },
     ptws: { label: 'PTW', icon: PtwIcon },
   };
@@ -268,7 +268,7 @@ export function FeedView({ mode }: FeedViewProps) {
 
     return (
       <div className="text-center py-16 text-muted-foreground bg-card rounded-lg">
-        {areFiltersActive ? <FilterX className="mx-auto h-12 w-12" /> : mode === 'public' ? <ClipboardList className="mx-auto h-12 w-12" /> : <FolderKanban className="mx-auto h-12 w-12" />}
+        {areFiltersActive ? <FilterX className="mx-auto h-12 w-12" /> : mode === 'public' ? <Home className="mx-auto h-12 w-12" /> : <Briefcase className="mx-auto h-12 w-12" />}
         <h3 className="mt-4 text-xl font-semibold">{areFiltersActive ? 'Tidak Ada Hasil' : 'Tidak Ada Laporan'}</h3>
         <p className="mt-2 text-sm max-w-xs mx-auto">{areFiltersActive ? filterText : emptyText}</p>
          {areFiltersActive && <Button variant="default" className="mt-6" onClick={clearFilters}><FilterX className="mr-2 h-4 w-4"/>Hapus Filter</Button>}
