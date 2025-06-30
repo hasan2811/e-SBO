@@ -25,7 +25,6 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/comp
 import { cn } from '@/lib/utils';
 import { collection, query, where, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useIntersection } from '@/hooks/use-intersection';
 
 const PAGE_SIZE = 10;
 
@@ -185,9 +184,6 @@ export function FeedView({ mode }: FeedViewProps) {
   
   const { toast } = useToast();
 
-  const observerOptions = React.useMemo(() => ({ threshold: 0.1 }), []);
-  const [loaderRef, isIntersecting] = useIntersection(observerOptions);
-
   const viewConfig = {
     observations: { label: 'Observasi', icon: Briefcase, itemType: 'observation' },
     inspections: { label: 'Inspeksi', icon: Wrench, itemType: 'inspection' },
@@ -206,10 +202,11 @@ export function FeedView({ mode }: FeedViewProps) {
     setLoading(true);
 
     try {
-        let q: Query<DocumentData> = query(
-            collection(db, viewType),
-            where('scope', '==', 'public')
-        );
+        let q: Query<DocumentData> = query(collection(db, viewType));
+
+        // Note: The `where('scope', '==', 'public')` has been removed to align with new rules.
+        // Public access is now default unless scope is 'private' or 'project'.
+        // The firestore.rules will handle enforcement.
 
         if (viewType === 'observations') {
             if (statusFilter !== 'all') {
@@ -230,11 +227,13 @@ export function FeedView({ mode }: FeedViewProps) {
         }
 
         const documentSnapshots = await getDocs(q);
-        const newItems = documentSnapshots.docs.map(doc => ({
-            ...doc.data(),
-            id: doc.id,
-            itemType: viewConfig[viewType].itemType,
-        })) as AllItems[];
+        const newItems = documentSnapshots.docs
+            .filter(doc => doc.data().scope !== 'private' && doc.data().scope !== 'project') // Client-side filter for documents that have no scope or are public
+            .map(doc => ({
+                ...doc.data(),
+                id: doc.id,
+                itemType: viewConfig[viewType].itemType,
+            })) as AllItems[];
 
         const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
         lastVisibleRef.current = lastDoc || null;
@@ -262,16 +261,11 @@ export function FeedView({ mode }: FeedViewProps) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, viewType, statusFilter, riskFilter, categoryFilter]);
-  
-  React.useEffect(() => {
-    if (mode === 'public' && isIntersecting && hasMore && !loading) {
-      fetchPublicItems();
-    }
-  }, [isIntersecting, hasMore, loading, mode, fetchPublicItems]);
 
 
   const data = mode === 'public' ? items : myItems;
-  const isLoading = mode === 'public' ? loading : myItemsLoading;
+  const isLoading = mode === 'public' ? loading && !items.length : myItemsLoading;
+
 
   const filteredData = React.useMemo(() => {
     if (mode === 'public') {
@@ -459,7 +453,7 @@ export function FeedView({ mode }: FeedViewProps) {
         </div>
 
       <main>
-        {isLoading && filteredData.length === 0 ? (
+        {isLoading ? (
           <ul className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <li key={i}>
@@ -489,14 +483,22 @@ export function FeedView({ mode }: FeedViewProps) {
           <EmptyState />
         )}
         
-        <div ref={loaderRef} />
-        {mode === 'public' && loading && hasMore && (
-            <div className="mt-6 flex justify-center py-4">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-        )}
-        {!hasMore && mode === 'public' && filteredData.length > 0 && (
-            <p className="mt-6 text-center text-sm text-muted-foreground py-4">You have reached the end.</p>
+        {mode === 'public' && filteredData.length > 0 && (
+          <div className="mt-6 flex justify-center">
+            {hasMore ? (
+              <Button
+                onClick={() => fetchPublicItems(false)}
+                disabled={loading}
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Tampilkan Lebih Banyak
+              </Button>
+            ) : (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                You have reached the end.
+              </p>
+            )}
+          </div>
         )}
 
       </main>
