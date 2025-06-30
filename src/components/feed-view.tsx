@@ -169,7 +169,7 @@ export function FeedView({ mode }: FeedViewProps) {
   
   const [items, setItems] = React.useState<AllItems[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [lastVisible, setLastVisible] = React.useState<QueryDocumentSnapshot | null>(null);
+  const lastVisibleRef = React.useRef<QueryDocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = React.useState(true);
 
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
@@ -225,8 +225,8 @@ export function FeedView({ mode }: FeedViewProps) {
 
         q = query(q, orderBy('date', 'desc'), limit(PAGE_SIZE));
 
-        if (lastVisible && !reset) {
-            q = query(q, startAfter(lastVisible));
+        if (lastVisibleRef.current && !reset) {
+            q = query(q, startAfter(lastVisibleRef.current));
         }
 
         const documentSnapshots = await getDocs(q);
@@ -237,7 +237,7 @@ export function FeedView({ mode }: FeedViewProps) {
         })) as AllItems[];
 
         const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-        setLastVisible(lastDoc || null);
+        lastVisibleRef.current = lastDoc || null;
         setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
         setItems(prevItems => (reset ? newItems : [...prevItems, ...newItems]));
 
@@ -252,14 +252,12 @@ export function FeedView({ mode }: FeedViewProps) {
     } finally {
         setLoading(false);
     }
-}, [viewType, statusFilter, riskFilter, categoryFilter, lastVisible, toast]);
+  }, [viewType, statusFilter, riskFilter, categoryFilter, toast]);
 
 
   React.useEffect(() => {
     if (mode === 'public') {
-      setItems([]);
-      setLastVisible(null);
-      setHasMore(true);
+      lastVisibleRef.current = null;
       fetchPublicItems(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
