@@ -1,5 +1,4 @@
 
-
 export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed';
 export type ObservationCategory = 'Structural' | 'Electrical' | 'Plumbing' | 'General';
 export type Company = 'Tambang' | 'Migas' | 'Konstruksi' | 'Manufaktur';
@@ -16,7 +15,16 @@ export type UserProfile = {
   displayName: string;
   email: string;
   position: string;
+  projectIds?: string[];
 };
+
+export type Project = {
+    id: string;
+    name: string;
+    ownerUid: string;
+    memberUids: string[];
+    createdAt: string;
+}
 
 export type Observation = {
   id: string;
@@ -32,7 +40,8 @@ export type Observation = {
   category: ObservationCategory;
   company: Company;
   photoUrl?: string;
-  scope?: 'public' | 'private';
+  scope: 'public' | 'private' | 'project';
+  projectId?: string | null;
   actionTakenDescription?: string;
   actionTakenPhotoUrl?: string;
   closedBy?: string;
@@ -65,7 +74,8 @@ export type Inspection = {
   status: InspectionStatus;
   recommendation?: string;
   photoUrl?: string;
-  scope?: 'public' | 'private';
+  scope: 'public' | 'private' | 'project';
+  projectId?: string | null;
   aiStatus?: 'processing' | 'completed' | 'failed';
   aiSummary?: string;
   aiRisks?: string;
@@ -85,7 +95,8 @@ export type Ptw = {
   contractor: string;
   jsaPdfUrl: string;
   status: PtwStatus;
-  scope?: 'public' | 'private';
+  scope: 'public' | 'private' | 'project';
+  projectId?: string | null;
   approver?: string;
   approvedDate?: string;
   rejectionReason?: string;

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -9,23 +10,29 @@ import {
   SheetTitle,
   SheetTrigger,
   SheetFooter,
+  SheetClose,
 } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { useAuth } from '@/hooks/use-auth';
-import { LogOut, UserCircle, Loader2, Edit } from 'lucide-react';
+import { LogOut, UserCircle, Loader2, Edit, PlusCircle, Folder, Users } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
+import { useProjects } from '@/hooks/use-projects';
+import { ProjectDialog } from './project-dialog';
 
 export function UserAccountSheet() {
   const { user, userProfile, loading: authLoading, logout, updateUserProfile } = useAuth();
+  const { projects, loading: projectsLoading, addProject } = useProjects();
   const { toast } = useToast();
   
+  const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isProjectDialogOpen, setProjectDialogOpen] = React.useState(false);
 
   const [displayName, setDisplayName] = React.useState('');
   const [position, setPosition] = React.useState('');
@@ -53,6 +60,10 @@ export function UserAccountSheet() {
     }
   }
 
+  const handleAddProject = async (projectName: string) => {
+    await addProject(projectName);
+  };
+
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
     const names = name.split(' ');
@@ -63,7 +74,11 @@ export function UserAccountSheet() {
   };
 
   return (
-    <Sheet onOpenChange={(open) => !open && setIsEditing(false)}>
+    <>
+    <Sheet open={isSheetOpen} onOpenChange={(open) => {
+        setIsSheetOpen(open);
+        if (!open) setIsEditing(false);
+    }}>
       <SheetTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-9 w-9">
@@ -133,6 +148,26 @@ export function UserAccountSheet() {
                   Edit Profile
                 </Button>
               )}
+              
+              <Separator />
+
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center gap-2"><Users className="h-5 w-5"/>My Projects</h3>
+                {projectsLoading ? <Skeleton className="h-10 w-full" /> : (
+                  projects.length > 0 ? (
+                    <ul className="space-y-2">
+                      {projects.map(project => (
+                        <li key={project.id} className="text-sm flex items-center gap-2 text-muted-foreground"><Folder className="h-4 w-4" />{project.name}</li>
+                      ))}
+                    </ul>
+                  ) : <p className="text-sm text-muted-foreground">You are not a member of any projects yet.</p>
+                )}
+                <Button variant="outline" className="w-full mt-4" onClick={() => setProjectDialogOpen(true)}>
+                  <PlusCircle className="mr-2" />
+                  Create New Project
+                </Button>
+              </div>
+
             </div>
           ) : (
             <div className="text-center">
@@ -153,13 +188,22 @@ export function UserAccountSheet() {
         </div>
         <SheetFooter className="mt-auto">
             {user ? (
-              <Button onClick={logout} className="w-full" variant="outline">
-                <LogOut className="mr-2" />
-                Sign Out
-              </Button>
+                <SheetClose asChild>
+                    <Button onClick={logout} className="w-full" variant="outline">
+                        <LogOut className="mr-2" />
+                        Sign Out
+                    </Button>
+                </SheetClose>
             ) : null}
         </SheetFooter>
       </SheetContent>
     </Sheet>
+    
+    <ProjectDialog
+        isOpen={isProjectDialogOpen}
+        onOpenChange={setProjectDialogOpen}
+        onAddProject={handleAddProject}
+    />
+    </>
   );
 }
