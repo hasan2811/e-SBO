@@ -23,44 +23,41 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    let unsubscribe: () => void = () => {};
-
-    // We only need the user's UID to query projects.
-    if (user?.uid) {
-      setLoading(true);
-      
-      // New, more reliable query.
-      // Fetches projects where the current user's UID is in the memberUids array.
-      const projectsQuery = query(
-        collection(db, 'projects'),
-        where('memberUids', 'array-contains', user.uid)
-      );
-
-      unsubscribe = onSnapshot(projectsQuery, 
-        (snapshot) => {
-          const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
-          setProjects(userProjects);
-          setLoading(false);
-        }, 
-        (error) => {
-          console.error("Error fetching projects:", error);
-          toast({
-            variant: 'destructive',
-            title: 'Error Fetching Projects',
-            description: "Could not retrieve project list. " + error.message,
-          });
-          setProjects([]);
-          setLoading(false);
-        }
-      );
-    } else if (!user) {
-      // If there's no user, clear projects and stop loading.
+    // If no user is logged in, there's nothing to fetch.
+    if (!user) {
       setProjects([]);
       setLoading(false);
+      return;
     }
 
+    setLoading(true);
+    
+    // This query is efficient and works with the new security rules.
+    const projectsQuery = query(
+      collection(db, 'projects'),
+      where('memberUids', 'array-contains', user.uid)
+    );
+
+    const unsubscribe = onSnapshot(projectsQuery, 
+      (snapshot) => {
+        const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
+        setProjects(userProjects);
+        setLoading(false);
+      }, 
+      (error) => {
+        console.error("Error fetching projects:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Error Fetching Projects',
+          description: "Could not retrieve project list. " + error.message,
+        });
+        setProjects([]);
+        setLoading(false);
+      }
+    );
+
     return () => unsubscribe();
-  }, [user]); // Only depend on the user object.
+  }, [user]);
 
   const addProject = React.useCallback(async (projectName: string, memberEmailsStr: string) => {
     if (!user || !user.email) {

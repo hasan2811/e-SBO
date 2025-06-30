@@ -14,7 +14,6 @@ import {
   QuerySnapshot,
   DocumentReference,
   CollectionReference,
-  orderBy,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw, AllItems } from '@/lib/types';
@@ -61,6 +60,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const [loading, setLoading] = React.useState(true);
 
     const collectionsToWatch: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
+    
+    // Sort helper function
+    const sortItemsByDate = (items: AllItems[]) => {
+      return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    };
 
     // Listener for public data.
      React.useEffect(() => {
@@ -68,15 +72,20 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         const itemMap = new Map<string, AllItems>();
 
         const processSnapshot = (snapshot: QuerySnapshot, itemType: 'observation' | 'inspection' | 'ptw') => {
-            snapshot.docs.forEach((doc) => {
-                itemMap.set(doc.id, { ...doc.data(), id: doc.id, itemType } as AllItems);
+            snapshot.docChanges().forEach((change) => {
+              const docId = change.doc.id;
+              if (change.type === 'removed') {
+                itemMap.delete(docId);
+              } else {
+                itemMap.set(docId, { ...change.doc.data(), id: docId, itemType } as AllItems);
+              }
             });
-            const sortedItems = Array.from(itemMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setPublicItems(sortedItems);
+            setPublicItems(sortItemsByDate(Array.from(itemMap.values())));
         };
 
         const unsubs = collectionsToWatch.flatMap(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
+            // REMOVED orderBy to prevent index errors
             const publicQuery = query(collection(db, colName), where('scope', '==', 'public'));
             return onSnapshot(publicQuery, (snapshot) => processSnapshot(snapshot, itemType), (error) => console.error(`Error fetching public ${colName}:`, error));
         });
@@ -94,7 +103,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         if (projectsLoading) return;
         if (!user) {
             setMyItems([]);
-            setLoading(false); // Stop loading if no user
+            setLoading(false);
             return;
         }
 
@@ -103,21 +112,18 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         let allUnsubs: Unsubscribe[] = [];
 
         const processAndSort = () => {
-             const sortedItems = Array.from(itemMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-             setMyItems(sortedItems);
+             setMyItems(sortItemsByDate(Array.from(itemMap.values())));
              setLoading(false);
         }
 
-        const createSnapshotProcessor = (itemType: 'observation' | 'inspection' | 'ptw', projectId?: string) => (snapshot: QuerySnapshot) => {
+        const createSnapshotProcessor = (itemType: 'observation' | 'inspection' | 'ptw', isProject: boolean, projectId?: string) => (snapshot: QuerySnapshot) => {
              snapshot.docChanges().forEach((change) => {
                 const docData = change.doc.data();
                 const docId = change.doc.id;
-
-                // When fetching from root collections, only include 'private' scope items for the 'myItems' feed.
-                // This logic does not apply to sub-collection (project) queries.
-                if (!projectId && docData.scope !== 'private') {
-                    // If an item's scope changes away from private, ensure it's removed from the map
-                    if (change.type !== 'removed' && itemMap.has(docId)) {
+                
+                // For root collection queries, only include 'private' scope items.
+                if (!isProject && docData.scope !== 'private') {
+                    if (itemMap.has(docId)) {
                         itemMap.delete(docId);
                     }
                     return; 
@@ -127,7 +133,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                     ...docData, 
                     id: docId, 
                     itemType,
-                    ...(projectId && { projectId, scope: 'project' }) 
+                    ...(isProject && { projectId, scope: 'project' }) 
                 } as AllItems;
 
                 if (change.type === "removed") {
@@ -139,24 +145,25 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             processAndSort();
         };
         
-        // 1. Listen to the user's private items
-        // Query by userId only to avoid needing a composite index. Client-side filtering handles the scope.
+        // 1. Listen to the user's private items from root collections
         collectionsToWatch.forEach(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
+            // REMOVED orderBy and scope filter to prevent index errors. Scope is filtered in the processor.
             const privateQuery = query(collection(db, colName), where('userId', '==', user.uid));
-            allUnsubs.push(onSnapshot(privateQuery, createSnapshotProcessor(itemType), (e) => console.error(`Error fetching personal ${colName}: `, e)));
+            allUnsubs.push(onSnapshot(privateQuery, createSnapshotProcessor(itemType, false), (e) => console.error(`Error fetching personal ${colName}: `, e)));
         });
 
-        // 2. Listen to items in subcollections for each project the user is a member of
+        // 2. Listen to items in subcollections for each project
         projects.forEach(project => {
             collectionsToWatch.forEach(colName => {
                 const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
+                // REMOVED orderBy to prevent index errors
                 const projectCollectionQuery = query(collection(db, 'projects', project.id, colName));
-                allUnsubs.push(onSnapshot(projectCollectionQuery, createSnapshotProcessor(itemType, project.id), (e) => console.error(`Error fetching from project ${project.id}/${colName}: `, e)));
+                allUnsubs.push(onSnapshot(projectCollectionQuery, createSnapshotProcessor(itemType, true, project.id), (e) => console.error(`Error fetching from project ${project.id}/${colName}: `, e)));
             });
         });
         
-        // If the user has no projects, we still need to finalize the loading state
+        // Finalize loading state if no projects
         if (!projectsLoading && projects.length === 0) {
             processAndSort();
         }
@@ -234,7 +241,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
       if (observationToSave.scope === 'project' && observationToSave.projectId) {
         collectionRef = collection(db, 'projects', observationToSave.projectId, 'observations');
-        // Exclude projectId from the document data as it's in the path
         const { projectId, ...rest } = observationToSave;
         dataToSave = rest;
       } else {
