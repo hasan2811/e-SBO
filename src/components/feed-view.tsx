@@ -15,8 +15,6 @@ import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
 import { InspectionDetailSheet } from '@/components/inspection-detail-sheet';
 import { PtwDetailSheet } from '@/components/ptw-detail-sheet';
 import { StarRating } from '@/components/star-rating';
-import { useAuth } from '@/hooks/use-auth';
-import { useProjects } from '@/hooks/use-projects';
 import { exportToExcel } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -158,9 +156,7 @@ interface FeedViewProps {
 }
 
 export function FeedView({ mode }: FeedViewProps) {
-  const { allItems, loading } = useObservations();
-  const { user } = useAuth();
-  const { projects } = useProjects();
+  const { publicItems, myItems, loading } = useObservations();
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -190,21 +186,10 @@ export function FeedView({ mode }: FeedViewProps) {
   };
 
   const filteredData = React.useMemo(() => {
-    let data: AllItems[] = allItems;
-    
-    if (mode === 'personal') {
-        if (!user) return [];
-        const userProjectIds = projects.map(p => p.id);
-        data = data.filter(item => 
-            (item.scope === 'private' && item.userId === user.uid) ||
-            (item.scope === 'project' && item.projectId && userProjectIds.includes(item.projectId))
-        );
-    } else { // mode === 'public'
-        data = data.filter(item => item.scope === 'public');
-    }
+    const sourceData = mode === 'public' ? publicItems : myItems;
     
     if (viewType === 'observations') {
-        let observationData = data.filter((item): item is Observation & { itemType: 'observation' } => item.itemType === 'observation');
+        let observationData = sourceData.filter((item): item is Observation & { itemType: 'observation' } => item.itemType === 'observation');
         if (statusFilter !== 'all') {
             observationData = observationData.filter(obs => obs.status === statusFilter);
         }
@@ -217,28 +202,28 @@ export function FeedView({ mode }: FeedViewProps) {
         return observationData;
     }
     if (viewType === 'inspections') {
-      return data.filter((item): item is Inspection & { itemType: 'inspection' } => item.itemType === 'inspection');
+      return sourceData.filter((item): item is Inspection & { itemType: 'inspection' } => item.itemType === 'inspection');
     }
     if (viewType === 'ptws') {
-      return data.filter((item): item is Ptw & { itemType: 'ptw' } => item.itemType === 'ptw');
+      return sourceData.filter((item): item is Ptw & { itemType: 'ptw' } => item.itemType === 'ptw');
     }
     
     return [];
-  }, [allItems, user, projects, mode, viewType, statusFilter, riskFilter, categoryFilter]);
+  }, [publicItems, myItems, mode, viewType, statusFilter, riskFilter, categoryFilter]);
 
   const displayObservation = React.useMemo(() => 
-    selectedObservationId ? allItems.find(o => o.id === selectedObservationId) as Observation : null,
-    [selectedObservationId, allItems]
+    selectedObservationId ? [...publicItems, ...myItems].find(o => o.id === selectedObservationId) as Observation : null,
+    [selectedObservationId, publicItems, myItems]
   );
   
   const displayInspection = React.useMemo(() =>
-    selectedInspectionId ? allItems.find(i => i.id === selectedInspectionId) as Inspection : null,
-    [selectedInspectionId, allItems]
+    selectedInspectionId ? [...publicItems, ...myItems].find(i => i.id === selectedInspectionId) as Inspection : null,
+    [selectedInspectionId, publicItems, myItems]
   );
   
   const displayPtw = React.useMemo(() =>
-    selectedPtwId ? allItems.find(p => p.id === selectedPtwId) as Ptw : null,
-    [selectedPtwId, allItems]
+    selectedPtwId ? [...publicItems, ...myItems].find(p => p.id === selectedPtwId) as Ptw : null,
+    [selectedPtwId, publicItems, myItems]
   );
 
   const handleExport = () => {

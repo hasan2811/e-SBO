@@ -24,9 +24,8 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
 interface ObservationContextType {
-  observations: Observation[];
-  inspections: Inspection[];
-  ptws: Ptw[];
+  publicItems: AllItems[];
+  myItems: AllItems[];
   allItems: AllItems[];
   loading: boolean;
   addObservation: (
@@ -59,9 +58,10 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const [ptws, setPtws] = React.useState<Ptw[]>([]);
     const [loading, setLoading] = React.useState(true);
 
-    // Effect to fetch all relevant data using a single, powerful query per collection
     React.useEffect(() => {
         setLoading(true);
+        if (projectsLoading) return; // Wait until projects are loaded
+
         const userProjectIds = projects.map(p => p.id);
 
         const collectionsToWatch = {
@@ -70,16 +70,12 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             ptws: setPtws,
         };
 
-        // This function creates the master query for a given collection
         const createQueryForCollection = (collectionName: string) => {
             const baseCollection = collection(db, collectionName);
-            
-            // If the user is not logged in, only fetch public documents
             if (!user) {
                 return query(baseCollection, where('scope', '==', 'public'));
             }
 
-            // Build a set of conditions for the 'or' query
             const conditions = [
                 where('scope', '==', 'public'),
                 where('userId', '==', user.uid)
@@ -96,7 +92,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             const masterQuery = createQueryForCollection(colName);
             return onSnapshot(masterQuery, (snapshot) => {
                 const items = snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as any[];
-                // Use a Map to deduplicate items that might match multiple 'or' clauses
                 const itemMap = new Map<string, any>();
                 items.forEach((item) => itemMap.set(item.id, item));
                 setter(Array.from(itemMap.values()));
@@ -105,21 +100,18 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 toast({
                   variant: 'destructive',
                   title: `Failed to load ${colName}`,
-                  description: 'Please check your connection or try again later.',
+                  description: 'Please check your connection and security rules.',
                 });
-                setter([]); // Clear data on error
+                setter([]);
             });
         });
 
-        if (!projectsLoading) {
-            setLoading(false);
-        }
+        setLoading(false);
 
-        // Cleanup listeners on unmount or when dependencies change
         return () => {
             unsubs.forEach(unsub => unsub());
         };
-    }, [user, projects, projectsLoading]); // Rerun when user or their projects change
+    }, [user, projects, projectsLoading]);
 
     const allItems = React.useMemo(() => {
       const combined = [
@@ -130,7 +122,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [observations, inspections, ptws]);
 
-    // AI Analysis Logic
+    const publicItems = React.useMemo(() => allItems.filter(item => item.scope === 'public'), [allItems]);
+    const myItems = React.useMemo(() => allItems.filter(item => item.scope !== 'public'), [allItems]);
+
     const _runObservationAiAnalysis = React.useCallback(async (observation: Observation) => {
       const observationDocRef = doc(db, 'observations', observation.id);
       const observationData = `
@@ -180,7 +174,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       }
     }, []);
     
-    // Add/Update Logic
     const addObservation = React.useCallback(async (newObservation: Omit<Observation, 'id' | 'referenceId'>) => {
       if(!user) throw new Error("User not authenticated");
       const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -231,7 +224,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       }
     }, [_runObservationAiAnalysis, _runInspectionAiAnalysis]);
 
-    const value = { allItems, observations, inspections, ptws, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
+    const value = { allItems, publicItems, myItems, loading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
 
     return (
         <ObservationContext.Provider value={value}>

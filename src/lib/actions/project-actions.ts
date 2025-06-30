@@ -32,13 +32,13 @@ export async function createProject(
     const notFoundEmails = new Set<string>();
 
     if (allEmailsToFind.length > 0) {
-      const usersRef = collection(db, 'users');
+      // Firestore 'in' queries are limited to 30 items. Chunk the emails to handle more.
       const emailChunks = [];
       for (let i = 0; i < allEmailsToFind.length; i += 30) {
         emailChunks.push(allEmailsToFind.slice(i, i + 30));
       }
 
-      const userQueries = emailChunks.map(chunk => getDocs(query(usersRef, where('email', 'in', chunk))));
+      const userQueries = emailChunks.map(chunk => getDocs(query(collection(db, 'users'), where('email', 'in', chunk))));
       const querySnapshots = await Promise.all(userQueries);
 
       const foundEmails = new Set<string>();
@@ -64,6 +64,7 @@ export async function createProject(
       createdAt: new Date().toISOString(),
     });
     
+    // Revalidate paths to ensure fresh data is shown on relevant pages.
     revalidatePath('/tasks');
     revalidatePath('/beranda');
 
@@ -71,11 +72,11 @@ export async function createProject(
     if (notFoundArray.length > 0) {
       return { 
         success: true, 
-        message: `Project created! However, these users could not be invited because they are not registered: ${notFoundArray.join(', ')}. Please ask them to sign up first.`
+        message: `Project "${projectName}" created! However, these users could not be invited as they are not registered: ${notFoundArray.join(', ')}. Please ask them to sign up first.`
       };
     }
 
-    return { success: true, message: `Project "${projectName}" was created successfully!` };
+    return { success: true, message: `Project "${projectName}" was created successfully and all members have been invited!` };
   } catch (error) {
     console.error('Error creating project:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
