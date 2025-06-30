@@ -24,34 +24,39 @@ export async function createProject(
     const memberEmailsInput = memberEmailsStr
       .split(',')
       .map((email) => email.trim().toLowerCase())
-      .filter((email) => email.length > 0 && email !== owner.email.toLowerCase());
+      .filter((email) => email.length > 0 && email.includes('@') && email !== owner.email.toLowerCase());
 
     const allEmailsToFind = [...new Set(memberEmailsInput)];
     const ownerUid = owner.uid;
     const foundUserUids = new Set<string>([ownerUid]);
-    const notFoundEmails = new Set<string>(allEmailsToFind);
+    const notFoundEmails = new Set<string>();
 
-    // Batch lookup invited users by their email addresses
     if (allEmailsToFind.length > 0) {
       const usersRef = collection(db, 'users');
-      // Firestore 'in' queries are limited to 30 values. We'll chunk if necessary.
-      const chunks = [];
+      const emailChunks = [];
       for (let i = 0; i < allEmailsToFind.length; i += 30) {
-        chunks.push(allEmailsToFind.slice(i, i + 30));
+        emailChunks.push(allEmailsToFind.slice(i, i + 30));
       }
-      
-      for (const chunk of chunks) {
-        const q = query(usersRef, where('email', 'in', chunk));
-        const querySnapshot = await getDocs(q);
-        
-        querySnapshot.forEach((doc) => {
+
+      const userQueries = emailChunks.map(chunk => getDocs(query(usersRef, where('email', 'in', chunk))));
+      const querySnapshots = await Promise.all(userQueries);
+
+      const foundEmails = new Set<string>();
+      for (const snapshot of querySnapshots) {
+        snapshot.forEach((doc) => {
+          const userData = doc.data();
           foundUserUids.add(doc.id);
-          notFoundEmails.delete(doc.data().email.toLowerCase());
+          foundEmails.add(userData.email.toLowerCase());
         });
       }
+      
+      allEmailsToFind.forEach(email => {
+        if (!foundEmails.has(email)) {
+          notFoundEmails.add(email);
+        }
+      });
     }
 
-    // Create the new project document in Firestore
     await addDoc(collection(db, 'projects'), {
       name: projectName,
       ownerUid: ownerUid,
@@ -59,7 +64,6 @@ export async function createProject(
       createdAt: new Date().toISOString(),
     });
     
-    // Revalidate paths to ensure fresh data is shown on the client
     revalidatePath('/tasks');
     revalidatePath('/beranda');
 
@@ -67,7 +71,7 @@ export async function createProject(
     if (notFoundArray.length > 0) {
       return { 
         success: true, 
-        message: `Project created. Could not find users for: ${notFoundArray.join(', ')}`
+        message: `Project created! However, these users could not be invited because they are not registered: ${notFoundArray.join(', ')}. Please ask them to sign up first.`
       };
     }
 
@@ -77,7 +81,7 @@ export async function createProject(
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
     
     if (errorMessage.toLowerCase().includes('permission-denied')) {
-        return { success: false, message: 'Project creation failed. Please check Firestore security rules to allow project creation and user lookups.' };
+        return { success: false, message: 'Permission denied. Please check your Firestore security rules to allow project creation and user lookups.' };
     }
     
     return { success: false, message: `Project creation failed: ${errorMessage}` };
