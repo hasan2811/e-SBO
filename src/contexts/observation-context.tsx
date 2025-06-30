@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -12,7 +13,6 @@ import {
   orderBy,
   Unsubscribe,
   QuerySnapshot,
-  docChanges,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw, AllItems } from '@/lib/types';
@@ -63,21 +63,23 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     // Listener for public data
     React.useEffect(() => {
         setLoading(true);
-        const unsubs: Unsubscribe[] = [];
+        const itemMap = new Map<string, AllItems>();
 
-        collectionsToWatch.forEach(colName => {
+        const processSnapshot = (snapshot: QuerySnapshot) => {
+            snapshot.docs.forEach((doc) => {
+                const itemType = doc.ref.parent.id.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
+                itemMap.set(doc.id, { ...doc.data(), id: doc.id, itemType } as AllItems);
+            });
+            const sortedItems = Array.from(itemMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setPublicItems(sortedItems);
+        };
+
+        const unsubs = collectionsToWatch.flatMap(colName => {
             const publicQuery = query(collection(db, colName), where('scope', '==', 'public'), orderBy('date', 'desc'));
-            const unsub = onSnapshot(publicQuery, (snapshot) => {
-                const fetchedItems = snapshot.docs.map(d => ({ ...d.data(), id: d.id, itemType: colName.slice(0, -1) as any }));
-                setPublicItems(prev => {
-                    const otherItems = prev.filter(item => item.itemType !== colName.slice(0, -1));
-                    return [...otherItems, ...fetchedItems].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                });
-            }, (error) => console.error(`Error fetching public ${colName}:`, error));
-            unsubs.push(unsub);
+            return onSnapshot(publicQuery, processSnapshot, (error) => console.error(`Error fetching public ${colName}:`, error));
         });
         
-        const timer = setTimeout(() => setLoading(false), 1200);
+        const timer = setTimeout(() => setLoading(false), 1500); // Give a bit of time for initial load
 
         return () => {
             unsubs.forEach(unsub => unsub());
@@ -97,15 +99,14 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         const itemMap = new Map<string, AllItems>();
 
         const processSnapshot = (snapshot: QuerySnapshot) => {
-            // Use docChanges to efficiently update the map
-            snapshot.docChanges().forEach((change) => {
-                const itemType = change.doc.ref.parent.id.slice(0, -1);
-                const itemData = { ...change.doc.data(), id: change.doc.id, itemType };
+             snapshot.docChanges().forEach((change) => {
+                const itemType = change.doc.ref.parent.id.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
+                const itemData = { ...change.doc.data(), id: change.doc.id, itemType } as AllItems;
 
                 if (change.type === "removed") {
                     itemMap.delete(change.doc.id);
                 } else {
-                    itemMap.set(change.doc.id, itemData as AllItems);
+                    itemMap.set(change.doc.id, itemData);
                 }
             });
 
@@ -113,18 +114,20 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             setMyItems(sortedItems);
         };
         
-        const allUnsubs: Unsubscribe[] = [];
+        let allUnsubs: Unsubscribe[] = [];
 
         collectionsToWatch.forEach(colName => {
             // Query 1: Get the user's private items
             const privateQuery = query(collection(db, colName), where('userId', '==', user.uid), where('scope', '==', 'private'), orderBy('date', 'desc'));
             allUnsubs.push(onSnapshot(privateQuery, processSnapshot, (e) => console.error(`Error fetching private ${colName}:`, e)));
 
-            // Query 2: For each project the user is in, get its items
-            projects.forEach(project => {
-                const projectQuery = query(collection(db, colName), where('projectId', '==', project.id), orderBy('date', 'desc'));
-                allUnsubs.push(onSnapshot(projectQuery, processSnapshot, (e) => console.error(`Error fetching project ${project.id} ${colName}:`, e)));
-            });
+            // Query 2: Get the user's project items
+            if (projects.length > 0) {
+              const projectIds = projects.map(p => p.id);
+              // Firestore 'in' query limitation is 30. If more projects, chunking is needed.
+              const projectQuery = query(collection(db, colName), where('projectId', 'in', projectIds), orderBy('date', 'desc'));
+              allUnsubs.push(onSnapshot(projectQuery, processSnapshot, (e) => console.error(`Error fetching project items for ${colName}:`, e)));
+            }
         });
 
         return () => {
