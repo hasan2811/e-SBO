@@ -24,6 +24,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     let unsubscribe: () => void = () => {};
 
+    // Only set up the listener if we have a user ID.
     if (user?.uid) {
       setLoading(true);
       try {
@@ -52,16 +53,18 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     } else {
+      // If there's no user, clear projects and stop loading.
       setProjects([]);
       setLoading(false);
     }
 
+    // Cleanup function to unsubscribe from the listener when the component unmounts or user changes.
     return () => unsubscribe();
   }, [user]);
 
   const addProject = React.useCallback(async (projectName: string, memberEmailsStr: string) => {
     if (!user || !user.email) {
-      toast({ variant: 'destructive', title: 'Not Authenticated' });
+      toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to create a project.' });
       return;
     }
     try {

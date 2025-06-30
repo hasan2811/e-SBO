@@ -182,13 +182,6 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange }: Insp
                  </div>
               </div>
             )}
-
-            {/* Placeholder for future actions */}
-            {/* <div className="pt-6 mt-6 border-t">
-                <Button type="button" className="w-full" disabled>
-                  Take Action
-                </Button>
-            </div> */}
           </div>
         </ScrollArea>
       </SheetContent>

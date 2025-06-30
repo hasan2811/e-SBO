@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -107,7 +106,7 @@ export function UserAccountSheet() {
           </SheetDescription>
         </SheetHeader>
         <div className="py-8">
-          {isLoading ? (
+          {authLoading ? ( // Use authLoading for the initial skeleton
              <div className="space-y-6">
                 <div className="flex items-center space-x-4">
                   <Skeleton className="h-16 w-16 rounded-full" />
@@ -164,7 +163,12 @@ export function UserAccountSheet() {
 
               <div>
                 <h3 className="font-semibold mb-3 flex items-center gap-2"><Users className="h-5 w-5"/>My Projects</h3>
-                {projects.length > 0 ? (
+                {projectsLoading ? (
+                    <div className="space-y-2">
+                        <Skeleton className="h-5 w-3/4" />
+                        <Skeleton className="h-5 w-1/2" />
+                    </div>
+                ) : projects.length > 0 ? (
                   <ul className="space-y-2">
                     {projects.map(project => (
                       <li key={project.id} className="text-sm flex items-center gap-2 text-muted-foreground"><Folder className="h-4 w-4" />{project.name}</li>

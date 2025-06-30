@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, FolderKanban, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -23,7 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/compone
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { Home } from 'lucide-react';
+
 
 const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
     const riskColorStyles: Record<RiskLevel, string> = {
@@ -87,7 +87,7 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
                 <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
                 <div className="flex flex-wrap items-center gap-x-2 pt-1">
                   <p className="text-xs text-muted-foreground">
-                    {format(new Date(observation.date), 'd MMM yyy, HH:mm')} &bull; {observation.category} &bull; {observation.company}
+                    {format(new Date(observation.date), 'd MMM yyyy, HH:mm')} &bull; {observation.category} &bull; {observation.company}
                   </p>
                 </div>
             </div>
@@ -173,16 +173,14 @@ export function FeedView({ mode }: FeedViewProps) {
   const { toast } = useToast();
 
   const viewConfig = {
-    observations: { label: 'Observasi', icon: Home },
+    observations: { label: 'Observasi', icon: ClipboardList },
     inspections: { label: 'Inspeksi', icon: Wrench },
     ptws: { label: 'PTW', icon: PtwIcon },
   };
 
-  const pageTitle = viewType === 'observations' && mode === 'public' 
+  const pageTitle = mode === 'public' 
     ? 'Jurnal Publik' 
-    : viewType === 'observations' && mode === 'personal'
-    ? 'Observasi Proyek'
-    : viewConfig[viewType].label;
+    : 'Proyek Saya';
   
   const clearFilters = () => {
     setStatusFilter('all');
@@ -192,18 +190,12 @@ export function FeedView({ mode }: FeedViewProps) {
 
   const filteredData = React.useMemo(() => {
     const sourceData = mode === 'public' ? publicItems : myItems;
-    let dataToFilter = [];
+    let dataToFilter: AllItems[] = [...sourceData];
+
+    dataToFilter = dataToFilter.filter(item => item.itemType === viewType.slice(0, -1));
 
     if (viewType === 'observations') {
-        dataToFilter = sourceData.filter((item): item is Observation & { itemType: 'observation' } => item.itemType === 'observation');
-    } else if (viewType === 'inspections') {
-        dataToFilter = sourceData.filter((item): item is Inspection & { itemType: 'inspection' } => item.itemType === 'inspection');
-    } else if (viewType === 'ptws') {
-        dataToFilter = sourceData.filter((item): item is Ptw & { itemType: 'ptw' } => item.itemType === 'ptw');
-    }
-
-    if (viewType === 'observations') {
-        let observationData = dataToFilter as (Observation & { itemType: 'observation' })[];
+        let observationData = dataToFilter as Observation[];
         if (statusFilter !== 'all') {
             observationData = observationData.filter(obs => obs.status === statusFilter);
         }
@@ -264,118 +256,121 @@ export function FeedView({ mode }: FeedViewProps) {
 
     return (
       <div className="text-center py-16 text-muted-foreground bg-card rounded-lg">
-        {areFiltersActive ? <FilterX className="mx-auto h-12 w-12" /> : React.createElement(config.icon, { className: "mx-auto h-12 w-12" })}
+        {areFiltersActive ? <FilterX className="mx-auto h-12 w-12" /> : mode === 'public' ? <ClipboardList className="mx-auto h-12 w-12" /> : <FolderKanban className="mx-auto h-12 w-12" />}
         <h3 className="mt-4 text-xl font-semibold">{areFiltersActive ? 'Tidak Ada Hasil' : 'Tidak Ada Laporan'}</h3>
         <p className="mt-2 text-sm max-w-xs mx-auto">{areFiltersActive ? filterText : emptyText}</p>
          {areFiltersActive && <Button variant="default" className="mt-6" onClick={clearFilters}><FilterX className="mr-2 h-4 w-4"/>Hapus Filter</Button>}
       </div>
-    )
+    );
   };
 
   return (
     <>
      <div className="space-y-4">
         <div className="flex justify-between items-center gap-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="text-2xl font-bold tracking-tight -ml-2 p-2 h-auto text-left">
-                  {pageTitle}
-                  <ChevronDown className="h-6 w-6 ml-2" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onSelect={() => setViewType('observations')}>Observasi</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setViewType('inspections')}>{viewConfig.inspections.label}</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setViewType('ptws')}>{viewConfig.ptws.label}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <TooltipProvider>
-              <div className="flex items-center gap-2">
-                  {viewType === 'observations' && (
-                      <Popover>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" size="icon" className="relative">
-                                    <Filter className="h-4 w-4" />
-                                    {areFiltersActive && (
-                                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                                        </span>
-                                    )}
-                                    <span className="sr-only">Filter</span>
-                                </Button>
-                            </PopoverTrigger>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Filter</p></TooltipContent>
-                        </Tooltip>
-
-                        <PopoverContent className="w-80" align="end">
-                            <div className="grid gap-4">
-                                <div className="space-y-1">
-                                    <h4 className="font-medium leading-none">Filter Observasi</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                        Persempit hasil berdasarkan kriteria.
-                                    </p>
-                                </div>
-                                <div className="grid gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Status</Label>
-                                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                            <SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">Semua Status</SelectItem>
-                                                {(OBSERVATION_STATUSES as readonly ObservationStatus[]).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Tingkat Risiko</Label>
-                                        <Select value={riskFilter} onValueChange={setRiskFilter}>
-                                            <SelectTrigger><SelectValue placeholder="Pilih risiko" /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">Semua Risiko</SelectItem>
-                                                {(RISK_LEVELS as readonly RiskLevel[]).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Kategori</Label>
-                                        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                                            <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">Semua Kategori</SelectItem>
-                                                {(OBSERVATION_CATEGORIES as readonly ObservationCategory[]).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                                <div className="flex justify-between items-center pt-2 border-t -mx-4 px-4 pb-0">
-                                    <Button variant="ghost" onClick={clearFilters} disabled={!areFiltersActive}>
-                                        <FilterX className="mr-2 h-4 w-4" />
-                                        Hapus Filter
-                                    </Button>
-                                    <PopoverClose asChild>
-                                        <Button>Selesai</Button>
-                                    </PopoverClose>
-                                </div>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                  )}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" onClick={handleExport} disabled={filteredData.length === 0 || loading}>
-                        <Download className="h-4 w-4" />
-                        <span className="sr-only">Export</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Export</p></TooltipContent>
-                  </Tooltip>
-              </div>
-            </TooltipProvider>
+            <div className="flex items-center gap-2">
+               <h2 className="text-2xl font-bold tracking-tight">{pageTitle}</h2>
+            </div>
+            <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-[140px] justify-between">
+                      {viewConfig[viewType].label}
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setViewType('observations')}>{viewConfig.observations.label}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setViewType('inspections')}>{viewConfig.inspections.label}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setViewType('ptws')}>{viewConfig.ptws.label}</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              <TooltipProvider>
+                {viewType === 'observations' && (
+                  <Popover>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="icon" className="relative">
+                            <Filter className="h-4 w-4" />
+                            {areFiltersActive && (
+                              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                              </span>
+                            )}
+                            <span className="sr-only">Filter</span>
+                          </Button>
+                        </PopoverTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Filter</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <PopoverContent className="w-80" align="end">
+                      <div className="grid gap-4">
+                        <div className="space-y-1">
+                          <h4 className="font-medium leading-none">Filter Observasi</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Persempit hasil berdasarkan kriteria.
+                          </p>
+                        </div>
+                        <div className="grid gap-4">
+                          <div className="space-y-2">
+                            <Label>Status</Label>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                              <SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Semua Status</SelectItem>
+                                {(OBSERVATION_STATUSES as readonly ObservationStatus[]).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Tingkat Risiko</Label>
+                            <Select value={riskFilter} onValueChange={setRiskFilter}>
+                              <SelectTrigger><SelectValue placeholder="Pilih risiko" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Semua Risiko</SelectItem>
+                                {(RISK_LEVELS as readonly RiskLevel[]).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Kategori</Label>
+                            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                              <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Semua Kategori</SelectItem>
+                                {(OBSERVATION_CATEGORIES as readonly ObservationCategory[]).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-2 border-t -mx-4 px-4 pb-0">
+                          <Button variant="ghost" onClick={clearFilters} disabled={!areFiltersActive}>
+                            <FilterX className="mr-2 h-4 w-4" />
+                            Hapus Filter
+                          </Button>
+                          <PopoverClose asChild>
+                            <Button>Selesai</Button>
+                          </PopoverClose>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={handleExport} disabled={filteredData.length === 0 || loading}>
+                      <Download className="h-4 w-4" />
+                      <span className="sr-only">Export</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Export</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
         </div>
 
       <main>

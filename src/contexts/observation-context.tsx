@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -11,6 +10,7 @@ import {
   addDoc,
   where,
   or,
+  orderBy,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw, AllItems } from '@/lib/types';
@@ -56,54 +56,55 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const [myItems, setMyItems] = React.useState<AllItems[]>([]);
     const [loading, setLoading] = React.useState(true);
 
-    const collectionsToWatch = ['observations', 'inspections', 'ptws'];
+    const collectionsToWatch: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
 
-    // Listener for Public Data
+    // Combined listener for all data
     React.useEffect(() => {
         setLoading(true);
-        const unsubs = collectionsToWatch.map(colName => {
-            const q = query(collection(db, colName), where('scope', '==', 'public'));
-            return onSnapshot(q, (snapshot) => {
-                const items = snapshot.docs.map(d => ({ ...d.data(), id: d.id, itemType: colName.slice(0, -1) })) as AllItems[];
+
+        const unsubs = collectionsToWatch.flatMap(colName => {
+            // Listener for Public Data
+            const publicQuery = query(collection(db, colName), where('scope', '==', 'public'), orderBy('date', 'desc'));
+            const unsubPublic = onSnapshot(publicQuery, (snapshot) => {
+                const items = snapshot.docs.map(d => ({ ...d.data(), id: d.id, itemType: colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw' })) as AllItems[];
                 setPublicItems(prev => {
                     const otherItems = prev.filter(item => item.itemType !== colName.slice(0, -1));
                     return [...otherItems, ...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
                 });
             }, (error) => console.error(`Error fetching public ${colName}:`, error));
-        });
-        setLoading(false);
-        return () => unsubs.forEach(unsub => unsub());
-    }, []);
 
-    // Listener for Personal and Project Data
-    React.useEffect(() => {
-        if (projectsLoading) return; // Wait until projects are loaded
+            // Listener for Personal & Project Data
+            let unsubMyStuff = () => {};
+            if (user && !projectsLoading) {
+                 const projectIds = projects.map(p => p.id);
+                 const conditions = [where('userId', '==', user.uid)];
+                 if (projectIds.length > 0) {
+                     conditions.push(where('projectId', 'in', projectIds));
+                 }
 
-        if (!user) {
-            setMyItems([]);
-            return; // No user, no personal data
-        }
+                const myQuery = query(collection(db, colName), or(...conditions), orderBy('date', 'desc'));
+                unsubMyStuff = onSnapshot(myQuery, (snapshot) => {
+                    const items = snapshot.docs.map(d => ({ ...d.data(), id: d.id, itemType: colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw' })) as AllItems[];
+                    setMyItems(prev => {
+                        const otherItems = prev.filter(item => item.itemType !== colName.slice(0, -1));
+                        return [...otherItems, ...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    });
+                }, (error) => console.error(`Error fetching personal ${colName}:`, error));
 
-        setLoading(true);
-        const userProjectIds = projects.map(p => p.id);
-        const unsubs = collectionsToWatch.map(colName => {
-            const conditions = [where('userId', '==', user.uid)];
-            if (userProjectIds.length > 0) {
-                conditions.push(where('projectId', 'in', userProjectIds));
+            } else if (!user) {
+                setMyItems([]);
             }
-            const q = query(collection(db, colName), or(...conditions));
             
-            return onSnapshot(q, (snapshot) => {
-                const items = snapshot.docs.map(d => ({ ...d.data(), id: d.id, itemType: colName.slice(0, -1) })) as AllItems[];
-                 setMyItems(prev => {
-                    const otherItems = prev.filter(item => item.itemType !== colName.slice(0, -1));
-                    return [...otherItems, ...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                });
-            }, (error) => console.error(`Error fetching personal ${colName}:`, error));
+            return [unsubPublic, unsubMyStuff];
         });
+        
+        // This pattern ensures loading is false only after initial checks.
+        const timer = setTimeout(() => setLoading(false), 500);
 
-        setLoading(false);
-        return () => unsubs.forEach(unsub => unsub());
+        return () => {
+            unsubs.forEach(unsub => unsub());
+            clearTimeout(timer);
+        };
     }, [user, projects, projectsLoading]);
 
 
@@ -162,7 +163,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       const observationToSave = { ...newObservation, referenceId, aiStatus: 'processing' as const, userId: user.uid };
       const observationCollection = collection(db, 'observations');
       const docRef = await addDoc(observationCollection, observationToSave);
-      _runObservationAiAnalysis({ ...observationToSave, id: docRef.id });
+      _runObservationAiAnalysis({ ...observationToSave, id: docRef.id, itemType: 'observation' });
     }, [user, _runObservationAiAnalysis]);
 
     const addInspection = React.useCallback(async (newInspection: Omit<Inspection, 'id' | 'referenceId'>) => {
@@ -171,7 +172,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       const inspectionToSave = { ...newInspection, referenceId, aiStatus: 'processing' as const, userId: user.uid };
       const inspectionCollection = collection(db, 'inspections');
       const docRef = await addDoc(inspectionCollection, inspectionToSave);
-      _runInspectionAiAnalysis({ ...inspectionToSave, id: docRef.id });
+      _runInspectionAiAnalysis({ ...inspectionToSave, id: docRef.id, itemType: 'inspection' });
     }, [user, _runInspectionAiAnalysis]);
 
     const addPtw = React.useCallback(async (newPtw: Omit<Ptw, 'id' | 'referenceId'>) => {

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -147,6 +146,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
                   tickMargin={5}
                   tick={{ fontSize: 12, fill: "hsl(var(--foreground))" }}
                   interval={0}
+                  width={80}
                 />
                 <ChartXAxis dataKey={dataKey} type="number" hide />
                 <ChartTooltip
@@ -175,16 +175,16 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { observations, loading: observationsLoading } = useObservations();
+  const { myItems, loading: observationsLoading } = useObservations();
   const { projects, loading: projectsLoading } = useProjects();
 
   const loading = observationsLoading || projectsLoading;
 
   const projectObservations = React.useMemo(() => {
-    if (!user || projects.length === 0) return [];
-    const userProjectIds = projects.map(p => p.id);
-    return observations.filter(obs => obs.projectId && userProjectIds.includes(obs.projectId));
-  }, [observations, projects, user]);
+    return myItems.filter(
+        (item): item is Observation => item.itemType === 'observation' && !!item.projectId
+    );
+  }, [myItems]);
 
 
   const overviewData = React.useMemo(() => {
@@ -192,7 +192,7 @@ export default function DashboardPage() {
     if (total === 0) return { pendingPercentage: 0, pendingCount: 0 };
     const pendingCount = projectObservations.filter(o => o.status !== 'Completed').length;
     return {
-      pendingPercentage: Math.round((pendingCount / total) * 100),
+      pendingPercentage: total > 0 ? Math.round((pendingCount / total) * 100) : 0,
       pendingCount,
     };
   }, [projectObservations]);
@@ -202,7 +202,7 @@ export default function DashboardPage() {
     if (total === 0) return { percentage: 0, count: 0 };
     const criticalCount = projectObservations.filter(o => o.riskLevel === 'Critical').length;
     return {
-      percentage: Math.round((criticalCount / total) * 100),
+      percentage: total > 0 ? Math.round((criticalCount / total) * 100) : 0,
       count: criticalCount,
     };
   }, [projectObservations]);
