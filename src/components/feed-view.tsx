@@ -201,12 +201,12 @@ export function FeedView({ mode }: FeedViewProps) {
   const fetchPublicItems = React.useCallback(async (reset = false) => {
     setLoading(true);
 
+    if (reset) {
+        lastVisibleRef.current = null;
+    }
+
     try {
         let q: Query<DocumentData> = query(collection(db, viewType));
-
-        // Note: The `where('scope', '==', 'public')` has been removed to align with new rules.
-        // Public access is now default unless scope is 'private' or 'project'.
-        // The firestore.rules will handle enforcement.
 
         if (viewType === 'observations') {
             if (statusFilter !== 'all') {
@@ -228,7 +228,7 @@ export function FeedView({ mode }: FeedViewProps) {
 
         const documentSnapshots = await getDocs(q);
         const newItems = documentSnapshots.docs
-            .filter(doc => doc.data().scope !== 'private' && doc.data().scope !== 'project') // Client-side filter for documents that have no scope or are public
+            .filter(doc => doc.data().scope !== 'private' && doc.data().scope !== 'project')
             .map(doc => ({
                 ...doc.data(),
                 id: doc.id,
@@ -256,7 +256,6 @@ export function FeedView({ mode }: FeedViewProps) {
 
   React.useEffect(() => {
     if (mode === 'public') {
-      lastVisibleRef.current = null;
       fetchPublicItems(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
