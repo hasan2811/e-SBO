@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -157,8 +156,8 @@ interface FeedViewProps {
 }
 
 export function FeedView({ mode }: FeedViewProps) {
-  const { getItems, loading } = useObservations();
-  const items = getItems(mode);
+  const { publicItems, myItems, loading } = useObservations();
+  const items = mode === 'public' ? publicItems : myItems;
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
