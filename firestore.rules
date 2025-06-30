@@ -4,57 +4,71 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users:
-    // - Authenticated users can read/list user profiles to enable invites by email.
-    // - Users can only write to their own document.
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if a user is the owner of a document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // --- Users Collection ---
+    // Users can read their own profile.
+    // Authenticated users can query the collection to find users by email for invites.
+    // Users can create and update their own profile.
     match /users/{userId} {
-      allow read, list: if request.auth != null;
-      allow write: if request.auth.uid == userId;
-    }
-
-    // Projects:
-    // - A user can read a project document if they are a member.
-    // - Any authenticated user can create a project.
-    // - Only the owner can update a project.
-    match /projects/{projectId} {
-      allow read: if request.auth.uid in resource.data.memberUids;
-      allow create: if request.auth != null;
-      allow update: if request.auth.uid == resource.data.ownerUid;
-      allow delete: if false; // Deleting projects is not allowed.
-    }
-
-    // A function to check read access for items (observations, inspections, ptws).
-    function canReadItem(item) {
-      return item.scope == 'public' ||
-             (request.auth != null && (
-               (item.scope == 'private' && request.auth.uid == item.userId) ||
-               (item.scope == 'project' && item.projectId != null && request.auth.uid in get(/databases/$(database)/documents/projects/$(item.projectId)).data.memberUids)
-             ));
-    }
-
-    // Observations
-    match /observations/{obsId} {
-      allow read: if canReadItem(resource.data);
-      allow create: if request.auth != null;
-      allow update: if request.auth.uid == resource.data.userId;
+      allow read, list: if isAuthenticated(); // Allow querying for project invites
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
       allow delete: if false;
     }
 
-    // Inspections
-    match /inspections/{inspId} {
-      allow read: if canReadItem(resource.data);
-      allow create: if request.auth != null;
-      allow update: if request.auth.uid == resource.data.userId;
+    // --- Projects Collection ---
+    // Users can create projects.
+    // Users can read projects they are a member of.
+    // The project owner can update a project (e.g., to add members).
+    match /projects/{projectId} {
+      allow read: if isAuthenticated() && resource.data.memberUids.hasAny([request.auth.uid]);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.ownerUid == request.auth.uid;
       allow delete: if false;
     }
     
-    // Permits to Work (PTW)
+    // --- Access Control Function for Items ---
+    // Determines if a user can read an observation, inspection, or PTW.
+    function canAccessItem(itemData) {
+      let isPublic = itemData.scope == 'public';
+      let isItemOwner = itemData.userId == request.auth.uid;
+      let isProjectMember = itemData.scope == 'project' 
+        && itemData.projectId != null
+        && get(/databases/$(database)/documents/projects/$(itemData.projectId)).data.memberUids.hasAny([request.auth.uid]);
+      
+      return isAuthenticated() && (isPublic || isItemOwner || isProjectMember);
+    }
+
+    // --- Observations Collection ---
+    match /observations/{observationId} {
+      allow read: if canAccessItem(resource.data);
+      allow create, update: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow delete: if false;
+    }
+    
+    // --- Inspections Collection ---
+    match /inspections/{inspectionId} {
+      allow read: if canAccessItem(resource.data);
+      allow create, update: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow delete: if false;
+    }
+
+    // --- PTWs Collection ---
     match /ptws/{ptwId} {
-      allow read: if canReadItem(resource.data);
-      allow create: if request.auth != null;
-      // Allow updates from any authenticated user to handle approvals.
-      // In a real-world scenario, this would be more locked down (e.g., to project managers).
-      allow update: if request.auth != null;
+      allow read: if canAccessItem(resource.data);
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      // Anyone authenticated can approve, this is handled in app logic.
+      // In a real scenario, you might check for a specific role.
+      allow update: if isAuthenticated(); 
       allow delete: if false;
     }
   }
