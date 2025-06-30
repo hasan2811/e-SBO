@@ -59,105 +59,82 @@ export function MultiActionButton({
         break;
     }
   };
-
-  const parentVariants = {
+  
+  const menuVariants = {
+    open: {
+      transition: { staggerChildren: 0.07, delayChildren: 0.2 },
+    },
     closed: {
+      transition: { staggerChildren: 0.05, staggerDirection: -1 },
+    },
+  };
+
+  const itemVariants = {
+    open: {
+      y: 0,
+      opacity: 1,
       transition: {
-        staggerChildren: 0.1,
-        staggerDirection: -1,
+        type: 'spring',
+        stiffness: 400,
+        damping: 24,
       },
     },
-    open: {
+    closed: {
+      y: 30,
+      opacity: 0,
       transition: {
-        staggerChildren: 0.2,
-        staggerDirection: 1,
+        type: 'spring',
+        stiffness: 400,
+        damping: 24,
       },
     },
   };
 
-  const childVariants = {
-    closed: {
-      opacity: 0,
-      y: 20,
-      transition: {
-        type: 'spring',
-        stiffness: 400,
-        damping: 30,
-      },
-    },
+  const mainButtonVariants = {
     open: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: 'spring',
-        stiffness: 400,
-        damping: 30,
-      },
+      rotate: 405, // 360 (full spin) + 45 (to make an 'X')
+      backgroundColor: 'hsl(var(--card))',
+      color: 'hsl(var(--primary))',
+    },
+    closed: {
+      rotate: 0,
+      backgroundColor: 'hsl(var(--primary))',
+      color: 'hsl(var(--primary-foreground))',
     },
   };
 
   return (
     <TooltipProvider>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsOpen(false)}
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30"
-            aria-hidden="true"
-          />
-        )}
-      </AnimatePresence>
       <div className="fixed bottom-24 right-6 md:right-8 z-40">
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              key="overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.2 } }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30"
+              aria-hidden="true"
+            />
+          )}
+        </AnimatePresence>
+        
         <motion.div
-          className="flex flex-col items-center gap-4"
-          variants={parentVariants}
-          animate={isOpen ? 'open' : 'closed'}
+          className="flex flex-col-reverse items-center gap-4"
           initial="closed"
+          animate={isOpen ? 'open' : 'closed'}
+          variants={menuVariants}
         >
-          <AnimatePresence>
-            {isOpen &&
-              actionItems.map((item) => (
-                <motion.div
-                  key={item.key}
-                  className="flex items-center gap-3"
-                  variants={childVariants}
-                  exit={{ opacity: 0, y: 20 }}
-                >
-                  <div className="bg-card text-card-foreground text-sm font-semibold px-3 py-1.5 rounded-md shadow-md">
-                    {item.label}
-                  </div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => handleActionClick(item.key)}
-                        className={cn(
-                          'h-12 w-12 rounded-full flex items-center justify-center text-primary-foreground shadow-lg transition-transform active:scale-95',
-                          item.color
-                        )}
-                        aria-label={`Submit new ${item.label}`}
-                      >
-                        <item.icon className="h-6 w-6" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      <p>New {item.label}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </motion.div>
-              ))}
-          </AnimatePresence>
-
+          {/* Main button is rendered first, so it's at the bottom of flex-col-reverse */}
           <Tooltip>
             <TooltipTrigger asChild>
               <motion.button
                 onClick={() => setIsOpen(!isOpen)}
-                className="h-16 w-16 bg-primary rounded-full flex items-center justify-center text-primary-foreground shadow-lg hover:bg-primary/90 transition-transform active:scale-95"
+                className="h-16 w-16 rounded-full flex items-center justify-center shadow-lg border-2 border-primary"
                 aria-label="Toggle Actions Menu"
                 aria-expanded={isOpen}
-                animate={{ rotate: isOpen ? 45 : 0 }}
+                variants={mainButtonVariants}
                 transition={{ type: 'spring', stiffness: 400, damping: 20 }}
               >
                 <Plus className="h-8 w-8" />
@@ -167,6 +144,29 @@ export function MultiActionButton({
               <p>{isOpen ? 'Close Menu' : 'New Entry'}</p>
             </TooltipContent>
           </Tooltip>
+
+          {/* Action items are rendered next, appearing above the button */}
+          {actionItems.map((item) => (
+            <motion.div
+              key={item.key}
+              className="flex items-center gap-3"
+              variants={itemVariants}
+            >
+              <div className="bg-card text-card-foreground text-sm font-semibold px-3 py-1.5 rounded-md shadow-md">
+                {item.label}
+              </div>
+              <button
+                onClick={() => handleActionClick(item.key)}
+                className={cn(
+                  'h-12 w-12 rounded-full flex items-center justify-center text-primary-foreground shadow-lg transition-transform active:scale-95',
+                  item.color
+                )}
+                aria-label={`Submit new ${item.label}`}
+              >
+                <item.icon className="h-6 w-6" />
+              </button>
+            </motion.div>
+          ))}
         </motion.div>
       </div>
     </TooltipProvider>
