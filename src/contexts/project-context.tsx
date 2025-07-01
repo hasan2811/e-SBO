@@ -62,7 +62,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
 
         // Fetch all unique member UIDs from all projects at once
-        const allMemberUids = [...new Set(userProjects.flatMap(p => p.memberUids))];
+        const allMemberUids = [...new Set(userProjects.flatMap(p => p.memberUids || []))];
         const allMemberProfiles = await fetchUserProfiles(allMemberUids);
         const profilesMap = new Map(allMemberProfiles.map(p => [p.uid, p]));
 
@@ -70,7 +70,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         const enrichedProjects = userProjects.map(project => ({
           ...project,
           owner: profilesMap.get(project.ownerUid),
-          members: project.memberUids.map(uid => profilesMap.get(uid)).filter(Boolean) as UserProfile[],
+          members: (project.memberUids || []).map(uid => profilesMap.get(uid)).filter(Boolean) as UserProfile[],
         }));
         
         setProjects(enrichedProjects);
