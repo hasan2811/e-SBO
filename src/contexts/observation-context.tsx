@@ -74,9 +74,10 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     };
 
     // Listener for "My Items" (Personal & Project-based data).
+    // This is now simplified to ONLY listen to project data. Private, non-project items are no longer fetched here.
     React.useEffect(() => {
         if (projectsLoading) return; 
-        if (!user) {
+        if (!user || projects.length === 0) {
             setMyItems([]);
             setMyItemsLoading(false);
             return;
@@ -86,7 +87,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         const itemMap = new Map<string, AllItems>();
         const allUnsubs: Unsubscribe[] = [];
         
-        let listenerCount = collectionsToWatch.length + (projects.length * collectionsToWatch.length);
+        let listenerCount = projects.length * collectionsToWatch.length;
         let loadedListenerCount = 0;
 
         const processAndSort = (isInitial: boolean) => {
@@ -98,38 +99,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 }
              }
         }
-
-        collectionsToWatch.forEach(colName => {
-            const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-            // Simplified query to remove composite index requirement. Filtering for 'private' is now done client-side.
-            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid));
-            let isInitial = true;
-            
-            const unsub = onSnapshot(privateQuery, (snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    const docId = change.doc.id;
-                    const itemData = { ...change.doc.data(), id: docId, itemType } as AllItems;
-                    
-                    if (change.type === 'removed') {
-                        itemMap.delete(docId);
-                    } else {
-                        // Add or update if it's a private item, otherwise remove it from the map
-                        if (itemData.scope === 'private') {
-                            itemMap.set(docId, itemData);
-                        } else {
-                            itemMap.delete(docId);
-                        }
-                    }
-                });
-                processAndSort(isInitial);
-                isInitial = false;
-            }, (e) => {
-                console.error(`Error fetching private ${colName}: `, e);
-                processAndSort(isInitial);
-                isInitial = false;
-            });
-            allUnsubs.push(unsub);
-        });
 
         projects.forEach(project => {
             collectionsToWatch.forEach(colName => {

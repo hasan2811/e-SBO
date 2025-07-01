@@ -213,17 +213,15 @@ export function FeedView({ mode }: FeedViewProps) {
     }
 
     try {
-        // SIMPLIFIED QUERY: This query is guaranteed to work without a composite index.
-        // It only filters by 'scope'. Sorting by date is now handled on the client-side.
+        // This query now uses the index the user has created.
         let q: Query<DocumentData> = query(
             collection(db, viewType),
             where('scope', '==', 'public'),
+            orderBy('date', 'desc'),
             limit(PAGE_SIZE)
         );
 
         if (lastVisibleRef.current && !reset) {
-            // We use the document snapshot for pagination.
-            // Firestore will use its internal ordering, which is fine since we sort on the client.
             q = query(q, startAfter(lastVisibleRef.current));
         }
 
@@ -237,19 +235,16 @@ export function FeedView({ mode }: FeedViewProps) {
         lastVisibleRef.current = documentSnapshots.docs[documentSnapshots.docs.length - 1] || null;
         setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
         
-        // Append raw results; sorting happens in useMemo to ensure UI is always sorted correctly.
         setItems(prevItems => (reset ? newItems : [...prevItems, ...newItems]));
 
     } catch (error: any) {
         console.error("Error fetching public items:", error);
         
-        if (error.code === 'failed-precondition') {
-            const indexCreationLink = error.message.includes('https://') 
-                ? error.message.substring(error.message.indexOf('https://'))
-                : 'Please check your Firebase console for index creation instructions.';
+        if (error.code === 'failed-precondition' && error.message.includes('index')) {
+            const indexCreationLink = error.message.substring(error.message.indexOf('https://'));
             setFetchError(`Database memerlukan konfigurasi (indeks) untuk menampilkan data ini. Klik link di konsol browser untuk membuatnya: ${indexCreationLink}`);
         } else {
-             setFetchError("Gagal memuat data. Periksa koneksi internet Anda dan pastikan aturan keamanan Firestore sudah benar.");
+             setFetchError(`Gagal memuat data. Periksa koneksi internet Anda. Error: ${error.message}`);
         }
         setHasMore(false);
     } finally {
@@ -283,8 +278,11 @@ export function FeedView({ mode }: FeedViewProps) {
         }
     }
     
-    // Final step: sort all data to be displayed by date, descending.
-    return dataToFilter.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Sort personal data client-side. Public data is already sorted by the query.
+    if (mode === 'personal') {
+        return dataToFilter.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    return dataToFilter;
   }, [data, mode, viewType, filterType, filterValue]);
   
   const displayObservation = React.useMemo(() => 
@@ -462,14 +460,16 @@ export function FeedView({ mode }: FeedViewProps) {
                 <p>
                 {fetchError.split('https://')[0]}
                 </p>
-                 <a 
-                    href={fetchError.substring(fetchError.indexOf('https://'))} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="underline font-semibold"
-                >
-                    Klik di sini untuk membuat indeks yang diperlukan.
-                </a>
+                 {fetchError.includes('https://') &&
+                    <a 
+                        href={fetchError.substring(fetchError.indexOf('https://'))} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="underline font-semibold"
+                    >
+                        Klik di sini untuk membuat indeks yang diperlukan.
+                    </a>
+                 }
                 <p className="mt-2 text-xs">Setelah membuat indeks, mungkin perlu beberapa menit untuk aktif. Coba muat ulang halaman setelahnya.</p>
             </AlertDescription>
           </Alert>
