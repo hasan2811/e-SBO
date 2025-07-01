@@ -60,10 +60,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
   
   const isPublicFeed = pathname === '/';
-  const isProjectFeed = pathname.startsWith('/proyek/');
   
   const getCurrentScope = (): { scope: Scope; projectId: string | null } => {
-    if (isProjectFeed) {
+    if (pathname.startsWith('/proyek/')) {
       return { scope: 'project', projectId };
     }
     // All other authenticated pages default to private submissions

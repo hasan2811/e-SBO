@@ -79,14 +79,14 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const getDocRef = (item: AllItems): DocumentReference => {
         const itemTypePlural = item.itemType === 'ptw' ? 'ptws' : `${item.itemType}s`;
         
+        // This logic correctly gets the reference regardless of where the item is stored
         if (item.scope === 'public') {
-            return doc(db, itemTypePlural, item.id);
+             return doc(db, itemTypePlural, item.id);
         }
-        
         if (item.projectId) {
             return doc(db, 'projects', item.projectId, itemTypePlural, item.id);
         }
-        
+        // This handles 'private' scope items stored in root collections
         return doc(db, itemTypePlural, item.id);
     };
 
@@ -114,7 +114,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                         if (change.type === 'removed') {
                             newItemsMap.delete(change.doc.id);
                         } else {
-                            newItemsMap.set(change.doc.id, { ...change.doc.data(), id: change.doc.id, itemType, projectId: null } as AllItems);
+                            newItemsMap.set(change.doc.id, { ...change.doc.data(), id: change.doc.id, itemType, projectId: null, scope: 'private' } as AllItems);
                         }
                     });
                     return sortItemsByDate(Array.from(newItemsMap.values()));
@@ -147,7 +147,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     React.useEffect(() => {
         if (!user || projectsLoading) {
             setProjectItems([]);
-            setProjectItemsLoading(true); 
+            if (!projectsLoading) setProjectItemsLoading(false);
             return;
         }
         
@@ -162,6 +162,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         const listenersSetup = new Set<string>();
         const expectedListeners = projects.length * collectionsToWatch.length;
         
+        if (expectedListeners === 0) {
+            setProjectItemsLoading(false);
+            return;
+        }
+
         projects.forEach(project => {
             collectionsToWatch.forEach(colName => {
                 const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
@@ -176,7 +181,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                             if (change.type === 'removed') {
                                 newItemsMap.delete(key);
                             } else {
-                                newItemsMap.set(key, { ...change.doc.data(), id: change.doc.id, itemType, projectId: project.id } as AllItems);
+                                newItemsMap.set(key, { ...change.doc.data(), id: change.doc.id, itemType, projectId: project.id, scope: 'project' } as AllItems);
                             }
                          });
                          return sortItemsByDate(Array.from(newItemsMap.values()));
@@ -201,10 +206,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             });
         });
 
-        // Handle case where there are projects but no collections to watch, or some other edge case.
-        if (expectedListeners === 0) {
-            setProjectItemsLoading(false);
-        }
 
         return () => {
             projectListeners.forEach(unsub => unsub());

@@ -341,9 +341,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
                 return (
                     obs.findings.toLowerCase().includes(lowercasedSearch) ||
                     obs.recommendation.toLowerCase().includes(lowercasedSearch) ||
-                    obs.location.toLowerCase().includes(lowercasedSearch) ||
-                    (obs.sharedBy && obs.sharedBy.toLowerCase().includes(lowercasedSearch)) ||
-                    (obs.sharedByPosition && obs.sharedByPosition.toLowerCase().includes(lowercasedSearch))
+                    (obs.sharedBy && obs.sharedBy.toLowerCase().includes(lowercasedSearch))
                 );
             });
         }
