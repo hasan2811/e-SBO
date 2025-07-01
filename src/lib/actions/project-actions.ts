@@ -8,7 +8,6 @@ import type { Project, UserProfile } from '@/lib/types';
 
 /**
  * Server action to create a new project.
- * Enforces the rule that a user can only own/be in one project at a time.
  * @param owner - The user object of the project creator.
  * @param projectName - The name of the new project.
  * @returns An object with success status and a message.
@@ -23,18 +22,6 @@ export async function createProject(
   
   try {
     const projectCollectionRef = collection(db, 'projects');
-    
-    // STRICT RULE: Check if the user is already a member of ANY project.
-    const existingProjectQuery = query(
-        projectCollectionRef,
-        where('memberUids', 'array-contains', owner.uid),
-        limit(1)
-    );
-    const existingProjectSnapshot = await getDocs(existingProjectQuery);
-    if (!existingProjectSnapshot.empty) {
-        const existingProjectName = existingProjectSnapshot.docs[0].data().name;
-        return { success: false, message: `Project creation failed: You are already a member of project "${existingProjectName}".` };
-    }
 
     const memberUids = [owner.uid];
 
@@ -101,7 +88,6 @@ export async function deleteProject(
 
 /**
  * Adds a new member to a project.
- * Enforces the rule that a user can only be in one project at a time.
  * @param projectId - The ID of the project.
  * @param newMemberEmail - The email of the user to add.
  * @param ownerId - The UID of the user performing the action, to verify ownership.
@@ -142,16 +128,6 @@ export async function addProjectMember(
         
         if (project.memberUids.includes(newMember.uid)) {
             return { success: false, message: `User ${newMember.displayName} is already a member of this project.`};
-        }
-
-        // STRICT RULE: Check if the new member is already in ANY project.
-        const projectsRef = collection(db, 'projects');
-        const memberProjectQuery = query(projectsRef, where('memberUids', 'array-contains', newMember.uid), limit(1));
-        const memberProjectSnap = await getDocs(memberProjectQuery);
-
-        if (!memberProjectSnap.empty) {
-            const existingProjectName = memberProjectSnap.docs[0].data().name;
-            return { success: false, message: `User ${newMember.displayName} is already a member of project "${existingProjectName}".` };
         }
         
         await updateDoc(projectRef, {
@@ -290,7 +266,6 @@ export async function findProjectsByName(
 
 /**
  * Allows a user to join an existing project.
- * Enforces the rule that a user can only be in one project.
  * @param projectId The ID of the project to join.
  * @param userId The UID of the user joining.
  * @returns An object with success status and a message.
@@ -304,19 +279,6 @@ export async function joinProject(
     }
 
     try {
-        // STRICT RULE: Check if the user is already a member of ANY project.
-        const projectsCollectionRef = collection(db, 'projects');
-        const existingProjectQuery = query(
-            projectsCollectionRef,
-            where('memberUids', 'array-contains', userId),
-            limit(1)
-        );
-        const existingProjectSnapshot = await getDocs(existingProjectQuery);
-        if (!existingProjectSnapshot.empty) {
-            const existingProjectName = existingProjectSnapshot.docs[0].data().name;
-            return { success: false, message: `Join failed: You are already a member of project "${existingProjectName}".` };
-        }
-
         const projectRef = doc(db, 'projects', projectId);
         
         await updateDoc(projectRef, {
