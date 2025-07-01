@@ -4,10 +4,13 @@
 import { db } from '@/lib/firebase';
 import { doc, runTransaction } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
+import type { Scope } from '@/lib/types';
 
 interface ToggleLikeParams {
   docId: string;
   userId: string;
+  scope: Scope;
+  projectId: string | null;
 }
 
 /**
@@ -15,12 +18,14 @@ interface ToggleLikeParams {
  * This is an atomic operation to prevent race conditions.
  * @param params - The parameters for the toggle operation.
  */
-export async function toggleLike({ docId, userId }: ToggleLikeParams) {
+export async function toggleLike({ docId, userId, scope, projectId }: ToggleLikeParams) {
   if (!docId || !userId) {
     throw new Error('Document ID and User ID are required.');
   }
 
-  const docRef = doc(db, 'observations', docId);
+  const docRef = (scope === 'project' && projectId)
+    ? doc(db, 'projects', projectId, 'observations', docId)
+    : doc(db, 'observations', docId);
 
   try {
     const observation = await runTransaction(db, async (transaction) => {
@@ -53,11 +58,11 @@ export async function toggleLike({ docId, userId }: ToggleLikeParams) {
     if (observation) {
         if (observation.scope === 'project' && observation.projectId) {
           revalidatePath(`/proyek/${observation.projectId}`);
+        } else if (observation.scope === 'private') {
+           revalidatePath('/private');
         }
         revalidatePath('/'); // Always revalidate public feed
-        revalidatePath('/private'); // Always revalidate private feed
     }
-
 
   } catch (error) {
     console.error('Error toggling like:', error);

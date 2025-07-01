@@ -12,8 +12,6 @@ import {
   where,
   Unsubscribe,
   DocumentReference,
-  getDocs,
-  writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw, AllItems, Scope } from '@/lib/types';
@@ -63,6 +61,9 @@ const ObservationContext = React.createContext<
 
 const getDocRef = (item: AllItems): DocumentReference => {
     const collectionName = `${item.itemType}s`;
+    if (item.scope === 'project' && item.projectId) {
+        return doc(db, 'projects', item.projectId, collectionName, item.id);
+    }
     return doc(db, collectionName, item.id);
 };
 
@@ -81,83 +82,88 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     };
     
-    // Unified listener setup for a given scope
-    const setupListeners = (
-        queries: any[], 
-        setItems: React.Dispatch<React.SetStateAction<AllItems[]>>,
-        setLoading: React.Dispatch<React.SetStateAction<boolean>>
-    ) => {
-        setLoading(true);
-        const allListeners: Unsubscribe[] = [];
-        let dataMap = new Map<string, AllItems[]>();
-        let collectionsLoaded = 0;
-
-        queries.forEach((q, index) => {
-            const collectionName = COLLECTIONS_TO_WATCH[index];
-            const unsub = onSnapshot(q, (snapshot) => {
-                const newItems = snapshot.docs.map(d => ({...d.data(), id: d.id, itemType: collectionName.slice(0, -1)} as AllItems));
-                dataMap.set(collectionName, newItems);
-                
-                // Check if this is the first snapshot for this listener
-                if (collectionsLoaded < queries.length) {
-                    collectionsLoaded++;
-                    if (collectionsLoaded === queries.length) {
-                        setLoading(false); // All initial data has loaded
-                    }
-                }
-
-                // Combine all data from the map into a single sorted array
-                const combinedData = Array.from(dataMap.values()).flat();
-                setItems(sortItemsByDate(combinedData));
-            }, (error) => {
-                console.error(`Error fetching ${collectionName}:`, error);
-                toast({ variant: 'destructive', title: `Failed to load ${collectionName}` });
-                setLoading(false);
-            });
-            allListeners.push(unsub);
-        });
-
-        return () => allListeners.forEach(unsub => unsub());
-    };
-
-    // Effect for Private Items
+    // Listener for private items
     React.useEffect(() => {
         if (!user) {
             setPrivateItems([]);
             setPrivateItemsLoading(false);
             return;
         }
-        
-        const privateQueries = COLLECTIONS_TO_WATCH.map(col => 
-            query(collection(db, col), where('userId', '==', user.uid), where('scope', '==', 'private'))
-        );
-        
-        const unsubscribe = setupListeners(privateQueries, setPrivateItems, setPrivateItemsLoading);
-        return unsubscribe;
 
+        setPrivateItemsLoading(true);
+        const privateRootQuery = query(collection(db, 'observations'), where('userId', '==', user.uid), where('scope', '==', 'private'));
+        const privateInspectionsQuery = query(collection(db, 'inspections'), where('userId', '==', user.uid), where('scope', '==', 'private'));
+        const privatePtwQuery = query(collection(db, 'ptws'), where('userId', '==', user.uid), where('scope', '==', 'private'));
+        
+        const combinePrivateData = (
+            observations: AllItems[],
+            inspections: AllItems[],
+            ptws: AllItems[]
+        ) => sortItemsByDate([...observations, ...inspections, ...ptws]);
+
+        const unsubObs = onSnapshot(privateRootQuery, (snap) => {
+            const obs = snap.docs.map(d => ({ ...d.data(), id: d.id, itemType: 'observation' })) as Observation[];
+            setPrivateItems(current => combinePrivateData(obs, current.filter(i => i.itemType !== 'observation'), []));
+            setPrivateItemsLoading(false);
+        });
+        const unsubInsp = onSnapshot(privateInspectionsQuery, (snap) => {
+            const insp = snap.docs.map(d => ({ ...d.data(), id: d.id, itemType: 'inspection' })) as Inspection[];
+            setPrivateItems(current => combinePrivateData(current.filter(i => i.itemType !== 'inspection'), insp, []));
+        });
+        const unsubPtw = onSnapshot(privatePtwQuery, (snap) => {
+            const ptw = snap.docs.map(d => ({ ...d.data(), id: d.id, itemType: 'ptw' })) as Ptw[];
+            setPrivateItems(current => combinePrivateData(current.filter(i => i.itemType !== 'ptw'), [], ptw));
+        });
+
+        return () => {
+            unsubObs();
+            unsubInsp();
+            unsubPtw();
+        };
     }, [user]);
 
-    // Effect for Project Items
+    // Listener for project items
     React.useEffect(() => {
-        if (!user || projectsLoading) {
-            return;
-        }
-
-        if (projects.length === 0) {
+        if (projectsLoading || projects.length === 0) {
             setProjectItems([]);
-            setProjectItemsLoading(false);
+            setProjectItemsLoading(projects.length > 0); // Still loading if projects exist but not yet processed
             return;
         }
-
-        const projectIds = projects.map(p => p.id);
-        const projectQueries = COLLECTIONS_TO_WATCH.map(col =>
-            query(collection(db, col), where('projectId', 'in', projectIds))
-        );
         
-        const unsubscribe = setupListeners(projectQueries, setProjectItems, setProjectItemsLoading);
-        return unsubscribe;
+        setProjectItemsLoading(true);
+        const project = projects[0]; // Rule: user can only be in one project
+        
+        const projectObsQuery = query(collection(db, 'projects', project.id, 'observations'));
+        const projectInspectionsQuery = query(collection(db, 'projects', project.id, 'inspections'));
+        const projectPtwQuery = query(collection(db, 'projects', project.id, 'ptws'));
 
-    }, [user, projects, projectsLoading]);
+        const unsubs: Unsubscribe[] = [];
+        let combinedProjectItems: AllItems[] = [];
+
+        const updateProjectItems = () => {
+            setProjectItems(sortItemsByDate(combinedProjectItems));
+        };
+
+        unsubs.push(onSnapshot(projectObsQuery, (snap) => {
+            const obs = snap.docs.map(d => ({...d.data(), id: d.id, itemType: 'observation'})) as Observation[];
+            combinedProjectItems = [...combinedProjectItems.filter(i => i.itemType !== 'observation'), ...obs];
+            updateProjectItems();
+            setProjectItemsLoading(false);
+        }));
+        unsubs.push(onSnapshot(projectInspectionsQuery, (snap) => {
+            const insp = snap.docs.map(d => ({...d.data(), id: d.id, itemType: 'inspection'})) as Inspection[];
+            combinedProjectItems = [...combinedProjectItems.filter(i => i.itemType !== 'inspection'), ...insp];
+            updateProjectItems();
+        }));
+        unsubs.push(onSnapshot(projectPtwQuery, (snap) => {
+            const ptw = snap.docs.map(d => ({...d.data(), id: d.id, itemType: 'ptw'})) as Ptw[];
+            combinedProjectItems = [...combinedProjectItems.filter(i => i.itemType !== 'ptw'), ...ptw];
+            updateProjectItems();
+        }));
+
+        return () => unsubs.forEach(unsub => unsub());
+
+    }, [projects, projectsLoading]);
     
     const _runObservationAiAnalysis = React.useCallback(async (observation: Observation) => {
       const observationDocRef = getDocRef(observation);
@@ -234,19 +240,16 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         };
 
         if (itemType === 'observation') {
-            dataToSave = {
-              ...dataToSave,
-              aiStatus: 'processing',
-              likes: [],
-              likeCount: 0,
-              commentCount: 0,
-              viewCount: 0,
-            }
+            dataToSave = { ...dataToSave, aiStatus: 'processing', likes: [], likeCount: 0, commentCount: 0, viewCount: 0 };
         } else if (itemType === 'inspection') {
             dataToSave.aiStatus = 'processing';
         }
 
-        const docRef = await addDoc(collection(db, collectionName), dataToSave);
+        const collectionPath = scope === 'project' && projectId
+            ? collection(db, 'projects', projectId, collectionName)
+            : collection(db, collectionName);
+
+        const docRef = await addDoc(collectionPath, dataToSave);
         
         const fullItemData = { ...dataToSave, id: docRef.id };
 
@@ -297,13 +300,15 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
           toast({ variant: 'destructive', title: 'User profile not loaded.', description: 'Please wait a moment and try again.'});
           throw new Error("User not authenticated or profile not loaded");
         }
-        if (observation.scope === 'public' || observation.isSharedPublicly) {
+        if (observation.isSharedPublicly) {
             toast({ variant: 'default', title: 'Sudah Dibagikan', description: 'Observasi ini sudah ada di feed publik.' });
             return;
         }
 
         try {
-            const { id, itemType, ...restOfObservation } = observation;
+            // Destructure to remove fields that shouldn't be copied.
+            const { id, aiStatus, ...restOfObservation } = observation;
+
             const publicObservationData = {
                 ...restOfObservation,
                 itemType: 'observation',
@@ -313,6 +318,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 sharedBy: userProfile.displayName,
                 sharedByPosition: userProfile.position,
                 originalId: id, // Link back to the original
+                originalScope: observation.scope,
             };
             
             await addDoc(collection(db, 'observations'), publicObservationData);
@@ -335,7 +341,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         try {
             await toggleLike({
                 docId: observation.id,
-                userId: user.uid
+                userId: user.uid,
+                scope: observation.scope,
+                projectId: observation.projectId,
             });
         } catch (error) {
             console.error('Failed to toggle like:', error);

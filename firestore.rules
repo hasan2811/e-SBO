@@ -1,46 +1,52 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    function isProjectMember(projectId) {
-      return get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
-    }
-    
+    // Users can read any profile, but only update their own.
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
     }
-    
+
+    // Project metadata can be read by members, but only modified by the owner.
     match /projects/{projectId} {
-      allow read: if request.auth != null && isProjectMember(projectId);
-      allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+      function isMember() {
+        return request.auth.uid in resource.data.memberUids;
+      }
+      function isOwner() {
+        return request.auth.uid == resource.data.ownerUid;
+      }
+      
+      allow read: if request.auth != null && isMember();
+      allow create: if request.auth != null; // Server-side actions handle validation
+      allow update, delete: if request.auth != null && isOwner();
+
+      // Rules for sub-collections within a project (observations, inspections, ptws)
+      // Only project members can access items within the project.
+      match /{itemCollection}/{itemId} {
+        allow read, create, update, delete: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
+      }
     }
 
-    match /{collection}/{itemId} 
-      where collection in ['observations', 'inspections', 'ptws'] {
+    // Rules for root collections (Private and Public items ONLY)
+    match /observations/{observationId} {
+      allow create: if request.auth.uid == request.resource.data.userId && request.resource.data.scope != 'project';
+      allow read: if resource.data.scope == 'public' || (request.auth.uid == resource.data.userId && resource.data.scope == 'private');
+      allow update, delete: if request.auth.uid == resource.data.userId && resource.data.scope == 'private';
+    }
 
-      allow read: if request.auth != null && (
-                    resource.data.scope == 'public' ||
-                    (resource.data.scope == 'private' && resource.data.userId == request.auth.uid) ||
-                    (resource.data.scope == 'project' && isProjectMember(resource.data.projectId))
-                  );
+    match /inspections/{inspectionId} {
+      allow create: if request.auth.uid == request.resource.data.userId && request.resource.data.scope != 'project';
+      allow read: if request.auth.uid == resource.data.userId && resource.data.scope == 'private';
+      allow update, delete: if request.auth.uid == resource.data.userId && resource.data.scope == 'private';
+    }
 
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && (
-                      request.resource.data.scope == 'private' || 
-                      (request.resource.data.scope == 'project' && isProjectMember(request.resource.data.projectId)) ||
-                      (request.resource.data.scope == 'public' && request.resource.data.originalId != null)
-                    );
-                    
-      // Owner can update. Project members can update project items (e.g. status or likes).
-      allow update: if request.auth != null && (
-                      resource.data.userId == request.auth.uid ||
-                      (resource.data.scope == 'project' && isProjectMember(resource.data.projectId)) ||
-                      (resource.data.scope == 'public') // Any authenticated user can like a public post
-                    );
-      
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    match /ptws/{ptwId} {
+      allow create: if request.auth.uid == request.resource.data.userId && request.resource.data.scope != 'project';
+      allow read: if request.auth.uid == resource.data.userId && resource.data.scope == 'private';
+      allow update, delete: if request.auth.uid == resource.data.userId && resource.data.scope == 'private';
     }
   }
 }

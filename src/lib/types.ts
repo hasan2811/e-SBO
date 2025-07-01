@@ -1,10 +1,11 @@
 
+
 import { z } from 'zod';
 
 export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed';
 export type ObservationCategory = 'Unsafe Act' | 'Unsafe Condition' | 'Environmental' | 'Security' | 'General';
 export type Company = 'Tambang' | 'Migas' | 'Konstruksi' | 'Manufaktur';
-export type Location = 'Site A' | 'Site B' | 'Office' | 'Workshop';
+export type Location = 'International' | 'National' | 'Local' | 'Regional';
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 export type Scope = 'public' | 'private' | 'project';
 
@@ -48,7 +49,7 @@ export type Observation = {
   company: Company;
   photoUrl?: string;
   scope: Scope;
-  projectId?: string | null;
+  projectId: string | null;
   actionTakenDescription?: string;
   actionTakenPhotoUrl?: string;
   closedBy?: string;
@@ -66,6 +67,7 @@ export type Observation = {
   sharedBy?: string;
   sharedByPosition?: string;
   originalId?: string; // If it's a shared copy, this points to the original
+  originalScope?: Scope;
   // Social Features
   likes?: string[]; // Array of user UIDs who liked it
   likeCount?: number;
@@ -92,7 +94,7 @@ export type Inspection = {
   recommendation?: string;
   photoUrl?: string;
   scope: Scope;
-  projectId?: string | null;
+  projectId: string | null;
   aiStatus?: 'processing' | 'completed' | 'failed';
   aiSummary?: string;
   aiRisks?: string;
@@ -114,7 +116,7 @@ export type Ptw = {
   jsaPdfUrl: string;
   status: PtwStatus;
   scope: Scope;
-  projectId?: string | null;
+  projectId: string | null;
   approver?: string;
   approvedDate?: string;
   rejectionReason?: string;
