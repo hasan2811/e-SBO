@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -89,10 +88,10 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
                 )}
               </div>
       
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
-                    <p className="text-xs text-primary font-semibold">{observation.category}</p>
-                    <div className="flex items-center gap-2">
+                    <p className="text-xs text-primary font-semibold truncate pr-2">{observation.category}</p>
+                    <div className="flex items-center gap-2 flex-shrink-0">
                         {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
                             <div title={`Observer Rating: ${observation.aiObserverSkillRating}/5`}>
                                 <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
@@ -109,52 +108,75 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
                     </div>
                 </div>
                 <p className="font-semibold leading-snug line-clamp-2 mt-0.5">{observation.findings}</p>
-                <div className="flex justify-between items-end text-xs text-muted-foreground mt-2">
-                    <div className="truncate pr-2">
-                         {mode === 'public' ? (
-                            observation.sharedBy ? (
-                                <>
-                                    <Share2 className="inline-block h-3 w-3 mr-1.5 align-middle text-primary"/>
-                                    <span className="align-middle">
-                                        Oleh <strong>{observation.sharedBy.split(' ')[0]}</strong>
-                                    </span>
-                                </>
-                            ) : <span />
-                        ) : (
-                            <>
-                                <span className="font-medium">{observation.company}</span>
-                                <span className="mx-1">&bull;</span>
-                                <span>{observation.location}</span>
-                            </>
-                        )}
+                 {mode === 'public' && observation.sharedBy ? (
+                    <div className="text-xs text-muted-foreground mt-1.5 truncate">
+                        <Share2 className="inline-block h-3 w-3 mr-1.5 align-middle text-primary"/>
+                        <span className="align-middle">
+                            Oleh <strong>{observation.sharedBy.split(' ')[0]}</strong> ({observation.sharedByPosition})
+                        </span>
                     </div>
-                    <span className="flex-shrink-0">{format(new Date(observation.date), 'd MMM yy')}</span>
-                </div>
+                ) : null}
               </div>
           </div>
           
-          {mode !== 'private' && (
-            <div className="flex items-center gap-4 text-xs pt-2 mt-2 border-t border-border/50">
-              <button
-                onClick={handleLikeClick}
-                className={cn(
-                  "flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors",
-                  hasLiked && "text-primary font-semibold"
-                )}
-              >
-                <ThumbsUp className={cn("h-3.5 w-3.5", hasLiked && "fill-current")} />
-                <span>{observation.likeCount || 0}</span>
-              </button>
-              <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
-                <MessageCircle className="h-3.5 w-3.5" />
-                <span>{observation.commentCount || 0}</span>
-              </button>
-              <div className="flex items-center gap-1.5 text-muted-foreground ml-auto">
-                <Eye className="h-3.5 w-3.5" />
-                <span>{observation.viewCount || 0}</span>
-              </div>
-            </div>
-          )}
+          <div className="flex items-center gap-4 text-xs pt-2 mt-2 border-t border-border/50">
+            {mode !== 'private' && (
+              <>
+                <button
+                  onClick={handleLikeClick}
+                  className={cn(
+                    "flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors",
+                    hasLiked && "text-primary font-semibold"
+                  )}
+                >
+                  <ThumbsUp className={cn("h-3.5 w-3.5", hasLiked && "fill-current")} />
+                  <span>{observation.likeCount || 0}</span>
+                </button>
+                <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  <span>{observation.commentCount || 0}</span>
+                </button>
+                <div className="flex items-center gap-1.5 text-muted-foreground ml-auto">
+                  <Eye className="h-3.5 w-3.5" />
+                  <span>{observation.viewCount || 0}</span>
+                </div>
+              </>
+            )}
+            {mode === 'private' && (
+                <div className="flex justify-between w-full">
+                    <span className="font-medium text-muted-foreground">{observation.company} &bull; {observation.location}</span>
+                    <span className="text-muted-foreground">{format(new Date(observation.date), 'd MMM yy')}</span>
+                </div>
+            )}
+             {mode === 'project' && (
+                <div className="flex justify-between w-full">
+                     <span className="font-medium text-muted-foreground">{observation.company} &bull; {observation.location}</span>
+                    <div className="flex items-center gap-4">
+                        <button
+                          onClick={handleLikeClick}
+                          className={cn(
+                            "flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors",
+                            hasLiked && "text-primary font-semibold"
+                          )}
+                        >
+                          <ThumbsUp className={cn("h-3.5 w-3.5", hasLiked && "fill-current")} />
+                          <span>{observation.likeCount || 0}</span>
+                        </button>
+                        <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          <span>{observation.commentCount || 0}</span>
+                        </button>
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>{observation.viewCount || 0}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+             {mode === 'public' && (
+                 <span className="text-muted-foreground ml-auto">{format(new Date(observation.date), 'd MMM yy')}</span>
+             )}
+          </div>
         </div>
       </li>
     );
@@ -424,7 +446,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
     let Icon = Home;
 
     if(mode === 'project') {
-        emptyText = `Belum ada laporan ${config.label.toLowerCase()} untuk proyek ini.`;
+        emptyText = `Belum ada ${config.label.toLowerCase()} untuk proyek ini.`;
         Icon = Briefcase;
     } else if (mode === 'private') {
         emptyText = `Anda belum membuat ${config.label.toLowerCase()} pribadi.`;
@@ -436,7 +458,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
     return (
       <div className="text-center py-16 text-muted-foreground bg-card rounded-lg">
         {areFiltersActive ? <FilterX className="mx-auto h-12 w-12" /> : <Icon className="mx-auto h-12 w-12" />}
-        <h3 className="mt-4 text-xl font-semibold">{areFiltersActive ? 'Tidak Ada Hasil' : 'Tidak Ada Laporan'}</h3>
+        <h3 className="mt-4 text-xl font-semibold">{areFiltersActive ? 'Tidak Ada Hasil' : 'Tidak Ada Data'}</h3>
         <p className="mt-2 text-sm max-w-xs mx-auto">{areFiltersActive ? filterText : emptyText}</p>
          {areFiltersActive && <Button variant="default" className="mt-6" onClick={clearFilters}><FilterX className="mr-2 h-4 w-4"/>Hapus Filter</Button>}
       </div>
@@ -448,7 +470,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
      <div className="space-y-4">
         <div className="flex justify-between items-center gap-4">
             <h2 className="text-2xl font-bold tracking-tight">
-                {mode === 'public' ? 'Feed Publik' : `Laporan ${viewConfig[viewType].label}`}
+                {mode === 'public' ? 'Feed Publik' : viewConfig[viewType].label}
             </h2>
             {mode === 'public' ? (
                 <Popover>
