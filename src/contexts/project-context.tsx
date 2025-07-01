@@ -37,7 +37,7 @@ async function fetchUserProfiles(uids: string[]): Promise<UserProfile[]> {
 
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -96,13 +96,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const addProject = React.useCallback(async (projectName: string) => {
-    if (!user || !user.email) {
-      toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to create a project.' });
+    if (!user || !userProfile) {
+      toast({ variant: 'destructive', title: 'Not Authenticated', description: 'User profile not loaded. Please try again.' });
       return;
     }
     try {
-      const ownerProfile = { uid: user.uid, email: user.email, displayName: user.displayName || 'User' };
-      const result = await createProject(ownerProfile, projectName);
+      const ownerInfo = { uid: userProfile.uid, email: userProfile.email, displayName: userProfile.displayName };
+      const result = await createProject(ownerInfo, projectName);
       if (result.success) {
         toast({ title: 'Success!', description: result.message });
       } else {
@@ -113,7 +113,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
       toast({ variant: 'destructive', title: 'Project Creation Failed', description: errorMessage });
     }
-  }, [user]);
+  }, [user, userProfile]);
 
   const value = { projects, loading, addProject };
 
