@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2 } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -27,10 +27,14 @@ import { cn } from '@/lib/utils';
 import { collection, query, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/hooks/use-auth';
 
 const PAGE_SIZE = 10;
 
 const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
+    const { toggleLikeObservation } = useObservations();
+    const { user } = useAuth();
+
     const riskColorStyles: Record<RiskLevel, string> = {
         Low: 'border-l-chart-2',
         Medium: 'border-l-chart-4',
@@ -47,66 +51,95 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
     const statusClassName = statusIcons[observation.status].className;
     const statusLabel = statusIcons[observation.status].label;
 
+    const hasLiked = user && observation.likes?.includes(user.uid);
+
+    const handleLikeClick = (e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent opening the detail sheet
+        toggleLikeObservation(observation);
+    };
 
     return (
       <li>
         <div onClick={onSelect} className={cn(
-            "flex items-start gap-3 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden border-l-4",
+            "flex flex-col bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden border-l-4",
             riskColorStyles[observation.riskLevel]
         )}>
-          <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
-            {observation.photoUrl ? (
-                <Image src={observation.photoUrl} alt={observation.findings} fill sizes="80px" className="object-cover" data-ai-hint="site observation" />
-            ) : (
-                <FileText className="h-8 w-8 text-muted-foreground/50" />
-            )}
-            {observation.aiStatus === 'processing' && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <Loader2 className="h-5 w-5 animate-spin text-white" />
-                </div>
-            )}
-            {observation.aiStatus === 'completed' && (
-                <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
-                    <Sparkles className="h-3 w-3 text-primary-foreground" />
-                </div>
-            )}
-          </div>
-  
-            <div className="flex-1 space-y-1 self-start">
-                <div className="flex justify-between items-start">
-                    <p className="text-xs text-muted-foreground font-semibold">{observation.location}</p>
-                    <div className="flex items-center gap-2">
-                        {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
-                            <div title={`Observer Rating: ${observation.aiObserverSkillRating}/5`}>
-                                <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
-                            </div>
-                        )}
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <StatusIcon className={cn("h-4 w-4", statusClassName)} />
-                                </TooltipTrigger>
-                                <TooltipContent><p>{statusLabel}</p></TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+          <div className="flex items-start gap-3">
+              <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
+                {observation.photoUrl ? (
+                    <Image src={observation.photoUrl} alt={observation.findings} fill sizes="80px" className="object-cover" data-ai-hint="site observation" />
+                ) : (
+                    <FileText className="h-8 w-8 text-muted-foreground/50" />
+                )}
+                {observation.aiStatus === 'processing' && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                    </div>
+                )}
+                {observation.aiStatus === 'completed' && (
+                    <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
+                        <Sparkles className="h-3 w-3 text-primary-foreground" />
+                    </div>
+                )}
+              </div>
+      
+                <div className="flex-1 space-y-1 self-start">
+                    <div className="flex justify-between items-start">
+                        <p className="text-xs text-muted-foreground font-semibold">{observation.location}</p>
+                        <div className="flex items-center gap-2">
+                            {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
+                                <div title={`Observer Rating: ${observation.aiObserverSkillRating}/5`}>
+                                    <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
+                                </div>
+                            )}
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <StatusIcon className={cn("h-4 w-4", statusClassName)} />
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>{statusLabel}</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                    </div>
+                    <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
+                    
+                    {observation.scope === 'public' && observation.sharedBy && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground italic pt-1">
+                          <Share2 className="h-3 w-3" />
+                          <span>
+                              Dibagikan oleh: <strong>{observation.sharedBy}</strong> ({observation.sharedByPosition || 'N/A'})
+                          </span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-x-2 pt-1">
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(observation.date), 'd MMM yyyy, HH:mm')} &bull; {observation.category} &bull; {observation.company}
+                      </p>
                     </div>
                 </div>
-                <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
-                
-                {observation.scope === 'public' && observation.sharedBy && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground italic pt-1">
-                      <Share2 className="h-3 w-3" />
-                      <span>
-                          Dibagikan oleh: <strong>{observation.sharedBy}</strong> ({observation.sharedByPosition || 'N/A'})
-                      </span>
-                  </div>
+            </div>
+            
+            <div className="flex items-center gap-4 pt-3 mt-3 border-t border-border/50">
+              <button
+                onClick={handleLikeClick}
+                className={cn(
+                  "flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors",
+                  hasLiked && "text-primary font-semibold"
                 )}
-
-                <div className="flex flex-wrap items-center gap-x-2 pt-1">
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(observation.date), 'd MMM yyyy, HH:mm')} &bull; {observation.category} &bull; {observation.company}
-                  </p>
-                </div>
+              >
+                <ThumbsUp className={cn("h-4 w-4", hasLiked && "fill-current")} />
+                <span>{observation.likeCount || 0}</span>
+              </button>
+              <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
+                <MessageCircle className="h-4 w-4" />
+                <span>{observation.commentCount || 0}</span>
+              </button>
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground ml-auto">
+                <Eye className="h-4 w-4" />
+                <span>{observation.viewCount || 0} Dilihat</span>
+              </div>
             </div>
         </div>
       </li>

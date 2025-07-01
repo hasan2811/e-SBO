@@ -10,7 +10,7 @@ import { StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder, ThumbsUp, MessageCircle, Eye } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,8 @@ import { StarRating } from './star-rating';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
+import { useAuth } from '@/hooks/use-auth';
+import { Separator } from '@/components/ui/separator';
 
 
 interface ObservationDetailSheetProps {
@@ -27,8 +29,9 @@ interface ObservationDetailSheetProps {
 }
 
 export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: ObservationDetailSheetProps) {
-  const { updateObservation, retryAiAnalysis, shareObservationToPublic } = useObservations();
+  const { updateObservation, retryAiAnalysis, shareObservationToPublic, toggleLikeObservation } = useObservations();
   const { projects } = useProjects();
+  const { user } = useAuth();
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isSharing, setIsSharing] = React.useState(false);
   const { toast } = useToast();
@@ -36,6 +39,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
   if (!observation) return null;
 
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
+  const hasLiked = user && observation.likes?.includes(user.uid);
 
   const handleUpdate = async (data: Partial<Observation>) => {
     if (!observation) return;
@@ -49,6 +53,10 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
   
   const handleRetry = () => {
     retryAiAnalysis(observation);
+  };
+  
+  const handleLikeClick = () => {
+    toggleLikeObservation(observation);
   };
 
   const handleShare = async () => {
@@ -156,6 +164,31 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                 </div>
               </div>
             </div>
+
+            <Separator />
+            
+            <div className="flex items-center justify-around">
+                <button
+                    onClick={handleLikeClick}
+                    className={cn(
+                        "flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors",
+                        hasLiked && "text-primary font-semibold"
+                    )}
+                >
+                    <ThumbsUp className={cn("h-5 w-5", hasLiked && "fill-current")} />
+                    <span>{observation.likeCount || 0} Suka</span>
+                </button>
+                <button className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors">
+                    <MessageCircle className="h-5 w-5" />
+                    <span>{observation.commentCount || 0} Komentar</span>
+                </button>
+                 <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
+                    <Eye className="h-5 w-5" />
+                    <span>{observation.viewCount || 0} Dilihat</span>
+                </div>
+            </div>
+
+            <Separator />
 
             <div className="space-y-1">
               <h4 className="font-semibold">Findings</h4>

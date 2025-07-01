@@ -65,6 +65,11 @@ export type Observation = {
   isSharedPublicly?: boolean;
   sharedBy?: string;
   sharedByPosition?: string;
+  // Social Features
+  likes?: string[]; // Array of user UIDs who liked it
+  likeCount?: number;
+  commentCount?: number;
+  viewCount?: number;
 };
 
 // New Types for Inspection and PTW

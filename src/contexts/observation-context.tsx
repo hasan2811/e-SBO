@@ -24,6 +24,7 @@ import {
 } from '@/ai/flows/summarize-observation-data';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { toggleLike } from '@/lib/actions/interaction-actions';
 
 interface ObservationContextType {
   privateItems: AllItems[];
@@ -52,6 +53,7 @@ interface ObservationContextType {
   ) => Promise<void>;
   retryAiAnalysis: (item: Observation | Inspection) => Promise<void>;
   shareObservationToPublic: (observation: Observation) => Promise<void>;
+  toggleLikeObservation: (observation: Observation) => Promise<void>;
 }
 
 const ObservationContext = React.createContext<
@@ -75,10 +77,16 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     };
 
     const getDocRef = (item: AllItems): DocumentReference => {
-        const itemTypePlural = `${item.itemType}s` as 'observations' | 'inspections' | 'ptws';
+        const itemTypePlural = item.itemType === 'ptw' ? 'ptws' : `${item.itemType}s`;
+        
+        if (item.scope === 'public') {
+            return doc(db, itemTypePlural, item.id);
+        }
+        
         if (item.projectId) {
             return doc(db, 'projects', item.projectId, itemTypePlural, item.id);
         }
+        
         return doc(db, itemTypePlural, item.id);
     };
 
@@ -229,7 +237,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             scope,
             projectId,
             referenceId,
-            aiStatus: 'processing' as const, 
+            aiStatus: 'processing' as const,
+            likes: [],
+            likeCount: 0,
+            commentCount: 0,
+            viewCount: 0,
         };
         
         let collectionRef: CollectionReference;
@@ -343,8 +355,26 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
     }, [user, userProfile]);
 
+    const toggleLikeObservation = React.useCallback(async (observation: Observation) => {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Anda harus masuk untuk menyukai.' });
+            return;
+        }
+        try {
+            await toggleLike({
+                docId: observation.id,
+                userId: user.uid,
+                scope: observation.scope,
+                projectId: observation.projectId,
+            });
+        } catch (error) {
+            console.error('Failed to toggle like:', error);
+            toast({ variant: 'destructive', title: 'Gagal', description: 'Tidak dapat memproses suka.'});
+        }
+    }, [user]);
 
-    const value = { privateItems, projectItems, loading: authLoading || projectsLoading || privateItemsLoading || projectItemsLoading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis, shareObservationToPublic };
+
+    const value = { privateItems, projectItems, loading: authLoading || projectsLoading || privateItemsLoading || projectItemsLoading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis, shareObservationToPublic, toggleLikeObservation };
 
     return (
         <ObservationContext.Provider value={value}>
