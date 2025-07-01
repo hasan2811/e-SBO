@@ -2,11 +2,11 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
-import { Loader2, Upload, Sparkles } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
 
 import type { Observation, ObservationCategory, Company, Location, RiskLevel } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -24,16 +24,11 @@ import { Progress } from '@/components/ui/progress';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
-const CATEGORIES = ['Structural', 'Electrical', 'Plumbing', 'General'] as const;
-const RISK_LEVELS = ['Low', 'Medium', 'High', 'Critical'] as const;
 
 const formSchema = z.object({
   location: z.enum(LOCATIONS),
   company: z.enum(COMPANIES),
-  category: z.enum(CATEGORIES),
-  riskLevel: z.enum(RISK_LEVELS),
   findings: z.string().min(10, { message: 'Temuan harus diisi minimal 10 karakter.' }),
-  recommendation: z.string().min(10, { message: 'Rekomendasi harus diisi minimal 10 karakter.' }),
   photo: z
     .instanceof(File, { message: 'Foto wajib diunggah.' })
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
@@ -48,40 +43,32 @@ interface SubmitObservationDialogProps {
 }
 
 export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation }: SubmitObservationDialogProps) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isAiLoading, setIsAiLoading] = React.useState(false);
+  const [submitStatus, setSubmitStatus] = React.useState<'idle' | 'analyzing' | 'uploading' | 'saving'>('idle');
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
+  
+  const isSubmitting = submitStatus !== 'idle';
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       location: LOCATIONS[0],
       company: COMPANIES[0],
-      category: 'General',
-      riskLevel: 'Low',
       findings: '',
-      recommendation: '',
     },
     mode: 'onChange',
   });
-  
-  const findingsValue = useWatch({ control: form.control, name: 'findings' });
-  const showAiButton = findingsValue && findingsValue.length >= 20;
 
   React.useEffect(() => {
     if (isOpen) {
         form.reset({
             location: LOCATIONS[0],
             company: COMPANIES[0],
-            category: 'General',
-            riskLevel: 'Low',
             findings: '',
-            recommendation: '',
         });
         setPhotoPreview(null);
         if (fileInputRef.current) {
@@ -89,40 +76,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         }
     }
   }, [isOpen, form]);
-
-  const handleAiAssist = async () => {
-    const findings = form.getValues('findings');
-    if (findings.length < 20) {
-      toast({
-        variant: 'destructive',
-        title: 'Teks Kurang',
-        description: 'Mohon tulis temuan minimal 20 karakter untuk bantuan AI.',
-      });
-      return;
-    }
-
-    setIsAiLoading(true);
-    try {
-      const result = await getAIAssistance({ findings });
-      form.setValue('category', result.suggestedCategory, { shouldValidate: true });
-      form.setValue('riskLevel', result.suggestedRiskLevel, { shouldValidate: true });
-      form.setValue('findings', result.improvedFindings, { shouldValidate: true });
-      form.setValue('recommendation', result.suggestedRecommendation, { shouldValidate: true });
-      toast({
-        title: 'Bantuan AI Diterapkan!',
-        description: 'Formulir telah diperbarui dengan saran dari AI.',
-      });
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Bantuan AI Gagal',
-        description: 'Tidak dapat memproses permintaan Anda saat ini.',
-      });
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -156,12 +109,16 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
        return;
     }
 
-    setIsSubmitting(true);
-    setUploadProgress(0);
+    setSubmitStatus('analyzing');
 
     try {
+      const aiResult = await getAIAssistance({ findings: values.findings });
+      
+      setSubmitStatus('uploading');
+      setUploadProgress(0);
       const photoUrl = await uploadFile(values.photo, 'observations', user.uid, setUploadProgress);
       
+      setSubmitStatus('saving');
       const newObservationData: Omit<Observation, 'id' | 'scope' | 'projectId'> = {
         userId: user.uid,
         date: new Date().toISOString(),
@@ -169,10 +126,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
         location: values.location as Location,
         company: values.company as Company,
-        category: values.category as ObservationCategory,
-        riskLevel: values.riskLevel as RiskLevel,
-        findings: values.findings,
-        recommendation: values.recommendation,
+        category: aiResult.suggestedCategory,
+        riskLevel: aiResult.suggestedRiskLevel,
+        findings: aiResult.improvedFindings,
+        recommendation: aiResult.suggestedRecommendation,
         photoUrl: photoUrl,
       };
 
@@ -191,9 +148,16 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         description: error instanceof Error ? error.message : 'Tidak dapat menyimpan observasi.',
       });
     } finally {
-      setIsSubmitting(false);
+      setSubmitStatus('idle');
       setUploadProgress(null);
     }
+  };
+  
+  const buttonText = {
+    idle: 'Kirim Laporan',
+    analyzing: 'Menganalisis...',
+    uploading: 'Mengunggah...',
+    saving: 'Menyimpan...',
   };
   
   const renderSelectItems = (items: readonly string[]) => {
@@ -210,7 +174,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>Submit New Observation</DialogTitle>
           <DialogDescription>
-            Isi detail di bawah ini untuk menambahkan laporan observasi baru.
+            Isi detail di bawah ini. AI akan membantu menganalisis, mengklasifikasikan, dan memberikan rekomendasi.
           </DialogDescription>
         </DialogHeader>
 
@@ -251,74 +215,21 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                   )}
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Kategori</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>{renderSelectItems(CATEGORIES)}</SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="riskLevel"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tingkat Risiko</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Pilih tingkat risiko" /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>{renderSelectItems(RISK_LEVELS)}</SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+
               <FormField
                 control={form.control}
                 name="findings"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex justify-between items-center">
-                      <FormLabel>Temuan</FormLabel>
-                      {showAiButton && (
-                        <Button type="button" variant="outline" size="sm" onClick={handleAiAssist} disabled={isAiLoading}>
-                          {isAiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                          Bantuan AI
-                        </Button>
-                      )}
-                    </div>
+                    <FormLabel>Temuan</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Jelaskan detail temuan observasi." rows={3} {...field} />
+                      <Textarea placeholder="Jelaskan detail temuan observasi sejelas mungkin." rows={5} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="recommendation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tindakan Rekomendasi</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Jelaskan tindakan yang direkomendasikan." rows={3} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              
               <FormField
                 control={form.control}
                 name="photo"
@@ -359,7 +270,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         </div>
 
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
-          {isSubmitting && uploadProgress !== null && (
+          {submitStatus === 'uploading' && uploadProgress !== null && (
             <div className="w-full">
               <Progress value={uploadProgress} className="w-full" />
               <p className="text-center text-xs mt-1 text-muted-foreground">
@@ -372,11 +283,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
               Batal
             </Button>
             <Button type="submit" form={formId} disabled={isSubmitting || !form.formState.isValid}>
-              {isSubmitting ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Mengirim...</>
-              ) : (
-                'Kirim Laporan'
-              )}
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {buttonText[submitStatus]}
             </Button>
           </div>
         </DialogFooter>
