@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -437,20 +436,31 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   return (
     <>
      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <h2 className="text-2xl font-bold tracking-tight w-full sm:w-auto">
+        <div className="flex justify-between items-center gap-4">
+            <h2 className="text-2xl font-bold tracking-tight">
                 {mode === 'public' ? 'Feed Publik' : `Laporan ${viewConfig[viewType].label}`}
             </h2>
             {mode === 'public' ? (
-                <div className="relative w-full sm:max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Cari di feed..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9"
-                    />
-                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <Search className="h-5 w-5" />
+                            <span className="sr-only">Cari</span>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="p-2 w-80">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Cari di feed..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9"
+                                autoFocus
+                            />
+                        </div>
+                    </PopoverContent>
+                </Popover>
             ) : (
                 <div className="flex items-center gap-2">
                     <DropdownMenu>
