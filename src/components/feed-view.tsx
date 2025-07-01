@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -66,13 +67,13 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
     return (
       <li>
         <div onClick={onSelect} className={cn(
-            "flex flex-col bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden border-l-4",
+            "bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden border-l-4",
             riskColorStyles[observation.riskLevel]
         )}>
           <div className="flex items-start gap-3">
-              <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
+              <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
                 {observation.photoUrl ? (
-                    <Image src={observation.photoUrl} alt={observation.findings} fill sizes="80px" className="object-cover" data-ai-hint="site observation" />
+                    <Image src={observation.photoUrl} alt={observation.findings} fill sizes="64px" className="object-cover" data-ai-hint="site observation" />
                 ) : (
                     <FileText className="h-8 w-8 text-muted-foreground/50" />
                 )}
@@ -88,12 +89,13 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
                 )}
               </div>
       
-                <div className="flex-1 space-y-1 self-start">
+              <div className="flex-1 flex flex-col justify-between self-stretch">
+                <div className="flex-1">
                     <div className="flex justify-between items-start">
                         {mode === 'public' ? (
                             <p className="text-xs text-primary font-semibold">{observation.category}</p>
                         ) : (
-                            <p className="text-xs text-muted-foreground font-semibold">{observation.location}</p>
+                             <p className="text-xs text-muted-foreground font-semibold">{observation.location} • {observation.category}</p>
                         )}
                         <div className="flex items-center gap-2">
                             {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
@@ -111,48 +113,47 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
                             </TooltipProvider>
                         </div>
                     </div>
-                    <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
-                    
-                    {observation.scope === 'public' && observation.sharedBy && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground italic pt-1">
-                          <Share2 className="h-3 w-3" />
-                          <span>
-                              Dibagikan oleh: <strong>{observation.sharedBy}</strong> ({observation.sharedByPosition || 'N/A'})
-                          </span>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-x-2 pt-1">
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(observation.date), 'd MMM yyyy, HH:mm')}
-                        {mode !== 'public' && ` • ${observation.category} • ${observation.company}`}
-                      </p>
-                    </div>
+                    <p className="font-semibold leading-snug line-clamp-2 mt-0.5">{observation.findings}</p>
                 </div>
-            </div>
-            
-            {mode !== 'private' && (
-              <div className="flex items-center gap-4 pt-3 mt-3 border-t border-border/50">
-                <button
-                  onClick={handleLikeClick}
-                  className={cn(
-                    "flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors",
-                    hasLiked && "text-primary font-semibold"
-                  )}
-                >
-                  <ThumbsUp className={cn("h-4 w-4", hasLiked && "fill-current")} />
-                  <span>{observation.likeCount || 0}</span>
-                </button>
-                <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
-                  <MessageCircle className="h-4 w-4" />
-                  <span>{observation.commentCount || 0}</span>
-                </button>
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground ml-auto">
-                  <Eye className="h-4 w-4" />
-                  <span>{observation.viewCount || 0} Dilihat</span>
+                
+                <div className="flex justify-between items-end text-xs text-muted-foreground mt-1">
+                    {mode === 'public' && observation.sharedBy ? (
+                        <div className="flex items-center gap-1.5">
+                          <Share2 className="h-3 w-3 flex-shrink-0"/>
+                          <span>
+                              Oleh <strong>{observation.sharedBy.split(' ')[0]}</strong>
+                          </span>
+                        </div>
+                    ) : (
+                        <span>{observation.company}</span>
+                    )}
+                    <span>{format(new Date(observation.date), 'd MMM yy, HH:mm')}</span>
                 </div>
               </div>
-            )}
+          </div>
+          
+          {mode !== 'private' && (
+            <div className="flex items-center gap-4 text-xs pt-2 mt-2 border-t border-border/50">
+              <button
+                onClick={handleLikeClick}
+                className={cn(
+                  "flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors",
+                  hasLiked && "text-primary font-semibold"
+                )}
+              >
+                <ThumbsUp className={cn("h-3.5 w-3.5", hasLiked && "fill-current")} />
+                <span>{observation.likeCount || 0}</span>
+              </button>
+              <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
+                <MessageCircle className="h-3.5 w-3.5" />
+                <span>{observation.commentCount || 0}</span>
+              </button>
+              <div className="flex items-center gap-1.5 text-muted-foreground ml-auto">
+                <Eye className="h-3.5 w-3.5" />
+                <span>{observation.viewCount || 0}</span>
+              </div>
+            </div>
+          )}
         </div>
       </li>
     );
