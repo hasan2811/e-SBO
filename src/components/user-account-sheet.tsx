@@ -23,7 +23,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 import { useProjects } from '@/hooks/use-projects';
 import { ProjectDialog } from './project-dialog';
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 export function UserAccountSheet() {
   const { user, userProfile, loading: authLoading, logout, updateUserProfile } = useAuth();
@@ -39,7 +38,6 @@ export function UserAccountSheet() {
   const [position, setPosition] = React.useState('');
   
   const isLoading = authLoading || projectsLoading;
-  const canCreateProject = projects.length === 0;
 
   React.useEffect(() => {
     if (userProfile && !isEditing) {
@@ -74,8 +72,8 @@ export function UserAccountSheet() {
     }
   }
 
-  const handleAddProject = async (projectName: string) => {
-    await addProject(projectName);
+  const handleAddProject = async (projectName: string, memberEmails: string[]) => {
+    await addProject(projectName, memberEmails);
     setProjectDialogOpen(false);
   };
 
@@ -193,23 +191,10 @@ export function UserAccountSheet() {
                   </ul>
                 ) : <p className="text-sm text-muted-foreground pl-3">You are not a member of any projects yet.</p>
                 }
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <div className="w-full">
-                                <Button variant="outline" className="w-full" onClick={() => setProjectDialogOpen(true)} disabled={!canCreateProject}>
-                                    <PlusCircle className="mr-2" />
-                                    Create New Project
-                                </Button>
-                            </div>
-                        </TooltipTrigger>
-                        {!canCreateProject && (
-                            <TooltipContent>
-                                <p>Anda hanya dapat menjadi anggota dari satu proyek.</p>
-                            </TooltipContent>
-                        )}
-                    </Tooltip>
-                </TooltipProvider>
+                <Button variant="outline" className="w-full" onClick={() => setProjectDialogOpen(true)}>
+                    <PlusCircle className="mr-2" />
+                    Create New Project
+                </Button>
               </div>
 
               <Separator />

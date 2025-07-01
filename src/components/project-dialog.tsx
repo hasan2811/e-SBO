@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, PlusCircle } from 'lucide-react';
+import { Loader2, PlusCircle, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,12 +16,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
-// Simplified schema: only project name is required now.
 const formSchema = z.object({
   name: z.string().min(3, { message: 'Project name must be at least 3 characters.' }),
+  memberEmails: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -29,8 +30,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface ProjectDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  // Simplified signature: only takes project name.
-  onAddProject: (projectName: string) => Promise<void>;
+  onAddProject: (projectName: string, memberEmails: string[]) => Promise<void>;
 }
 
 export function ProjectDialog({ isOpen, onOpenChange, onAddProject }: ProjectDialogProps) {
@@ -42,18 +42,22 @@ export function ProjectDialog({ isOpen, onOpenChange, onAddProject }: ProjectDia
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
+      memberEmails: '',
     },
   });
 
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
-      // Call the simplified onAddProject function.
-      await onAddProject(values.name);
-      // No need to call onOpenChange(false) here, it's handled in the parent component on success.
+      const emails = values.memberEmails
+        ? values.memberEmails.split(/[,;\s]+/).filter(email => z.string().email().safeParse(email).success)
+        : [];
+      
+      await onAddProject(values.name, emails);
+      
     } catch (error) {
       console.error('Failed to create project:', error);
-      // Toast is now handled by the parent hook, which gets the error message from the server action.
+      // Toast is handled by the parent hook
     } finally {
       setIsSubmitting(false);
     }
@@ -74,7 +78,7 @@ export function ProjectDialog({ isOpen, onOpenChange, onAddProject }: ProjectDia
             Create New Project
           </DialogTitle>
           <DialogDescription>
-            Give your new project a name to start collaborating. You can invite members later.
+            Give your new project a name and invite members to start collaborating.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -92,7 +96,29 @@ export function ProjectDialog({ isOpen, onOpenChange, onAddProject }: ProjectDia
                 </FormItem>
               )}
             />
-            {/* Member emails Textarea has been removed for security and simplicity */}
+             <FormField
+              control={form.control}
+              name="memberEmails"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Users className="h-4 w-4"/>
+                    Invite Members (Optional)
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="e.g., member1@example.com, member2@example.com" 
+                      {...field}
+                      rows={3}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Enter member emails separated by commas, semicolons, or spaces.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </form>
         </Form>
         <DialogFooter>

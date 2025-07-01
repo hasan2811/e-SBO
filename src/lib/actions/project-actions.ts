@@ -2,63 +2,81 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, limit, doc, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, limit, doc, deleteDoc, getDoc, writeBatch } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Project, UserProfile } from '@/lib/types';
 
 /**
+ * Finds user UIDs based on a list of email addresses.
+ * @param emails - An array of email strings to look up.
+ * @returns A promise that resolves to an array of found user UIDs.
+ */
+async function findUserIdsByEmails(emails: string[]): Promise<string[]> {
+  if (!emails || emails.length === 0) {
+    return [];
+  }
+  
+  const userIds: string[] = [];
+  const usersRef = collection(db, 'users');
+  
+  // Firestore 'in' query is limited to 30 items. We process in chunks.
+  const chunks = [];
+  for (let i = 0; i < emails.length; i += 30) {
+    chunks.push(emails.slice(i, i + 30));
+  }
+
+  for (const chunk of chunks) {
+    const q = query(usersRef, where('email', 'in', chunk));
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((doc) => {
+      userIds.push(doc.id);
+    });
+  }
+
+  return userIds;
+}
+
+
+/**
  * Server action to create a new project.
- * This is now simplified and more secure. It only takes the project name
- * and automatically sets the creator as the sole owner and member.
- * It also enforces the "one project per user" rule.
+ * Allows inviting members by email during creation.
+ * The creator is automatically the owner and a member.
  * @param owner - The user object of the project creator.
  * @param projectName - The name of the new project.
+ * @param memberEmails - An array of emails of members to invite.
  * @returns An object with success status and a message.
  */
 export async function createProject(
   owner: Pick<UserProfile, 'uid' | 'email' | 'displayName'>,
-  projectName: string
-): Promise<{ success: boolean; message: string }> {
+  projectName: string,
+  memberEmails: string[]
+): Promise<{ success: boolean; message:string; }> {
   if (!owner || !owner.uid) {
     return { success: false, message: 'Authentication required to create a project.' };
   }
   
   try {
     const projectCollectionRef = collection(db, 'projects');
-
-    // Enforce the "one project per user" rule.
-    const existingProjectQuery = query(
-        projectCollectionRef, 
-        where('memberUids', 'array-contains', owner.uid),
-        limit(1)
-    );
-    const existingProjectSnapshot = await getDocs(existingProjectQuery);
     
-    if (!existingProjectSnapshot.empty) {
-        return { success: false, message: 'Action failed: A user can only be a member of one project at a time.' };
-    }
+    // Find UIDs for the invited members
+    const invitedMemberUids = await findUserIdsByEmails(memberEmails);
 
-    // The new project document. memberUids now only contains the creator's UID.
+    // Combine owner UID with invited member UIDs, ensuring no duplicates
+    const allMemberUids = [...new Set([owner.uid, ...invitedMemberUids])];
+
     await addDoc(projectCollectionRef, {
       name: projectName,
       ownerUid: owner.uid,
-      memberUids: [owner.uid], 
+      memberUids: allMemberUids, 
       createdAt: new Date().toISOString(),
     });
     
-    // Revalidate paths to ensure new project data is fetched on relevant pages.
-    revalidatePath('/tasks');
     revalidatePath('/beranda');
 
     return { success: true, message: `Project "${projectName}" was created successfully!` };
   } catch (error) {
     console.error('Error creating project:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-    
-    if (errorMessage.toLowerCase().includes('permission-denied')) {
-        return { success: false, message: 'Permission denied. Please check your Firestore security rules to allow project creation.' };
-    }
-    
     return { success: false, message: `Project creation failed: ${errorMessage}` };
   }
 }
@@ -93,10 +111,6 @@ export async function deleteProject(
       return { success: false, message: 'Permission denied. Only the project owner can delete this project.' };
     }
 
-    // TODO: In a real-world scenario, you would also delete all sub-collections
-    // (observations, inspections, ptws) associated with this project.
-    // This typically requires a Cloud Function for reliable cascading deletes.
-    // For this implementation, we will only delete the main project document.
     await deleteDoc(projectRef);
 
     revalidatePath('/beranda');

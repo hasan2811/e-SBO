@@ -6,12 +6,14 @@ import { useParams, useRouter } from 'next/navigation';
 import { FeedView } from '@/components/feed-view';
 import { useProjects } from '@/hooks/use-projects';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ArrowLeft, Trash2, Users, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useCurrentProject } from '@/hooks/use-current-project';
 import { DeleteProjectDialog } from '@/components/delete-project-dialog';
 import { useAuth } from '@/hooks/use-auth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function ProjectFeedPage() {
   const params = useParams();
@@ -35,13 +37,24 @@ export default function ProjectFeedPage() {
   
   const isOwner = user && project && user.uid === project.ownerUid;
 
-  if (projectsLoading) {
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name[0].toUpperCase();
+  };
+
+
+  if (projectsLoading || !project) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex justify-between items-center">
           <Skeleton className="h-8 w-1/3" />
           <Skeleton className="h-9 w-9" />
         </div>
+        <Skeleton className="h-24 w-full" />
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
@@ -51,7 +64,7 @@ export default function ProjectFeedPage() {
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex items-center justify-between gap-4 -mt-2 mb-2">
             <div className="flex items-center gap-3">
               <Button variant="ghost" size="icon" asChild>
@@ -66,6 +79,31 @@ export default function ProjectFeedPage() {
               </Button>
             )}
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+                <Users className="h-5 w-5"/>
+                Project Members ({project.members?.length || 0})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-4">
+              {project.members?.map(member => (
+                <div key={member.uid} className="flex flex-col items-center gap-2 text-center w-20">
+                    <Avatar>
+                        <AvatarImage src={member.uid} alt={member.displayName} />
+                        <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs font-medium leading-tight truncate w-full">{member.displayName}</span>
+                    {member.uid === project.ownerUid && <span className="text-xs text-muted-foreground -mt-1.5">(Owner)</span>}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+
         <FeedView mode="project" projectId={projectId} />
       </div>
 

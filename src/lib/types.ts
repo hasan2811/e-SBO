@@ -26,7 +26,9 @@ export type Project = {
     ownerUid: string;
     memberUids: string[];
     createdAt: string;
-    owner?: UserProfile; // Enriched data
+    // Enriched client-side
+    owner?: UserProfile; 
+    members?: UserProfile[];
 }
 
 export type Observation = {
