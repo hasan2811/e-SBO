@@ -80,7 +80,7 @@ export default function ProjectFeedPage() {
                     <UserPlus className="h-4 w-4" />
                     <span className="sr-only">Add Member</span>
                  </Button>
-                 <Button variant="destructive-outline" size="icon" onClick={() => setDeleteDialogOpen(true)}>
+                 <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)}>
                     <Trash2 className="h-4 w-4" />
                     <span className="sr-only">Delete Project</span>
                  </Button>
@@ -130,4 +130,3 @@ export default function ProjectFeedPage() {
     </>
   );
 }
-

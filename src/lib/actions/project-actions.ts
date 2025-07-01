@@ -24,6 +24,7 @@ export async function createProject(
   try {
     const projectCollectionRef = collection(db, 'projects');
     
+    // STRICT RULE: Check if the user is already a member of ANY project.
     const existingProjectQuery = query(
         projectCollectionRef,
         where('memberUids', 'array-contains', owner.uid),
@@ -99,6 +100,7 @@ export async function deleteProject(
 
 /**
  * Adds a new member to a project.
+ * Enforces the rule that a user can only be in one project at a time.
  * @param projectId - The ID of the project.
  * @param newMemberEmail - The email of the user to add.
  * @param ownerId - The UID of the user performing the action, to verify ownership.
@@ -134,12 +136,13 @@ export async function addProjectMember(
         
         const newMember = userSnap.docs[0].data() as UserProfile;
 
+        // STRICT RULE: Check if the new member is already in ANY project.
         const projectsRef = collection(db, 'projects');
         const memberProjectQuery = query(projectsRef, where('memberUids', 'array-contains', newMember.uid), limit(1));
         const memberProjectSnap = await getDocs(memberProjectQuery);
 
         if (!memberProjectSnap.empty) {
-            return { success: false, message: `User ${newMember.displayName} is already in another project.` };
+            return { success: false, message: `User ${newMember.displayName} is already a member of another project.` };
         }
         
         await updateDoc(projectRef, {
