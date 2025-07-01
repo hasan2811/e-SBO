@@ -79,12 +79,20 @@ export function UserAccountSheet() {
   };
 
   const getInitials = (name: string | null | undefined) => {
-    if (!name) return 'U';
-    const names = name.split(' ');
+    if (!name?.trim()) {
+      return 'U';
+    }
+    const names = name.trim().split(' ').filter(n => n.length > 0);
+    
     if (names.length > 1) {
       return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
     }
-    return name[0].toUpperCase();
+    
+    if (names.length === 1) {
+        return names[0][0].toUpperCase();
+    }
+
+    return 'U';
   };
   
   const handleOpenChange = (open: boolean) => {
