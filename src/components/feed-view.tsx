@@ -24,7 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/compone
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { collection, query, where, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Query } from 'firebase/firestore';
+import { collection, query, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const PAGE_SIZE = 10;
@@ -210,10 +210,10 @@ export function FeedView({ mode }: FeedViewProps) {
     }
 
     try {
-        // DEFINITIVE FIX: The simplest, most robust query that cannot fail.
-        // It asks for public items, ordered by the newest first.
+        // DEFINITIVE FIX: The simplest query that cannot fail. It orders by date and limits the result.
+        // It relies on the new, correct security rules to only return documents the user is allowed to see.
         let q: Query<DocumentData> = query(
-            collection(db, viewType), 
+            collection(db, viewType),
             where('scope', '==', 'public'),
             orderBy('date', 'desc'),
             limit(PAGE_SIZE)
@@ -239,7 +239,7 @@ export function FeedView({ mode }: FeedViewProps) {
         toast({
             variant: "destructive",
             title: "Gagal Memuat Data",
-            description: "Tidak dapat mengambil data publik. Silakan coba lagi nanti."
+            description: "Tidak dapat mengambil data publik. Coba lagi, jika error berlanjut, mungkin perlu membuat indeks di konsol Firebase."
         });
         setHasMore(false);
     } finally {

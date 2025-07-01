@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users: Can only read/write their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // Projects: Members can read.
+    match /projects/{projectId} {
+      allow read: if resource.data.memberUids.hasAny([request.auth.uid]);
+      allow create: if request.auth.uid != null;
+      
+      // Items within a project can be read/written by members
+      match /{subcollection}/{itemId} {
+        allow read, write: if get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.hasAny([request.auth.uid]);
+      }
+    }
+
+    function isOwner(doc) {
+        return request.auth.uid == doc.userId;
+    }
+
+    // Top-level collections for items
+    match /observations/{obsId} {
+      allow read: if resource.data.scope == 'public' || isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow update, delete: if isOwner(resource.data);
+    }
+
+    match /inspections/{inspId} {
+      allow read: if resource.data.scope == 'public' || isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow update, delete: if isOwner(resource.data);
+    }
+
+    match /ptws/{ptwId} {
+      allow read: if resource.data.scope == 'public' || isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow update, delete: if isOwner(resource.data);
+    }
+  }
+}
