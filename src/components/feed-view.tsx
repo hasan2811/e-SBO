@@ -210,8 +210,6 @@ export function FeedView({ mode }: FeedViewProps) {
     }
 
     try {
-        // DEFINITIVE FIX: The simplest query that cannot fail. It orders by date and limits the result.
-        // It relies on the new, correct security rules to only return documents the user is allowed to see.
         let q: Query<DocumentData> = query(
             collection(db, viewType),
             where('scope', '==', 'public'),
@@ -234,12 +232,17 @@ export function FeedView({ mode }: FeedViewProps) {
         setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
         setItems(prevItems => (reset ? newItems : [...prevItems, ...newItems]));
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching public items:", error);
+        
+        const isIndexError = error.message?.includes('The query requires an index');
+        
         toast({
             variant: "destructive",
-            title: "Gagal Memuat Data",
-            description: "Tidak dapat mengambil data publik. Coba lagi, jika error berlanjut, mungkin perlu membuat indeks di konsol Firebase."
+            title: "Gagal Memuat Data Publik",
+            description: isIndexError 
+                ? "Aplikasi memerlukan konfigurasi database (indeks komposit). Silakan periksa log konsol browser untuk link pembuatan indeks dari Firebase."
+                : "Terjadi galat saat mengambil data. Pastikan aturan keamanan Firestore Anda sudah benar."
         });
         setHasMore(false);
     } finally {
