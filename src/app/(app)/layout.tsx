@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -59,7 +58,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     exit: { opacity: 0, x: -20 },
   };
   
-  const isPublicFeed = pathname === '/';
+  const showMultiActionButton = pathname.startsWith('/proyek/') || pathname === '/private';
   
   const getCurrentScope = (): { scope: Scope; projectId: string | null } => {
     if (pathname.startsWith('/proyek/')) {
@@ -113,7 +112,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <BottomNavBar />
       </div>
 
-      {!isPublicFeed && (
+      {showMultiActionButton && (
         <MultiActionButton
           onObservationClick={() => setObservationDialogOpen(true)}
           onInspectionClick={() => setInspectionDialogOpen(true)}
