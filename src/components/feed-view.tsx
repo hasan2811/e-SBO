@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Search, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { collection, query, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Query, where } from 'firebase/firestore';
@@ -234,6 +235,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   
   const [filterType, setFilterType] = React.useState<'status' | 'risk' | 'category' | 'all'>('all');
   const [filterValue, setFilterValue] = React.useState('all');
+  const [searchTerm, setSearchTerm] = React.useState('');
 
   const [displayedItemsCount, setDisplayedItemsCount] = React.useState(PAGE_SIZE);
   
@@ -258,9 +260,8 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
     }
 
     try {
-        const currentViewType = viewType as keyof typeof viewConfig;
         let q: Query<DocumentData> = query(
-            collection(db, currentViewType),
+            collection(db, 'observations'),
             where('scope', '==', 'public'),
             orderBy('date', 'desc'),
             limit(PAGE_SIZE)
@@ -274,7 +275,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
         const newItems = documentSnapshots.docs.map(doc => ({
             ...doc.data(),
             id: doc.id,
-            itemType: viewConfig[currentViewType].itemType
+            itemType: 'observation'
         })) as AllItems[];
 
         setLastVisible(documentSnapshots.docs[documentSnapshots.docs.length - 1] || null);
@@ -300,7 +301,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
     } finally {
         setLoadingPublic(false);
     }
-  }, [viewType, lastVisible]);
+  }, [lastVisible]);
 
 
   React.useEffect(() => {
@@ -308,7 +309,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
       fetchPublicItems(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, viewType]); 
+  }, [mode]); 
 
   React.useEffect(() => {
     // Reset pagination when filters change for private/project views
@@ -325,16 +326,33 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   const isLoading = mode === 'public' ? loadingPublic && data.length === 0 : myItemsLoading;
 
   const filteredData = React.useMemo(() => {
-    let dataToFilter: AllItems[] = [...data];
+    if (mode === 'public') {
+        let items = [...data];
+        if (searchTerm) {
+            const lowercasedSearch = searchTerm.toLowerCase();
+            items = items.filter(item => {
+                if (item.itemType !== 'observation') return false;
+                const obs = item as Observation;
+                return (
+                    obs.findings.toLowerCase().includes(lowercasedSearch) ||
+                    obs.recommendation.toLowerCase().includes(lowercasedSearch) ||
+                    obs.location.toLowerCase().includes(lowercasedSearch) ||
+                    (obs.sharedBy && obs.sharedBy.toLowerCase().includes(lowercasedSearch)) ||
+                    (obs.sharedByPosition && obs.sharedByPosition.toLowerCase().includes(lowercasedSearch))
+                );
+            });
+        }
+        return items;
+    }
     
-    // If in a specific project view, filter by that projectId
+    // Logic for private and project feeds
+    let dataToFilter: AllItems[] = [...data];
     if (mode === 'project' && projectId) {
         dataToFilter = dataToFilter.filter(item => item.projectId === projectId);
     }
-    
     dataToFilter = dataToFilter.filter(item => item.itemType === viewConfig[viewType].itemType);
 
-    if (mode !== 'public' && viewType === 'observations') {
+    if (viewType === 'observations') {
         if (filterType !== 'all' && filterValue !== 'all') {
             const fieldMap = { status: 'status', risk: 'riskLevel', category: 'category' };
             const key = fieldMap[filterType as 'status' | 'risk' | 'category'];
@@ -343,7 +361,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
     }
     
     return dataToFilter;
-  }, [data, mode, projectId, viewType, filterType, filterValue]);
+  }, [data, mode, projectId, viewType, filterType, filterValue, searchTerm]);
 
   const itemsToDisplay = mode === 'public' ? filteredData : filteredData.slice(0, displayedItemsCount);
   
@@ -380,6 +398,18 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   const isExportDisabled = viewType !== 'observations' || isLoading;
 
   function EmptyState() {
+    if (mode === 'public') {
+        const publicEmptyText = "Feed publik masih kosong. Bagikan observasi dari feed pribadi atau proyek Anda agar muncul di sini.";
+        const publicSearchEmptyText = "Tidak ada hasil yang cocok dengan pencarian Anda.";
+        return (
+            <div className="text-center py-16 text-muted-foreground bg-card rounded-lg">
+                {searchTerm ? <FilterX className="mx-auto h-12 w-12" /> : <Globe className="mx-auto h-12 w-12" />}
+                <h3 className="mt-4 text-xl font-semibold">{searchTerm ? 'Tidak Ada Hasil' : 'Feed Publik Kosong'}</h3>
+                <p className="mt-2 text-sm max-w-xs mx-auto">{searchTerm ? publicSearchEmptyText : publicEmptyText}</p>
+            </div>
+        );
+    }
+    
     const config = viewConfig[viewType];
     let emptyText = `Tidak ada ${config.label.toLowerCase()} yang tersedia.`;
     let Icon = Home;
@@ -407,117 +437,129 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   return (
     <>
      <div className="space-y-4">
-        <div className="flex justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-               <h2 className="text-2xl font-bold tracking-tight">Laporan {viewConfig[viewType].label}</h2>
-            </div>
-            <div className="flex items-center gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-[140px] justify-between">
-                      {viewConfig[viewType].label}
-                      <ChevronDown className="h-4 w-4 opacity-50" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setViewType('observations')}>{viewConfig.observations.label}</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setViewType('inspections')}>{viewConfig.inspections.label}</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setViewType('ptws')}>{viewConfig.ptws.label}</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h2 className="text-2xl font-bold tracking-tight w-full sm:w-auto">
+                {mode === 'public' ? 'Feed Publik' : `Laporan ${viewConfig[viewType].label}`}
+            </h2>
+            {mode === 'public' ? (
+                <div className="relative w-full sm:max-w-xs">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Cari di feed..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
+            ) : (
+                <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-[140px] justify-between">
+                          {viewConfig[viewType].label}
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => setViewType('observations')}>{viewConfig.observations.label}</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setViewType('inspections')}>{viewConfig.inspections.label}</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setViewType('ptws')}>{viewConfig.ptws.label}</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                <TooltipProvider>
-                  {mode !== 'public' && viewType === 'observations' && (
-                     <Popover>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline" size="icon" className="relative">
-                                <Filter className="h-4 w-4" />
-                                {areFiltersActive && (
-                                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                                  </span>
-                                )}
-                                <span className="sr-only">Filter</span>
-                              </Button>
-                            </PopoverTrigger>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Filter Observasi</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <PopoverContent className="w-80" align="end">
-                          <div className="grid gap-4">
-                            <div className="space-y-1">
-                              <h4 className="font-medium leading-none">Filter Observasi</h4>
-                              <p className="text-sm text-muted-foreground">
-                                Pilih satu jenis filter untuk diterapkan.
-                              </p>
-                            </div>
-                            <div className="grid gap-4">
-                               <RadioGroup value={filterType} onValueChange={(value) => {
-                                   setFilterType(value as 'status' | 'risk' | 'category' | 'all');
-                                   setFilterValue('all');
-                               }}>
-                                 <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="all" id="r-all" />
-                                    <Label htmlFor="r-all">Semua</Label>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="status" id="r-status" />
-                                    <Label htmlFor="r-status">Status</Label>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="risk" id="r-risk" />
-                                    <Label htmlFor="r-risk">Tingkat Risiko</Label>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="category" id="r-category" />
-                                    <Label htmlFor="r-category">Kategori</Label>
-                                  </div>
-                               </RadioGroup>
+                    <TooltipProvider>
+                      {viewType === 'observations' && (
+                         <Popover>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" size="icon" className="relative">
+                                    <Filter className="h-4 w-4" />
+                                    {areFiltersActive && (
+                                      <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                                      </span>
+                                    )}
+                                    <span className="sr-only">Filter</span>
+                                  </Button>
+                                </PopoverTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Filter Observasi</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <PopoverContent className="w-80" align="end">
+                              <div className="grid gap-4">
+                                <div className="space-y-1">
+                                  <h4 className="font-medium leading-none">Filter Observasi</h4>
+                                  <p className="text-sm text-muted-foreground">
+                                    Pilih satu jenis filter untuk diterapkan.
+                                  </p>
+                                </div>
+                                <div className="grid gap-4">
+                                   <RadioGroup value={filterType} onValueChange={(value) => {
+                                       setFilterType(value as 'status' | 'risk' | 'category' | 'all');
+                                       setFilterValue('all');
+                                   }}>
+                                     <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="all" id="r-all" />
+                                        <Label htmlFor="r-all">Semua</Label>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="status" id="r-status" />
+                                        <Label htmlFor="r-status">Status</Label>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="risk" id="r-risk" />
+                                        <Label htmlFor="r-risk">Tingkat Risiko</Label>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="category" id="r-category" />
+                                        <Label htmlFor="r-category">Kategori</Label>
+                                      </div>
+                                   </RadioGroup>
 
-                               {filterType !== 'all' && (
-                                 <div className="space-y-2">
-                                    <Label>Pilih Nilai</Label>
-                                     <Select value={filterValue} onValueChange={setFilterValue}>
-                                       <SelectTrigger><SelectValue placeholder="Pilih nilai..." /></SelectTrigger>
-                                       <SelectContent>
-                                         <SelectItem value="all">Semua</SelectItem>
-                                         {(filterOptions[filterType as keyof typeof filterOptions]).map((option) => (
-                                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                                         ))}
-                                       </SelectContent>
-                                     </Select>
-                                 </div>
-                               )}
-                            </div>
-                            <div className="flex justify-between items-center pt-2 border-t -mx-4 px-4 pb-0">
-                              <Button variant="ghost" onClick={clearFilters} disabled={!areFiltersActive}>
-                                <FilterX className="mr-2 h-4 w-4" />
-                                Hapus Filter
-                              </Button>
-                              <PopoverClose asChild>
-                                <Button>Selesai</Button>
-                              </PopoverClose>
-                            </div>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                  )}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" onClick={handleExport} disabled={isExportDisabled}>
-                        <Download className="h-4 w-4" />
-                        <span className="sr-only">Export</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>{viewType === 'observations' ? "Export Observasi" : "Hanya tersedia untuk Observasi"}</p></TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-            </div>
+                                   {filterType !== 'all' && (
+                                     <div className="space-y-2">
+                                        <Label>Pilih Nilai</Label>
+                                         <Select value={filterValue} onValueChange={setFilterValue}>
+                                           <SelectTrigger><SelectValue placeholder="Pilih nilai..." /></SelectTrigger>
+                                           <SelectContent>
+                                             <SelectItem value="all">Semua</SelectItem>
+                                             {(filterOptions[filterType as keyof typeof filterOptions]).map((option) => (
+                                                <SelectItem key={option} value={option}>{option}</SelectItem>
+                                             ))}
+                                           </SelectContent>
+                                         </Select>
+                                     </div>
+                                   )}
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t -mx-4 px-4 pb-0">
+                                  <Button variant="ghost" onClick={clearFilters} disabled={!areFiltersActive}>
+                                    <FilterX className="mr-2 h-4 w-4" />
+                                    Hapus Filter
+                                  </Button>
+                                  <PopoverClose asChild>
+                                    <Button>Selesai</Button>
+                                  </PopoverClose>
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                      )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="outline" size="icon" onClick={handleExport} disabled={isExportDisabled}>
+                            <Download className="h-4 w-4" />
+                            <span className="sr-only">Export</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>{viewType === 'observations' ? "Export Observasi" : "Hanya tersedia untuk Observasi"}</p></TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                </div>
+            )}
         </div>
 
       <main>
