@@ -7,11 +7,12 @@ import { FeedView } from '@/components/feed-view';
 import { useProjects } from '@/hooks/use-projects';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Trash2, Users, UserCircle } from 'lucide-react';
+import { ArrowLeft, Trash2, UserPlus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useCurrentProject } from '@/hooks/use-current-project';
 import { DeleteProjectDialog } from '@/components/delete-project-dialog';
+import { AddMemberDialog } from '@/components/add-member-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -24,6 +25,7 @@ export default function ProjectFeedPage() {
   const { projects, loading: projectsLoading } = useProjects();
   const { setProjectId } = useCurrentProject();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [isAddMemberDialogOpen, setAddMemberDialogOpen] = React.useState(false);
 
   React.useEffect(() => {
     setProjectId(projectId);
@@ -54,7 +56,7 @@ export default function ProjectFeedPage() {
           <Skeleton className="h-8 w-1/3" />
           <Skeleton className="h-9 w-9" />
         </div>
-        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-40 w-full" />
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
@@ -73,10 +75,16 @@ export default function ProjectFeedPage() {
               <h1 className="text-xl font-bold">{project?.name || 'Loading Project...'}</h1>
             </div>
             {isOwner && (
-              <Button variant="outline" size="icon" onClick={() => setDeleteDialogOpen(true)}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-                <span className="sr-only">Delete Project</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                 <Button variant="outline" size="icon" onClick={() => setAddMemberDialogOpen(true)}>
+                    <UserPlus className="h-4 w-4" />
+                    <span className="sr-only">Add Member</span>
+                 </Button>
+                 <Button variant="destructive-outline" size="icon" onClick={() => setDeleteDialogOpen(true)}>
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">Delete Project</span>
+                 </Button>
+              </div>
             )}
         </div>
 
@@ -113,6 +121,13 @@ export default function ProjectFeedPage() {
         project={project}
         onSuccess={() => router.push('/beranda')}
       />
+
+      <AddMemberDialog
+        isOpen={isAddMemberDialogOpen}
+        onOpenChange={setAddMemberDialogOpen}
+        project={project}
+      />
     </>
   );
 }
+

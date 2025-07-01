@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, limit, doc, deleteDoc, getDoc, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, limit, doc, deleteDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Project, UserProfile } from '@/lib/types';
 
@@ -24,7 +24,6 @@ export async function createProject(
   try {
     const projectCollectionRef = collection(db, 'projects');
     
-    // CRITICAL CHECK: Ensure the user is not already in a project.
     const existingProjectQuery = query(
         projectCollectionRef,
         where('memberUids', 'array-contains', owner.uid),
@@ -35,7 +34,6 @@ export async function createProject(
         return { success: false, message: 'Project creation failed: You are already a member of a project.' };
     }
 
-    // The creator is the only member upon creation.
     const memberUids = [owner.uid];
 
     await addDoc(projectCollectionRef, {
@@ -88,6 +86,7 @@ export async function deleteProject(
     await deleteDoc(projectRef);
 
     revalidatePath('/beranda');
+    revalidatePath(`/proyek/${projectId}`);
 
     return { success: true, message: 'Project has been deleted successfully.' };
   } catch (error) {
@@ -95,4 +94,64 @@ export async function deleteProject(
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
     return { success: false, message: `Project deletion failed: ${errorMessage}` };
   }
+}
+
+
+/**
+ * Adds a new member to a project.
+ * @param projectId - The ID of the project.
+ * @param newMemberEmail - The email of the user to add.
+ * @param ownerId - The UID of the user performing the action, to verify ownership.
+ * @returns An object with success status and a message.
+ */
+export async function addProjectMember(
+  projectId: string,
+  newMemberEmail: string,
+  ownerId: string,
+): Promise<{ success: boolean; message: string }> {
+    if (!projectId || !newMemberEmail || !ownerId) {
+        return { success: false, message: "Missing required fields." };
+    }
+
+    try {
+        const projectRef = doc(db, 'projects', projectId);
+        const projectSnap = await getDoc(projectRef);
+
+        if (!projectSnap.exists()) {
+            return { success: false, message: "Project not found." };
+        }
+        if (projectSnap.data().ownerUid !== ownerId) {
+            return { success: false, message: "Only the project owner can add members." };
+        }
+
+        const usersRef = collection(db, 'users');
+        const userQuery = query(usersRef, where("email", "==", newMemberEmail.toLowerCase()), limit(1));
+        const userSnap = await getDocs(userQuery);
+
+        if (userSnap.empty) {
+            return { success: false, message: `User with email ${newMemberEmail} not found.` };
+        }
+        
+        const newMember = userSnap.docs[0].data() as UserProfile;
+
+        const projectsRef = collection(db, 'projects');
+        const memberProjectQuery = query(projectsRef, where('memberUids', 'array-contains', newMember.uid), limit(1));
+        const memberProjectSnap = await getDocs(memberProjectQuery);
+
+        if (!memberProjectSnap.empty) {
+            return { success: false, message: `User ${newMember.displayName} is already in another project.` };
+        }
+        
+        await updateDoc(projectRef, {
+            memberUids: arrayUnion(newMember.uid)
+        });
+
+        revalidatePath(`/proyek/${projectId}`);
+        
+        return { success: true, message: `${newMember.displayName} has been added to the project.` };
+
+    } catch (error) {
+        console.error("Error adding project member:", error);
+        return { success: false, message: error instanceof Error ? error.message : "An unknown error occurred." };
+    }
 }

@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, onSnapshot, query, where, Unsubscribe, getDocs, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, Unsubscribe, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Project, UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -17,15 +17,22 @@ interface ProjectContextType {
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
 
-// Helper to fetch a single user profile
-async function fetchUserProfile(uid: string): Promise<UserProfile | undefined> {
-    if (!uid) return undefined;
-    const docRef = doc(db, "users", uid);
-    const docSnap = await getDocs(query(collection(db, "users"), where("uid", "==", uid)));
-    if (!docSnap.empty) {
-        return docSnap.docs[0].data() as UserProfile;
-    }
-    return undefined;
+async function fetchUserProfiles(uids: string[]): Promise<UserProfile[]> {
+    if (uids.length === 0) return [];
+    
+    // Fetch multiple documents. Note: `in` queries are limited to 30 items.
+    // For this app's scale, this is acceptable. For larger scale, fetch one by one.
+    const usersQuery = query(collection(db, "users"), where("uid", "in", uids));
+    const querySnapshot = await getDocs(usersQuery);
+    
+    const profilesMap = new Map<string, UserProfile>();
+    querySnapshot.forEach(doc => {
+        const user = doc.data() as UserProfile;
+        profilesMap.set(user.uid, user);
+    });
+
+    // Return profiles in the same order as requested UIDs
+    return uids.map(uid => profilesMap.get(uid)).filter(Boolean) as UserProfile[];
 }
 
 
@@ -54,20 +61,19 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       async (snapshot) => {
         const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
 
-        if (userProjects.length > 0) {
-            // Since a user can only be in one project, we can simplify this.
-            const project = userProjects[0];
-            const ownerProfile = await fetchUserProfile(project.ownerUid);
-            
-            const enrichedProject = {
-                ...project,
-                owner: ownerProfile,
-                members: ownerProfile ? [ownerProfile] : [], // The only member is the owner
+        const enrichedProjects = await Promise.all(
+          userProjects.map(async (project) => {
+            const memberProfiles = await fetchUserProfiles(project.memberUids);
+            const ownerProfile = memberProfiles.find(m => m.uid === project.ownerUid);
+            return {
+              ...project,
+              owner: ownerProfile,
+              members: memberProfiles,
             };
-            setProjects([enrichedProject]);
-        } else {
-            setProjects([]);
-        }
+          })
+        );
+        
+        setProjects(enrichedProjects);
         setLoading(false);
       }, 
       (error) => {
