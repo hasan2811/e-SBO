@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { FolderKanban, PlusCircle, Users, User, ArrowRight, FolderPlus } from 'lucide-react';
 import { ProjectDialog } from '@/components/project-dialog';
 import { useAuth } from '@/hooks/use-auth';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
   return (
@@ -85,12 +86,23 @@ export default function ProjectHubPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <h2 className="text-2xl font-bold tracking-tight">Pusat Proyek</h2>
-          {!hasProject && (
-            <Button onClick={() => setProjectDialogOpen(true)}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Buat Proyek Baru
-            </Button>
-          )}
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div tabIndex={0}> {/* Wrapper for disabled button tooltip */}
+                            <Button onClick={() => setProjectDialogOpen(true)} disabled={hasProject}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Buat Proyek Baru
+                            </Button>
+                        </div>
+                    </TooltipTrigger>
+                    {hasProject && (
+                        <TooltipContent>
+                            <p>Anda sudah menjadi anggota proyek. Anda hanya dapat bergabung dengan satu proyek.</p>
+                        </TooltipContent>
+                    )}
+                </Tooltip>
+            </TooltipProvider>
         </div>
 
         {hasProject ? (

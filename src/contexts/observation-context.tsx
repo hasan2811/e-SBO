@@ -51,6 +51,7 @@ interface ObservationContextType {
     approver: string,
   ) => Promise<void>;
   retryAiAnalysis: (item: Observation | Inspection) => Promise<void>;
+  shareObservationToPublic: (observation: Observation) => Promise<void>;
 }
 
 const ObservationContext = React.createContext<
@@ -307,7 +308,38 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
     }, [_runObservationAiAnalysis, _runInspectionAiAnalysis]);
 
-    const value = { privateItems, projectItems, loading: authLoading || projectsLoading || privateItemsLoading || projectItemsLoading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
+    const shareObservationToPublic = React.useCallback(async (observation: Observation) => {
+        if (!user) throw new Error("User not authenticated");
+        if (observation.scope === 'public' || observation.isSharedPublicly) {
+            toast({ variant: 'default', title: 'Sudah Dibagikan', description: 'Observasi ini sudah ada di feed publik.' });
+            return;
+        }
+
+        try {
+            // 1. Create a copy for the public feed
+            const { id, ...restOfObservation } = observation;
+            const publicObservationData = {
+                ...restOfObservation,
+                scope: 'public' as const,
+                projectId: null,
+                isSharedPublicly: false, // The public copy itself isn't 'shared'
+            };
+            
+            await addDoc(collection(db, 'observations'), publicObservationData);
+    
+            // 2. Update the original observation to mark it as shared
+            const originalDocRef = getDocRef(observation);
+            await updateDoc(originalDocRef, { isSharedPublicly: true });
+    
+            toast({ title: 'Berhasil!', description: 'Observasi telah dibagikan ke feed publik.' });
+        } catch (error) {
+            console.error("Failed to share observation to public:", error);
+            toast({ variant: 'destructive', title: 'Gagal Membagikan', description: 'Tidak dapat membagikan observasi. Silakan coba lagi.' });
+        }
+    }, [user]);
+
+
+    const value = { privateItems, projectItems, loading: authLoading || projectsLoading || privateItemsLoading || projectItemsLoading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis, shareObservationToPublic };
 
     return (
         <ObservationContext.Provider value={value}>

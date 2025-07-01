@@ -10,7 +10,7 @@ import { StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Share2, ArrowLeft, Folder } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -27,7 +27,7 @@ interface ObservationDetailSheetProps {
 }
 
 export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: ObservationDetailSheetProps) {
-  const { updateObservation, retryAiAnalysis } = useObservations();
+  const { updateObservation, retryAiAnalysis, shareObservationToPublic } = useObservations();
   const { projects } = useProjects();
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isSharing, setIsSharing] = React.useState(false);
@@ -52,44 +52,18 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
   };
 
   const handleShare = async () => {
-    if (!observation || !observation.aiObserverSkillRating) return;
+    if (!observation) return;
     setIsSharing(true);
-
     try {
-        const shareText = `Saya baru saja mendapatkan rating ${observation.aiObserverSkillRating}/5 untuk wawasan HSSE saya di platform HSSE Tech! 🚀 Tingkatkan skill Anda dan coba sendiri!`;
-        const shareUrl = 'https://hsse.tech'; // Or window.location.origin
-        const shareTitle = `Insight HSSE Saya - ${observation.referenceId}`;
-
-        if (navigator.share) {
-            await navigator.share({
-                title: shareTitle,
-                text: shareText,
-                url: shareUrl,
-            });
-        } else {
-            // Fallback for browsers without navigator.share (e.g., desktop)
-            await navigator.clipboard.writeText(`${shareText} Kunjungi ${shareUrl} untuk mendaftar. #HSSE #SafetyFirst #AI`);
-            toast({
-                title: 'Teks Berhasil Disalin!',
-                description: 'Anda kini dapat membagikannya ke media sosial pilihan Anda.',
-            });
-        }
-    } catch (error) {
-        // The most common error is 'AbortError' when the user cancels the share dialog.
-        // We will not show an error toast for this specific case to improve user experience.
-        if (error instanceof Error && error.name === 'AbortError') {
-            console.log('Share was cancelled by the user.');
-        } else {
-            // For other errors, we log them but avoid showing a disruptive toast.
-            // This prevents false positive error messages on different browser behaviors for cancellation.
-            console.error('Share or copy failed:', error);
-        }
+        // The context function now handles all logic and toasting
+        await shareObservationToPublic(observation);
     } finally {
         setIsSharing(false);
     }
   };
 
   const showAiSection = observation.aiStatus || observation.aiSummary;
+  const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;
 
   const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
     <div className="pl-8 space-y-2">
@@ -127,9 +101,9 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
                   </div>
               </div>
               
-              {observation.aiStatus === 'completed' && observation.aiObserverSkillRating && (
-                  <Button variant="outline" size="icon" onClick={handleShare} disabled={isSharing} className="flex-shrink-0" aria-label="Bagikan Insight">
-                      {isSharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+              {canShare && (
+                  <Button variant="outline" size="icon" onClick={handleShare} disabled={isSharing} className="flex-shrink-0" aria-label="Bagikan ke Publik">
+                      {isSharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
                   </Button>
               )}
           </div>

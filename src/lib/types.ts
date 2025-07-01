@@ -62,6 +62,7 @@ export type Observation = {
   aiRootCauseAnalysis?: string;
   aiObserverSkillRating?: number;
   aiObserverSkillExplanation?: string;
+  isSharedPublicly?: boolean;
 };
 
 // New Types for Inspection and PTW
