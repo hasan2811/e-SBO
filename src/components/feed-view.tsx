@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { useObservations } from '@/contexts/observation-context';
-import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCategory, ObservationStatus } from '@/lib/types';
+import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCategory, ObservationStatus, Scope } from '@/lib/types';
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
@@ -32,7 +32,7 @@ import { useAuth } from '@/hooks/use-auth';
 const PAGE_SIZE = 10;
 
 interface FeedViewProps {
-  mode: 'public' | 'project' | 'private';
+  mode: Scope;
   projectId?: string;
 }
 
@@ -596,6 +596,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
             observation={displayObservation}
             isOpen={!!displayObservation}
             onOpenChange={(isOpen) => { if (!isOpen) setSelectedObservationId(null); }}
+            mode={mode}
         />
     )}
     {displayInspection && (

@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { useObservations } from '@/contexts/observation-context';
-import type { Observation, RiskLevel } from '@/lib/types';
+import type { Observation, RiskLevel, Scope } from '@/lib/types';
 import { TakeActionDialog } from '@/components/take-action-dialog';
 import { StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
@@ -26,9 +26,10 @@ interface ObservationDetailSheetProps {
     observation: Observation | null;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
+    mode: Scope;
 }
 
-export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: ObservationDetailSheetProps) {
+export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode }: ObservationDetailSheetProps) {
   const { updateObservation, retryAiAnalysis, shareObservationToPublic, toggleLikeObservation } = useObservations();
   const { projects } = useProjects();
   const { user } = useAuth();
@@ -167,28 +168,32 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
 
             <Separator />
             
-            <div className="flex items-center justify-around">
-                <button
-                    onClick={handleLikeClick}
-                    className={cn(
-                        "flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors",
-                        hasLiked && "text-primary font-semibold"
-                    )}
-                >
-                    <ThumbsUp className={cn("h-5 w-5", hasLiked && "fill-current")} />
-                    <span>{observation.likeCount || 0} Suka</span>
-                </button>
-                <button className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors">
-                    <MessageCircle className="h-5 w-5" />
-                    <span>{observation.commentCount || 0} Komentar</span>
-                </button>
-                 <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
-                    <Eye className="h-5 w-5" />
-                    <span>{observation.viewCount || 0} Dilihat</span>
+            {mode !== 'private' && (
+              <>
+                <div className="flex items-center justify-around">
+                    <button
+                        onClick={handleLikeClick}
+                        className={cn(
+                            "flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors",
+                            hasLiked && "text-primary font-semibold"
+                        )}
+                    >
+                        <ThumbsUp className={cn("h-5 w-5", hasLiked && "fill-current")} />
+                        <span>{observation.likeCount || 0} Suka</span>
+                    </button>
+                    <button className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors">
+                        <MessageCircle className="h-5 w-5" />
+                        <span>{observation.commentCount || 0} Komentar</span>
+                    </button>
+                     <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
+                        <Eye className="h-5 w-5" />
+                        <span>{observation.viewCount || 0} Dilihat</span>
+                    </div>
                 </div>
-            </div>
 
-            <Separator />
+                <Separator />
+              </>
+            )}
 
             <div className="space-y-1">
               <h4 className="font-semibold">Findings</h4>
@@ -374,7 +379,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
               </div>
             )}
             
-            {observation.status !== 'Completed' && (
+            {observation.status !== 'Completed' && mode !== 'public' && (
               <div className="pt-6 mt-6 border-t">
                 <Button type="button" onClick={handleTakeAction} className="w-full">
                   <Gavel className="mr-2 h-4 w-4" />
@@ -387,12 +392,14 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
       </SheetContent>
     </Sheet>
     
-    <TakeActionDialog
-        isOpen={isActionDialogOpen}
-        onOpenChange={setActionDialogOpen}
-        observation={observation}
-        onUpdate={handleUpdate}
-    />
+    {mode !== 'public' && (
+      <TakeActionDialog
+          isOpen={isActionDialogOpen}
+          onOpenChange={setActionDialogOpen}
+          observation={observation}
+          onUpdate={handleUpdate}
+      />
+    )}
     </>
   );
 }
