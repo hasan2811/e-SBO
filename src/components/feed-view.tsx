@@ -31,7 +31,12 @@ import { useAuth } from '@/hooks/use-auth';
 
 const PAGE_SIZE = 10;
 
-const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
+interface FeedViewProps {
+  mode: 'public' | 'project' | 'private';
+  projectId?: string;
+}
+
+const ObservationListItem = ({ observation, onSelect, mode }: { observation: Observation, onSelect: () => void, mode: FeedViewProps['mode'] }) => {
     const { toggleLikeObservation } = useObservations();
     const { user } = useAuth();
 
@@ -121,26 +126,28 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
                 </div>
             </div>
             
-            <div className="flex items-center gap-4 pt-3 mt-3 border-t border-border/50">
-              <button
-                onClick={handleLikeClick}
-                className={cn(
-                  "flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors",
-                  hasLiked && "text-primary font-semibold"
-                )}
-              >
-                <ThumbsUp className={cn("h-4 w-4", hasLiked && "fill-current")} />
-                <span>{observation.likeCount || 0}</span>
-              </button>
-              <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
-                <MessageCircle className="h-4 w-4" />
-                <span>{observation.commentCount || 0}</span>
-              </button>
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground ml-auto">
-                <Eye className="h-4 w-4" />
-                <span>{observation.viewCount || 0} Dilihat</span>
+            {mode !== 'private' && (
+              <div className="flex items-center gap-4 pt-3 mt-3 border-t border-border/50">
+                <button
+                  onClick={handleLikeClick}
+                  className={cn(
+                    "flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors",
+                    hasLiked && "text-primary font-semibold"
+                  )}
+                >
+                  <ThumbsUp className={cn("h-4 w-4", hasLiked && "fill-current")} />
+                  <span>{observation.likeCount || 0}</span>
+                </button>
+                <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
+                  <MessageCircle className="h-4 w-4" />
+                  <span>{observation.commentCount || 0}</span>
+                </button>
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground ml-auto">
+                  <Eye className="h-4 w-4" />
+                  <span>{observation.viewCount || 0} Dilihat</span>
+                </div>
               </div>
-            </div>
+            )}
         </div>
       </li>
     );
@@ -203,11 +210,6 @@ const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => (
     </div>
   </li>
 );
-
-interface FeedViewProps {
-  mode: 'public' | 'project' | 'private';
-  projectId?: string;
-}
 
 const viewConfig = {
   observations: { label: 'Observasi', icon: Briefcase, itemType: 'observation' },
@@ -546,7 +548,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
              {itemsToDisplay.map(item => {
                 switch(item.itemType) {
                   case 'observation':
-                    return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} />;
+                    return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} mode={mode} />;
                   case 'inspection':
                     return <InspectionListItem key={item.id} inspection={item} onSelect={() => setSelectedInspectionId(item.id)} />;
                   case 'ptw':
