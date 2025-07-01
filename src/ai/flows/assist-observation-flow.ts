@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to assist users in real-time while they fill out an observation form.
@@ -9,7 +10,32 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { RISK_LEVELS, OBSERVATION_CATEGORIES } from '@/lib/types';
+import { RISK_LEVELS, OBSERVATION_CATEGORIES, RiskLevel, ObservationCategory } from '@/lib/types';
+
+/**
+ * Finds the best match for a given value from a list of options, or returns a default.
+ * It's case-insensitive and checks for partial matches.
+ * @param value The string value to match.
+ * @param options The list of valid options.
+ * @param defaultValue The default value to return if no match is found.
+ * @returns The best matching option or the default value.
+ */
+function findClosestMatch<T extends string>(value: string | undefined, options: readonly T[], defaultValue: T): T {
+    if (!value) return defaultValue;
+
+    const lowerValue = value.toLowerCase().trim();
+    
+    // First, try for an exact match (case-insensitive)
+    const exactMatch = options.find(opt => opt.toLowerCase() === lowerValue);
+    if (exactMatch) return exactMatch;
+
+    // Next, try to see if the value contains one of the options
+    const partialMatch = options.find(opt => lowerValue.includes(opt.toLowerCase()));
+    if (partialMatch) return partialMatch;
+
+    return defaultValue;
+}
+
 
 export const AssistObservationInputSchema = z.object({
   findings: z.string().min(20).describe('The user-written findings from the observation report.'),
@@ -17,8 +43,8 @@ export const AssistObservationInputSchema = z.object({
 export type AssistObservationInput = z.infer<typeof AssistObservationInputSchema>;
 
 export const AssistObservationOutputSchema = z.object({
-  suggestedCategory: z.enum(OBSERVATION_CATEGORIES).describe('The most likely category for this finding.'),
-  suggestedRiskLevel: z.enum(RISK_LEVELS).describe('The suggested risk level based on the finding.'),
+  suggestedCategory: z.string().describe('The most likely category for this finding.'),
+  suggestedRiskLevel: z.string().describe('The suggested risk level based on the finding.'),
   improvedFindings: z.string().describe('An improved, more professional version of the original findings text.'),
   suggestedRecommendation: z.string().describe('A suggested recommendation to address the findings.'),
 });
@@ -51,7 +77,12 @@ const assistObservationFlow = ai.defineFlow(
   {
     name: 'assistObservationFlow',
     inputSchema: AssistObservationInputSchema,
-    outputSchema: AssistObservationOutputSchema,
+    outputSchema: z.object({
+        suggestedCategory: z.enum(OBSERVATION_CATEGORIES),
+        suggestedRiskLevel: z.enum(RISK_LEVELS),
+        improvedFindings: z.string(),
+        suggestedRecommendation: z.string(),
+    }),
   },
   async (input) => {
     const response = await assistObservationPrompt(input);
@@ -60,10 +91,24 @@ const assistObservationFlow = ai.defineFlow(
     if (!output) {
       throw new Error('AI assistant returned no structured output.');
     }
-    return output;
+
+    // Sanitize and validate the output to make the flow more resilient
+    const sanitizedOutput = {
+      ...output,
+      suggestedCategory: findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'General'),
+      suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
+    };
+    
+    return sanitizedOutput;
   }
 );
 
 export async function assistObservation(input: AssistObservationInput): Promise<AssistObservationOutput> {
-  return assistObservationFlow(input);
+  const result = await assistObservationFlow(input);
+  // Ensure the final return type matches the expected Zod schema for the exported function.
+  return {
+      ...result,
+      suggestedCategory: result.suggestedCategory as ObservationCategory,
+      suggestedRiskLevel: result.suggestedRiskLevel as RiskLevel,
+  };
 }

@@ -210,12 +210,10 @@ export function FeedView({ mode }: FeedViewProps) {
     }
 
     try {
-        let q: Query<DocumentData> = query(collection(db, viewType), where('scope', '==', 'public'));
-
-        if (viewType === 'observations' && filterType !== 'all' && filterValue !== 'all') {
-            const fieldMap = { status: 'status', risk: 'riskLevel', category: 'category' };
-            q = query(q, where(fieldMap[filterType], '==', filterValue));
-        }
+        let q: Query<DocumentData> = query(
+            collection(db, viewType), 
+            where('scope', '==', 'public')
+        );
 
         q = query(q, orderBy('date', 'desc'), limit(PAGE_SIZE));
 
@@ -247,15 +245,20 @@ export function FeedView({ mode }: FeedViewProps) {
     } finally {
         setLoading(false);
     }
-  }, [viewType, filterType, filterValue, toast]);
+  }, [viewType, toast]);
 
 
   React.useEffect(() => {
+    // This effect handles resetting and fetching data when primary dependencies change.
     if (mode === 'public') {
       fetchPublicItems(true);
+    } else {
+      // For personal mode, data comes from context, no fetch needed here.
+      // But we might want to clear public items to avoid stale data display.
+      setItems([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, viewType, filterType, filterValue]);
+  }, [mode, viewType, filterType, filterValue]); // Filter changes will now trigger a full refetch for public items
 
 
   const data = mode === 'public' ? items : myItems;
@@ -263,13 +266,13 @@ export function FeedView({ mode }: FeedViewProps) {
 
 
   const filteredData = React.useMemo(() => {
-    if (mode === 'public') {
-        return data;
-    }
     let dataToFilter: AllItems[] = [...data];
+    
+    // Always filter by viewType first
     dataToFilter = dataToFilter.filter(item => item.itemType === viewType.slice(0, -1));
 
-    if (viewType === 'observations') {
+    // For personal feed, apply filters from state
+    if (mode === 'personal' && viewType === 'observations') {
         let observationData = dataToFilter as Observation[];
         if (filterType !== 'all' && filterValue !== 'all') {
             const fieldMap = { status: 'status', risk: 'riskLevel', category: 'category' };
@@ -355,7 +358,8 @@ export function FeedView({ mode }: FeedViewProps) {
                 </DropdownMenu>
 
                 <TooltipProvider>
-                  {viewType === 'observations' && (
+                  {/* Conditionally render filters only for personal mode */}
+                  {mode === 'personal' && viewType === 'observations' && (
                      <Popover>
                         <Tooltip>
                           <TooltipTrigger asChild>

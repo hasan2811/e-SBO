@@ -101,17 +101,24 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
         collectionsToWatch.forEach(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid), where('scope', '==', 'private'));
+            // Simplified query to remove composite index requirement. Filtering for 'private' is now done client-side.
+            const privateQuery = query(collection(db, colName), where('userId', '==', user.uid));
             let isInitial = true;
             
             const unsub = onSnapshot(privateQuery, (snapshot) => {
                 snapshot.docChanges().forEach((change) => {
                     const docId = change.doc.id;
                     const itemData = { ...change.doc.data(), id: docId, itemType } as AllItems;
+                    
                     if (change.type === 'removed') {
                         itemMap.delete(docId);
                     } else {
-                        itemMap.set(docId, itemData);
+                        // Add or update if it's a private item, otherwise remove it from the map
+                        if (itemData.scope === 'private') {
+                            itemMap.set(docId, itemData);
+                        } else {
+                            itemMap.delete(docId);
+                        }
                     }
                 });
                 processAndSort(isInitial);
