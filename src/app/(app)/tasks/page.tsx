@@ -55,22 +55,27 @@ const riskPieChartConfig = {
 const AiAnalysisCard = ({ analysis, loading }: { analysis: AnalyzeDashboardDataOutput | null, loading: boolean }) => {
     if (loading) {
       return (
-        <Card>
+        <Card className="bg-primary/5 border-primary/20">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
+            <CardTitle className="flex items-center gap-2 text-primary">
+              <Sparkles className="h-5 w-5" />
               <span>Analisis Tren AI</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-             <div className="space-y-2">
-                <Skeleton className="h-4 w-1/3" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-5/6" />
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-1/3" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
             </div>
-             <div className="space-y-2">
-                <Skeleton className="h-4 w-1/3" />
-                <Skeleton className="h-4 w-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-1/3" />
+              <Skeleton className="h-4 w-4/5" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-1/3" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
             </div>
           </CardContent>
         </Card>
