@@ -163,6 +163,7 @@ const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => (
 
 interface FeedViewProps {
   mode: 'public' | 'project' | 'private';
+  projectId?: string;
 }
 
 const viewConfig = {
@@ -171,7 +172,7 @@ const viewConfig = {
   ptws: { label: 'PTW', icon: PtwIcon, itemType: 'ptw' },
 };
 
-export function FeedView({ mode }: FeedViewProps) {
+export function FeedView({ mode, projectId }: FeedViewProps) {
   const { privateItems, projectItems, loading: myItemsLoading } = useObservations();
   
   const [publicItems, setPublicItems] = React.useState<AllItems[]>([]);
@@ -198,13 +199,6 @@ export function FeedView({ mode }: FeedViewProps) {
     risk: RISK_LEVELS,
     category: OBSERVATION_CATEGORIES,
   };
-
-  const pageTitleConfig = {
-    public: 'Publik',
-    project: 'Project',
-    private: 'Pribadi',
-  };
-  const pageTitle = pageTitleConfig[mode];
   
   const clearFilters = () => {
     setFilterType('all');
@@ -288,6 +282,11 @@ export function FeedView({ mode }: FeedViewProps) {
   const filteredData = React.useMemo(() => {
     let dataToFilter: AllItems[] = [...data];
     
+    // If in a specific project view, filter by that projectId
+    if (mode === 'project' && projectId) {
+        dataToFilter = dataToFilter.filter(item => item.projectId === projectId);
+    }
+    
     dataToFilter = dataToFilter.filter(item => item.itemType === viewConfig[viewType].itemType);
 
     if (mode !== 'public' && viewType === 'observations') {
@@ -299,7 +298,7 @@ export function FeedView({ mode }: FeedViewProps) {
     }
     
     return dataToFilter;
-  }, [data, mode, viewType, filterType, filterValue]);
+  }, [data, mode, projectId, viewType, filterType, filterValue]);
 
   const itemsToDisplay = mode === 'public' ? filteredData : filteredData.slice(0, displayedItemsCount);
   
@@ -328,7 +327,7 @@ export function FeedView({ mode }: FeedViewProps) {
       });
       return;
     }
-    const fileName = `${pageTitle.replace(/\s/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}`;
+    const fileName = `Export_${mode}_${projectId || ''}_${format(new Date(), 'yyyy-MM-dd')}`;
     exportToExcel(dataToExport, fileName);
   };
   
@@ -341,7 +340,7 @@ export function FeedView({ mode }: FeedViewProps) {
     let Icon = Home;
 
     if(mode === 'project') {
-        emptyText = `Anda belum membuat ${config.label.toLowerCase()} atau belum ada laporan di proyek Anda.`;
+        emptyText = `Belum ada laporan ${config.label.toLowerCase()} untuk proyek ini.`;
         Icon = Briefcase;
     } else if (mode === 'private') {
         emptyText = `Anda belum membuat ${config.label.toLowerCase()} pribadi.`;
@@ -365,7 +364,7 @@ export function FeedView({ mode }: FeedViewProps) {
      <div className="space-y-4">
         <div className="flex justify-between items-center gap-4">
             <div className="flex items-center gap-2">
-               <h2 className="text-2xl font-bold tracking-tight">{pageTitle}</h2>
+               <h2 className="text-2xl font-bold tracking-tight">Laporan {viewConfig[viewType].label}</h2>
             </div>
             <div className="flex items-center gap-2">
                 <DropdownMenu>
@@ -479,7 +478,6 @@ export function FeedView({ mode }: FeedViewProps) {
       <main>
         {fetchError && mode === 'public' && (
           <Alert variant="destructive" className="mb-4">
-            <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Gagal Memuat Data Publik</AlertTitle>
             <AlertDescription>
                 <p>

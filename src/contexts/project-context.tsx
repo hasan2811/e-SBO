@@ -2,9 +2,9 @@
 'use client';
 
 import * as React from 'react';
-import { collection, onSnapshot, query, where, Unsubscribe } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, Unsubscribe, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Project } from '@/lib/types';
+import type { Project, UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from '@/hooks/use-toast';
 import { createProject } from '@/lib/actions/project-actions';
@@ -39,9 +39,25 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     );
 
     unsubscribe = onSnapshot(projectsQuery, 
-      (snapshot) => {
+      async (snapshot) => {
         const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
-        setProjects(userProjects);
+
+        if (userProjects.length > 0) {
+            const ownerUids = [...new Set(userProjects.map(p => p.ownerUid))];
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('uid', 'in', ownerUids));
+            const userDocs = await getDocs(q);
+            const ownersMap = new Map<string, UserProfile>();
+            userDocs.forEach(doc => ownersMap.set(doc.id, doc.data() as UserProfile));
+
+            const enrichedProjects = userProjects.map(p => ({
+                ...p,
+                owner: ownersMap.get(p.ownerUid)
+            }));
+            setProjects(enrichedProjects);
+        } else {
+            setProjects([]);
+        }
         setLoading(false);
       }, 
       (error) => {
@@ -63,19 +79,14 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user]);
 
-  // Simplified addProject signature to match the new, more secure server action.
   const addProject = React.useCallback(async (projectName: string) => {
     if (!user || !user.email) {
       toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to create a project.' });
       return;
     }
     try {
-      const result = await createProject({ uid: user.uid, email: user.email }, projectName);
-      if (result.success) {
-        toast({ title: 'Success!', description: result.message });
-      } else {
-        toast({ variant: 'destructive', title: 'Project Creation Failed', description: result.message });
-      }
+      await createProject({ uid: user.uid, email: user.email, displayName: user.displayName || 'User' }, projectName);
+      toast({ title: 'Success!', description: `Project "${projectName}" was created successfully!` });
     } catch (error) {
       console.error("Error creating project:", error);
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";

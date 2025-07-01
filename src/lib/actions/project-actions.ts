@@ -2,8 +2,9 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
+import type { UserProfile } from '@/lib/types';
 
 /**
  * Server action to create a new project.
@@ -14,7 +15,7 @@ import { revalidatePath } from 'next/cache';
  * @returns An object with success status and a message.
  */
 export async function createProject(
-  owner: { uid: string; email: string },
+  owner: Pick<UserProfile, 'uid' | 'email' | 'displayName'>,
   projectName: string
 ): Promise<{ success: boolean; message: string }> {
   if (!owner || !owner.uid) {
@@ -28,7 +29,7 @@ export async function createProject(
     await addDoc(projectCollectionRef, {
       name: projectName,
       ownerUid: owner.uid,
-      memberUids: [owner.uid], // Creator is the first and only member initially.
+      memberUids: [owner.uid], 
       createdAt: new Date().toISOString(),
     });
     
