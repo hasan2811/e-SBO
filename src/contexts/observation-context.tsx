@@ -90,7 +90,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         return doc(db, itemTypePlural, item.id);
     };
 
-    // Effect for Private Items - with accurate loading state
+    // Effect for Private Items - with race condition fix for loading state
     React.useEffect(() => {
         if (!user) {
             setPrivateItems([]);
@@ -100,6 +100,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
         setPrivateItemsLoading(true);
         const privateListeners: Unsubscribe[] = [];
+        const listenersSetup = new Set<string>();
+        const expectedListeners = collectionsToWatch.length;
 
         collectionsToWatch.forEach(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
@@ -117,10 +119,21 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                     });
                     return sortItemsByDate(Array.from(newItemsMap.values()));
                 });
-                setPrivateItemsLoading(false);
+                
+                if (!listenersSetup.has(colName)) {
+                    listenersSetup.add(colName);
+                }
+                if (listenersSetup.size === expectedListeners) {
+                    setPrivateItemsLoading(false);
+                }
             }, e => {
                 console.error(`Error fetching private ${colName}:`, e);
-                setPrivateItemsLoading(false);
+                if (!listenersSetup.has(colName)) {
+                    listenersSetup.add(colName);
+                }
+                if (listenersSetup.size === expectedListeners) {
+                    setPrivateItemsLoading(false);
+                }
             });
             privateListeners.push(unsub);
         });
@@ -130,7 +143,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         };
     }, [user]);
 
-    // Effect for Project Items - with accurate loading state
+    // Effect for Project Items - with race condition fix for loading state
     React.useEffect(() => {
         if (!user || projectsLoading) {
             setProjectItems([]);
@@ -146,11 +159,14 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
         setProjectItemsLoading(true);
         const projectListeners: Unsubscribe[] = [];
+        const listenersSetup = new Set<string>();
+        const expectedListeners = projects.length * collectionsToWatch.length;
         
         projects.forEach(project => {
             collectionsToWatch.forEach(colName => {
                 const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
                 const projectItemsQuery = query(collection(db, 'projects', project.id, colName));
+                const listenerId = `${project.id}-${colName}`;
                 
                 const unsub = onSnapshot(projectItemsQuery, (snapshot) => {
                     setProjectItems(prev => {
@@ -165,14 +181,30 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                          });
                          return sortItemsByDate(Array.from(newItemsMap.values()));
                     });
-                    setProjectItemsLoading(false); 
+
+                    if (!listenersSetup.has(listenerId)) {
+                        listenersSetup.add(listenerId);
+                    }
+                    if (listenersSetup.size === expectedListeners) {
+                        setProjectItemsLoading(false);
+                    }
                 }, e => {
                     console.error(`Error fetching from project ${project.id}/${colName}:`, e);
-                    setProjectItemsLoading(false);
+                    if (!listenersSetup.has(listenerId)) {
+                        listenersSetup.add(listenerId);
+                    }
+                    if (listenersSetup.size === expectedListeners) {
+                        setProjectItemsLoading(false);
+                    }
                 });
                 projectListeners.push(unsub);
             });
         });
+
+        // Handle case where there are projects but no collections to watch, or some other edge case.
+        if (expectedListeners === 0) {
+            setProjectItemsLoading(false);
+        }
 
         return () => {
             projectListeners.forEach(unsub => unsub());
