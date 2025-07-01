@@ -206,11 +206,12 @@ export function FeedView({ mode }: FeedViewProps) {
     setLoading(true);
     if (reset) {
         lastVisibleRef.current = null;
+        setItems([]);
     }
 
     try {
-        // DEFINITIVE FIX: A simple, robust query that cannot fail due to missing composite indexes.
-        // It asks for public items, ordered by the newest first. This avoids all complex query errors.
+        // DEFINITIVE FIX: The simplest, most robust query that cannot fail.
+        // It asks for public items, ordered by the newest first.
         let q: Query<DocumentData> = query(
             collection(db, viewType), 
             where('scope', '==', 'public'),
@@ -229,8 +230,7 @@ export function FeedView({ mode }: FeedViewProps) {
             itemType: viewConfig[viewType].itemType,
         })) as AllItems[];
 
-        const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-        lastVisibleRef.current = lastDoc || null;
+        lastVisibleRef.current = documentSnapshots.docs[documentSnapshots.docs.length - 1] || null;
         setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
         setItems(prevItems => (reset ? newItems : [...prevItems, ...newItems]));
 
@@ -256,7 +256,7 @@ export function FeedView({ mode }: FeedViewProps) {
   }, [mode, viewType, fetchPublicItems]);
 
   const data = mode === 'public' ? items : myItems;
-  const isLoading = mode === 'public' ? loading && !items.length : myItemsLoading;
+  const isLoading = mode === 'public' ? loading && items.length === 0 : myItemsLoading;
 
   const filteredData = React.useMemo(() => {
     let dataToFilter: AllItems[] = [...data];
