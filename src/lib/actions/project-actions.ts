@@ -7,49 +7,15 @@ import { revalidatePath } from 'next/cache';
 import type { Project, UserProfile } from '@/lib/types';
 
 /**
- * Finds user UIDs based on a list of email addresses.
- * @param emails - An array of email strings to look up.
- * @returns A promise that resolves to an array of found user UIDs.
- */
-async function findUserIdsByEmails(emails: string[]): Promise<string[]> {
-  if (!emails || emails.length === 0) {
-    return [];
-  }
-  
-  const userIds: string[] = [];
-  const usersRef = collection(db, 'users');
-  
-  // Firestore 'in' query is limited to 30 items. We process in chunks.
-  const chunks = [];
-  for (let i = 0; i < emails.length; i += 30) {
-    chunks.push(emails.slice(i, i + 30));
-  }
-
-  for (const chunk of chunks) {
-    const q = query(usersRef, where('email', 'in', chunk));
-    const querySnapshot = await getDocs(q);
-    querySnapshot.forEach((doc) => {
-      userIds.push(doc.id);
-    });
-  }
-
-  return userIds;
-}
-
-
-/**
  * Server action to create a new project.
- * Allows inviting members by email during creation.
- * The creator is automatically the owner and a member.
+ * Enforces the rule that a user can only own/be in one project at a time.
  * @param owner - The user object of the project creator.
  * @param projectName - The name of the new project.
- * @param memberEmails - An array of emails of members to invite.
  * @returns An object with success status and a message.
  */
 export async function createProject(
   owner: Pick<UserProfile, 'uid' | 'email' | 'displayName'>,
-  projectName: string,
-  memberEmails: string[]
+  projectName: string
 ): Promise<{ success: boolean; message:string; }> {
   if (!owner || !owner.uid) {
     return { success: false, message: 'Authentication required to create a project.' };
@@ -58,16 +24,24 @@ export async function createProject(
   try {
     const projectCollectionRef = collection(db, 'projects');
     
-    // Find UIDs for the invited members
-    const invitedMemberUids = await findUserIdsByEmails(memberEmails);
+    // CRITICAL CHECK: Ensure the user is not already in a project.
+    const existingProjectQuery = query(
+        projectCollectionRef,
+        where('memberUids', 'array-contains', owner.uid),
+        limit(1)
+    );
+    const existingProjectSnapshot = await getDocs(existingProjectQuery);
+    if (!existingProjectSnapshot.empty) {
+        return { success: false, message: 'Project creation failed: You are already a member of a project.' };
+    }
 
-    // Combine owner UID with invited member UIDs, ensuring no duplicates
-    const allMemberUids = [...new Set([owner.uid, ...invitedMemberUids])];
+    // The creator is the only member upon creation.
+    const memberUids = [owner.uid];
 
     await addDoc(projectCollectionRef, {
       name: projectName,
       ownerUid: owner.uid,
-      memberUids: allMemberUids, 
+      memberUids: memberUids, 
       createdAt: new Date().toISOString(),
     });
     

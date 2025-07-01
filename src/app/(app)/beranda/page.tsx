@@ -48,11 +48,12 @@ export default function ProjectHubPage() {
   const { projects, loading, addProject } = useProjects();
   const { user } = useAuth();
   const [isProjectDialogOpen, setProjectDialogOpen] = React.useState(false);
+  const hasProject = projects.length > 0;
 
-  const handleAddProject = async (projectName: string, memberEmails: string[]) => {
+  const handleAddProject = async (projectName: string) => {
     if (!user) return;
     try {
-      await addProject(projectName, memberEmails);
+      await addProject(projectName);
       setProjectDialogOpen(false);
     } catch (e) {
       console.error(e);
@@ -84,13 +85,15 @@ export default function ProjectHubPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <h2 className="text-2xl font-bold tracking-tight">Pusat Proyek</h2>
-          <Button onClick={() => setProjectDialogOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Buat Proyek Baru
-          </Button>
+          {!hasProject && (
+            <Button onClick={() => setProjectDialogOpen(true)}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Buat Proyek Baru
+            </Button>
+          )}
         </div>
 
-        {projects.length > 0 ? (
+        {hasProject ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
               <ProjectCard key={project.id} project={project} />

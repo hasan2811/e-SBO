@@ -38,6 +38,7 @@ export function UserAccountSheet() {
   const [position, setPosition] = React.useState('');
   
   const isLoading = authLoading || projectsLoading;
+  const hasProject = projects.length > 0;
 
   React.useEffect(() => {
     if (userProfile && !isEditing) {
@@ -72,8 +73,8 @@ export function UserAccountSheet() {
     }
   }
 
-  const handleAddProject = async (projectName: string, memberEmails: string[]) => {
-    await addProject(projectName, memberEmails);
+  const handleAddProject = async (projectName: string) => {
+    await addProject(projectName);
     setProjectDialogOpen(false);
   };
 
@@ -134,7 +135,7 @@ export function UserAccountSheet() {
         <SheetHeader className="p-6 pb-4 border-b">
           <SheetTitle>My Account</SheetTitle>
           <SheetDescription>
-            Manage your account settings and project memberships.
+            Manage your account settings and project.
           </SheetDescription>
         </SheetHeader>
         
@@ -182,19 +183,22 @@ export function UserAccountSheet() {
               <Separator />
 
               <div className="space-y-4">
-                <h3 className="font-semibold flex items-center gap-2"><Users className="h-5 w-5 text-muted-foreground"/>My Projects</h3>
-                {projects.length > 0 ? (
+                <h3 className="font-semibold flex items-center gap-2"><Folder className="h-5 w-5 text-muted-foreground"/>My Project</h3>
+                {hasProject ? (
                   <ul className="space-y-2">
                     {projects.map(project => (
                       <li key={project.id} className="text-sm flex items-center gap-3 text-muted-foreground"><Folder className="h-4 w-4 text-primary" />{project.name}</li>
                     ))}
                   </ul>
-                ) : <p className="text-sm text-muted-foreground pl-3">You are not a member of any projects yet.</p>
-                }
-                <Button variant="outline" className="w-full" onClick={() => setProjectDialogOpen(true)}>
-                    <PlusCircle className="mr-2" />
-                    Create New Project
-                </Button>
+                ) : (
+                    <>
+                        <p className="text-sm text-muted-foreground pl-3">You are not in any project yet.</p>
+                        <Button variant="outline" className="w-full" onClick={() => setProjectDialogOpen(true)}>
+                            <PlusCircle className="mr-2" />
+                            Create New Project
+                        </Button>
+                    </>
+                )}
               </div>
 
               <Separator />
