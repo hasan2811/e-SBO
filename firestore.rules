@@ -2,13 +2,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // WARNING: These rules are intentionally permissive for debugging purposes.
-    // Any authenticated user can read and write ANY data.
-    // This is NOT secure for a production environment.
-    
+    // WARNING: These rules are completely open for debugging purposes.
+    // They allow anyone to read and write to your entire database.
+    // Re-secure these rules once the application logic is confirmed to be working.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
