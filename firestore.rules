@@ -2,52 +2,69 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User profiles are readable by any authenticated user, but only writable by the owner
+    match /users/{userId} {
+      allow get: if request.auth != null;
+      allow update: if request.auth.uid == userId;
+    }
 
     // Helper function to check project membership
     function isProjectMember(projectId) {
-      return get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
+      // Use exists() for robustness, then check membership.
+      // This prevents errors if a project document is malformed.
+      return exists(/databases/$(database)/documents/projects/$(projectId)) &&
+             request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
     }
 
-    // Rules for User Profiles
-    match /users/{userId} {
-      // Anyone can view a user's profile (to display names, etc.)
-      allow get: if request.auth != null;
-      // A user can only create and update their own profile
-      allow write: if request.auth.uid == userId;
-    }
-
-    // Rules for Projects
+    // Rules for the 'projects' collection itself
     match /projects/{projectId} {
-      // Allow reading project details only if the user is a member
-      allow get: if request.auth != null && isProjectMember(projectId);
-      // Allow any authenticated user to list projects (for searching)
-      // This is safe as long as the project document itself doesn't contain sensitive data.
+      // Allow a user to query the projects collection.
+      // The query in the app MUST be constrained (e.g., using 'array-contains')
+      // to ensure it only returns documents the user is allowed to 'get'.
       allow list: if request.auth != null;
-      // Allow creating a project if the user is authenticated and is listed as the first member
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.memberUids[0];
-      // Allow updating a project (e.g., adding/removing members) only if the user is the owner
-      allow update: if request.auth != null && resource.data.ownerUid == request.auth.uid;
-      // Allow deleting a project only if the user is the owner
-      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
 
-      // Rules for project-specific sub-collections
-      match /{collection}/{docId} {
-        // Allow full access to project documents if the user is a project member
-        allow read, write: if request.auth != null && isProjectMember(projectId);
-      }
+      // Allow a user to read a specific project document IF they are a member.
+      allow get: if isProjectMember(projectId);
+
+      // Only the owner can create or delete the project document.
+      allow create: if request.resource.data.ownerUid == request.auth.uid;
+      allow delete: if resource.data.ownerUid == request.auth.uid;
+
+      // Only the owner can update the project (e.g., add/remove members).
+      allow update: if resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Rules for sub-collections within a project
+    match /projects/{projectId}/{collection}/{itemId} {
+      // Any member of the project can read or write items within that project.
+      allow read, write: if isProjectMember(projectId);
     }
     
-    // Rules for root collections (Private and Public items)
-    match /{collection}/{docId} {
-      // Allow read access if the item is public, OR if it's private and belongs to the user
-      allow get: if (resource.data.scope == 'public') || (resource.data.scope == 'private' && resource.data.userId == request.auth.uid);
-      // Allow listing public documents for the public feed
-      allow list: if request.query.limit <= 10 && request.query.offset == null && request.resource.data.scope == 'public';
+    // Rules for root collections (private and public items)
+    match /observations/{obsId} {
+      allow get: if resource.data.scope == 'public' || 
+                    (resource.data.scope == 'private' && resource.data.userId == request.auth.uid);
+      allow create: if request.resource.data.userId == request.auth.uid;
+      // Allow the owner of a private doc to update it, 
+      // or allow anyone to update social/sharing fields on any observation.
+      allow update: if (resource.data.scope == 'private' && resource.data.userId == request.auth.uid) ||
+                     (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likeCount', 'isSharedPublicly', 'viewCount']));
+    }
 
-      // Allow creating a document if it's for the logged-in user
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      // Allow updating/deleting if the document belongs to the user
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    match /inspections/{inspId} {
+      // Allow if private and owner
+      allow read, write: if resource.data.scope == 'private' && resource.data.userId == request.auth.uid;
+    }
+
+    match /ptws/{ptwId} {
+      // Allow if private and owner
+      allow read, write: if resource.data.scope == 'private' && resource.data.userId == request.auth.uid;
     }
   }
 }
