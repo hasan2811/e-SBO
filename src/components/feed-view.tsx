@@ -214,16 +214,16 @@ export function FeedView({ mode }: FeedViewProps) {
 
     try {
         // SIMPLIFIED QUERY: This query is guaranteed to work without a composite index.
-        // It filters by one field (`scope`) and orders by another (`__name__`, the default).
-        // Sorting by date will be done on the client-side.
+        // It only filters by 'scope'. Sorting by date is now handled on the client-side.
         let q: Query<DocumentData> = query(
             collection(db, viewType),
             where('scope', '==', 'public'),
-            orderBy('date', 'desc'), // This requires an index. The error message will guide the user.
             limit(PAGE_SIZE)
         );
 
         if (lastVisibleRef.current && !reset) {
+            // We use the document snapshot for pagination.
+            // Firestore will use its internal ordering, which is fine since we sort on the client.
             q = query(q, startAfter(lastVisibleRef.current));
         }
 
@@ -237,16 +237,16 @@ export function FeedView({ mode }: FeedViewProps) {
         lastVisibleRef.current = documentSnapshots.docs[documentSnapshots.docs.length - 1] || null;
         setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
         
-        // Client-side sorting
-        const sortedItems = newItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-        setItems(prevItems => (reset ? sortedItems : [...prevItems, ...sortedItems]));
+        // Append raw results; sorting happens in useMemo to ensure UI is always sorted correctly.
+        setItems(prevItems => (reset ? newItems : [...prevItems, ...newItems]));
 
     } catch (error: any) {
         console.error("Error fetching public items:", error);
         
         if (error.code === 'failed-precondition') {
-            const indexCreationLink = error.message.substring(error.message.indexOf('https://'));
+            const indexCreationLink = error.message.includes('https://') 
+                ? error.message.substring(error.message.indexOf('https://'))
+                : 'Please check your Firebase console for index creation instructions.';
             setFetchError(`Database memerlukan konfigurasi (indeks) untuk menampilkan data ini. Klik link di konsol browser untuk membuatnya: ${indexCreationLink}`);
         } else {
              setFetchError("Gagal memuat data. Periksa koneksi internet Anda dan pastikan aturan keamanan Firestore sudah benar.");
@@ -255,7 +255,7 @@ export function FeedView({ mode }: FeedViewProps) {
     } finally {
         setLoading(false);
     }
-  }, [viewType, toast]);
+  }, [viewType]);
 
   React.useEffect(() => {
     if (mode === 'public') {
@@ -271,19 +271,20 @@ export function FeedView({ mode }: FeedViewProps) {
   const filteredData = React.useMemo(() => {
     let dataToFilter: AllItems[] = [...data];
     
+    // Filter by item type (observation, inspection, ptw)
     dataToFilter = dataToFilter.filter(item => item.itemType === viewType.slice(0, -1));
 
+    // Apply additional filters for personal/project view
     if (mode === 'personal' && viewType === 'observations') {
-        let observationData = dataToFilter as Observation[];
         if (filterType !== 'all' && filterValue !== 'all') {
             const fieldMap = { status: 'status', risk: 'riskLevel', category: 'category' };
             const key = fieldMap[filterType as 'status' | 'risk' | 'category'];
-            observationData = observationData.filter(obs => obs[key as keyof Observation] === filterValue);
+            dataToFilter = (dataToFilter as Observation[]).filter(obs => obs[key as keyof Observation] === filterValue);
         }
-        return observationData;
     }
     
-    return dataToFilter;
+    // Final step: sort all data to be displayed by date, descending.
+    return dataToFilter.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [data, mode, viewType, filterType, filterValue]);
   
   const displayObservation = React.useMemo(() => 
