@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { FolderKanban, PlusCircle, Users, User, ArrowRight, FolderPlus } from 'lucide-react';
 import { ProjectDialog } from '@/components/project-dialog';
 import { useAuth } from '@/hooks/use-auth';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
   return (
@@ -49,7 +48,6 @@ export default function ProjectHubPage() {
   const { projects, loading, addProject } = useProjects();
   const { user } = useAuth();
   const [isProjectDialogOpen, setProjectDialogOpen] = React.useState(false);
-  const hasProject = projects.length > 0;
 
   const handleAddProject = async (projectName: string) => {
     if (!user) return;
@@ -66,7 +64,6 @@ export default function ProjectHubPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-36" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -84,28 +81,11 @@ export default function ProjectHubPage() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="flex items-center">
           <h2 className="text-2xl font-bold tracking-tight">Pusat Proyek</h2>
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <div tabIndex={0}> {/* Wrapper for disabled button tooltip */}
-                            <Button onClick={() => setProjectDialogOpen(true)} disabled={hasProject}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Buat Proyek Baru
-                            </Button>
-                        </div>
-                    </TooltipTrigger>
-                    {hasProject && (
-                        <TooltipContent>
-                            <p>Anda sudah menjadi anggota proyek. Anda hanya dapat bergabung dengan satu proyek.</p>
-                        </TooltipContent>
-                    )}
-                </Tooltip>
-            </TooltipProvider>
         </div>
 
-        {hasProject ? (
+        {projects.length > 0 ? (
           <div className="max-w-md mx-auto">
             {projects.map((project) => (
               <ProjectCard key={project.id} project={project} />
