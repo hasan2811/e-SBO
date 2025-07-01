@@ -57,9 +57,10 @@ interface SubmitObservationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onAddObservation: (observation: Omit<Observation, 'id'>) => Promise<void>;
+  projectId?: string | null;
 }
 
-export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation }: SubmitObservationDialogProps) {
+export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation, projectId }: SubmitObservationDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
@@ -79,7 +80,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       riskLevel: 'Low',
       findings: '',
       recommendation: '',
-      scope: 'private',
+      scope: projectId ? 'project' : 'private',
+      projectId: projectId || undefined,
     },
     mode: 'onChange',
   });
@@ -87,6 +89,26 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
   const scopeValue = useWatch({ control: form.control, name: 'scope' });
   const findingsValue = useWatch({ control: form.control, name: 'findings' });
   const showAiButton = findingsValue && findingsValue.length >= 20;
+
+  React.useEffect(() => {
+    if (isOpen) {
+        const defaultScope = projectId ? 'project' : 'private';
+        form.reset({
+            location: LOCATIONS[0],
+            company: COMPANIES[0],
+            category: 'General',
+            riskLevel: 'Low',
+            findings: '',
+            recommendation: '',
+            scope: defaultScope,
+            projectId: projectId || undefined,
+        });
+        setPhotoPreview(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    }
+  }, [isOpen, projectId, form]);
 
   const handleAiAssist = async () => {
     const findings = form.getValues('findings');
@@ -195,16 +217,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       setUploadProgress(null);
     }
   };
-
-  React.useEffect(() => {
-    if (!isOpen) {
-      form.reset();
-      setPhotoPreview(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  }, [isOpen, form]);
   
   const renderSelectItems = (items: readonly string[]) => {
     return items.map((item) => (
@@ -239,6 +251,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                         onValueChange={field.onChange}
                         value={field.value}
                         className="flex flex-col space-y-2"
+                        disabled={!!projectId}
                       >
                         <FormItem className="flex items-center space-x-3 space-y-0">
                           <FormControl><RadioGroupItem value="private" /></FormControl>
@@ -259,7 +272,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                 )}
               />
 
-              {scopeValue === 'project' && (
+              {scopeValue === 'project' && !projectId && (
                 <FormField
                   control={form.control}
                   name="projectId"

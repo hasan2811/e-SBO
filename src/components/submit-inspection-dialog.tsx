@@ -55,9 +55,10 @@ interface SubmitInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onAddInspection: (inspection: Omit<Inspection, 'id'>) => Promise<void>;
+  projectId?: string | null;
 }
 
-export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }: SubmitInspectionDialogProps) {
+export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection, projectId }: SubmitInspectionDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
@@ -76,12 +77,31 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
       status: INSPECTION_STATUSES[0],
       findings: '',
       recommendation: '',
-      scope: 'private',
+      scope: projectId ? 'project' : 'private',
+      projectId: projectId || undefined,
     },
     mode: 'onChange',
   });
   
   const scopeValue = useWatch({ control: form.control, name: 'scope' });
+
+  React.useEffect(() => {
+    if (isOpen) {
+        const defaultScope = projectId ? 'project' : 'private';
+        form.reset({
+            location: LOCATIONS[0],
+            equipmentName: '',
+            equipmentType: EQUIPMENT_TYPES[0],
+            status: INSPECTION_STATUSES[0],
+            findings: '',
+            recommendation: '',
+            scope: defaultScope,
+            projectId: projectId || undefined,
+        });
+        setPhotoPreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [isOpen, projectId, form]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -139,15 +159,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
       setUploadProgress(null);
     }
   };
-
-  React.useEffect(() => {
-    if (!isOpen) {
-      form.reset();
-      setPhotoPreview(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  }, [isOpen, form]);
-
+  
   const renderSelectItems = (items: readonly string[]) => items.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>);
 
   return (
@@ -171,6 +183,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
                         onValueChange={field.onChange}
                         value={field.value}
                         className="flex flex-col space-y-2"
+                        disabled={!!projectId}
                       >
                         <FormItem className="flex items-center space-x-3 space-y-0">
                           <FormControl><RadioGroupItem value="private" /></FormControl>
@@ -191,7 +204,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
                 )}
               />
               
-              {scopeValue === 'project' && (
+              {scopeValue === 'project' && !projectId && (
                 <FormField
                   control={form.control}
                   name="projectId"

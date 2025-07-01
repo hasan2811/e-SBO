@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MultiActionButton } from '@/components/multi-action-button';
 import { SubmitInspectionDialog } from '@/components/submit-inspection-dialog';
 import { SubmitPtwDialog } from '@/components/submit-ptw-dialog';
+import { useCurrentProject } from '@/hooks/use-current-project';
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -27,6 +28,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isInspectionDialogOpen, setInspectionDialogOpen] = React.useState(false);
   const [isPtwDialogOpen, setPtwDialogOpen] = React.useState(false);
   const [isProfileDialogOpen, setProfileDialogOpen] = React.useState(false);
+
+  const { projectId } = useCurrentProject();
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -107,16 +110,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         isOpen={isObservationDialogOpen}
         onOpenChange={setObservationDialogOpen}
         onAddObservation={handleAddObservation}
+        projectId={projectId}
       />
       <SubmitInspectionDialog
         isOpen={isInspectionDialogOpen}
         onOpenChange={setInspectionDialogOpen}
         onAddInspection={handleAddInspection}
+        projectId={projectId}
       />
       <SubmitPtwDialog
         isOpen={isPtwDialogOpen}
         onOpenChange={setPtwDialogOpen}
         onAddPtw={handleAddPtw}
+        projectId={projectId}
       />
     </>
   );

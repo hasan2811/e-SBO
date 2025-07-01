@@ -50,9 +50,10 @@ interface SubmitPtwDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onAddPtw: (ptw: Omit<Ptw, 'id'>) => Promise<void>;
+  projectId?: string | null;
 }
 
-export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDialogProps) {
+export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw, projectId }: SubmitPtwDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [fileName, setFileName] = React.useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
@@ -68,12 +69,28 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
       location: LOCATIONS[0],
       workDescription: '',
       contractor: '',
-      scope: 'private',
+      scope: projectId ? 'project' : 'private',
+      projectId: projectId || undefined,
     },
     mode: 'onChange',
   });
   
   const scopeValue = useWatch({ control: form.control, name: 'scope' });
+
+  React.useEffect(() => {
+    if (isOpen) {
+        const defaultScope = projectId ? 'project' : 'private';
+        form.reset({
+            location: LOCATIONS[0],
+            workDescription: '',
+            contractor: '',
+            scope: defaultScope,
+            projectId: projectId || undefined,
+        });
+        setFileName(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [isOpen, projectId, form]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -128,14 +145,6 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
     }
   };
 
-  React.useEffect(() => {
-    if (!isOpen) {
-      form.reset();
-      setFileName(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  }, [isOpen, form]);
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[525px] p-0 flex flex-col max-h-[90dvh]">
@@ -157,6 +166,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
                         onValueChange={field.onChange}
                         value={field.value}
                         className="flex flex-col space-y-2"
+                        disabled={!!projectId}
                       >
                         <FormItem className="flex items-center space-x-3 space-y-0">
                           <FormControl><RadioGroupItem value="private" /></FormControl>
@@ -177,7 +187,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
                 )}
               />
               
-              {scopeValue === 'project' && (
+              {scopeValue === 'project' && !projectId && (
                 <FormField
                   control={form.control}
                   name="projectId"

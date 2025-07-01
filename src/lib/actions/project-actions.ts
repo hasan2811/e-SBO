@@ -2,9 +2,9 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, limit, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
-import type { UserProfile } from '@/lib/types';
+import type { Project, UserProfile } from '@/lib/types';
 
 /**
  * Server action to create a new project.
@@ -60,5 +60,51 @@ export async function createProject(
     }
     
     return { success: false, message: `Project creation failed: ${errorMessage}` };
+  }
+}
+
+
+/**
+ * Server action to delete a project.
+ * Only the project owner can perform this action.
+ * @param projectId The ID of the project to delete.
+ * @param userId The UID of the user requesting the deletion.
+ * @returns An object with success status and a message.
+ */
+export async function deleteProject(
+  projectId: string,
+  userId: string
+): Promise<{ success: boolean; message: string }> {
+  if (!projectId || !userId) {
+    return { success: false, message: 'Project ID and User ID are required.' };
+  }
+
+  try {
+    const projectRef = doc(db, 'projects', projectId);
+    const projectSnap = await getDoc(projectRef);
+
+    if (!projectSnap.exists()) {
+      return { success: false, message: 'Project not found.' };
+    }
+
+    const project = projectSnap.data() as Project;
+
+    if (project.ownerUid !== userId) {
+      return { success: false, message: 'Permission denied. Only the project owner can delete this project.' };
+    }
+
+    // TODO: In a real-world scenario, you would also delete all sub-collections
+    // (observations, inspections, ptws) associated with this project.
+    // This typically requires a Cloud Function for reliable cascading deletes.
+    // For this implementation, we will only delete the main project document.
+    await deleteDoc(projectRef);
+
+    revalidatePath('/beranda');
+
+    return { success: true, message: 'Project has been deleted successfully.' };
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false, message: `Project deletion failed: ${errorMessage}` };
   }
 }
