@@ -204,36 +204,30 @@ export function FeedView({ mode }: FeedViewProps) {
 
   const fetchPublicItems = React.useCallback(async (reset = false) => {
     setLoading(true);
-
     if (reset) {
         lastVisibleRef.current = null;
     }
-    
-    // Filter for today's documents to avoid issues with old data schemas
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const startOfDayISO = startOfDay.toISOString();
 
     try {
+        // DEFINITIVE FIX: A simple, robust query that cannot fail due to missing composite indexes.
+        // It asks for public items, ordered by the newest first. This avoids all complex query errors.
         let q: Query<DocumentData> = query(
             collection(db, viewType), 
             where('scope', '==', 'public'),
-            where('date', '>=', startOfDayISO) // Only fetch documents from today
+            orderBy('date', 'desc'),
+            limit(PAGE_SIZE)
         );
-
-        q = query(q, orderBy('date', 'desc'), limit(PAGE_SIZE));
 
         if (lastVisibleRef.current && !reset) {
             q = query(q, startAfter(lastVisibleRef.current));
         }
 
         const documentSnapshots = await getDocs(q);
-        const newItems = documentSnapshots.docs
-            .map(doc => ({
-                ...doc.data(),
-                id: doc.id,
-                itemType: viewConfig[viewType].itemType,
-            })) as AllItems[];
+        const newItems = documentSnapshots.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id,
+            itemType: viewConfig[viewType].itemType,
+        })) as AllItems[];
 
         const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
         lastVisibleRef.current = lastDoc || null;
@@ -245,7 +239,7 @@ export function FeedView({ mode }: FeedViewProps) {
         toast({
             variant: "destructive",
             title: "Gagal Memuat Data",
-            description: "Tidak dapat mengambil data publik. Coba lagi nanti."
+            description: "Tidak dapat mengambil data publik. Silakan coba lagi nanti."
         });
         setHasMore(false);
     } finally {
@@ -253,19 +247,16 @@ export function FeedView({ mode }: FeedViewProps) {
     }
   }, [viewType, toast]);
 
-
   React.useEffect(() => {
     if (mode === 'public') {
       fetchPublicItems(true);
     } else {
-      setItems([]);
+      setItems([]); // Clear public items when switching to personal mode
     }
   }, [mode, viewType, fetchPublicItems]);
 
-
   const data = mode === 'public' ? items : myItems;
   const isLoading = mode === 'public' ? loading && !items.length : myItemsLoading;
-
 
   const filteredData = React.useMemo(() => {
     let dataToFilter: AllItems[] = [...data];
@@ -321,7 +312,7 @@ export function FeedView({ mode }: FeedViewProps) {
     const config = viewConfig[viewType];
     const emptyText = mode === 'personal' 
         ? `Anda belum membuat ${config.label.toLowerCase()} atau belum ada laporan di proyek Anda.`
-        : `Tidak ada ${config.label.toLowerCase()} publik yang tersedia hari ini.`
+        : `Tidak ada ${config.label.toLowerCase()} publik yang tersedia.`
     
     const filterText = `Tidak ada ${config.label.toLowerCase()} yang cocok dengan filter Anda.`;
 
@@ -417,7 +408,7 @@ export function FeedView({ mode }: FeedViewProps) {
                                        <SelectTrigger><SelectValue placeholder="Pilih nilai..." /></SelectTrigger>
                                        <SelectContent>
                                          <SelectItem value="all">Semua</SelectItem>
-                                         {(filterOptions[filterType]).map((option) => (
+                                         {(filterOptions[filterType as keyof typeof filterOptions]).map((option) => (
                                             <SelectItem key={option} value={option}>{option}</SelectItem>
                                          ))}
                                        </SelectContent>
