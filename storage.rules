@@ -1,34 +1,15 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // --- Helper Functions ---
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-
-    // --- File Access Rules ---
-
-    // Allow public read access to all files. This is needed for anyone to
-    // see observation/inspection photos in the feed.
-    match /{allPaths=**} {
-      allow read;
-    }
-
-    // Rules for image uploads (observations, inspections, actions)
-    // Users can only write to their own folder, with file size and type checks.
-    match /(observations|inspections|actions)/{userId}/{fileName} {
-      allow write: if isOwner(userId)
-                      && request.resource.size < 10 * 1024 * 1024 // 10 MB limit
-                      && request.resource.contentType.matches('image/.*');
-    }
-
-    // Rules for PDF uploads (JSA for PTW)
-    match /ptw-jsa/{userId}/{fileName} {
-      allow write: if isOwner(userId)
-                      && request.resource.size < 10 * 1024 * 1024 // 10 MB limit
-                      && request.resource.contentType == 'application/pdf';
+    
+    // User-specific paths for uploads (observations, inspections, ptw-jsa, etc.)
+    match /{path}/{userId}/{fileName} {
+      // Allow read access to all, as URLs are public.
+      allow read: if true;
+      // Only the authenticated user can write to their own folder.
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

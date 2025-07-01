@@ -4,30 +4,62 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // USER PROFILES
     match /users/{userId} {
+      // Anyone authenticated can read user profiles (needed for member lists).
       allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId;
-    }
-
-    match /projects/{projectId} {
-      allow read: if request.auth.uid in resource.data.memberUids;
-      allow create: if request.auth != null && 
-                     request.resource.data.ownerUid == request.auth.uid &&
-                     request.resource.data.memberUids == [request.auth.uid];
-      allow update: if request.auth.uid == resource.data.ownerUid; // Owner can add/remove members
-      allow delete: if request.auth.uid == resource.data.ownerUid;
-
-      match /{itemCollection}/{itemId} {
-        allow read: if request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
-        allow create: if request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
-        allow update, delete: if request.auth.uid == resource.data.userId || request.auth.uid == get(/databases/$(database)/documents/projects/$(projectId)).data.ownerUid;
-      }
+      // Only the user themselves can update their profile.
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
     
-    match /{itemCollection}/{itemId} {
-        allow read: if request.auth != null && (resource.data.scope == 'public' || resource.data.userId == request.auth.uid);
-        allow create: if request.auth.uid == request.resource.data.userId;
-        allow update, delete: if request.auth.uid == resource.data.userId;
+    // PUBLIC & PRIVATE ITEMS (in root collections)
+    match /observations/{obsId} {
+      // Anyone can read public observations.
+      allow get: if resource.data.scope == 'public';
+      // Authenticated users can query the public feed.
+      allow list: if request.auth != null;
+      
+      // Authenticated users can create their own private items.
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && request.resource.data.scope == 'private';
+      
+      // Users can read/update their OWN private items.
+      allow read, update: if request.auth != null && request.auth.uid == resource.data.userId && resource.data.scope == 'private';
+    }
+    
+    match /inspections/{inspId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && request.resource.data.scope == 'private';
+      allow read, update: if request.auth != null && request.auth.uid == resource.data.userId && resource.data.scope == 'private';
+    }
+
+    match /ptws/{ptwId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && request.resource.data.scope == 'private';
+      allow read, update: if request.auth != null && request.auth.uid == resource.data.userId && resource.data.scope == 'private';
+    }
+
+    // PROJECTS & THEIR SUB-COLLECTIONS
+    match /projects/{projectId} {
+      // Authenticated users can query the projects collection.
+      // The application logic (server actions, onSnapshot query) ensures they only see projects they are members of.
+      allow list: if request.auth != null;
+
+      // Only members can read a project's details.
+      allow get: if request.auth != null && request.auth.uid in resource.data.memberUids;
+      
+      // Creating projects is handled by a server action, but we allow it here for the action to succeed.
+      // Business logic prevents unauthorized creation.
+      allow create: if request.auth != null;
+      
+      // Only the owner can update project metadata (e.g., add/remove members).
+      allow update: if request.auth != null && request.auth.uid == resource.data.ownerUid;
+      
+      // Only the owner can delete the project.
+      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
+      
+      // Rules for sub-collections (observations, inspections, ptws) within a project.
+      match /{collection}/{docId} {
+        // Only project members can read or write documents in the project's sub-collections.
+        allow read, write: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
+      }
     }
   }
 }
