@@ -51,12 +51,13 @@ const ObservationContext = React.createContext<
 
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const { projects, loading: projectsLoading } = useProjects();
     
     const [privateItems, setPrivateItems] = React.useState<AllItems[]>([]);
     const [projectItems, setProjectItems] = React.useState<AllItems[]>([]);
-    const [loading, setLoading] = React.useState(true);
+    const [privateItemsLoading, setPrivateItemsLoading] = React.useState(true);
+    const [projectItemsLoading, setProjectItemsLoading] = React.useState(true);
 
     const collectionsToWatch: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
     
@@ -72,20 +73,20 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         return doc(db, itemTypePlural, item.id);
     };
 
-    // Effect for Private Items
+    // Effect for Private Items - with accurate loading state
     React.useEffect(() => {
         if (!user) {
             setPrivateItems([]);
-            setLoading(false);
+            setPrivateItemsLoading(false);
             return;
         }
 
-        setLoading(true);
+        setPrivateItemsLoading(true);
         const privateListeners: Unsubscribe[] = [];
 
         collectionsToWatch.forEach(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-            const q = query(collection(db, colName), where('userId', '==', user.uid), where('projectId', '==', null));
+            const q = query(collection(db, colName), where('userId', '==', user.uid), where('scope', '==', 'private'));
             
             const unsub = onSnapshot(q, (snapshot) => {
                 setPrivateItems(prev => {
@@ -99,31 +100,34 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                     });
                     return sortItemsByDate(Array.from(newItemsMap.values()));
                 });
-            }, e => console.error(`Error fetching private ${colName}:`, e));
+                setPrivateItemsLoading(false);
+            }, e => {
+                console.error(`Error fetching private ${colName}:`, e);
+                setPrivateItemsLoading(false);
+            });
             privateListeners.push(unsub);
         });
-        
-        // This timeout helps manage the initial loading state
-        const loadingTimeout = setTimeout(() => setLoading(false), 2500);
 
         return () => {
             privateListeners.forEach(unsub => unsub());
-            clearTimeout(loadingTimeout);
         };
     }, [user]);
 
-    // Effect for Project Items
+    // Effect for Project Items - with accurate loading state
     React.useEffect(() => {
         if (!user || projectsLoading) {
             setProjectItems([]);
+            setProjectItemsLoading(true); 
             return;
         }
         
         if (projects.length === 0) {
-            setProjectItems([]); // Clear if user is not in any projects
+            setProjectItems([]);
+            setProjectItemsLoading(false);
             return;
         }
 
+        setProjectItemsLoading(true);
         const projectListeners: Unsubscribe[] = [];
         
         projects.forEach(project => {
@@ -144,7 +148,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                          });
                          return sortItemsByDate(Array.from(newItemsMap.values()));
                     });
-                }, e => console.error(`Error fetching from project ${project.id}/${colName}:`, e));
+                    setProjectItemsLoading(false); 
+                }, e => {
+                    console.error(`Error fetching from project ${project.id}/${colName}:`, e);
+                    setProjectItemsLoading(false);
+                });
                 projectListeners.push(unsub);
             });
         });
@@ -288,7 +296,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
     }, [_runObservationAiAnalysis, _runInspectionAiAnalysis]);
 
-    const value = { privateItems, projectItems, loading: loading || projectsLoading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
+    const value = { privateItems, projectItems, loading: authLoading || projectsLoading || privateItemsLoading || projectItemsLoading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis };
 
     return (
         <ObservationContext.Provider value={value}>
