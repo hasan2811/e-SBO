@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 
 // Simplified schema: only project name is required now.
@@ -50,14 +50,10 @@ export function ProjectDialog({ isOpen, onOpenChange, onAddProject }: ProjectDia
     try {
       // Call the simplified onAddProject function.
       await onAddProject(values.name);
-      onOpenChange(false);
+      // No need to call onOpenChange(false) here, it's handled in the parent component on success.
     } catch (error) {
       console.error('Failed to create project:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Creation Failed',
-        description: 'Could not create the project. Please try again.',
-      });
+      // Toast is now handled by the parent hook, which gets the error message from the server action.
     } finally {
       setIsSubmitting(false);
     }

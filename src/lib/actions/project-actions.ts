@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, limit } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { UserProfile } from '@/lib/types';
 
@@ -10,6 +10,7 @@ import type { UserProfile } from '@/lib/types';
  * Server action to create a new project.
  * This is now simplified and more secure. It only takes the project name
  * and automatically sets the creator as the sole owner and member.
+ * It also enforces the "one project per user" rule.
  * @param owner - The user object of the project creator.
  * @param projectName - The name of the new project.
  * @returns An object with success status and a message.
@@ -24,7 +25,19 @@ export async function createProject(
   
   try {
     const projectCollectionRef = collection(db, 'projects');
+
+    // Enforce the "one project per user" rule.
+    const existingProjectQuery = query(
+        projectCollectionRef, 
+        where('memberUids', 'array-contains', owner.uid),
+        limit(1)
+    );
+    const existingProjectSnapshot = await getDocs(existingProjectQuery);
     
+    if (!existingProjectSnapshot.empty) {
+        return { success: false, message: 'Action failed: A user can only be a member of one project at a time.' };
+    }
+
     // The new project document. memberUids now only contains the creator's UID.
     await addDoc(projectCollectionRef, {
       name: projectName,

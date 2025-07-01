@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { FolderKanban, PlusCircle, Users, User, ArrowRight, FolderPlus } from 'lucide-react';
 import { ProjectDialog } from '@/components/project-dialog';
 import { useAuth } from '@/hooks/use-auth';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
   return (
@@ -49,6 +50,8 @@ export default function ProjectHubPage() {
   const { user } = useAuth();
   const [isProjectDialogOpen, setProjectDialogOpen] = React.useState(false);
 
+  const canCreateProject = projects.length === 0;
+
   const handleAddProject = async (projectName: string) => {
     if (!user) return;
     try {
@@ -85,10 +88,23 @@ export default function ProjectHubPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <h2 className="text-2xl font-bold tracking-tight">Pusat Proyek</h2>
-          <Button onClick={() => setProjectDialogOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Buat Proyek Baru
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-block">
+                  <Button onClick={() => setProjectDialogOpen(true)} disabled={!canCreateProject}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Buat Proyek Baru
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              {!canCreateProject && (
+                <TooltipContent>
+                  <p>Anda hanya dapat menjadi anggota dari satu proyek.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {projects.length > 0 ? (
