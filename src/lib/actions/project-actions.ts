@@ -261,3 +261,75 @@ export async function leaveProject(
     return { success: false, message: error instanceof Error ? error.message : 'An unknown error occurred.' };
   }
 }
+
+/**
+ * Searches for projects by name.
+ * This is a basic starts-with search.
+ * @param searchTerm The name of the project to search for.
+ * @returns A promise that resolves to an array of project objects with id and name.
+ */
+export async function findProjectsByName(
+    searchTerm: string
+): Promise<{ id: string; name: string }[]> {
+    if (!searchTerm || searchTerm.trim().length < 3) {
+        return [];
+    }
+    const projectsRef = collection(db, 'projects');
+    const q = query(
+        projectsRef,
+        where('name', '>=', searchTerm),
+        where('name', '<=', searchTerm + '\uf8ff'),
+        limit(10)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+        return [];
+    }
+    return snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name as string }));
+}
+
+/**
+ * Allows a user to join an existing project.
+ * Enforces the rule that a user can only be in one project.
+ * @param projectId The ID of the project to join.
+ * @param userId The UID of the user joining.
+ * @returns An object with success status and a message.
+ */
+export async function joinProject(
+  projectId: string,
+  userId: string,
+): Promise<{ success: boolean; message: string }> {
+    if (!projectId || !userId) {
+        return { success: false, message: 'Project ID and User ID are required.' };
+    }
+
+    try {
+        // STRICT RULE: Check if the user is already a member of ANY project.
+        const projectsCollectionRef = collection(db, 'projects');
+        const existingProjectQuery = query(
+            projectsCollectionRef,
+            where('memberUids', 'array-contains', userId),
+            limit(1)
+        );
+        const existingProjectSnapshot = await getDocs(existingProjectQuery);
+        if (!existingProjectSnapshot.empty) {
+            const existingProjectName = existingProjectSnapshot.docs[0].data().name;
+            return { success: false, message: `Join failed: You are already a member of project "${existingProjectName}".` };
+        }
+
+        const projectRef = doc(db, 'projects', projectId);
+        
+        await updateDoc(projectRef, {
+            memberUids: arrayUnion(userId)
+        });
+
+        revalidatePath('/beranda');
+        revalidatePath(`/proyek/${projectId}`);
+
+        return { success: true, message: 'Successfully joined the project!' };
+
+    } catch (error) {
+        console.error("Error joining project:", error);
+        return { success: false, message: error instanceof Error ? error.message : "An unknown error occurred." };
+    }
+}

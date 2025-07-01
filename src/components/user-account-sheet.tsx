@@ -15,7 +15,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { useAuth } from '@/hooks/use-auth';
-import { LogOut, UserCircle, Loader2, Edit, PlusCircle, Folder, Users } from 'lucide-react';
+import { LogOut, UserCircle, Loader2, Edit, PlusCircle, Folder, LogIn } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 import { useProjects } from '@/hooks/use-projects';
 import { ProjectDialog } from './project-dialog';
+import { JoinProjectDialog } from './join-project-dialog';
 
 export function UserAccountSheet() {
   const { user, userProfile, loading: authLoading, logout, updateUserProfile } = useAuth();
@@ -33,6 +34,7 @@ export function UserAccountSheet() {
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isProjectDialogOpen, setProjectDialogOpen] = React.useState(false);
+  const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
 
   const [displayName, setDisplayName] = React.useState('');
   const [position, setPosition] = React.useState('');
@@ -201,10 +203,16 @@ export function UserAccountSheet() {
                 ) : (
                     <>
                         <p className="text-sm text-muted-foreground pl-3">You are not in any project yet.</p>
-                        <Button variant="outline" className="w-full" onClick={() => setProjectDialogOpen(true)}>
-                            <PlusCircle className="mr-2" />
-                            Create New Project
-                        </Button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button variant="outline" className="w-full" onClick={() => { setProjectDialogOpen(true); setIsSheetOpen(false); }}>
+                              <PlusCircle className="mr-2" />
+                              Create
+                          </Button>
+                          <Button variant="outline" className="w-full" onClick={() => { setJoinDialogOpen(true); setIsSheetOpen(false); }}>
+                              <LogIn className="mr-2" />
+                              Join
+                          </Button>
+                        </div>
                     </>
                 )}
               </div>
@@ -247,6 +255,10 @@ export function UserAccountSheet() {
         isOpen={isProjectDialogOpen}
         onOpenChange={setProjectDialogOpen}
         onAddProject={handleAddProject}
+    />
+    <JoinProjectDialog 
+      isOpen={isJoinDialogOpen}
+      onOpenChange={setJoinDialogOpen}
     />
     </>
   );

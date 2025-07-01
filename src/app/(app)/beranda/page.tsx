@@ -7,9 +7,10 @@ import { useProjects } from '@/hooks/use-projects';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { FolderKanban, PlusCircle, Users, User, ArrowRight, FolderPlus } from 'lucide-react';
+import { FolderKanban, PlusCircle, Users, User, ArrowRight, FolderPlus, LogIn } from 'lucide-react';
 import { ProjectDialog } from '@/components/project-dialog';
 import { useAuth } from '@/hooks/use-auth';
+import { JoinProjectDialog } from '@/components/join-project-dialog';
 
 function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
   return (
@@ -48,6 +49,7 @@ export default function ProjectHubPage() {
   const { projects, loading, addProject } = useProjects();
   const { user } = useAuth();
   const [isProjectDialogOpen, setProjectDialogOpen] = React.useState(false);
+  const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
 
   const handleAddProject = async (projectName: string) => {
     if (!user) return;
@@ -86,7 +88,7 @@ export default function ProjectHubPage() {
         </div>
 
         {projects.length > 0 ? (
-          <div className="max-w-md mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
@@ -94,14 +96,20 @@ export default function ProjectHubPage() {
         ) : (
           <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-card p-8 rounded-lg">
             <FolderPlus className="h-16 w-16 text-muted-foreground" />
-            <h3 className="mt-4 text-2xl font-bold">Mulai dengan Proyek Pertama Anda</h3>
+            <h3 className="mt-4 text-2xl font-bold">Mulai Perjalanan Anda</h3>
             <p className="mt-2 max-w-md text-muted-foreground">
-              Buat proyek untuk berkolaborasi dengan tim Anda dan lacak semua laporan di satu tempat terpusat.
+              Buat proyek baru untuk berkolaborasi dengan tim Anda, atau bergabunglah dengan proyek yang sudah ada.
             </p>
-            <Button className="mt-6" onClick={() => setProjectDialogOpen(true)}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Buat Proyek Baru
-            </Button>
+            <div className="flex flex-wrap justify-center gap-4 mt-6">
+              <Button onClick={() => setProjectDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Buat Proyek
+              </Button>
+              <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
+                <LogIn className="mr-2 h-4 w-4" />
+                Gabung Proyek
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -110,6 +118,10 @@ export default function ProjectHubPage() {
         isOpen={isProjectDialogOpen}
         onOpenChange={setProjectDialogOpen}
         onAddProject={handleAddProject}
+      />
+      <JoinProjectDialog
+        isOpen={isJoinDialogOpen}
+        onOpenChange={setJoinDialogOpen}
       />
     </>
   );
