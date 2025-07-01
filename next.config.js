@@ -1,3 +1,4 @@
+
 /** @type {import('next').NextConfig} */
 
 const withPWA = require('@ducanh2912/next-pwa').default({
@@ -108,7 +109,6 @@ const nextConfig = {
       config.resolve.alias['@google-cloud/firestore'] = false;
       config.resolve.alias['@opentelemetry/exporter-jaeger'] = false;
       config.resolve.alias['@opentelemetry/sdk-node'] = false;
-      config.resolve.alias['handlebars'] = false;
     }
     return config
   }
