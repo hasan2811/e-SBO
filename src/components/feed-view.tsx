@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Search, Globe } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Search, Globe, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -89,45 +89,46 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
                 )}
               </div>
       
-              <div className="flex-1 flex flex-col justify-between self-stretch">
-                <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                        {mode === 'public' ? (
-                            <p className="text-xs text-primary font-semibold">{observation.category}</p>
-                        ) : (
-                             <p className="text-xs text-muted-foreground font-semibold">{observation.location} • {observation.category}</p>
+              <div className="flex-1">
+                <div className="flex justify-between items-start">
+                    <p className="text-xs text-primary font-semibold">{observation.category}</p>
+                    <div className="flex items-center gap-2">
+                        {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
+                            <div title={`Observer Rating: ${observation.aiObserverSkillRating}/5`}>
+                                <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
+                            </div>
                         )}
-                        <div className="flex items-center gap-2">
-                            {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
-                                <div title={`Observer Rating: ${observation.aiObserverSkillRating}/5`}>
-                                    <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
-                                </div>
-                            )}
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <StatusIcon className={cn("h-4 w-4", statusClassName)} />
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>{statusLabel}</p></TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </div>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <StatusIcon className={cn("h-4 w-4", statusClassName)} />
+                                </TooltipTrigger>
+                                <TooltipContent><p>{statusLabel}</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
-                    <p className="font-semibold leading-snug line-clamp-2 mt-0.5">{observation.findings}</p>
                 </div>
-                
-                <div className="flex justify-between items-end text-xs text-muted-foreground mt-1">
-                    {mode === 'public' && observation.sharedBy ? (
-                        <div className="flex items-center gap-1.5">
-                          <Share2 className="h-3 w-3 flex-shrink-0"/>
-                          <span className="truncate">
-                              Oleh <strong>{observation.sharedBy.split(' ')[0]}</strong>
-                          </span>
-                        </div>
-                    ) : (
-                        <span className="truncate">{observation.company}</span>
-                    )}
-                    <span>{format(new Date(observation.date), 'd MMM yy, HH:mm')}</span>
+                <p className="font-semibold leading-snug line-clamp-2 mt-0.5">{observation.findings}</p>
+                <div className="flex justify-between items-end text-xs text-muted-foreground mt-2">
+                    <div className="truncate pr-2">
+                         {mode === 'public' ? (
+                            observation.sharedBy ? (
+                                <>
+                                    <Share2 className="inline-block h-3 w-3 mr-1.5 align-middle text-primary"/>
+                                    <span className="align-middle">
+                                        Oleh <strong>{observation.sharedBy.split(' ')[0]}</strong>
+                                    </span>
+                                </>
+                            ) : <span />
+                        ) : (
+                            <>
+                                <span className="font-medium">{observation.company}</span>
+                                <span className="mx-1">&bull;</span>
+                                <span>{observation.location}</span>
+                            </>
+                        )}
+                    </div>
+                    <span className="flex-shrink-0">{format(new Date(observation.date), 'd MMM yy')}</span>
                 </div>
               </div>
           </div>

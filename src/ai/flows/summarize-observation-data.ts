@@ -19,8 +19,34 @@ import {
     AnalyzeInspectionInput,
     AnalyzeInspectionInputSchema,
     AnalyzeInspectionOutput,
-    AnalyzeInspectionOutputSchema
+    AnalyzeInspectionOutputSchema,
+    RiskLevel
 } from '@/lib/types';
+
+/**
+ * Finds the best match for a given value from a list of options, or returns a default.
+ * It's case-insensitive and checks for partial matches.
+ * @param value The string value to match.
+ * @param options The list of valid options.
+ * @param defaultValue The default value to return if no match is found.
+ * @returns The best matching option or the default value.
+ */
+function findClosestMatch<T extends string>(value: string | undefined, options: readonly T[], defaultValue: T): T {
+    if (!value) return defaultValue;
+
+    const lowerValue = value.toLowerCase().trim();
+    
+    // First, try for an exact match (case-insensitive)
+    const exactMatch = options.find(opt => opt.toLowerCase() === lowerValue);
+    if (exactMatch) return exactMatch;
+
+    // Next, try to see if the value contains one of the options
+    const partialMatch = options.find(opt => lowerValue.includes(opt.toLowerCase()));
+    if (partialMatch) return partialMatch;
+
+    return defaultValue;
+}
+
 
 // =================================================================================
 // 1. OBSERVATION ANALYSIS FLOW
@@ -66,11 +92,18 @@ const summarizeObservationDataFlow = ai.defineFlow(
   },
   async (input) => {
     const response = await summarizeObservationPrompt(input);
-    const output = response.output;
+    let output = response.output;
 
     if (!output) {
       throw new Error('AI analysis returned no structured output for observation.');
     }
+
+    // Sanitize the output to prevent errors from minor AI deviations.
+    output = {
+      ...output,
+      suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
+    };
+    
     return output;
   }
 );
