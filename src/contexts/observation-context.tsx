@@ -66,6 +66,7 @@ const getDocRef = (item: AllItems): DocumentReference => {
     if (item.scope === 'project' && item.projectId) {
         return doc(db, 'projects', item.projectId, collectionName, item.id);
     }
+    // For private items, which are at the root
     return doc(db, collectionName, item.id);
 };
 
@@ -122,43 +123,53 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         };
     }, [user]);
 
-    // Listener for project items
+    // Listener for ALL project items
     React.useEffect(() => {
         if (projectsLoading || projects.length === 0) {
             setProjectItems([]);
-            setProjectItemsLoading(projects.length > 0);
+            setProjectItemsLoading(false); // If no projects, not loading.
             return;
         }
         
         setProjectItemsLoading(true);
-        const project = projects[0];
-        
-        const projectObsQuery = query(collection(db, 'projects', project.id, 'observations'));
-        const projectInspectionsQuery = query(collection(db, 'projects', project.id, 'inspections'));
-        const projectPtwQuery = query(collection(db, 'projects', project.id, 'ptws'));
+        // Use a map to store items from different listeners to avoid race conditions
+        const listenerData = new Map<string, AllItems[]>();
 
-        const unsubs: Unsubscribe[] = [];
-        let combinedProjectItems: AllItems[] = [];
+        const allUnsubs = projects.flatMap(project => {
+            const itemTypes: ('observation' | 'inspection' | 'ptw')[] = ['observation', 'inspection', 'ptw'];
+            
+            return itemTypes.map(itemType => {
+                const collectionName = `${itemType}s`;
+                const q = query(collection(db, 'projects', project.id, collectionName));
+                const listenerId = `${project.id}-${collectionName}`;
 
-        const updateProjectItems = () => {
-            setProjectItems(sortItemsByDate(combinedProjectItems));
+                return onSnapshot(q, (snapshot) => {
+                    const items = snapshot.docs.map(doc => ({
+                        ...(doc.data() as any),
+                        id: doc.id,
+                        itemType: itemType
+                    })) as AllItems[];
+                    
+                    listenerData.set(listenerId, items);
+
+                    // Combine all data from the map into a single flat array
+                    const combinedItems = Array.from(listenerData.values()).flat();
+                    setProjectItems(sortItemsByDate(combinedItems));
+                    setProjectItemsLoading(false);
+                }, (error) => {
+                    console.error(`Error fetching ${collectionName} for project ${project.id}:`, error);
+                    listenerData.set(listenerId, []); // Clear data on error
+                    const combinedItems = Array.from(listenerData.values()).flat();
+                    setProjectItems(sortItemsByDate(combinedItems));
+                    setProjectItemsLoading(false);
+                });
+            });
+        });
+
+        // Cleanup function to unsubscribe from all listeners
+        return () => {
+            allUnsubs.forEach(unsub => unsub());
         };
-
-        const createSnapshotListener = (q: any, itemType: 'observation' | 'inspection' | 'ptw') => {
-            return onSnapshot(q, (snap) => {
-                const items = snap.docs.map(d => ({...d.data(), id: d.id, itemType })) as AllItems[];
-                combinedProjectItems = [...combinedProjectItems.filter(i => i.itemType !== itemType), ...items];
-                updateProjectItems();
-                setProjectItemsLoading(false);
-            }, () => setProjectItemsLoading(false));
-        };
-        
-        unsubs.push(createSnapshotListener(projectObsQuery, 'observation'));
-        unsubs.push(createSnapshotListener(projectInspectionsQuery, 'inspection'));
-        unsubs.push(createSnapshotListener(projectPtwQuery, 'ptw'));
-        
-        return () => unsubs.forEach(unsub => unsub());
-
     }, [projects, projectsLoading]);
     
     const _runObservationAiAnalysis = React.useCallback(async (observation: Observation) => {
