@@ -11,9 +11,8 @@ import {
   addDoc,
   where,
   Unsubscribe,
-  QuerySnapshot,
-  DocumentReference,
   CollectionReference,
+  DocumentReference,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw, AllItems } from '@/lib/types';
@@ -67,17 +66,14 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
     const getDocRef = (item: AllItems): DocumentReference => {
         const itemTypePlural = `${item.itemType}s` as 'observations' | 'inspections' | 'ptws';
-        if (item.scope === 'project' && item.projectId) {
+        if (item.projectId) {
             return doc(db, 'projects', item.projectId, itemTypePlural, item.id);
         }
         return doc(db, itemTypePlural, item.id);
     };
 
-    // Listener for "My Items" (Personal & Project-based data).
-    // This is now simplified to ONLY listen to project data. Private, non-project items are no longer fetched here.
     React.useEffect(() => {
-        if (projectsLoading) return; 
-        if (!user || projects.length === 0) {
+        if (!user) {
             setMyItems([]);
             setMyItemsLoading(false);
             return;
@@ -86,58 +82,61 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         setMyItemsLoading(true);
         const itemMap = new Map<string, AllItems>();
         const allUnsubs: Unsubscribe[] = [];
-        
-        let listenerCount = projects.length * collectionsToWatch.length;
-        let loadedListenerCount = 0;
 
-        const processAndSort = (isInitial: boolean) => {
-             setMyItems(sortItemsByDate(Array.from(itemMap.values())));
-             if(isInitial) {
-                loadedListenerCount++;
-                if(loadedListenerCount >= listenerCount) {
-                    setMyItemsLoading(false);
+        const processSnapshot = (snapshot: any, itemType: 'observation' | 'inspection' | 'ptw', isProject: boolean, projectId?: string) => {
+            snapshot.docChanges().forEach((change: any) => {
+                const docId = change.doc.id;
+                const key = projectId ? `${projectId}-${docId}` : docId;
+
+                if (change.type === 'removed') {
+                    itemMap.delete(key);
+                } else {
+                    itemMap.set(key, {
+                        ...change.doc.data(),
+                        id: docId,
+                        itemType,
+                        scope: isProject ? 'project' : change.doc.data().scope,
+                        projectId: projectId || null,
+                    } as AllItems);
                 }
-             }
-        }
-
-        projects.forEach(project => {
-            collectionsToWatch.forEach(colName => {
-                const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
-                const projectItemsQuery = query(collection(db, 'projects', project.id, colName));
-                let isInitial = true;
-                
-                const unsub = onSnapshot(projectItemsQuery, (snapshot) => {
-                     snapshot.docChanges().forEach((change) => {
-                        const docId = change.doc.id;
-                        if (change.type === 'removed') {
-                            itemMap.delete(docId);
-                        } else {
-                            itemMap.set(docId, {
-                                ...change.doc.data(),
-                                id: docId,
-                                itemType,
-                                scope: 'project',
-                                projectId: project.id,
-                            } as AllItems);
-                        }
-                    });
-                    processAndSort(isInitial);
-                    isInitial = false;
-                }, (e) => {
-                    console.error(`Error fetching from project ${project.id}/${colName}: `, e);
-                    processAndSort(isInitial);
-                    isInitial = false;
-                });
-                allUnsubs.push(unsub);
             });
+            setMyItems(sortItemsByDate(Array.from(itemMap.values())));
+        };
+        
+        // Listen to top-level collections for user's private, non-project items
+        collectionsToWatch.forEach(colName => {
+            const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
+            const userItemsQuery = query(collection(db, colName), where('userId', '==', user.uid), where('projectId', '==', null));
+            const unsub = onSnapshot(userItemsQuery, (snapshot) => {
+                processSnapshot(snapshot, itemType, false);
+            }, (e) => console.error(`Error fetching user ${colName}:`, e));
+            allUnsubs.push(unsub);
         });
 
-        if (listenerCount === 0) {
-            setMyItemsLoading(false);
+        // Listen to project sub-collections
+        if (!projectsLoading && projects.length > 0) {
+            projects.forEach(project => {
+                collectionsToWatch.forEach(colName => {
+                    const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
+                    const projectItemsQuery = query(collection(db, 'projects', project.id, colName));
+                    
+                    const unsub = onSnapshot(projectItemsQuery, (snapshot) => {
+                         processSnapshot(snapshot, itemType, true, project.id);
+                    }, (e) => console.error(`Error fetching from project ${project.id}/${colName}:`, e));
+                    allUnsubs.push(unsub);
+                });
+            });
         }
+
+        // A simple timeout to set loading to false, as managing multiple listeners is complex.
+        // This ensures the loading state doesn't get stuck.
+        const loadingTimeout = setTimeout(() => {
+            setMyItemsLoading(false);
+        }, 3000); 
 
         return () => {
             allUnsubs.forEach(unsub => unsub());
+            clearTimeout(loadingTimeout);
         };
 
     }, [user, projects, projectsLoading]);
@@ -195,63 +194,30 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const addObservation = React.useCallback(async (newObservation: Omit<Observation, 'id' | 'referenceId'>) => {
       if(!user) throw new Error("User not authenticated");
       const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      const observationToSave = { ...newObservation, referenceId, aiStatus: 'processing' as const, userId: user.uid };
+      const observationToSave = { ...newObservation, referenceId, aiStatus: 'processing' as const, userId: user.uid, projectId: null };
       
-      let collectionRef: CollectionReference;
-      let dataToSave: Omit<typeof observationToSave, 'scope' | 'projectId'> | typeof observationToSave;
-
-      if (observationToSave.scope === 'project' && observationToSave.projectId) {
-        collectionRef = collection(db, 'projects', observationToSave.projectId, 'observations');
-        const { scope, projectId, ...rest } = observationToSave;
-        dataToSave = rest;
-      } else {
-        collectionRef = collection(db, 'observations');
-        dataToSave = observationToSave;
-      }
-
-      const docRef = await addDoc(collectionRef, dataToSave);
+      const collectionRef: CollectionReference = collection(db, 'observations');
+      const docRef = await addDoc(collectionRef, observationToSave);
       _runObservationAiAnalysis({ ...observationToSave, id: docRef.id, itemType: 'observation' });
     }, [user, _runObservationAiAnalysis]);
 
     const addInspection = React.useCallback(async (newInspection: Omit<Inspection, 'id' | 'referenceId'>) => {
       if(!user) throw new Error("User not authenticated");
       const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      const inspectionToSave = { ...newInspection, referenceId, aiStatus: 'processing' as const, userId: user.uid };
+      const inspectionToSave = { ...newInspection, referenceId, aiStatus: 'processing' as const, userId: user.uid, projectId: null };
 
-      let collectionRef: CollectionReference;
-      let dataToSave: Omit<typeof inspectionToSave, 'scope' | 'projectId'> | typeof inspectionToSave;
-
-      if (inspectionToSave.scope === 'project' && inspectionToSave.projectId) {
-        collectionRef = collection(db, 'projects', inspectionToSave.projectId, 'inspections');
-        const { scope, projectId, ...rest } = inspectionToSave;
-        dataToSave = rest;
-      } else {
-        collectionRef = collection(db, 'inspections');
-        dataToSave = inspectionToSave;
-      }
-
-      const docRef = await addDoc(collectionRef, dataToSave);
+      const collectionRef: CollectionReference = collection(db, 'inspections');
+      const docRef = await addDoc(collectionRef, inspectionToSave);
       _runInspectionAiAnalysis({ ...inspectionToSave, id: docRef.id, itemType: 'inspection' });
     }, [user, _runInspectionAiAnalysis]);
 
     const addPtw = React.useCallback(async (newPtw: Omit<Ptw, 'id' | 'referenceId'>) => {
         if(!user) throw new Error("User not authenticated");
         const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-        const ptwToSave = { ...newPtw, referenceId, userId: user.uid };
+        const ptwToSave = { ...newPtw, referenceId, userId: user.uid, projectId: null };
 
-        let collectionRef: CollectionReference;
-        let dataToSave: Omit<typeof ptwToSave, 'scope' | 'projectId'> | typeof ptwToSave;
-
-        if (ptwToSave.scope === 'project' && ptwToSave.projectId) {
-            collectionRef = collection(db, 'projects', ptwToSave.projectId, 'ptws');
-            const { scope, projectId, ...rest } = ptwToSave;
-            dataToSave = rest;
-        } else {
-            collectionRef = collection(db, 'ptws');
-            dataToSave = ptwToSave;
-        }
-
-        await addDoc(collectionRef, dataToSave);
+        const collectionRef: CollectionReference = collection(db, 'ptws');
+        await addDoc(collectionRef, ptwToSave);
     }, [user]);
 
     const updateObservation = React.useCallback(async (observation: Observation, updatedData: Partial<Observation>) => {
@@ -292,3 +258,5 @@ export function useObservations() {
   }
   return context;
 }
+
+    

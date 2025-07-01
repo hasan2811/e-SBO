@@ -92,8 +92,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
       const jsaPdfUrl = await uploadFile(values.jsaPdf, 'ptw-jsa', user.uid, setUploadProgress);
       
       const scope: Scope = values.isPublic ? 'public' : 'private';
-      const projectId: string | null = null;
-
+      
       const newPtwData: Omit<Ptw, 'id'> = {
         userId: user.uid,
         date: new Date().toISOString(),
@@ -104,7 +103,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
         jsaPdfUrl,
         status: 'Pending Approval',
         scope,
-        projectId,
+        projectId: null, // Always set to null for simplicity
       };
 
       await onAddPtw(newPtwData);
@@ -170,7 +169,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
                         Bagikan ke Publik
                       </FormLabel>
                       <FormDescription>
-                        Jika aktif, laporan ini dapat dilihat oleh semua pengguna.
+                        Jika aktif, PTW ini akan dapat dilihat oleh semua pengguna.
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -200,3 +199,5 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
     </Dialog>
   );
 }
+
+    

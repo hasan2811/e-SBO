@@ -102,8 +102,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
       const photoUrl = await uploadFile(values.photo, 'inspections', user.uid, setUploadProgress);
 
       const scope: Scope = values.isPublic ? 'public' : 'private';
-      const projectId: string | null = null; // Project selection is removed to simplify UI as requested.
-
+      
       const newInspectionData: Omit<Inspection, 'id'> = {
         userId: user.uid,
         date: new Date().toISOString(),
@@ -116,7 +115,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
         recommendation: values.recommendation,
         photoUrl: photoUrl,
         scope,
-        projectId,
+        projectId: null, // Always set to null for simplicity
       };
 
       await onAddInspection(newInspectionData);
@@ -193,7 +192,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
                         Bagikan ke Publik
                       </FormLabel>
                       <FormDescription>
-                        Jika aktif, laporan ini dapat dilihat oleh semua pengguna.
+                        Jika aktif, laporan ini akan dapat dilihat oleh semua pengguna.
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -223,3 +222,5 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
     </Dialog>
   );
 }
+
+    

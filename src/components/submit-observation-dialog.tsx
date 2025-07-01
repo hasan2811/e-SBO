@@ -165,7 +165,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       const photoUrl = await uploadFile(values.photo, 'observations', user.uid, setUploadProgress);
       
       const scope: Scope = values.isPublic ? 'public' : 'private';
-      const projectId: string | null = null;
 
       const newObservationData: Omit<Observation, 'id'> = {
         userId: user.uid,
@@ -180,7 +179,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         recommendation: values.recommendation,
         photoUrl: photoUrl,
         scope,
-        projectId,
+        projectId: null, // Always set to null for simplicity now
       };
 
       await onAddObservation(newObservationData);
@@ -381,7 +380,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                         Bagikan ke Publik
                       </FormLabel>
                       <FormDescription>
-                        Jika aktif, laporan ini dapat dilihat oleh semua pengguna.
+                        Jika aktif, laporan ini akan dapat dilihat oleh semua pengguna.
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -423,3 +422,5 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     </Dialog>
   );
 }
+
+    
