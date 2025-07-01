@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format, startOfToday } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -165,6 +165,12 @@ interface FeedViewProps {
   mode: 'public' | 'project' | 'private';
 }
 
+const viewConfig = {
+  observations: { label: 'Observasi', icon: Briefcase, itemType: 'observation' },
+  inspections: { label: 'Inspeksi', icon: Wrench, itemType: 'inspection' },
+  ptws: { label: 'PTW', icon: PtwIcon, itemType: 'ptw' },
+};
+
 export function FeedView({ mode }: FeedViewProps) {
   const { privateItems, projectItems, loading: myItemsLoading } = useObservations();
   
@@ -184,12 +190,6 @@ export function FeedView({ mode }: FeedViewProps) {
   const [filterValue, setFilterValue] = React.useState('all');
   
   const { toast } = useToast();
-
-  const viewConfig = {
-    observations: { label: 'Observasi', icon: Briefcase, itemType: 'observation' },
-    inspections: { label: 'Inspeksi', icon: Wrench, itemType: 'inspection' },
-    ptws: { label: 'PTW', icon: PtwIcon, itemType: 'ptw' },
-  };
   
   const filterOptions = {
     status: OBSERVATION_STATUSES,
@@ -213,50 +213,53 @@ export function FeedView({ mode }: FeedViewProps) {
     setLoadingPublic(true);
     setFetchError(null);
     if (reset) {
-        lastVisibleRef.current = null;
-        setPublicItems([]);
+      lastVisibleRef.current = null;
     }
 
     try {
-        let q: Query<DocumentData> = query(
-            collection(db, viewType),
-            where('scope', '==', 'public'),
-            orderBy('date', 'desc'),
-            limit(PAGE_SIZE)
-        );
+      let q: Query<DocumentData> = query(
+        collection(db, viewType),
+        where('scope', '==', 'public'),
+        orderBy('date', 'desc'),
+        limit(PAGE_SIZE)
+      );
 
-        if (lastVisibleRef.current && !reset) {
-            q = query(q, startAfter(lastVisibleRef.current));
-        }
+      if (lastVisibleRef.current && !reset) {
+        q = query(q, startAfter(lastVisibleRef.current));
+      }
 
-        const documentSnapshots = await getDocs(q);
-        const newItems = documentSnapshots.docs.map(doc => ({
-            ...doc.data(),
-            id: doc.id,
-            itemType: viewConfig[viewType].itemType,
-        })) as AllItems[];
+      const documentSnapshots = await getDocs(q);
+      const newItems = documentSnapshots.docs.map((doc) => ({
+        ...doc.data(),
+        id: doc.id,
+        itemType: viewConfig[viewType as keyof typeof viewConfig].itemType,
+      })) as AllItems[];
 
-        lastVisibleRef.current = documentSnapshots.docs[documentSnapshots.docs.length - 1] || null;
-        setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
-        
-        const combinedItems = reset ? newItems : [...publicItems, ...newItems];
-        const sortedItems = combinedItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setPublicItems(sortedItems);
+      lastVisibleRef.current = documentSnapshots.docs[documentSnapshots.docs.length - 1] || null;
+      setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
 
+      if (reset) {
+        setPublicItems(newItems);
+      } else {
+        setPublicItems((prevItems) => {
+          const combinedItems = [...prevItems, ...newItems];
+          const uniqueItems = Array.from(new Map(combinedItems.map(item => [item.id, item])).values());
+          return uniqueItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        });
+      }
     } catch (error: any) {
-        console.error("Error fetching public items:", error);
-        
-        if (error.code === 'failed-precondition' && error.message.includes('index')) {
-            const indexCreationLink = error.message.substring(error.message.indexOf('https://'));
-            setFetchError(`Database memerlukan konfigurasi (indeks) untuk menampilkan data ini. Klik link di konsol browser untuk membuatnya.`);
-        } else {
-             setFetchError(`Gagal memuat data. Periksa koneksi internet Anda. Error: ${error.message}`);
-        }
-        setHasMore(false);
+      console.error('Error fetching public items:', error);
+
+      if (error.code === 'failed-precondition' && error.message.includes('index')) {
+        setFetchError(`Database memerlukan konfigurasi (indeks) untuk menampilkan data ini. Klik link di konsol browser untuk membuatnya.`);
+      } else {
+        setFetchError(`Gagal memuat data. Periksa koneksi internet Anda. Error: ${error.message}`);
+      }
+      setHasMore(false);
     } finally {
-        setLoadingPublic(false);
+      setLoadingPublic(false);
     }
-  }, [viewType, publicItems]);
+  }, [viewType]);
 
 
   React.useEffect(() => {
