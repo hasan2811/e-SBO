@@ -20,19 +20,19 @@ export const ProjectContext = React.createContext<ProjectContextType | undefined
 async function fetchUserProfiles(uids: string[]): Promise<UserProfile[]> {
     if (uids.length === 0) return [];
     
-    // Fetch multiple documents. Note: `in` queries are limited to 30 items.
-    // For this app's scale, this is acceptable. For larger scale, fetch one by one.
-    const usersQuery = query(collection(db, "users"), where("uid", "in", uids));
-    const querySnapshot = await getDocs(usersQuery);
+    const profiles: UserProfile[] = [];
+    // Firestore 'in' query is limited to 30 items. We'll chunk it to be safe.
+    const chunkSize = 30;
+    for (let i = 0; i < uids.length; i += chunkSize) {
+        const chunk = uids.slice(i, i + chunkSize);
+        const usersQuery = query(collection(db, "users"), where("uid", "in", chunk));
+        const querySnapshot = await getDocs(usersQuery);
+        querySnapshot.forEach(doc => {
+            profiles.push(doc.data() as UserProfile);
+        });
+    }
     
-    const profilesMap = new Map<string, UserProfile>();
-    querySnapshot.forEach(doc => {
-        const user = doc.data() as UserProfile;
-        profilesMap.set(user.uid, user);
-    });
-
-    // Return profiles in the same order as requested UIDs
-    return uids.map(uid => profilesMap.get(uid)).filter(Boolean) as UserProfile[];
+    return profiles;
 }
 
 
@@ -63,17 +63,23 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
         // Fetch all unique member UIDs from all projects at once
         const allMemberUids = [...new Set(userProjects.flatMap(p => p.memberUids || []))];
-        const allMemberProfiles = await fetchUserProfiles(allMemberUids);
-        const profilesMap = new Map(allMemberProfiles.map(p => [p.uid, p]));
-
-        // Enrich projects with the fetched profiles
-        const enrichedProjects = userProjects.map(project => ({
-          ...project,
-          owner: profilesMap.get(project.ownerUid),
-          members: (project.memberUids || []).map(uid => profilesMap.get(uid)).filter(Boolean) as UserProfile[],
-        }));
         
-        setProjects(enrichedProjects);
+        if (allMemberUids.length > 0) {
+            const allMemberProfiles = await fetchUserProfiles(allMemberUids);
+            const profilesMap = new Map(allMemberProfiles.map(p => [p.uid, p]));
+
+            // Enrich projects with the fetched profiles
+            const enrichedProjects = userProjects.map(project => ({
+              ...project,
+              owner: profilesMap.get(project.ownerUid),
+              members: (project.memberUids || []).map(uid => profilesMap.get(uid)).filter((p): p is UserProfile => !!p),
+            }));
+            
+            setProjects(enrichedProjects);
+        } else {
+            setProjects(userProjects); // No members to enrich
+        }
+        
         setLoading(false);
       }, 
       (error) => {
@@ -81,7 +87,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         toast({
           variant: 'destructive',
           title: 'Error Fetching Projects',
-          description: "Could not retrieve project list. " + error.message,
+          description: "Could not retrieve project list. Please check security rules and network.",
         });
         setProjects([]);
         setLoading(false);
@@ -101,15 +107,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
-      const ownerInfo = { uid: userProfile.uid, email: userProfile.email, displayName: userProfile.displayName };
-      const result = await createProject(ownerInfo, projectName);
-      if (result.success) {
-        toast({ title: 'Success!', description: result.message });
-      } else {
-        toast({ variant: 'destructive', title: 'Project Creation Failed', description: result.message });
-      }
+      // Server action now handles all logic including toasts.
+      await createProject(user, projectName);
     } catch (error) {
-      console.error("Error creating project:", error);
+      console.error("Error creating project via context:", error);
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
       toast({ variant: 'destructive', title: 'Project Creation Failed', description: errorMessage });
     }

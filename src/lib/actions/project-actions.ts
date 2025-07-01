@@ -2,18 +2,20 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, limit, doc, deleteDoc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, limit, doc, deleteDoc, getDoc, updateDoc, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Project, UserProfile } from '@/lib/types';
+import type { User } from 'firebase/auth';
 
 /**
  * Server action to create a new project.
+ * No longer checks if user is in another project.
  * @param owner - The user object of the project creator.
  * @param projectName - The name of the new project.
  * @returns An object with success status and a message.
  */
 export async function createProject(
-  owner: Pick<UserProfile, 'uid' | 'email' | 'displayName'>,
+  owner: User,
   projectName: string
 ): Promise<{ success: boolean; message:string; }> {
   if (!owner || !owner.uid) {
@@ -22,22 +24,22 @@ export async function createProject(
   
   try {
     const projectCollectionRef = collection(db, 'projects');
+    const newProjectRef = doc(projectCollectionRef); // Create a reference to get the ID
 
-    const memberUids = [owner.uid];
-
-    await addDoc(projectCollectionRef, {
+    await setDoc(newProjectRef, {
       name: projectName,
       ownerUid: owner.uid,
-      memberUids: memberUids, 
+      memberUids: [owner.uid], 
       createdAt: new Date().toISOString(),
     });
     
     revalidatePath('/beranda');
-
+    toast({ title: 'Success!', description: `Project "${projectName}" was created successfully!` });
     return { success: true, message: `Project "${projectName}" was created successfully!` };
   } catch (error) {
     console.error('Error creating project:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    toast({ variant: 'destructive', title: 'Project Creation Failed', description: errorMessage });
     return { success: false, message: `Project creation failed: ${errorMessage}` };
   }
 }
@@ -71,6 +73,9 @@ export async function deleteProject(
     if (project.ownerUid !== userId) {
       return { success: false, message: 'Permission denied. Only the project owner can delete this project.' };
     }
+
+    // Optional: Delete sub-collections if needed (can be a large operation)
+    // For now, we just delete the project document.
 
     await deleteDoc(projectRef);
 

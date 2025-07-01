@@ -63,10 +63,15 @@ const ObservationContext = React.createContext<
 
 const getDocRef = (item: AllItems): DocumentReference => {
     const collectionName = `${item.itemType}s`;
+    // Public items are at the root
+    if(item.scope === 'public') {
+        return doc(db, collectionName, item.id);
+    }
+    // Project items are nested
     if (item.scope === 'project' && item.projectId) {
         return doc(db, 'projects', item.projectId, collectionName, item.id);
     }
-    // For private items, which are at the root
+    // Private items are at the root
     return doc(db, collectionName, item.id);
 };
 
@@ -92,34 +97,26 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
 
         setPrivateItemsLoading(true);
-        const privateRootQuery = query(collection(db, 'observations'), where('userId', '==', user.uid), where('scope', '==', 'private'));
-        const privateInspectionsQuery = query(collection(db, 'inspections'), where('userId', '==', user.uid), where('scope', '==', 'private'));
-        const privatePtwQuery = query(collection(db, 'ptws'), where('userId', '==', user.uid), where('scope', '==', 'private'));
-        
-        const combinePrivateData = (
-            observations: AllItems[],
-            inspections: AllItems[],
-            ptws: AllItems[]
-        ) => sortItemsByDate([...observations, ...inspections, ...ptws]);
+        const itemTypes: ('observation' | 'inspection' | 'ptw')[] = ['observation', 'inspection', 'ptw'];
+        const unsubs: Unsubscribe[] = [];
 
-        const unsubObs = onSnapshot(privateRootQuery, (snap) => {
-            const obs = snap.docs.map(d => ({ ...d.data(), id: d.id, itemType: 'observation' })) as Observation[];
-            setPrivateItems(current => combinePrivateData(obs, current.filter(i => i.itemType !== 'observation'), []));
-            setPrivateItemsLoading(false);
-        }, () => setPrivateItemsLoading(false));
-        const unsubInsp = onSnapshot(privateInspectionsQuery, (snap) => {
-            const insp = snap.docs.map(d => ({ ...d.data(), id: d.id, itemType: 'inspection' })) as Inspection[];
-            setPrivateItems(current => combinePrivateData(current.filter(i => i.itemType !== 'inspection'), insp, []));
-        });
-        const unsubPtw = onSnapshot(privatePtwQuery, (snap) => {
-            const ptw = snap.docs.map(d => ({ ...d.data(), id: d.id, itemType: 'ptw' })) as Ptw[];
-            setPrivateItems(current => combinePrivateData(current.filter(i => i.itemType !== 'ptw'), [], ptw));
+        const listenerData = new Map<string, AllItems[]>();
+
+        itemTypes.forEach(itemType => {
+            const q = query(collection(db, `${itemType}s`), where('userId', '==', user.uid), where('scope', '==', 'private'));
+            const unsub = onSnapshot(q, (snap) => {
+                const items = snap.docs.map(d => ({ ...d.data(), id: d.id, itemType })) as AllItems[];
+                listenerData.set(itemType, items);
+
+                const combinedItems = Array.from(listenerData.values()).flat();
+                setPrivateItems(sortItemsByDate(combinedItems));
+                setPrivateItemsLoading(false);
+            }, () => setPrivateItemsLoading(false));
+            unsubs.push(unsub);
         });
 
         return () => {
-            unsubObs();
-            unsubInsp();
-            unsubPtw();
+            unsubs.forEach(unsub => unsub());
         };
     }, [user]);
 
@@ -127,12 +124,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     React.useEffect(() => {
         if (projectsLoading || projects.length === 0) {
             setProjectItems([]);
-            setProjectItemsLoading(false); // If no projects, not loading.
+            setProjectItemsLoading(false);
             return;
         }
         
         setProjectItemsLoading(true);
-        // Use a map to store items from different listeners to avoid race conditions
         const listenerData = new Map<string, AllItems[]>();
 
         const allUnsubs = projects.flatMap(project => {
@@ -152,21 +148,21 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                     
                     listenerData.set(listenerId, items);
 
-                    // Combine all data from the map into a single flat array
                     const combinedItems = Array.from(listenerData.values()).flat();
                     setProjectItems(sortItemsByDate(combinedItems));
                     setProjectItemsLoading(false);
                 }, (error) => {
                     console.error(`Error fetching ${collectionName} for project ${project.id}:`, error);
-                    listenerData.set(listenerId, []); // Clear data on error
+                    listenerData.set(listenerId, []); 
                     const combinedItems = Array.from(listenerData.values()).flat();
                     setProjectItems(sortItemsByDate(combinedItems));
-                    setProjectItemsLoading(false);
+                    if(projects.length > 0) {
+                      setProjectItemsLoading(false);
+                    }
                 });
             });
         });
 
-        // Cleanup function to unsubscribe from all listeners
         return () => {
             allUnsubs.forEach(unsub => unsub());
         };

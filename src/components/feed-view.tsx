@@ -230,7 +230,7 @@ const viewConfig = {
 };
 
 export function FeedView({ mode, projectId }: FeedViewProps) {
-  const { privateItems, projectItems, loading: myItemsLoading, toggleLikeObservation } = useObservations();
+  const { privateItems, projectItems, loading: myItemsLoading } = useObservations();
   const { user } = useAuth();
   
   const [publicItems, setPublicItems] = React.useState<AllItems[]>([]);
@@ -311,9 +311,8 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   }, [mode]); 
 
   React.useEffect(() => {
-    // Reset pagination when the view changes for private/project views
     setDisplayedItemsCount(PAGE_SIZE);
-  }, [viewType, mode]);
+  }, [viewType, mode, projectId]);
   
   const data = React.useMemo(() => {
       if (mode === 'public') return publicItems;
@@ -326,30 +325,33 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
 
   const filteredData = React.useMemo(() => {
     let baseData = [...data];
-
-    if (mode === 'public') {
-        if (searchTerm) {
-            const lowercasedSearch = searchTerm.toLowerCase();
-            baseData = baseData.filter(item => {
-                if (item.itemType !== 'observation') return false;
-                const obs = item as Observation;
-                return (
-                    obs.findings.toLowerCase().includes(lowercasedSearch) ||
-                    obs.recommendation.toLowerCase().includes(lowercasedSearch) ||
-                    (obs.sharedBy && obs.sharedBy.toLowerCase().includes(lowercasedSearch))
-                );
-            });
-        }
-        return baseData;
-    }
     
     // Logic for private and project feeds
     let dataToFilter: AllItems[] = baseData;
     if (mode === 'project' && projectId) {
         dataToFilter = dataToFilter.filter(item => item.projectId === projectId);
+    } else if (mode === 'private') {
+        dataToFilter = dataToFilter.filter(item => item.scope === 'private');
     }
+    
     dataToFilter = dataToFilter.filter(item => item.itemType === viewConfig[viewType].itemType);
     
+    if (searchTerm && mode !== 'public') {
+        const lowercasedSearch = searchTerm.toLowerCase();
+        dataToFilter = dataToFilter.filter(item => {
+            if (item.itemType === 'observation') {
+                return item.findings.toLowerCase().includes(lowercasedSearch) || item.recommendation.toLowerCase().includes(lowercasedSearch);
+            }
+            if (item.itemType === 'inspection') {
+                return item.findings.toLowerCase().includes(lowercasedSearch) || item.equipmentName.toLowerCase().includes(lowercasedSearch);
+            }
+            if (item.itemType === 'ptw') {
+                return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch);
+            }
+            return false;
+        });
+    }
+
     return dataToFilter;
   }, [data, mode, projectId, viewType, searchTerm]);
 
@@ -425,31 +427,33 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
      <div className="space-y-4">
         <div className="flex justify-between items-center gap-4">
             <h2 className="text-2xl font-bold tracking-tight">
-                {mode === 'public' ? 'Feed Publik' : viewConfig[viewType].label}
+                {mode === 'public' ? 'Feed Publik' : mode === 'private' ? 'Laporan Pribadi' : viewConfig[viewType].label}
             </h2>
-            {mode === 'public' ? (
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                            <Search className="h-5 w-5" />
-                            <span className="sr-only">Cari</span>
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="p-2 w-80">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Cari di feed..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9"
-                                autoFocus
-                            />
-                        </div>
-                    </PopoverContent>
-                </Popover>
-            ) : (
-                <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+                {mode !== 'public' && (
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <Search className="h-5 w-5" />
+                                <span className="sr-only">Cari</span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="p-2 w-80">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Cari di feed ini..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-9"
+                                    autoFocus
+                                />
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                )}
+
+                {mode !== 'public' && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="w-[140px] justify-between">
@@ -463,20 +467,20 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
                         <DropdownMenuItem onSelect={() => setViewType('ptws')}>PTW</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                )}
 
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="outline" size="icon" onClick={handleExport} disabled={isExportDisabled}>
-                            <Download className="h-4 w-4" />
-                            <span className="sr-only">Export</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>{viewType === 'observations' ? "Export Observasi" : "Hanya tersedia untuk Observasi"}</p></TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                </div>
-            )}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="icon" onClick={handleExport} disabled={isExportDisabled}>
+                        <Download className="h-4 w-4" />
+                        <span className="sr-only">Export</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>{viewType === 'observations' ? "Export Observasi" : "Hanya tersedia untuk Observasi"}</p></TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+            </div>
         </div>
 
       <main>
