@@ -60,7 +60,7 @@ const ObservationContext = React.createContext<
 
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
-    const { user, loading: authLoading } = useAuth();
+    const { user, userProfile, loading: authLoading } = useAuth();
     const { projects, loading: projectsLoading } = useProjects();
     
     const [privateItems, setPrivateItems] = React.useState<AllItems[]>([]);
@@ -309,7 +309,10 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }, [_runObservationAiAnalysis, _runInspectionAiAnalysis]);
 
     const shareObservationToPublic = React.useCallback(async (observation: Observation) => {
-        if (!user) throw new Error("User not authenticated");
+        if (!user || !userProfile) {
+          toast({ variant: 'destructive', title: 'User profile not loaded.', description: 'Please wait a moment and try again.'});
+          throw new Error("User not authenticated or profile not loaded");
+        }
         if (observation.scope === 'public' || observation.isSharedPublicly) {
             toast({ variant: 'default', title: 'Sudah Dibagikan', description: 'Observasi ini sudah ada di feed publik.' });
             return;
@@ -323,6 +326,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 scope: 'public' as const,
                 projectId: null,
                 isSharedPublicly: false, // The public copy itself isn't 'shared'
+                sharedBy: userProfile.displayName,
+                sharedByPosition: userProfile.position,
             };
             
             await addDoc(collection(db, 'observations'), publicObservationData);
@@ -336,7 +341,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             console.error("Failed to share observation to public:", error);
             toast({ variant: 'destructive', title: 'Gagal Membagikan', description: 'Tidak dapat membagikan observasi. Silakan coba lagi.' });
         }
-    }, [user]);
+    }, [user, userProfile]);
 
 
     const value = { privateItems, projectItems, loading: authLoading || projectsLoading || privateItemsLoading || projectItemsLoading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis, shareObservationToPublic };

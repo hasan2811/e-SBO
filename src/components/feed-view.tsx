@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -92,6 +92,16 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
                     </div>
                 </div>
                 <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
+                
+                {observation.scope === 'public' && observation.sharedBy && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground italic pt-1">
+                      <Share2 className="h-3 w-3" />
+                      <span>
+                          Dibagikan oleh: <strong>{observation.sharedBy}</strong> ({observation.sharedByPosition || 'N/A'})
+                      </span>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center gap-x-2 pt-1">
                   <p className="text-xs text-muted-foreground">
                     {format(new Date(observation.date), 'd MMM yyyy, HH:mm')} &bull; {observation.category} &bull; {observation.company}

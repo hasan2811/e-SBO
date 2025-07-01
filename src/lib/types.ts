@@ -63,6 +63,8 @@ export type Observation = {
   aiObserverSkillRating?: number;
   aiObserverSkillExplanation?: string;
   isSharedPublicly?: boolean;
+  sharedBy?: string;
+  sharedByPosition?: string;
 };
 
 // New Types for Inspection and PTW
