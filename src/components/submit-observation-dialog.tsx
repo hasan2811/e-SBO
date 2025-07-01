@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -10,7 +11,6 @@ import { Loader2, Upload } from 'lucide-react';
 import type { Observation, ObservationCategory, Company, Location, RiskLevel } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { uploadFile } from '@/lib/storage';
 import { getAIAssistance } from '@/lib/actions/ai-actions';
 
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
@@ -40,19 +39,17 @@ type FormValues = z.infer<typeof formSchema>;
 interface SubmitObservationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddObservation: (observation: Omit<Observation, 'id' | 'scope' | 'projectId'>) => Promise<void>;
+  onAddObservation: (observation: FormValues) => Promise<void>;
 }
 
 export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation }: SubmitObservationDialogProps) {
-  const [submitStatus, setSubmitStatus] = React.useState<'idle' | 'analyzing' | 'uploading' | 'saving'>('idle');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   
-  const isSubmitting = submitStatus !== 'idle';
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -112,32 +109,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
        return;
     }
 
-    setSubmitStatus('analyzing');
+    setIsSubmitting(true);
 
     try {
-      const aiResult = await getAIAssistance({ findings: values.findings });
-      
-      setSubmitStatus('uploading');
-      setUploadProgress(0);
-      const photoUrl = await uploadFile(values.photo, 'observations', user.uid, setUploadProgress);
-      
-      setSubmitStatus('saving');
-      const newObservationData: Omit<Observation, 'id' | 'scope' | 'projectId'> = {
-        userId: user.uid,
-        date: new Date().toISOString(),
-        status: 'Pending',
-        submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-        location: values.location as Location,
-        company: values.company as Company,
-        category: aiResult.suggestedCategory,
-        riskLevel: aiResult.suggestedRiskLevel,
-        findings: aiResult.improvedFindings,
-        // Smart recommendation: Use user's input if provided, otherwise use AI's suggestion.
-        recommendation: values.recommendation || aiResult.suggestedRecommendation,
-        photoUrl: photoUrl,
-      };
-
-      await onAddObservation(newObservationData);
+      // The context will now handle the upload and AI processing.
+      await onAddObservation(values);
 
       toast({
         title: 'Sukses!',
@@ -152,16 +128,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         description: error instanceof Error ? error.message : 'Tidak dapat menyimpan observasi.',
       });
     } finally {
-      setSubmitStatus('idle');
-      setUploadProgress(null);
+      setIsSubmitting(false);
     }
-  };
-  
-  const buttonText = {
-    idle: 'Kirim Laporan',
-    analyzing: 'Menganalisis...',
-    uploading: 'Mengunggah...',
-    saving: 'Menyimpan...',
   };
   
   const renderSelectItems = (items: readonly string[]) => {
@@ -289,21 +257,14 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         </div>
 
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
-          {submitStatus === 'uploading' && uploadProgress !== null && (
-            <div className="w-full">
-              <Progress value={uploadProgress} className="w-full" />
-              <p className="text-center text-xs mt-1 text-muted-foreground">
-                Mengunggah: {Math.round(uploadProgress)}%
-              </p>
-            </div>
-          )}
+           {/* Progress bar is now handled by the context */}
           <div className="flex w-full justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Batal
             </Button>
             <Button type="submit" form={formId} disabled={isSubmitting || !form.formState.isValid}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {buttonText[submitStatus]}
+              {isSubmitting ? 'Mengirim...' : 'Kirim Laporan'}
             </Button>
           </div>
         </DialogFooter>

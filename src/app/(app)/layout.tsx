@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -68,17 +69,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return { scope: 'private', projectId: null };
   };
   
-  const handleAddObservation = async (formData: Omit<Observation, 'id' | 'scope' | 'projectId'>) => {
+  const handleAddObservation = async (formData: any) => {
     const { scope, projectId: submissionProjectId } = getCurrentScope();
     await addObservation(formData, scope, submissionProjectId);
   };
 
-  const handleAddInspection = async (formData: Omit<Inspection, 'id' | 'scope' | 'projectId'>) => {
+  const handleAddInspection = async (formData: any) => {
     const { scope, projectId: submissionProjectId } = getCurrentScope();
     await addInspection(formData, scope, submissionProjectId);
   };
 
-  const handleAddPtw = async (formData: Omit<Ptw, 'id' | 'scope' | 'projectId'>) => {
+  const handleAddPtw = async (formData: any) => {
     const { scope, projectId: submissionProjectId } = getCurrentScope();
     await addPtw(formData, scope, submissionProjectId);
   };

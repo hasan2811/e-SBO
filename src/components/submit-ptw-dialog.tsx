@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Upload, FileSignature, FileText } from 'lucide-react';
 
-import { uploadFile } from '@/lib/storage';
 import type { Ptw, Location } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +17,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 
@@ -37,13 +35,12 @@ type FormValues = z.infer<typeof formSchema>;
 interface SubmitPtwDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddPtw: (ptw: Omit<Ptw, 'id' | 'scope' | 'projectId'>) => Promise<void>;
+  onAddPtw: (ptw: FormValues) => Promise<void>;
 }
 
 export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [fileName, setFileName] = React.useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -94,23 +91,9 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
     }
 
     setIsSubmitting(true);
-    setUploadProgress(0);
-
+    
     try {
-      const jsaPdfUrl = await uploadFile(values.jsaPdf, 'ptw-jsa', user.uid, setUploadProgress);
-      
-      const newPtwData: Omit<Ptw, 'id' | 'scope' | 'projectId'> = {
-        userId: user.uid,
-        date: new Date().toISOString(),
-        submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-        location: values.location as Location,
-        workDescription: values.workDescription,
-        contractor: values.contractor,
-        jsaPdfUrl,
-        status: 'Pending Approval',
-      };
-
-      await onAddPtw(newPtwData);
+      await onAddPtw(values);
       toast({ title: 'Sukses!', description: `Permit to Work baru berhasil diajukan.` });
       onOpenChange(false);
     } catch (error) {
@@ -118,7 +101,6 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
       toast({ variant: 'destructive', title: 'Pengajuan Gagal', description: error instanceof Error ? error.message : 'Tidak dapat menyimpan PTW.' });
     } finally {
       setIsSubmitting(false);
-      setUploadProgress(null);
     }
   };
 
@@ -159,9 +141,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
           </Form>
         </div>
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
-          {isSubmitting && uploadProgress !== null && (
-            <div className="w-full"><Progress value={uploadProgress} className="w-full" /><p className="text-center text-xs mt-1 text-muted-foreground">Mengunggah: {Math.round(uploadProgress)}%</p></div>
-          )}
+           {/* Progress bar is now handled by the context */}
           <div className="flex w-full justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Batal</Button>
             <Button type="submit" form={formId} disabled={isSubmitting || !form.formState.isValid}>

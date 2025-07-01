@@ -1,17 +1,28 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access to all files. URLs are unguessable.
-    match /{allPaths=**} {
-      allow read;
+    
+    // Helper function to check project membership
+    function isProjectMember(projectId) {
+      return get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
     }
     
-    // Only allow authenticated users to write to their own designated folder.
-    // This prevents users from overwriting each other's files.
-    // e.g., observations/{userId}/{file_name}
+    // --- PRIVATE UPLOADS ---
+    // Users can only write to their own private folders.
+    // This rule covers 'observations', 'inspections', 'ptw-jsa', and 'actions' folders.
     match /{path}/{userId}/{allPaths=**} {
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if true; // All uploaded files are public-readable via URL
+      allow write: if request.auth.uid == userId;
+    }
+
+    // --- PROJECT UPLOADS ---
+    // Users can only write to a project's folder if they are a member of that project.
+    // They are further restricted to writing inside their own user-specific subfolder.
+    match /projects/{projectId}/{path}/{userId}/{allPaths=**} {
+      allow read: if true; // All uploaded files are public-readable via URL
+      allow write: if request.auth.uid == userId && isProjectMember(projectId);
     }
   }
 }

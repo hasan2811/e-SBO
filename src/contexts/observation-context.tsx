@@ -14,13 +14,15 @@ import {
   DocumentReference,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Observation, Inspection, Ptw, AllItems, Scope } from '@/lib/types';
+import { uploadFile } from '@/lib/storage';
+import type { Observation, Inspection, Ptw, AllItems, Scope, Company, Location, RiskLevel } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useProjects } from '@/hooks/use-projects';
 import {
   summarizeObservationData,
   analyzeInspectionData,
 } from '@/ai/flows/summarize-observation-data';
+import { getAIAssistance } from '@/lib/actions/ai-actions';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { toggleLike } from '@/lib/actions/interaction-actions';
@@ -30,17 +32,17 @@ interface ObservationContextType {
   projectItems: AllItems[];
   loading: boolean;
   addObservation: (
-    formData: Omit<Observation, 'id' | 'scope' | 'projectId' | 'itemType'>,
+    formData: any, // Using any for simplicity as it comes from a form
     scope: Scope,
     projectId: string | null
   ) => Promise<void>;
   addInspection: (
-    formData: Omit<Inspection, 'id' | 'scope' | 'projectId' | 'itemType'>,
+    formData: any,
     scope: Scope,
     projectId: string | null
   ) => Promise<void>;
   addPtw: (
-    formData: Omit<Ptw, 'id' | 'scope' | 'projectId' | 'itemType'>,
+    formData: any,
     scope: Scope,
     projectId: string | null
   ) => Promise<void>;
@@ -66,8 +68,6 @@ const getDocRef = (item: AllItems): DocumentReference => {
     }
     return doc(db, collectionName, item.id);
 };
-
-const COLLECTIONS_TO_WATCH: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
     const { user, userProfile, loading: authLoading } = useAuth();
@@ -105,7 +105,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             const obs = snap.docs.map(d => ({ ...d.data(), id: d.id, itemType: 'observation' })) as Observation[];
             setPrivateItems(current => combinePrivateData(obs, current.filter(i => i.itemType !== 'observation'), []));
             setPrivateItemsLoading(false);
-        });
+        }, () => setPrivateItemsLoading(false));
         const unsubInsp = onSnapshot(privateInspectionsQuery, (snap) => {
             const insp = snap.docs.map(d => ({ ...d.data(), id: d.id, itemType: 'inspection' })) as Inspection[];
             setPrivateItems(current => combinePrivateData(current.filter(i => i.itemType !== 'inspection'), insp, []));
@@ -126,12 +126,12 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     React.useEffect(() => {
         if (projectsLoading || projects.length === 0) {
             setProjectItems([]);
-            setProjectItemsLoading(projects.length > 0); // Still loading if projects exist but not yet processed
+            setProjectItemsLoading(projects.length > 0);
             return;
         }
         
         setProjectItemsLoading(true);
-        const project = projects[0]; // Rule: user can only be in one project
+        const project = projects[0];
         
         const projectObsQuery = query(collection(db, 'projects', project.id, 'observations'));
         const projectInspectionsQuery = query(collection(db, 'projects', project.id, 'inspections'));
@@ -144,23 +144,19 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             setProjectItems(sortItemsByDate(combinedProjectItems));
         };
 
-        unsubs.push(onSnapshot(projectObsQuery, (snap) => {
-            const obs = snap.docs.map(d => ({...d.data(), id: d.id, itemType: 'observation'})) as Observation[];
-            combinedProjectItems = [...combinedProjectItems.filter(i => i.itemType !== 'observation'), ...obs];
-            updateProjectItems();
-            setProjectItemsLoading(false);
-        }));
-        unsubs.push(onSnapshot(projectInspectionsQuery, (snap) => {
-            const insp = snap.docs.map(d => ({...d.data(), id: d.id, itemType: 'inspection'})) as Inspection[];
-            combinedProjectItems = [...combinedProjectItems.filter(i => i.itemType !== 'inspection'), ...insp];
-            updateProjectItems();
-        }));
-        unsubs.push(onSnapshot(projectPtwQuery, (snap) => {
-            const ptw = snap.docs.map(d => ({...d.data(), id: d.id, itemType: 'ptw'})) as Ptw[];
-            combinedProjectItems = [...combinedProjectItems.filter(i => i.itemType !== 'ptw'), ...ptw];
-            updateProjectItems();
-        }));
-
+        const createSnapshotListener = (q: any, itemType: 'observation' | 'inspection' | 'ptw') => {
+            return onSnapshot(q, (snap) => {
+                const items = snap.docs.map(d => ({...d.data(), id: d.id, itemType })) as AllItems[];
+                combinedProjectItems = [...combinedProjectItems.filter(i => i.itemType !== itemType), ...items];
+                updateProjectItems();
+                setProjectItemsLoading(false);
+            }, () => setProjectItemsLoading(false));
+        };
+        
+        unsubs.push(createSnapshotListener(projectObsQuery, 'observation'));
+        unsubs.push(createSnapshotListener(projectInspectionsQuery, 'inspection'));
+        unsubs.push(createSnapshotListener(projectPtwQuery, 'ptw'));
+        
         return () => unsubs.forEach(unsub => unsub());
 
     }, [projects, projectsLoading]);
@@ -213,65 +209,117 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         toast({ variant: 'destructive', title: 'Inspection AI Failed', description: 'Could not generate AI analysis.'});
       }
     }, []);
-    
-    const addItem = React.useCallback(async (
-        collectionName: 'observations' | 'inspections' | 'ptws',
-        formData: Omit<AllItems, 'id' | 'itemType'>,
-        scope: Scope,
-        projectId: string | null
-    ) => {
-        if (!user) throw new Error("User not authenticated");
 
-        const itemType = collectionName.slice(0, -1);
-        const prefix = {
-            observation: 'OBS',
-            inspection: 'INSP',
-            ptw: 'PTW'
-        }[itemType as 'observation' | 'inspection' | 'ptw'];
+    const addObservation = React.useCallback(async (formData: any, scope: Scope, projectId: string | null) => {
+        if (!user || !userProfile) throw new Error("User not authenticated");
 
-        const referenceId = `${prefix}-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        // 1. Get AI assistance first
+        const aiResult = await getAIAssistance({ findings: formData.findings });
 
-        let dataToSave: any = {
-            ...formData,
+        // 2. Upload file
+        const photoUrl = await uploadFile(formData.photo, 'observations', user.uid, () => {}, projectId);
+        
+        // 3. Prepare data for Firestore
+        const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        
+        const newObservationData: Omit<Observation, 'id'> = {
+            itemType: 'observation',
+            userId: user.uid,
+            date: new Date().toISOString(),
+            status: 'Pending',
+            submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+            location: formData.location as Location,
+            company: formData.company as Company,
+            category: aiResult.suggestedCategory,
+            riskLevel: aiResult.suggestedRiskLevel,
+            findings: aiResult.improvedFindings,
+            recommendation: formData.recommendation || aiResult.suggestedRecommendation,
+            photoUrl: photoUrl,
             referenceId,
             scope,
             projectId,
-            itemType,
+            aiStatus: 'processing',
+            likes: [],
+            likeCount: 0,
+            commentCount: 0,
+            viewCount: 0,
         };
 
-        if (itemType === 'observation') {
-            dataToSave = { ...dataToSave, aiStatus: 'processing', likes: [], likeCount: 0, commentCount: 0, viewCount: 0 };
-        } else if (itemType === 'inspection') {
-            dataToSave.aiStatus = 'processing';
-        }
+        // 4. Save to Firestore
+        const collectionPath = scope === 'project' && projectId
+            ? collection(db, 'projects', projectId, 'observations')
+            : collection(db, 'observations');
+        const docRef = await addDoc(collectionPath, newObservationData);
+        
+        // 5. Trigger full AI analysis in the background
+        const fullItemData = { ...newObservationData, id: docRef.id };
+        _runObservationAiAnalysis(fullItemData);
+
+    }, [user, userProfile, _runObservationAiAnalysis]);
+    
+    const addInspection = React.useCallback(async (formData: any, scope: Scope, projectId: string | null) => {
+        if (!user || !userProfile) throw new Error("User not authenticated");
+        
+        const photoUrl = await uploadFile(formData.photo, 'inspections', user.uid, () => {}, projectId);
+        
+        const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+        const newInspectionData: Omit<Inspection, 'id'> = {
+            itemType: 'inspection',
+            userId: user.uid,
+            date: new Date().toISOString(),
+            submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+            location: formData.location,
+            equipmentName: formData.equipmentName,
+            equipmentType: formData.equipmentType,
+            status: formData.status,
+            findings: formData.findings,
+            recommendation: formData.recommendation,
+            photoUrl: photoUrl,
+            referenceId,
+            scope,
+            projectId,
+            aiStatus: 'processing',
+        };
 
         const collectionPath = scope === 'project' && projectId
-            ? collection(db, 'projects', projectId, collectionName)
-            : collection(db, collectionName);
+            ? collection(db, 'projects', projectId, 'inspections')
+            : collection(db, 'inspections');
+        const docRef = await addDoc(collectionPath, newInspectionData);
 
-        const docRef = await addDoc(collectionPath, dataToSave);
+        const fullItemData = { ...newInspectionData, id: docRef.id };
+        _runInspectionAiAnalysis(fullItemData);
+
+    }, [user, userProfile, _runInspectionAiAnalysis]);
+
+    const addPtw = React.useCallback(async (formData: any, scope: Scope, projectId: string | null) => {
+        if (!user || !userProfile) throw new Error("User not authenticated");
+
+        const jsaPdfUrl = await uploadFile(formData.jsaPdf, 'ptw-jsa', user.uid, () => {}, projectId);
         
-        const fullItemData = { ...dataToSave, id: docRef.id };
+        const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-        if (fullItemData.itemType === 'observation') {
-            _runObservationAiAnalysis(fullItemData as Observation);
-        } else if (fullItemData.itemType === 'inspection') {
-            _runInspectionAiAnalysis(fullItemData as Inspection);
-        }
-    }, [user, _runObservationAiAnalysis, _runInspectionAiAnalysis]);
+        const newPtwData: Omit<Ptw, 'id'> = {
+            itemType: 'ptw',
+            userId: user.uid,
+            date: new Date().toISOString(),
+            submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+            location: formData.location,
+            workDescription: formData.workDescription,
+            contractor: formData.contractor,
+            jsaPdfUrl,
+            status: 'Pending Approval',
+            referenceId,
+            scope,
+            projectId,
+        };
 
-
-    const addObservation = React.useCallback(async (formData: Omit<Observation, 'id'| 'itemType'>, scope: Scope, projectId: string | null) => {
-        await addItem('observations', formData as any, scope, projectId);
-    }, [addItem]);
-    
-    const addInspection = React.useCallback(async (formData: Omit<Inspection, 'id'| 'itemType'>, scope: Scope, projectId: string | null) => {
-        await addItem('inspections', formData as any, scope, projectId);
-    }, [addItem]);
-
-    const addPtw = React.useCallback(async (formData: Omit<Ptw, 'id'| 'itemType'>, scope: Scope, projectId: string | null) => {
-        await addItem('ptws', formData as any, scope, projectId);
-    }, [addItem]);
+        const collectionPath = scope === 'project' && projectId
+            ? collection(db, 'projects', projectId, 'ptws')
+            : collection(db, 'ptws');
+        await addDoc(collectionPath, newPtwData);
+        
+    }, [user, userProfile]);
 
     const updateObservation = React.useCallback(async (observation: Observation, updatedData: Partial<Observation>) => {
         const observationDocRef = getDocRef(observation);

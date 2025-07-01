@@ -8,7 +8,6 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Wrench } from 'lucide-react';
 
-import { uploadFile } from '@/lib/storage';
 import type { Inspection, InspectionStatus, EquipmentType, Location } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -42,13 +41,12 @@ type FormValues = z.infer<typeof formSchema>;
 interface SubmitInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddInspection: (inspection: Omit<Inspection, 'id' | 'scope' | 'projectId'>) => Promise<void>;
+  onAddInspection: (inspection: FormValues) => Promise<void>;
 }
 
 export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }: SubmitInspectionDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -107,25 +105,9 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
     }
 
     setIsSubmitting(true);
-    setUploadProgress(0);
 
     try {
-      const photoUrl = await uploadFile(values.photo, 'inspections', user.uid, setUploadProgress);
-      
-      const newInspectionData: Omit<Inspection, 'id' | 'scope' | 'projectId'> = {
-        userId: user.uid,
-        date: new Date().toISOString(),
-        submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-        location: values.location as Location,
-        equipmentName: values.equipmentName,
-        equipmentType: values.equipmentType as EquipmentType,
-        status: values.status as InspectionStatus,
-        findings: values.findings,
-        recommendation: values.recommendation,
-        photoUrl: photoUrl,
-      };
-
-      await onAddInspection(newInspectionData);
+      await onAddInspection(values);
       toast({ title: 'Sukses!', description: `Laporan inspeksi baru berhasil dikirim.` });
       onOpenChange(false);
     } catch (error) {
@@ -133,7 +115,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
       toast({ variant: 'destructive', title: 'Pengiriman Gagal', description: error instanceof Error ? error.message : 'Tidak dapat menyimpan laporan.' });
     } finally {
       setIsSubmitting(false);
-      setUploadProgress(null);
     }
   };
   
@@ -185,9 +166,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
           </Form>
         </div>
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
-          {isSubmitting && uploadProgress !== null && (
-            <div className="w-full"><Progress value={uploadProgress} className="w-full" /><p className="text-center text-xs mt-1 text-muted-foreground">Mengunggah: {Math.round(uploadProgress)}%</p></div>
-          )}
+          {/* Progress bar is now handled by the context */}
           <div className="flex w-full justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Batal</Button>
             <Button type="submit" form={formId} disabled={isSubmitting || !form.formState.isValid}>

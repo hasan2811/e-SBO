@@ -11,19 +11,27 @@ import { storage } from '@/lib/firebase';
  * @param path The storage path (e.g., 'observations', 'inspections').
  * @param userId The UID of the user uploading the file.
  * @param onProgress A callback function to report upload progress (0-100).
+ * @param projectId Optional. If provided, the file is stored in a project-specific folder.
  * @returns A promise that resolves with the public download URL of the file.
  */
 export function uploadFile(
   file: File,
   path: string,
   userId: string,
-  onProgress: (progress: number) => void
+  onProgress: (progress: number) => void,
+  projectId: string | null = null
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file || !userId) {
       return reject(new Error('File or user ID is missing.'));
     }
-    const storageRef = ref(storage, `${path}/${userId}/${Date.now()}-${file.name}`);
+
+    const fileName = `${Date.now()}-${file.name}`;
+    const storagePath = projectId
+      ? `projects/${projectId}/${path}/${userId}/${fileName}`
+      : `${path}/${userId}/${fileName}`;
+      
+    const storageRef = ref(storage, storagePath);
     const uploadTask: UploadTask = uploadBytesResumable(storageRef, file);
 
     uploadTask.on(
