@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
@@ -19,9 +19,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const EQUIPMENT_TYPES = ['Heavy Machinery', 'Hand Tool', 'Vehicle', 'Electrical', 'Other'] as const;
@@ -37,7 +37,16 @@ const formSchema = z.object({
   photo: z
     .instanceof(File, { message: 'Foto wajib diunggah.' })
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
-  isPublic: z.boolean().default(false),
+  scope: z.enum(['private', 'public', 'project'], { required_error: 'Silakan pilih tujuan laporan.'}),
+  projectId: z.string().optional(),
+}).refine(data => {
+    if (data.scope === 'project' && !data.projectId) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Silakan pilih sebuah proyek.",
+    path: ["projectId"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -54,6 +63,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { projects, loading: projectsLoading } = useProjects();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
 
@@ -66,10 +76,12 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
       status: INSPECTION_STATUSES[0],
       findings: '',
       recommendation: '',
-      isPublic: false,
+      scope: 'private',
     },
     mode: 'onChange',
   });
+  
+  const scopeValue = useWatch({ control: form.control, name: 'scope' });
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -100,8 +112,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
 
     try {
       const photoUrl = await uploadFile(values.photo, 'inspections', user.uid, setUploadProgress);
-
-      const scope: Scope = values.isPublic ? 'public' : 'private';
       
       const newInspectionData: Omit<Inspection, 'id'> = {
         userId: user.uid,
@@ -114,8 +124,8 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
         findings: values.findings,
         recommendation: values.recommendation,
         photoUrl: photoUrl,
-        scope,
-        projectId: null, // Always set to null for simplicity
+        scope: values.scope as Scope,
+        projectId: values.scope === 'project' ? values.projectId! : null,
       };
 
       await onAddInspection(newInspectionData);
@@ -150,6 +160,61 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <Form {...form}>
             <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="scope"
+                render={({ field }) => (
+                  <FormItem className="space-y-3 p-4 border rounded-md">
+                    <FormLabel className="text-base font-semibold">Tujuan Laporan</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="flex flex-col space-y-2"
+                      >
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl><RadioGroupItem value="private" /></FormControl>
+                          <FormLabel className="font-normal">Pribadi (Hanya bisa dilihat oleh Anda)</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl><RadioGroupItem value="public" /></FormControl>
+                          <FormLabel className="font-normal">Publik (Bisa dilihat oleh semua pengguna)</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl><RadioGroupItem value="project" /></FormControl>
+                          <FormLabel className="font-normal">Proyek</FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {scopeValue === 'project' && (
+                <FormField
+                  control={form.control}
+                  name="projectId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pilih Proyek</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={projectsLoading || projects.length === 0}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={projectsLoading ? "Memuat proyek..." : "Pilih sebuah proyek"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {projects.length === 0 && !projectsLoading && <FormDescription>Anda belum menjadi anggota proyek manapun.</FormDescription>}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
               <FormField name="equipmentName" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Nama Peralatan</FormLabel><FormControl><Input placeholder="e.g., Excavator EX-01" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
@@ -182,28 +247,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
                   <FormMessage />
                 </FormItem>
               )} />
-               <FormField
-                control={form.control}
-                name="isPublic"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">
-                        Bagikan ke Publik
-                      </FormLabel>
-                      <FormDescription>
-                        Jika aktif, laporan ini akan dapat dilihat oleh semua pengguna.
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
             </form>
           </Form>
         </div>
@@ -222,5 +265,3 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
     </Dialog>
   );
 }
-
-    

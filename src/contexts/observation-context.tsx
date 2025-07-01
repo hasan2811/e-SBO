@@ -192,31 +192,65 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }, []);
     
     const addObservation = React.useCallback(async (newObservation: Omit<Observation, 'id' | 'referenceId'>) => {
-      if(!user) throw new Error("User not authenticated");
-      const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      const observationToSave = { ...newObservation, referenceId, aiStatus: 'processing' as const, userId: user.uid, projectId: null };
-      
-      const collectionRef: CollectionReference = collection(db, 'observations');
-      const docRef = await addDoc(collectionRef, observationToSave);
-      _runObservationAiAnalysis({ ...observationToSave, id: docRef.id, itemType: 'observation' });
+        if(!user) throw new Error("User not authenticated");
+        const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        
+        const observationToSave = { 
+            ...newObservation, 
+            referenceId, 
+            aiStatus: 'processing' as const, 
+            userId: user.uid,
+        };
+        
+        let collectionRef: CollectionReference;
+        if (observationToSave.scope === 'project' && observationToSave.projectId) {
+            collectionRef = collection(db, 'projects', observationToSave.projectId, 'observations');
+        } else {
+            collectionRef = collection(db, 'observations');
+        }
+
+        const docRef = await addDoc(collectionRef, observationToSave);
+        _runObservationAiAnalysis({ ...observationToSave, id: docRef.id, itemType: 'observation' });
     }, [user, _runObservationAiAnalysis]);
 
     const addInspection = React.useCallback(async (newInspection: Omit<Inspection, 'id' | 'referenceId'>) => {
-      if(!user) throw new Error("User not authenticated");
-      const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      const inspectionToSave = { ...newInspection, referenceId, aiStatus: 'processing' as const, userId: user.uid, projectId: null };
+        if(!user) throw new Error("User not authenticated");
+        const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        
+        const inspectionToSave = { 
+            ...newInspection, 
+            referenceId, 
+            aiStatus: 'processing' as const, 
+            userId: user.uid,
+        };
 
-      const collectionRef: CollectionReference = collection(db, 'inspections');
-      const docRef = await addDoc(collectionRef, inspectionToSave);
-      _runInspectionAiAnalysis({ ...inspectionToSave, id: docRef.id, itemType: 'inspection' });
+        let collectionRef: CollectionReference;
+        if (inspectionToSave.scope === 'project' && inspectionToSave.projectId) {
+            collectionRef = collection(db, 'projects', inspectionToSave.projectId, 'inspections');
+        } else {
+            collectionRef = collection(db, 'inspections');
+        }
+        
+        const docRef = await addDoc(collectionRef, inspectionToSave);
+        _runInspectionAiAnalysis({ ...inspectionToSave, id: docRef.id, itemType: 'inspection' });
     }, [user, _runInspectionAiAnalysis]);
 
     const addPtw = React.useCallback(async (newPtw: Omit<Ptw, 'id' | 'referenceId'>) => {
         if(!user) throw new Error("User not authenticated");
         const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-        const ptwToSave = { ...newPtw, referenceId, userId: user.uid, projectId: null };
+        
+        const ptwToSave = { 
+            ...newPtw, 
+            referenceId, 
+            userId: user.uid,
+        };
 
-        const collectionRef: CollectionReference = collection(db, 'ptws');
+        let collectionRef: CollectionReference;
+        if (ptwToSave.scope === 'project' && ptwToSave.projectId) {
+            collectionRef = collection(db, 'projects', ptwToSave.projectId, 'ptws');
+        } else {
+            collectionRef = collection(db, 'ptws');
+        }
         await addDoc(collectionRef, ptwToSave);
     }, [user]);
 
@@ -258,5 +292,3 @@ export function useObservations() {
   }
   return context;
 }
-
-    

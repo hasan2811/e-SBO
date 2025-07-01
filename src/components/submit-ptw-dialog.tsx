@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Upload, FileSignature, FileText } from 'lucide-react';
@@ -11,6 +11,7 @@ import { uploadFile } from '@/lib/storage';
 import type { Ptw, Location, Scope } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useProjects } from '@/hooks/use-projects';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -19,8 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Switch } from '@/components/ui/switch';
-
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 
@@ -32,7 +32,16 @@ const formSchema = z.object({
     .instanceof(File, { message: 'File JSA (PDF) wajib diunggah.' })
     .refine((file) => file.type === 'application/pdf', 'File harus dalam format PDF.')
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
-  isPublic: z.boolean().default(false),
+  scope: z.enum(['private', 'public', 'project'], { required_error: 'Silakan pilih tujuan laporan.'}),
+  projectId: z.string().optional(),
+}).refine(data => {
+    if (data.scope === 'project' && !data.projectId) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Silakan pilih sebuah proyek.",
+    path: ["projectId"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -49,6 +58,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { projects, loading: projectsLoading } = useProjects();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
 
@@ -58,10 +68,12 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
       location: LOCATIONS[0],
       workDescription: '',
       contractor: '',
-      isPublic: false,
+      scope: 'private',
     },
     mode: 'onChange',
   });
+  
+  const scopeValue = useWatch({ control: form.control, name: 'scope' });
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -91,8 +103,6 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
     try {
       const jsaPdfUrl = await uploadFile(values.jsaPdf, 'ptw-jsa', user.uid, setUploadProgress);
       
-      const scope: Scope = values.isPublic ? 'public' : 'private';
-      
       const newPtwData: Omit<Ptw, 'id'> = {
         userId: user.uid,
         date: new Date().toISOString(),
@@ -102,8 +112,8 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
         contractor: values.contractor,
         jsaPdfUrl,
         status: 'Pending Approval',
-        scope,
-        projectId: null, // Always set to null for simplicity
+        scope: values.scope as Scope,
+        projectId: values.scope === 'project' ? values.projectId! : null,
       };
 
       await onAddPtw(newPtwData);
@@ -136,6 +146,61 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <Form {...form}>
             <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="scope"
+                render={({ field }) => (
+                  <FormItem className="space-y-3 p-4 border rounded-md">
+                    <FormLabel className="text-base font-semibold">Tujuan Laporan</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="flex flex-col space-y-2"
+                      >
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl><RadioGroupItem value="private" /></FormControl>
+                          <FormLabel className="font-normal">Pribadi (Hanya bisa dilihat oleh Anda)</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl><RadioGroupItem value="public" /></FormControl>
+                          <FormLabel className="font-normal">Publik (Bisa dilihat oleh semua pengguna)</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl><RadioGroupItem value="project" /></FormControl>
+                          <FormLabel className="font-normal">Proyek</FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {scopeValue === 'project' && (
+                <FormField
+                  control={form.control}
+                  name="projectId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pilih Proyek</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={projectsLoading || projects.length === 0}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={projectsLoading ? "Memuat proyek..." : "Pilih sebuah proyek"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {projects.length === 0 && !projectsLoading && <FormDescription>Anda belum menjadi anggota proyek manapun.</FormDescription>}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField name="location" control={form.control} render={({ field }) => (
                   <FormItem><FormLabel>Lokasi</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{LOCATIONS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
@@ -159,28 +224,6 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField
-                control={form.control}
-                name="isPublic"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">
-                        Bagikan ke Publik
-                      </FormLabel>
-                      <FormDescription>
-                        Jika aktif, PTW ini akan dapat dilihat oleh semua pengguna.
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
             </form>
           </Form>
         </div>
@@ -199,5 +242,3 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
     </Dialog>
   );
 }
-
-    
