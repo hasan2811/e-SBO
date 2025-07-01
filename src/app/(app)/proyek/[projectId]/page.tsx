@@ -100,7 +100,7 @@ export default function ProjectFeedPage() {
               {project.members?.map(member => (
                 <div key={member.uid} className="flex flex-col items-center gap-2 text-center w-20">
                     <Avatar>
-                        <AvatarImage src={member.uid} alt={member.displayName} />
+                        <AvatarImage src={member.photoURL ?? undefined} alt={member.displayName} />
                         <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
                     </Avatar>
                     <span className="text-xs font-medium leading-tight truncate w-full">{member.displayName}</span>

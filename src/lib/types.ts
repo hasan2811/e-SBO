@@ -18,6 +18,7 @@ export type UserProfile = {
   displayName: string;
   email: string;
   position: string;
+  photoURL?: string | null;
 };
 
 export type Project = {
