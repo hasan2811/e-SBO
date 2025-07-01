@@ -1,28 +1,31 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // Helper function to check project membership
+
+    // Helper function to check project membership by accessing Firestore
     function isProjectMember(projectId) {
-      return get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
-    }
-    
-    // --- PRIVATE UPLOADS ---
-    // Users can only write to their own private folders.
-    // This rule covers 'observations', 'inspections', 'ptw-jsa', and 'actions' folders.
-    match /{path}/{userId}/{allPaths=**} {
-      allow read: if true; // All uploaded files are public-readable via URL
-      allow write: if request.auth.uid == userId;
+      return exists(/databases/(default)/documents/projects/$(projectId)) &&
+             get(/databases/(default)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
     }
 
-    // --- PROJECT UPLOADS ---
-    // Users can only write to a project's folder if they are a member of that project.
-    // They are further restricted to writing inside their own user-specific subfolder.
-    match /projects/{projectId}/{path}/{userId}/{allPaths=**} {
-      allow read: if true; // All uploaded files are public-readable via URL
-      allow write: if request.auth.uid == userId && isProjectMember(projectId);
+    // Allow public read access to all files.
+    // This is necessary because once an image URL is generated, it must be publicly accessible.
+    // Security is enforced by obscurity of the URL.
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+    
+    // Secure PRIVATE file uploads (observations, inspections, ptw-jsa, actions)
+    // The path should be like: /observations/USER_ID/file.jpg
+    match /{path}/{userId}/{fileName} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Secure PROJECT-specific file uploads
+    // The path should be like: /projects/PROJECT_ID/observations/USER_ID/file.jpg
+    match /projects/{projectId}/{path}/{userId}/{fileName} {
+       allow write: if request.auth != null && request.auth.uid == userId && isProjectMember(projectId);
     }
   }
 }
