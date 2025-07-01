@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, limit, doc, deleteDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, limit, doc, deleteDoc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Project, UserProfile } from '@/lib/types';
 
@@ -122,7 +122,10 @@ export async function addProjectMember(
         if (!projectSnap.exists()) {
             return { success: false, message: "Project not found." };
         }
-        if (projectSnap.data().ownerUid !== ownerId) {
+        
+        const project = projectSnap.data() as Project;
+        
+        if (project.ownerUid !== ownerId) {
             return { success: false, message: "Only the project owner can add members." };
         }
 
@@ -135,6 +138,10 @@ export async function addProjectMember(
         }
         
         const newMember = userSnap.docs[0].data() as UserProfile;
+        
+        if (project.memberUids.includes(newMember.uid)) {
+            return { success: false, message: `User ${newMember.displayName} is already a member of this project.`};
+        }
 
         // STRICT RULE: Check if the new member is already in ANY project.
         const projectsRef = collection(db, 'projects');
@@ -157,4 +164,98 @@ export async function addProjectMember(
         console.error("Error adding project member:", error);
         return { success: false, message: error instanceof Error ? error.message : "An unknown error occurred." };
     }
+}
+
+
+/**
+ * Removes a member from a project. Only the project owner can perform this action.
+ * The owner cannot remove themselves.
+ * @param projectId The ID of the project.
+ * @param memberIdToRemove The UID of the member to remove.
+ * @param ownerId The UID of the user requesting the removal (must be owner).
+ * @returns An object with success status and a message.
+ */
+export async function removeProjectMember(
+  projectId: string,
+  memberIdToRemove: string,
+  ownerId: string
+): Promise<{ success: boolean; message: string }> {
+  if (!projectId || !memberIdToRemove || !ownerId) {
+    return { success: false, message: 'Missing required fields.' };
+  }
+
+  try {
+    const projectRef = doc(db, 'projects', projectId);
+    const projectSnap = await getDoc(projectRef);
+
+    if (!projectSnap.exists()) {
+      return { success: false, message: 'Project not found.' };
+    }
+
+    const project = projectSnap.data() as Project;
+
+    if (project.ownerUid !== ownerId) {
+      return { success: false, message: 'Permission denied. Only the project owner can remove members.' };
+    }
+    
+    if (memberIdToRemove === ownerId) {
+      return { success: false, message: 'The project owner cannot be removed.' };
+    }
+
+    await updateDoc(projectRef, {
+      memberUids: arrayRemove(memberIdToRemove),
+    });
+
+    revalidatePath(`/proyek/${projectId}`);
+    return { success: true, message: 'Member has been removed from the project.' };
+  } catch (error) {
+    console.error('Error removing project member:', error);
+    return { success: false, message: error instanceof Error ? error.message : 'An unknown error occurred.' };
+  }
+}
+
+/**
+ * Allows a member to leave a project. The project owner cannot leave.
+ * @param projectId The ID of the project to leave.
+ * @param memberId The UID of the member leaving the project.
+ * @returns An object with success status and a message.
+ */
+export async function leaveProject(
+  projectId: string,
+  memberId: string
+): Promise<{ success: boolean; message: string }> {
+  if (!projectId || !memberId) {
+    return { success: false, message: 'Missing required fields.' };
+  }
+
+  try {
+    const projectRef = doc(db, 'projects', projectId);
+    const projectSnap = await getDoc(projectRef);
+
+    if (!projectSnap.exists()) {
+      return { success: false, message: 'Project not found.' };
+    }
+    
+    const project = projectSnap.data() as Project;
+
+    if (project.ownerUid === memberId) {
+      return { success: false, message: 'The project owner cannot leave the project. You must delete it instead.' };
+    }
+    
+    if (!project.memberUids.includes(memberId)) {
+        return { success: false, message: 'You are not a member of this project.' };
+    }
+
+    await updateDoc(projectRef, {
+      memberUids: arrayRemove(memberId),
+    });
+
+    revalidatePath(`/proyek/${projectId}`);
+    revalidatePath('/beranda');
+    
+    return { success: true, message: 'You have left the project.' };
+  } catch (error) {
+    console.error('Error leaving project:', error);
+    return { success: false, message: error instanceof Error ? error.message : 'An unknown error occurred.' };
+  }
 }
