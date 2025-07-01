@@ -7,8 +7,8 @@ import { useObservations } from '@/contexts/observation-context';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCategory, ObservationStatus } from '@/lib/types';
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
-import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, AlertTriangle, User } from 'lucide-react';
+import { format, startOfToday } from 'date-fns';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -166,7 +166,7 @@ interface FeedViewProps {
 }
 
 export function FeedView({ mode }: FeedViewProps) {
-  const { myItems, loading: myItemsLoading } = useObservations();
+  const { privateItems, projectItems, loading: myItemsLoading } = useObservations();
   
   const [publicItems, setPublicItems] = React.useState<AllItems[]>([]);
   const [loadingPublic, setLoadingPublic] = React.useState(true);
@@ -239,7 +239,9 @@ export function FeedView({ mode }: FeedViewProps) {
         lastVisibleRef.current = documentSnapshots.docs[documentSnapshots.docs.length - 1] || null;
         setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
         
-        setPublicItems(prevItems => sortItemsByDate(reset ? newItems : [...prevItems, ...newItems]));
+        const combinedItems = reset ? newItems : [...publicItems, ...newItems];
+        const sortedItems = combinedItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setPublicItems(sortedItems);
 
     } catch (error: any) {
         console.error("Error fetching public items:", error);
@@ -254,35 +256,31 @@ export function FeedView({ mode }: FeedViewProps) {
     } finally {
         setLoadingPublic(false);
     }
-  }, [viewType]);
+  }, [viewType, publicItems]);
+
 
   React.useEffect(() => {
     if (mode === 'public') {
       fetchPublicItems(true);
     }
   }, [mode, viewType, fetchPublicItems]);
-
-  const sortItemsByDate = (items: AllItems[]) => {
-    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  };
   
-  const data = mode === 'public' ? publicItems : myItems;
-  const isLoading = mode === 'public' ? loadingPublic && publicItems.length === 0 : myItemsLoading;
+  const data = React.useMemo(() => {
+      if (mode === 'public') return publicItems;
+      if (mode === 'private') return privateItems;
+      if (mode === 'project') return projectItems;
+      return [];
+  }, [mode, publicItems, privateItems, projectItems]);
+
+  const isLoading = mode === 'public' ? loadingPublic && data.length === 0 : myItemsLoading;
 
   const filteredData = React.useMemo(() => {
     let dataToFilter: AllItems[] = [...data];
     
-    // 1. Filter by mode (private vs project)
-    if (mode === 'private') {
-      dataToFilter = dataToFilter.filter(item => !item.projectId);
-    } else if (mode === 'project') {
-      dataToFilter = dataToFilter.filter(item => !!item.projectId);
-    }
-    
-    // 2. Filter by item type (observation, inspection, ptw)
+    // 1. Filter by item type (observation, inspection, ptw)
     dataToFilter = dataToFilter.filter(item => item.itemType === viewConfig[viewType].itemType);
 
-    // 3. Apply additional filters for project/private view observations
+    // 2. Apply additional filters for project/private view observations
     if (mode !== 'public' && viewType === 'observations') {
         if (filterType !== 'all' && filterValue !== 'all') {
             const fieldMap = { status: 'status', risk: 'riskLevel', category: 'category' };
@@ -291,10 +289,6 @@ export function FeedView({ mode }: FeedViewProps) {
         }
     }
     
-    // 4. Sort non-public data client-side. Public data is sorted by query.
-    if (mode !== 'public') {
-        return sortItemsByDate(dataToFilter);
-    }
     return dataToFilter;
   }, [data, mode, viewType, filterType, filterValue]);
   

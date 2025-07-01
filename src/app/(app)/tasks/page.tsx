@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -249,7 +250,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { myItems, loading: observationsLoading } = useObservations();
+  const { projectItems, loading: observationsLoading } = useObservations();
   const { projects, loading: projectsLoading } = useProjects();
   const [analysis, setAnalysis] = React.useState<AnalyzeDashboardDataOutput | null>(null);
   const [analysisLoading, setAnalysisLoading] = React.useState(true);
@@ -257,10 +258,10 @@ export default function DashboardPage() {
   const loading = observationsLoading || projectsLoading;
 
   const projectObservations = React.useMemo(() => {
-    return myItems.filter(
-        (item): item is Observation => item.itemType === 'observation' && !!item.projectId
+    return projectItems.filter(
+        (item): item is Observation => item.itemType === 'observation'
     );
-  }, [myItems]);
+  }, [projectItems]);
 
 
   const overviewData = React.useMemo(() => {
