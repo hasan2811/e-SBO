@@ -49,7 +49,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface TakeActionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  observation: Observation;
+  observation?: Observation;
   onUpdate: (data: Partial<Observation>) => Promise<void>;
 }
 
@@ -132,6 +132,11 @@ export function TakeActionDialog({
       }
     }
   };
+  
+  // This is the critical guard clause. If observation doesn't exist, don't render the dialog.
+  if (!observation) {
+    return null;
+  }
 
   const onSubmit = async (values: FormValues) => {
     if (!user || !userProfile) {
