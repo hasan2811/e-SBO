@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Home, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Home, Briefcase, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function BottomNavBar() {
@@ -11,13 +11,14 @@ export function BottomNavBar() {
 
   const navItems = [
     { href: '/', label: 'Publik', icon: Home },
+    { href: '/private', label: 'Pribadi', icon: User },
     { href: '/beranda', label: 'Project', icon: Briefcase },
     { href: '/tasks', label: 'Dashboard', icon: LayoutDashboard },
   ];
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 z-50 w-full h-16 bg-card border-t">
-      <div className="grid h-full grid-cols-3 mx-auto">
+      <div className="grid h-full grid-cols-4 mx-auto">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -25,7 +26,7 @@ export function BottomNavBar() {
               key={item.href}
               href={item.href}
               className={cn(
-                'inline-flex flex-col items-center justify-center font-medium px-5 hover:bg-muted/50 transition-colors',
+                'inline-flex flex-col items-center justify-center font-medium px-2 sm:px-5 hover:bg-muted/50 transition-colors',
                 isActive ? 'text-primary' : 'text-muted-foreground'
               )}
             >

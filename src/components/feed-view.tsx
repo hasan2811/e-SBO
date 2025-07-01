@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, AlertTriangle } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, AlertTriangle, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -162,14 +162,14 @@ const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => (
 );
 
 interface FeedViewProps {
-  mode: 'public' | 'personal';
+  mode: 'public' | 'project' | 'private';
 }
 
 export function FeedView({ mode }: FeedViewProps) {
   const { myItems, loading: myItemsLoading } = useObservations();
   
-  const [items, setItems] = React.useState<AllItems[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [publicItems, setPublicItems] = React.useState<AllItems[]>([]);
+  const [loadingPublic, setLoadingPublic] = React.useState(true);
   const lastVisibleRef = React.useRef<QueryDocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<string | null>(null);
@@ -197,7 +197,12 @@ export function FeedView({ mode }: FeedViewProps) {
     category: OBSERVATION_CATEGORIES,
   };
 
-  const pageTitle = mode === 'public' ? 'Publik' : 'Project';
+  const pageTitleConfig = {
+    public: 'Publik',
+    project: 'Project',
+    private: 'Pribadi',
+  };
+  const pageTitle = pageTitleConfig[mode];
   
   const clearFilters = () => {
     setFilterType('all');
@@ -205,15 +210,14 @@ export function FeedView({ mode }: FeedViewProps) {
   };
 
   const fetchPublicItems = React.useCallback(async (reset = false) => {
-    setLoading(true);
+    setLoadingPublic(true);
     setFetchError(null);
     if (reset) {
         lastVisibleRef.current = null;
-        setItems([]);
+        setPublicItems([]);
     }
 
     try {
-        // This query now uses the index the user has created.
         let q: Query<DocumentData> = query(
             collection(db, viewType),
             where('scope', '==', 'public'),
@@ -235,42 +239,51 @@ export function FeedView({ mode }: FeedViewProps) {
         lastVisibleRef.current = documentSnapshots.docs[documentSnapshots.docs.length - 1] || null;
         setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
         
-        setItems(prevItems => (reset ? newItems : [...prevItems, ...newItems]));
+        setPublicItems(prevItems => sortItemsByDate(reset ? newItems : [...prevItems, ...newItems]));
 
     } catch (error: any) {
         console.error("Error fetching public items:", error);
         
         if (error.code === 'failed-precondition' && error.message.includes('index')) {
             const indexCreationLink = error.message.substring(error.message.indexOf('https://'));
-            setFetchError(`Database memerlukan konfigurasi (indeks) untuk menampilkan data ini. Klik link di konsol browser untuk membuatnya: ${indexCreationLink}`);
+            setFetchError(`Database memerlukan konfigurasi (indeks) untuk menampilkan data ini. Klik link di konsol browser untuk membuatnya.`);
         } else {
              setFetchError(`Gagal memuat data. Periksa koneksi internet Anda. Error: ${error.message}`);
         }
         setHasMore(false);
     } finally {
-        setLoading(false);
+        setLoadingPublic(false);
     }
   }, [viewType]);
 
   React.useEffect(() => {
     if (mode === 'public') {
       fetchPublicItems(true);
-    } else {
-      setItems([]); // Clear public items when switching to personal mode
     }
   }, [mode, viewType, fetchPublicItems]);
 
-  const data = mode === 'public' ? items : myItems;
-  const isLoading = mode === 'public' ? loading && items.length === 0 : myItemsLoading;
+  const sortItemsByDate = (items: AllItems[]) => {
+    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  };
+  
+  const data = mode === 'public' ? publicItems : myItems;
+  const isLoading = mode === 'public' ? loadingPublic && publicItems.length === 0 : myItemsLoading;
 
   const filteredData = React.useMemo(() => {
     let dataToFilter: AllItems[] = [...data];
     
-    // Filter by item type (observation, inspection, ptw)
-    dataToFilter = dataToFilter.filter(item => item.itemType === viewType.slice(0, -1));
+    // 1. Filter by mode (private vs project)
+    if (mode === 'private') {
+      dataToFilter = dataToFilter.filter(item => !item.projectId);
+    } else if (mode === 'project') {
+      dataToFilter = dataToFilter.filter(item => !!item.projectId);
+    }
+    
+    // 2. Filter by item type (observation, inspection, ptw)
+    dataToFilter = dataToFilter.filter(item => item.itemType === viewConfig[viewType].itemType);
 
-    // Apply additional filters for personal/project view
-    if (mode === 'personal' && viewType === 'observations') {
+    // 3. Apply additional filters for project/private view observations
+    if (mode !== 'public' && viewType === 'observations') {
         if (filterType !== 'all' && filterValue !== 'all') {
             const fieldMap = { status: 'status', risk: 'riskLevel', category: 'category' };
             const key = fieldMap[filterType as 'status' | 'risk' | 'category'];
@@ -278,9 +291,9 @@ export function FeedView({ mode }: FeedViewProps) {
         }
     }
     
-    // Sort personal data client-side. Public data is already sorted by the query.
-    if (mode === 'personal') {
-        return dataToFilter.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // 4. Sort non-public data client-side. Public data is sorted by query.
+    if (mode !== 'public') {
+        return sortItemsByDate(dataToFilter);
     }
     return dataToFilter;
   }, [data, mode, viewType, filterType, filterValue]);
@@ -319,15 +332,22 @@ export function FeedView({ mode }: FeedViewProps) {
 
   function EmptyState() {
     const config = viewConfig[viewType];
-    const emptyText = mode === 'personal' 
-        ? `Anda belum membuat ${config.label.toLowerCase()} atau belum ada laporan di proyek Anda.`
-        : `Tidak ada ${config.label.toLowerCase()} publik yang tersedia.`
+    let emptyText = `Tidak ada ${config.label.toLowerCase()} yang tersedia.`;
+    let Icon = Home;
+
+    if(mode === 'project') {
+        emptyText = `Anda belum membuat ${config.label.toLowerCase()} atau belum ada laporan di proyek Anda.`;
+        Icon = Briefcase;
+    } else if (mode === 'private') {
+        emptyText = `Anda belum membuat ${config.label.toLowerCase()} pribadi.`;
+        Icon = User;
+    }
     
     const filterText = `Tidak ada ${config.label.toLowerCase()} yang cocok dengan filter Anda.`;
 
     return (
       <div className="text-center py-16 text-muted-foreground bg-card rounded-lg">
-        {areFiltersActive ? <FilterX className="mx-auto h-12 w-12" /> : mode === 'public' ? <Home className="mx-auto h-12 w-12" /> : <Briefcase className="mx-auto h-12 w-12" />}
+        {areFiltersActive ? <FilterX className="mx-auto h-12 w-12" /> : <Icon className="mx-auto h-12 w-12" />}
         <h3 className="mt-4 text-xl font-semibold">{areFiltersActive ? 'Tidak Ada Hasil' : 'Tidak Ada Laporan'}</h3>
         <p className="mt-2 text-sm max-w-xs mx-auto">{areFiltersActive ? filterText : emptyText}</p>
          {areFiltersActive && <Button variant="default" className="mt-6" onClick={clearFilters}><FilterX className="mr-2 h-4 w-4"/>Hapus Filter</Button>}
@@ -358,7 +378,7 @@ export function FeedView({ mode }: FeedViewProps) {
                 </DropdownMenu>
 
                 <TooltipProvider>
-                  {mode === 'personal' && viewType === 'observations' && (
+                  {mode !== 'public' && viewType === 'observations' && (
                      <Popover>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -452,24 +472,14 @@ export function FeedView({ mode }: FeedViewProps) {
         </div>
 
       <main>
-        {fetchError && (
+        {fetchError && mode === 'public' && (
           <Alert variant="destructive" className="mb-4">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Gagal Memuat Data Publik</AlertTitle>
             <AlertDescription>
                 <p>
-                {fetchError.split('https://')[0]}
+                {fetchError}
                 </p>
-                 {fetchError.includes('https://') &&
-                    <a 
-                        href={fetchError.substring(fetchError.indexOf('https://'))} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="underline font-semibold"
-                    >
-                        Klik di sini untuk membuat indeks yang diperlukan.
-                    </a>
-                 }
                 <p className="mt-2 text-xs">Setelah membuat indeks, mungkin perlu beberapa menit untuk aktif. Coba muat ulang halaman setelahnya.</p>
             </AlertDescription>
           </Alert>
@@ -509,9 +519,9 @@ export function FeedView({ mode }: FeedViewProps) {
             {hasMore ? (
               <Button
                 onClick={() => fetchPublicItems(false)}
-                disabled={loading}
+                disabled={loadingPublic}
               >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {loadingPublic && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Tampilkan Lebih Banyak
               </Button>
             ) : (
