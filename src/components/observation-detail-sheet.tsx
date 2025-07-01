@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -56,6 +57,10 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
   };
   
   const handleLikeClick = () => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Anda harus masuk untuk menyukai.' });
+        return;
+    }
     toggleLikeObservation(observation);
   };
 
@@ -104,7 +109,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                       </Button>
                   </SheetClose>
                   <div className="flex flex-col">
-                      <SheetTitle>Observation Details</SheetTitle>
+                      <SheetTitle>Detail Observasi</SheetTitle>
                       <SheetDescription>{observation.referenceId || observation.id}</SheetDescription>
                   </div>
               </div>
@@ -132,36 +137,36 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
               </div>
             )}
             <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-center">
-              <div className="font-semibold text-muted-foreground">Submitted On</div>
+              <div className="font-semibold text-muted-foreground">Dikirim Pada</div>
               <div>{format(new Date(observation.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
 
-              <div className="font-semibold text-muted-foreground">Submitted By</div>
+              <div className="font-semibold text-muted-foreground">Dikirim Oleh</div>
               <div>{observation.submittedBy}</div>
               
               {mode !== 'public' && (
                 <>
-                  <div className="font-semibold text-muted-foreground">Company</div>
+                  <div className="font-semibold text-muted-foreground">Perusahaan</div>
                   <div>{observation.company}</div>
 
-                  <div className="font-semibold text-muted-foreground">Location</div>
+                  <div className="font-semibold text-muted-foreground">Lokasi</div>
                   <div>{observation.location}</div>
                 </>
               )}
 
               {projectName && (
                 <>
-                  <div className="font-semibold text-muted-foreground flex items-center gap-1.5"><Folder className="h-4 w-4"/>Project</div>
+                  <div className="font-semibold text-muted-foreground flex items-center gap-1.5"><Folder className="h-4 w-4"/>Proyek</div>
                   <div>{projectName}</div>
                 </>
               )}
 
-              <div className="font-semibold text-muted-foreground">Category</div>
+              <div className="font-semibold text-muted-foreground">Kategori</div>
               <div>{observation.category}</div>
 
               <div className="font-semibold text-muted-foreground">Status</div>
               <div><StatusBadge status={observation.status} /></div>
 
-              <div className="font-semibold text-muted-foreground">Risk Level</div>
+              <div className="font-semibold text-muted-foreground">Tingkat Risiko</div>
               <div>
                  <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", riskStyles[observation.riskLevel])}>
                     {observation.riskLevel}
@@ -199,12 +204,12 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
             )}
 
             <div className="space-y-1">
-              <h4 className="font-semibold">Findings</h4>
+              <h4 className="font-semibold">Temuan</h4>
               <p className="text-sm text-muted-foreground">{observation.findings}</p>
             </div>
 
             <div className="space-y-1">
-              <h4 className="font-semibold">Recommendation</h4>
+              <h4 className="font-semibold">Rekomendasi</h4>
               <p className="text-sm text-muted-foreground">{observation.recommendation}</p>
             </div>
 
@@ -213,22 +218,22 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                  <div className="bg-primary/5 p-4 rounded-lg border-l-4 border-primary space-y-4">
                     <h4 className="font-semibold text-base flex items-center gap-2">
                       <Sparkles className="h-5 w-5 text-primary" />
-                      HSSE Tech Analysis
+                      Analisis HSSE Tech
                     </h4>
 
                     {observation.aiStatus === 'processing' && (
                       <div className="flex items-center gap-3 p-4 rounded-lg">
                           <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                          <p className="text-sm text-muted-foreground">AI analysis is in progress...</p>
+                          <p className="text-sm text-muted-foreground">Analisis AI sedang diproses...</p>
                       </div>
                     )}
 
                     {observation.aiStatus === 'failed' && (
                       <div className="flex flex-col items-start gap-3 bg-destructive/10 p-4 rounded-lg border border-destructive/20">
-                          <p className="text-sm text-destructive font-medium">The AI analysis could not be completed.</p>
+                          <p className="text-sm text-destructive font-medium">Analisis AI tidak dapat diselesaikan.</p>
                           <Button variant="destructive" size="sm" onClick={handleRetry}>
                               <RefreshCw className="mr-2 h-4 w-4" />
-                              Retry Analysis
+                              Coba Lagi Analisis
                           </Button>
                       </div>
                     )}
@@ -240,7 +245,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                             <div className="flex items-center justify-between">
                               <h5 className="font-semibold flex items-center gap-2 text-sm">
                                 <UserCheck className="h-4 w-4 text-muted-foreground" />
-                                Observer Insight
+                                Wawasan Observer
                               </h5>
                               <StarRating rating={observation.aiObserverSkillRating} />
                             </div>
@@ -254,7 +259,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                               <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4 text-muted-foreground" />
-                                Summary
+                                Ringkasan
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
@@ -267,7 +272,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                               <div className="flex items-center gap-2">
                                 <Activity className="h-4 w-4 text-muted-foreground" />
-                                Suggested Risk Level
+                                Saran Tingkat Risiko
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2 pl-8">
@@ -282,7 +287,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                               <div className="flex items-center gap-2">
                                 <Target className="h-4 w-4 text-muted-foreground" />
-                                Root Cause Analysis
+                                Analisis Akar Penyebab
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
@@ -295,7 +300,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                               <div className="flex items-center gap-2">
                                 <ShieldAlert className="h-4 w-4 text-destructive" />
-                                Potential Risks
+                                Potensi Risiko
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
@@ -308,7 +313,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                                 <div className="flex items-center gap-2">
                                   <ListChecks className="h-4 w-4 text-green-600" />
-                                  Suggested Actions
+                                  Saran Tindakan
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
@@ -321,7 +326,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                                <div className="flex items-center gap-2">
                                 <Gavel className="h-4 w-4 text-muted-foreground" />
-                                Relevant Regulations
+                                Peraturan Terkait
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
@@ -338,9 +343,9 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
 
             {observation.status === 'Completed' && (
               <div className="space-y-4 pt-4 border-t mt-4">
-                <h4 className="font-semibold text-base">Action Taken</h4>
+                <h4 className="font-semibold text-base">Tindakan yang Diambil</h4>
                  <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-start">
-                    <div className="font-semibold text-muted-foreground self-start">Description</div>
+                    <div className="font-semibold text-muted-foreground self-start">Deskripsi</div>
                     <div className="text-muted-foreground">
                       {observation.actionTakenDescription ? (
                         <div className="space-y-1">
@@ -358,12 +363,12 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                    
                    {observation.closedDate && (
                     <>
-                      <div className="font-semibold text-muted-foreground">Closed On</div>
+                      <div className="font-semibold text-muted-foreground">Ditutup Pada</div>
                       <div className="text-muted-foreground">{format(new Date(observation.closedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
                     </>
                    )}
 
-                   <div className="font-semibold text-muted-foreground">Closed By</div>
+                   <div className="font-semibold text-muted-foreground">Ditutup Oleh</div>
                    <div className="text-muted-foreground">{observation.closedBy || '-'}</div>
                  </div>
                 
@@ -386,7 +391,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
               <div className="pt-6 mt-6 border-t">
                 <Button type="button" onClick={handleTakeAction} className="w-full">
                   <Gavel className="mr-2 h-4 w-4" />
-                  Take Action
+                  Ambil Tindakan
                 </Button>
               </div>
             )}

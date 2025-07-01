@@ -20,7 +20,6 @@ export async function toggleLike({ docId, userId }: ToggleLikeParams) {
     throw new Error('Document ID and User ID are required.');
   }
 
-  // With the unified data model, the document is always in the root 'observations' collection.
   const docRef = doc(db, 'observations', docId);
 
   try {
@@ -54,11 +53,9 @@ export async function toggleLike({ docId, userId }: ToggleLikeParams) {
     if (observation) {
         if (observation.scope === 'project' && observation.projectId) {
           revalidatePath(`/proyek/${observation.projectId}`);
-        } else if (observation.scope === 'public') {
-          revalidatePath('/');
-        } else { // private
-          revalidatePath('/private');
         }
+        revalidatePath('/'); // Always revalidate public feed
+        revalidatePath('/private'); // Always revalidate private feed
     }
 
 

@@ -2,15 +2,15 @@
 import { z } from 'zod';
 
 export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed';
-export type ObservationCategory = 'Structural' | 'Electrical' | 'Plumbing' | 'General';
+export type ObservationCategory = 'Unsafe Act' | 'Unsafe Condition' | 'Environmental' | 'Security' | 'General';
 export type Company = 'Tambang' | 'Migas' | 'Konstruksi' | 'Manufaktur';
-export type Location = 'International' | 'National' | 'Local' | 'Regional';
+export type Location = 'Site A' | 'Site B' | 'Office' | 'Workshop';
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 export type Scope = 'public' | 'private' | 'project';
 
 export const RISK_LEVELS: [RiskLevel, ...RiskLevel[]] = ['Low', 'Medium', 'High', 'Critical'];
 export const OBSERVATION_STATUSES: [ObservationStatus, ...ObservationStatus[]] = ['Pending', 'In Progress', 'Completed'];
-export const OBSERVATION_CATEGORIES: [ObservationCategory, ...ObservationCategory[]] = ['Structural', 'Electrical', 'Plumbing', 'General'];
+export const OBSERVATION_CATEGORIES: [ObservationCategory, ...ObservationCategory[]] = ['Unsafe Act', 'Unsafe Condition', 'Environmental', 'Security', 'General'];
 
 
 export type UserProfile = {
@@ -65,6 +65,7 @@ export type Observation = {
   isSharedPublicly?: boolean;
   sharedBy?: string;
   sharedByPosition?: string;
+  originalId?: string; // If it's a shared copy, this points to the original
   // Social Features
   likes?: string[]; // Array of user UIDs who liked it
   likeCount?: number;
@@ -146,7 +147,7 @@ export type AnalyzeDashboardDataOutput = z.infer<typeof AnalyzeDashboardDataOutp
 
 // assist-observation-flow
 export const AssistObservationInputSchema = z.object({
-  findings: z.string().min(20).describe('The user-written findings from the observation report.'),
+  findings: z.string().min(10).describe('The user-written findings from the observation report.'),
 });
 export type AssistObservationInput = z.infer<typeof AssistObservationInputSchema>;
 

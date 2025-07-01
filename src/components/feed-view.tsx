@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -60,6 +61,10 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
 
     const handleLikeClick = (e: React.MouseEvent) => {
         e.stopPropagation(); // Prevent opening the detail sheet
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Anda harus masuk untuk menyukai.' });
+            return;
+        }
         toggleLikeObservation(observation);
     };
 
@@ -93,13 +98,18 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
                     <p className="text-xs text-primary font-semibold truncate pr-2">{observation.category}</p>
                     <div className="flex items-center gap-2 flex-shrink-0">
                         {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
-                            <div title={`Observer Rating: ${observation.aiObserverSkillRating}/5`}>
-                                <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
-                            </div>
+                             <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger>
+                                        <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Observer Rating: {observation.aiObserverSkillRating}/5</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         )}
                         <TooltipProvider>
                             <Tooltip>
-                                <TooltipTrigger asChild>
+                                <TooltipTrigger>
                                     <StatusIcon className={cn("h-4 w-4", statusClassName)} />
                                 </TooltipTrigger>
                                 <TooltipContent><p>{statusLabel}</p></TooltipContent>
@@ -112,15 +122,19 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
                     <div className="text-xs text-muted-foreground mt-1.5 truncate">
                         <Share2 className="inline-block h-3 w-3 mr-1.5 align-middle text-primary"/>
                         <span className="align-middle">
-                            Oleh <strong>{observation.sharedBy.split(' ')[0]}</strong> ({observation.sharedByPosition})
+                            Dibagikan oleh <strong>{observation.sharedBy.split(' ')[0]}</strong> ({observation.sharedByPosition})
                         </span>
                     </div>
-                ) : null}
+                 ) : mode !== 'public' ? (
+                     <div className="text-xs text-muted-foreground mt-1.5 truncate">
+                        <span className="font-medium text-muted-foreground">{format(new Date(observation.date), 'd MMM yy, HH:mm')}</span>
+                    </div>
+                 ) : null}
               </div>
           </div>
           
           <div className="flex items-center gap-4 text-xs pt-2 mt-2 border-t border-border/50">
-            {mode !== 'private' && (
+            {mode !== 'private' ? (
               <>
                 <button
                   onClick={handleLikeClick}
@@ -141,41 +155,12 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
                   <span>{observation.viewCount || 0}</span>
                 </div>
               </>
-            )}
-            {mode === 'private' && (
+            ) : (
                 <div className="flex justify-between w-full">
                     <span className="font-medium text-muted-foreground">{observation.company} &bull; {observation.location}</span>
                     <span className="text-muted-foreground">{format(new Date(observation.date), 'd MMM yy')}</span>
                 </div>
             )}
-             {mode === 'project' && (
-                <div className="flex justify-between w-full">
-                     <span className="font-medium text-muted-foreground">{observation.company} &bull; {observation.location}</span>
-                    <div className="flex items-center gap-4">
-                        <button
-                          onClick={handleLikeClick}
-                          className={cn(
-                            "flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors",
-                            hasLiked && "text-primary font-semibold"
-                          )}
-                        >
-                          <ThumbsUp className={cn("h-3.5 w-3.5", hasLiked && "fill-current")} />
-                          <span>{observation.likeCount || 0}</span>
-                        </button>
-                        <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
-                          <MessageCircle className="h-3.5 w-3.5" />
-                          <span>{observation.commentCount || 0}</span>
-                        </button>
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <Eye className="h-3.5 w-3.5" />
-                          <span>{observation.viewCount || 0}</span>
-                        </div>
-                    </div>
-                </div>
-            )}
-             {mode === 'public' && (
-                 <span className="text-muted-foreground ml-auto">{format(new Date(observation.date), 'd MMM yy')}</span>
-             )}
           </div>
         </div>
       </li>
@@ -247,7 +232,8 @@ const viewConfig = {
 };
 
 export function FeedView({ mode, projectId }: FeedViewProps) {
-  const { privateItems, projectItems, loading: myItemsLoading } = useObservations();
+  const { privateItems, projectItems, loading: myItemsLoading, toggleLikeObservation } = useObservations();
+  const { user } = useAuth();
   
   const [publicItems, setPublicItems] = React.useState<AllItems[]>([]);
   const [loadingPublic, setLoadingPublic] = React.useState(true);
@@ -354,16 +340,13 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   const isLoading = mode === 'public' ? loadingPublic && data.length === 0 : myItemsLoading;
 
   const filteredData = React.useMemo(() => {
-    // Definitif Solution: Cut-off date to filter out old data from before the AI submission logic change.
-    // This prevents rendering errors with data that has an incompatible structure.
     const cutoffDate = new Date('2025-07-02T00:00:00.000Z');
-    const baseData = [...data].filter(item => new Date(item.date) >= cutoffDate);
+    let baseData = [...data].filter(item => new Date(item.date) >= cutoffDate);
 
     if (mode === 'public') {
-        let items = baseData;
         if (searchTerm) {
             const lowercasedSearch = searchTerm.toLowerCase();
-            items = items.filter(item => {
+            baseData = baseData.filter(item => {
                 if (item.itemType !== 'observation') return false;
                 const obs = item as Observation;
                 return (
@@ -373,7 +356,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
                 );
             });
         }
-        return items;
+        return baseData;
     }
     
     // Logic for private and project feeds
@@ -503,9 +486,9 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setViewType('observations')}>{viewConfig.observations.label}</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setViewType('inspections')}>{viewConfig.inspections.label}</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setViewType('ptws')}>{viewConfig.ptws.label}</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setViewType('observations')}>Observasi</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setViewType('inspections')}>Inspeksi</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setViewType('ptws')}>PTW</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
 
