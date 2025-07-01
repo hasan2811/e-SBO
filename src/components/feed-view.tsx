@@ -120,12 +120,12 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
                     {mode === 'public' && observation.sharedBy ? (
                         <div className="flex items-center gap-1.5">
                           <Share2 className="h-3 w-3 flex-shrink-0"/>
-                          <span>
+                          <span className="truncate">
                               Oleh <strong>{observation.sharedBy.split(' ')[0]}</strong>
                           </span>
                         </div>
                     ) : (
-                        <span>{observation.company}</span>
+                        <span className="truncate">{observation.company}</span>
                     )}
                     <span>{format(new Date(observation.date), 'd MMM yy, HH:mm')}</span>
                 </div>
@@ -331,8 +331,13 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   const isLoading = mode === 'public' ? loadingPublic && data.length === 0 : myItemsLoading;
 
   const filteredData = React.useMemo(() => {
+    // Definitif Solution: Cut-off date to filter out old data from before the AI submission logic change.
+    // This prevents rendering errors with data that has an incompatible structure.
+    const cutoffDate = new Date('2025-07-02T00:00:00.000Z');
+    const baseData = [...data].filter(item => new Date(item.date) >= cutoffDate);
+
     if (mode === 'public') {
-        let items = [...data];
+        let items = baseData;
         if (searchTerm) {
             const lowercasedSearch = searchTerm.toLowerCase();
             items = items.filter(item => {
@@ -349,7 +354,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
     }
     
     // Logic for private and project feeds
-    let dataToFilter: AllItems[] = [...data];
+    let dataToFilter: AllItems[] = baseData;
     if (mode === 'project' && projectId) {
         dataToFilter = dataToFilter.filter(item => item.projectId === projectId);
     }
