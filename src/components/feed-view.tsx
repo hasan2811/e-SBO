@@ -90,7 +90,11 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
       
                 <div className="flex-1 space-y-1 self-start">
                     <div className="flex justify-between items-start">
-                        <p className="text-xs text-muted-foreground font-semibold">{observation.location}</p>
+                        {mode === 'public' ? (
+                            <p className="text-xs text-primary font-semibold">{observation.category}</p>
+                        ) : (
+                            <p className="text-xs text-muted-foreground font-semibold">{observation.location}</p>
+                        )}
                         <div className="flex items-center gap-2">
                             {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
                                 <div title={`Observer Rating: ${observation.aiObserverSkillRating}/5`}>
@@ -120,7 +124,8 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
 
                     <div className="flex flex-wrap items-center gap-x-2 pt-1">
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(observation.date), 'd MMM yyyy, HH:mm')} &bull; {observation.category} &bull; {observation.company}
+                        {format(new Date(observation.date), 'd MMM yyyy, HH:mm')}
+                        {mode !== 'public' && ` • ${observation.category} • ${observation.company}`}
                       </p>
                     </div>
                 </div>

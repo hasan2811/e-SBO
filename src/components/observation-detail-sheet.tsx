@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -139,11 +138,15 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
               <div className="font-semibold text-muted-foreground">Submitted By</div>
               <div>{observation.submittedBy}</div>
               
-              <div className="font-semibold text-muted-foreground">Company</div>
-              <div>{observation.company}</div>
+              {mode !== 'public' && (
+                <>
+                  <div className="font-semibold text-muted-foreground">Company</div>
+                  <div>{observation.company}</div>
 
-              <div className="font-semibold text-muted-foreground">Location</div>
-              <div>{observation.location}</div>
+                  <div className="font-semibold text-muted-foreground">Location</div>
+                  <div>{observation.location}</div>
+                </>
+              )}
 
               {projectName && (
                 <>
