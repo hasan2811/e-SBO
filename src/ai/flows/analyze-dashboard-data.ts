@@ -1,31 +1,19 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to analyze aggregated dashboard data and generate insights.
  *
  * - analyzeDashboardData - A function that takes dashboard metrics and returns narrative insights.
- * - AnalyzeDashboardDataInput - The input type for the analyzeDashboardData function.
- * - AnalyzeDashboardDataOutput - The return type for the analyzeDashboardData function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {
+    AnalyzeDashboardDataInput,
+    AnalyzeDashboardDataInputSchema,
+    AnalyzeDashboardDataOutput,
+    AnalyzeDashboardDataOutputSchema,
+} from '@/lib/types';
 
-export const AnalyzeDashboardDataInputSchema = z.object({
-  totalObservations: z.number(),
-  pendingPercentage: z.number(),
-  criticalPercentage: z.number(),
-  riskDistribution: z.array(z.object({ name: z.string(), count: z.number() })),
-  companyDistribution: z.array(z.object({ name: z.string(), value: z.number() })),
-  dailyTrend: z.array(z.object({ day: z.string(), pending: z.number(), completed: z.number() })),
-});
-export type AnalyzeDashboardDataInput = z.infer<typeof AnalyzeDashboardDataInputSchema>;
-
-export const AnalyzeDashboardDataOutputSchema = z.object({
-  keyTrends: z.string().describe('Bulleted list of the 2-3 most important overall trends (Bahasa Indonesia).'),
-  emergingRisks: z.string().describe('Bulleted list of 1-2 potential new risks or areas needing attention (Bahasa Indonesia).'),
-  positiveHighlights: z.string().describe('Bulleted list of 1-2 positive developments or successes (Bahasa Indonesia).'),
-});
-export type AnalyzeDashboardDataOutput = z.infer<typeof AnalyzeDashboardDataOutputSchema>;
 
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',

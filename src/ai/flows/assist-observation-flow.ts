@@ -4,13 +4,11 @@
  * @fileOverview An AI flow to assist users in real-time while they fill out an observation form.
  *
  * - assistObservation - A function that suggests improvements and classifications for an observation in progress.
- * - AssistObservationInput - The input type for the assistObservation function.
- * - AssistObservationOutput - The return type for the assistObservation function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { RISK_LEVELS, OBSERVATION_CATEGORIES, RiskLevel, ObservationCategory } from '@/lib/types';
+import { RISK_LEVELS, OBSERVATION_CATEGORIES, RiskLevel, ObservationCategory, AssistObservationInput, AssistObservationInputSchema, AssistObservationOutput, AssistObservationOutputSchema } from '@/lib/types';
 
 /**
  * Finds the best match for a given value from a list of options, or returns a default.
@@ -36,19 +34,6 @@ function findClosestMatch<T extends string>(value: string | undefined, options: 
     return defaultValue;
 }
 
-
-export const AssistObservationInputSchema = z.object({
-  findings: z.string().min(20).describe('The user-written findings from the observation report.'),
-});
-export type AssistObservationInput = z.infer<typeof AssistObservationInputSchema>;
-
-export const AssistObservationOutputSchema = z.object({
-  suggestedCategory: z.string().describe('The most likely category for this finding.'),
-  suggestedRiskLevel: z.string().describe('The suggested risk level based on the finding.'),
-  improvedFindings: z.string().describe('An improved, more professional version of the original findings text.'),
-  suggestedRecommendation: z.string().describe('A suggested recommendation to address the findings.'),
-});
-export type AssistObservationOutput = z.infer<typeof AssistObservationOutputSchema>;
 
 const assistObservationPrompt = ai.definePrompt({
     name: 'assistObservationPrompt',

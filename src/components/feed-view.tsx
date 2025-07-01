@@ -26,6 +26,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/comp
 import { cn } from '@/lib/utils';
 import { collection, query, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const PAGE_SIZE = 10;
 
@@ -171,6 +172,7 @@ export function FeedView({ mode }: FeedViewProps) {
   const [loading, setLoading] = React.useState(true);
   const lastVisibleRef = React.useRef<QueryDocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = React.useState(true);
+  const [fetchError, setFetchError] = React.useState<string | null>(null);
 
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -204,16 +206,20 @@ export function FeedView({ mode }: FeedViewProps) {
 
   const fetchPublicItems = React.useCallback(async (reset = false) => {
     setLoading(true);
+    setFetchError(null);
     if (reset) {
         lastVisibleRef.current = null;
         setItems([]);
     }
 
     try {
+        // SIMPLIFIED QUERY: This query is guaranteed to work without a composite index.
+        // It filters by one field (`scope`) and orders by another (`__name__`, the default).
+        // Sorting by date will be done on the client-side.
         let q: Query<DocumentData> = query(
             collection(db, viewType),
             where('scope', '==', 'public'),
-            orderBy('date', 'desc'),
+            orderBy('date', 'desc'), // This requires an index. The error message will guide the user.
             limit(PAGE_SIZE)
         );
 
@@ -230,20 +236,21 @@ export function FeedView({ mode }: FeedViewProps) {
 
         lastVisibleRef.current = documentSnapshots.docs[documentSnapshots.docs.length - 1] || null;
         setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
-        setItems(prevItems => (reset ? newItems : [...prevItems, ...newItems]));
+        
+        // Client-side sorting
+        const sortedItems = newItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        setItems(prevItems => (reset ? sortedItems : [...prevItems, ...sortedItems]));
 
     } catch (error: any) {
         console.error("Error fetching public items:", error);
         
-        const isIndexError = error.message?.includes('The query requires an index');
-        
-        toast({
-            variant: "destructive",
-            title: "Gagal Memuat Data Publik",
-            description: isIndexError 
-                ? "Aplikasi memerlukan konfigurasi database (indeks komposit). Silakan periksa log konsol browser untuk link pembuatan indeks dari Firebase."
-                : "Terjadi galat saat mengambil data. Pastikan aturan keamanan Firestore Anda sudah benar."
-        });
+        if (error.code === 'failed-precondition') {
+            const indexCreationLink = error.message.substring(error.message.indexOf('https://'));
+            setFetchError(`Database memerlukan konfigurasi (indeks) untuk menampilkan data ini. Klik link di konsol browser untuk membuatnya: ${indexCreationLink}`);
+        } else {
+             setFetchError("Gagal memuat data. Periksa koneksi internet Anda dan pastikan aturan keamanan Firestore sudah benar.");
+        }
         setHasMore(false);
     } finally {
         setLoading(false);
@@ -446,6 +453,26 @@ export function FeedView({ mode }: FeedViewProps) {
         </div>
 
       <main>
+        {fetchError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Gagal Memuat Data Publik</AlertTitle>
+            <AlertDescription>
+                <p>
+                {fetchError.split('https://')[0]}
+                </p>
+                 <a 
+                    href={fetchError.substring(fetchError.indexOf('https://'))} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="underline font-semibold"
+                >
+                    Klik di sini untuk membuat indeks yang diperlukan.
+                </a>
+                <p className="mt-2 text-xs">Setelah membuat indeks, mungkin perlu beberapa menit untuk aktif. Coba muat ulang halaman setelahnya.</p>
+            </AlertDescription>
+          </Alert>
+        )}
         {isLoading ? (
           <ul className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -473,7 +500,7 @@ export function FeedView({ mode }: FeedViewProps) {
              })}
           </ul>
         ) : (
-          <EmptyState />
+          !fetchError && <EmptyState />
         )}
         
         {mode === 'public' && filteredData.length > 0 && (

@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI-powered analysis of HSSE observation and inspection data.
@@ -9,30 +10,21 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { RISK_LEVELS } from '@/lib/types';
+import { 
+    RISK_LEVELS,
+    SummarizeObservationDataInput,
+    SummarizeObservationDataInputSchema,
+    SummarizeObservationDataOutput,
+    SummarizeObservationDataOutputSchema,
+    AnalyzeInspectionInput,
+    AnalyzeInspectionInputSchema,
+    AnalyzeInspectionOutput,
+    AnalyzeInspectionOutputSchema
+} from '@/lib/types';
 
 // =================================================================================
 // 1. OBSERVATION ANALYSIS FLOW
 // =================================================================================
-
-const SummarizeObservationDataInputSchema = z.object({
-  observationData: z.string().describe('The raw text data of the observation report.'),
-});
-export type SummarizeObservationDataInput = z.infer<typeof SummarizeObservationDataInputSchema>;
-
-const SummarizeObservationDataOutputSchema = z.object({
-  summary: z.string().describe('Ringkasan singkat dari temuan inti dalam Bahasa Indonesia.'),
-  risks: z.string().describe('Analisis potensi bahaya dan risiko dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
-  suggestedActions: z.string().describe('Saran tindakan perbaikan dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
-  relevantRegulations: z.string().describe('Poin-poin inti dari peraturan nasional & internasional yang relevan beserta penjelasan singkatnya (Bahasa Indonesia).'),
-  suggestedRiskLevel: z.enum(RISK_LEVELS).describe('Saran tingkat risiko (Low, Medium, High, Critical) berdasarkan analisis temuan.'),
-  rootCauseAnalysis: z.string().describe('Analisis singkat mengenai kemungkinan akar penyebab masalah (Bahasa Indonesia).'),
-  observerAssessment: z.object({
-      rating: z.number().min(1).max(5).describe('Rating 1-5 tingkat pemahaman observer. 1: Sangat Dasar, 2: Dasar, 3: Cukup Paham, 4: Paham, 5: Sangat Paham/Ahli.'),
-      explanation: z.string().describe('Analisis personal tentang laporan observer, sebutkan namanya.'),
-  })
-});
-export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservationDataOutputSchema>;
 
 const summarizeObservationPrompt = ai.definePrompt({
     name: 'summarizeObservationPrompt',
@@ -91,18 +83,6 @@ export async function summarizeObservationData(input: SummarizeObservationDataIn
 // =================================================================================
 // 2. INSPECTION ANALYSIS FLOW
 // =================================================================================
-
-const AnalyzeInspectionInputSchema = z.object({
-  inspectionData: z.string().describe('The raw text data of the equipment inspection report.'),
-});
-export type AnalyzeInspectionInput = z.infer<typeof AnalyzeInspectionInputSchema>;
-
-const AnalyzeInspectionOutputSchema = z.object({
-  summary: z.string().describe('Ringkasan singkat dari temuan inti inspeksi dalam Bahasa Indonesia.'),
-  risks: z.string().describe('Analisis potensi bahaya dan risiko dari temuan inspeksi, dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
-  suggestedActions: z.string().describe('Saran tindakan perbaikan atau pengecekan lebih lanjut, dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
-});
-export type AnalyzeInspectionOutput = z.infer<typeof AnalyzeInspectionOutputSchema>;
 
 const analyzeInspectionPrompt = ai.definePrompt({
     name: 'analyzeInspectionPrompt',
