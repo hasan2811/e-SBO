@@ -7,7 +7,7 @@ import { useObservations } from '@/contexts/observation-context';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCategory, ObservationStatus } from '@/lib/types';
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
-import { format, startOfToday } from 'date-fns';
+import { format } from 'date-fns';
 import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -176,8 +176,8 @@ export function FeedView({ mode }: FeedViewProps) {
   
   const [publicItems, setPublicItems] = React.useState<AllItems[]>([]);
   const [loadingPublic, setLoadingPublic] = React.useState(true);
-  const lastVisibleRef = React.useRef<QueryDocumentSnapshot | null>(null);
-  const [hasMore, setHasMore] = React.useState(true);
+  const [lastVisible, setLastVisible] = React.useState<QueryDocumentSnapshot | null>(null);
+  const [hasMorePublic, setHasMorePublic] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<string | null>(null);
 
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
@@ -188,6 +188,8 @@ export function FeedView({ mode }: FeedViewProps) {
   
   const [filterType, setFilterType] = React.useState<'status' | 'risk' | 'category' | 'all'>('all');
   const [filterValue, setFilterValue] = React.useState('all');
+
+  const [displayedItemsCount, setDisplayedItemsCount] = React.useState(PAGE_SIZE);
   
   const { toast } = useToast();
   
@@ -208,65 +210,70 @@ export function FeedView({ mode }: FeedViewProps) {
     setFilterType('all');
     setFilterValue('all');
   };
-
+  
   const fetchPublicItems = React.useCallback(async (reset = false) => {
     setLoadingPublic(true);
     setFetchError(null);
     if (reset) {
-      lastVisibleRef.current = null;
+        setLastVisible(null);
     }
 
     try {
-      let q: Query<DocumentData> = query(
-        collection(db, viewType),
-        where('scope', '==', 'public'),
-        orderBy('date', 'desc'),
-        limit(PAGE_SIZE)
-      );
+        const currentViewType = viewType as keyof typeof viewConfig;
+        let q: Query<DocumentData> = query(
+            collection(db, currentViewType),
+            where('scope', '==', 'public'),
+            orderBy('date', 'desc'),
+            limit(PAGE_SIZE)
+        );
 
-      if (lastVisibleRef.current && !reset) {
-        q = query(q, startAfter(lastVisibleRef.current));
-      }
+        if (lastVisible && !reset) {
+            q = query(q, startAfter(lastVisible));
+        }
 
-      const documentSnapshots = await getDocs(q);
-      const newItems = documentSnapshots.docs.map((doc) => ({
-        ...doc.data(),
-        id: doc.id,
-        itemType: viewConfig[viewType as keyof typeof viewConfig].itemType,
-      })) as AllItems[];
+        const documentSnapshots = await getDocs(q);
+        const newItems = documentSnapshots.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id,
+            itemType: viewConfig[currentViewType].itemType
+        })) as AllItems[];
 
-      lastVisibleRef.current = documentSnapshots.docs[documentSnapshots.docs.length - 1] || null;
-      setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
+        setLastVisible(documentSnapshots.docs[documentSnapshots.docs.length - 1] || null);
+        setHasMorePublic(documentSnapshots.docs.length === PAGE_SIZE);
 
-      if (reset) {
-        setPublicItems(newItems);
-      } else {
-        setPublicItems((prevItems) => {
-          const combinedItems = [...prevItems, ...newItems];
-          const uniqueItems = Array.from(new Map(combinedItems.map(item => [item.id, item])).values());
-          return uniqueItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        });
-      }
+        if (reset) {
+            setPublicItems(newItems);
+        } else {
+            setPublicItems(prevItems => {
+                const combined = [...prevItems, ...newItems];
+                const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+                return unique.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            });
+        }
     } catch (error: any) {
-      console.error('Error fetching public items:', error);
-
-      if (error.code === 'failed-precondition' && error.message.includes('index')) {
-        setFetchError(`Database memerlukan konfigurasi (indeks) untuk menampilkan data ini. Klik link di konsol browser untuk membuatnya.`);
-      } else {
-        setFetchError(`Gagal memuat data. Periksa koneksi internet Anda. Error: ${error.message}`);
-      }
-      setHasMore(false);
+        console.error('Error fetching public items:', error);
+        if (error.code === 'failed-precondition' && error.message.includes('index')) {
+            setFetchError('Database memerlukan konfigurasi (indeks) untuk menampilkan data ini. Klik link di konsol browser untuk membuatnya.');
+        } else {
+            setFetchError(`Gagal memuat data. Periksa koneksi internet Anda. Error: ${error.message}`);
+        }
+        setHasMorePublic(false);
     } finally {
-      setLoadingPublic(false);
+        setLoadingPublic(false);
     }
-  }, [viewType]);
+  }, [viewType, lastVisible]);
 
 
   React.useEffect(() => {
     if (mode === 'public') {
       fetchPublicItems(true);
     }
-  }, [mode, viewType, fetchPublicItems]);
+  }, [mode, viewType]); // Removed fetchPublicItems from dependency array as it's stable
+
+  React.useEffect(() => {
+    // Reset pagination when filters change for private/project views
+    setDisplayedItemsCount(PAGE_SIZE);
+  }, [filterType, filterValue, viewType, mode]);
   
   const data = React.useMemo(() => {
       if (mode === 'public') return publicItems;
@@ -280,10 +287,8 @@ export function FeedView({ mode }: FeedViewProps) {
   const filteredData = React.useMemo(() => {
     let dataToFilter: AllItems[] = [...data];
     
-    // 1. Filter by item type (observation, inspection, ptw)
     dataToFilter = dataToFilter.filter(item => item.itemType === viewConfig[viewType].itemType);
 
-    // 2. Apply additional filters for project/private view observations
     if (mode !== 'public' && viewType === 'observations') {
         if (filterType !== 'all' && filterValue !== 'all') {
             const fieldMap = { status: 'status', risk: 'riskLevel', category: 'category' };
@@ -294,6 +299,8 @@ export function FeedView({ mode }: FeedViewProps) {
     
     return dataToFilter;
   }, [data, mode, viewType, filterType, filterValue]);
+
+  const itemsToDisplay = mode === 'public' ? filteredData : filteredData.slice(0, displayedItemsCount);
   
   const displayObservation = React.useMemo(() => 
     selectedObservationId ? data.find(o => o.id === selectedObservationId) as Observation : null,
@@ -492,9 +499,9 @@ export function FeedView({ mode }: FeedViewProps) {
               </li>
             ))}
           </ul>
-        ) : filteredData.length > 0 ? (
+        ) : itemsToDisplay.length > 0 ? (
           <ul className="space-y-3">
-             {filteredData.map(item => {
+             {itemsToDisplay.map(item => {
                 switch(item.itemType) {
                   case 'observation':
                     return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} />;
@@ -511,9 +518,9 @@ export function FeedView({ mode }: FeedViewProps) {
           !fetchError && <EmptyState />
         )}
         
-        {mode === 'public' && filteredData.length > 0 && (
+        {mode === 'public' && itemsToDisplay.length > 0 && (
           <div className="mt-6 flex justify-center">
-            {hasMore ? (
+            {hasMorePublic ? (
               <Button
                 onClick={() => fetchPublicItems(false)}
                 disabled={loadingPublic}
@@ -527,6 +534,14 @@ export function FeedView({ mode }: FeedViewProps) {
               </p>
             )}
           </div>
+        )}
+
+        {mode !== 'public' && displayedItemsCount < filteredData.length && (
+            <div className="mt-6 flex justify-center">
+                <Button onClick={() => setDisplayedItemsCount(prev => prev + PAGE_SIZE)}>
+                    Tampilkan Lebih Banyak
+                </Button>
+            </div>
         )}
 
       </main>
