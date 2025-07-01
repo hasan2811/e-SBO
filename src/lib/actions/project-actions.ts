@@ -32,7 +32,8 @@ export async function createProject(
     );
     const existingProjectSnapshot = await getDocs(existingProjectQuery);
     if (!existingProjectSnapshot.empty) {
-        return { success: false, message: 'Project creation failed: You are already a member of a project.' };
+        const existingProjectName = existingProjectSnapshot.docs[0].data().name;
+        return { success: false, message: `Project creation failed: You are already a member of project "${existingProjectName}".` };
     }
 
     const memberUids = [owner.uid];
@@ -149,7 +150,8 @@ export async function addProjectMember(
         const memberProjectSnap = await getDocs(memberProjectQuery);
 
         if (!memberProjectSnap.empty) {
-            return { success: false, message: `User ${newMember.displayName} is already a member of another project.` };
+            const existingProjectName = memberProjectSnap.docs[0].data().name;
+            return { success: false, message: `User ${newMember.displayName} is already a member of project "${existingProjectName}".` };
         }
         
         await updateDoc(projectRef, {

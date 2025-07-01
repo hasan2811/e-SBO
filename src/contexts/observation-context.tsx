@@ -66,6 +66,8 @@ const getDocRef = (item: AllItems): DocumentReference => {
     return doc(db, collectionName, item.id);
 };
 
+const COLLECTIONS_TO_WATCH: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
+
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
     const { user, userProfile, loading: authLoading } = useAuth();
     const { projects, loading: projectsLoading } = useProjects();
@@ -75,10 +77,47 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const [privateItemsLoading, setPrivateItemsLoading] = React.useState(true);
     const [projectItemsLoading, setProjectItemsLoading] = React.useState(true);
 
-    const collectionsToWatch: ('observations' | 'inspections' | 'ptws')[] = ['observations', 'inspections', 'ptws'];
-    
     const sortItemsByDate = (items: AllItems[]) => {
       return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    };
+    
+    // Unified listener setup for a given scope
+    const setupListeners = (
+        queries: any[], 
+        setItems: React.Dispatch<React.SetStateAction<AllItems[]>>,
+        setLoading: React.Dispatch<React.SetStateAction<boolean>>
+    ) => {
+        setLoading(true);
+        const allListeners: Unsubscribe[] = [];
+        let dataMap = new Map<string, AllItems[]>();
+        let collectionsLoaded = 0;
+
+        queries.forEach((q, index) => {
+            const collectionName = COLLECTIONS_TO_WATCH[index];
+            const unsub = onSnapshot(q, (snapshot) => {
+                const newItems = snapshot.docs.map(d => ({...d.data(), id: d.id, itemType: collectionName.slice(0, -1)} as AllItems));
+                dataMap.set(collectionName, newItems);
+                
+                // Check if this is the first snapshot for this listener
+                if (collectionsLoaded < queries.length) {
+                    collectionsLoaded++;
+                    if (collectionsLoaded === queries.length) {
+                        setLoading(false); // All initial data has loaded
+                    }
+                }
+
+                // Combine all data from the map into a single sorted array
+                const combinedData = Array.from(dataMap.values()).flat();
+                setItems(sortItemsByDate(combinedData));
+            }, (error) => {
+                console.error(`Error fetching ${collectionName}:`, error);
+                toast({ variant: 'destructive', title: `Failed to load ${collectionName}` });
+                setLoading(false);
+            });
+            allListeners.push(unsub);
+        });
+
+        return () => allListeners.forEach(unsub => unsub());
     };
 
     // Effect for Private Items
@@ -88,87 +127,37 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             setPrivateItemsLoading(false);
             return;
         }
-
-        setPrivateItemsLoading(true);
-        const listeners: Unsubscribe[] = [];
         
-        const combinedQuery = query(
-          collection(db, 'observations'), 
-          where('userId', '==', user.uid), 
-          where('scope', '==', 'private')
+        const privateQueries = COLLECTIONS_TO_WATCH.map(col => 
+            query(collection(db, col), where('userId', '==', user.uid), where('scope', '==', 'private'))
         );
+        
+        const unsubscribe = setupListeners(privateQueries, setPrivateItems, setPrivateItemsLoading);
+        return unsubscribe;
 
-        // This is a simplified listener. For multiple collections, you might need a more complex state management.
-        const unsub = onSnapshot(combinedQuery, (snapshot) => {
-            const allItems: AllItems[] = snapshot.docs.map(d => ({ ...d.data(), id: d.id }) as AllItems);
-            
-            const itemPromises = collectionsToWatch.map(colName => {
-                const q = query(collection(db, colName), where('userId', '==', user.uid), where('scope', '==', 'private'));
-                return getDocs(q).then(snap => snap.docs.map(d => ({...d.data(), id: d.id, itemType: colName.slice(0, -1)} as AllItems)));
-            });
-
-            Promise.all(itemPromises).then(results => {
-                const combined = results.flat();
-                setPrivateItems(sortItemsByDate(combined));
-                setPrivateItemsLoading(false);
-            });
-
-        }, e => {
-            console.error(`Error fetching private items:`, e);
-            setPrivateItemsLoading(false);
-        });
-            
-        listeners.push(unsub);
-
-        return () => listeners.forEach(unsub => unsub());
     }, [user]);
 
     // Effect for Project Items
     React.useEffect(() => {
-        if (!user || projects.length === 0) {
+        if (!user || projectsLoading) {
+            return;
+        }
+
+        if (projects.length === 0) {
             setProjectItems([]);
             setProjectItemsLoading(false);
             return;
         }
 
-        setProjectItemsLoading(true);
         const projectIds = projects.map(p => p.id);
-        if (projectIds.length === 0) {
-            setProjectItemsLoading(false);
-            return;
-        }
+        const projectQueries = COLLECTIONS_TO_WATCH.map(col =>
+            query(collection(db, col), where('projectId', 'in', projectIds))
+        );
         
-        const itemPromises = collectionsToWatch.map(colName => {
-            const q = query(collection(db, colName), where('projectId', 'in', projectIds));
-            return getDocs(q).then(snap => snap.docs.map(d => ({...d.data(), id: d.id, itemType: colName.slice(0, -1)} as AllItems)));
-        });
+        const unsubscribe = setupListeners(projectQueries, setProjectItems, setProjectItemsLoading);
+        return unsubscribe;
 
-        Promise.all(itemPromises).then(results => {
-            const combined = results.flat();
-            setProjectItems(sortItemsByDate(combined));
-            setProjectItemsLoading(false);
-        }).catch(e => {
-            console.error("Error fetching project items", e);
-            setProjectItemsLoading(false);
-        });
-
-        // For real-time updates (optional, can be heavy)
-        const listeners: Unsubscribe[] = [];
-        collectionsToWatch.forEach(colName => {
-            const q = query(collection(db, colName), where('projectId', 'in', projectIds));
-            const unsub = onSnapshot(q, (snapshot) => {
-                const newItems = snapshot.docs.map(d => ({...d.data(), id: d.id, itemType: colName.slice(0, -1) } as AllItems));
-                setProjectItems(prev => {
-                    const otherItems = prev.filter(item => item.itemType !== colName.slice(0, -1));
-                    return sortItemsByDate([...otherItems, ...newItems]);
-                });
-            });
-            listeners.push(unsub);
-        });
-
-        return () => listeners.forEach(unsub => unsub());
-
-    }, [user, projects]);
+    }, [user, projects, projectsLoading]);
     
     const _runObservationAiAnalysis = React.useCallback(async (observation: Observation) => {
       const observationDocRef = getDocRef(observation);
@@ -232,7 +221,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             observation: 'OBS',
             inspection: 'INSP',
             ptw: 'PTW'
-        }[itemType];
+        }[itemType as 'observation' | 'inspection' | 'ptw'];
 
         const referenceId = `${prefix}-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
@@ -270,15 +259,15 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
 
     const addObservation = React.useCallback(async (formData: Omit<Observation, 'id'| 'itemType'>, scope: Scope, projectId: string | null) => {
-        await addItem('observations', formData, scope, projectId);
+        await addItem('observations', formData as any, scope, projectId);
     }, [addItem]);
     
     const addInspection = React.useCallback(async (formData: Omit<Inspection, 'id'| 'itemType'>, scope: Scope, projectId: string | null) => {
-        await addItem('inspections', formData, scope, projectId);
+        await addItem('inspections', formData as any, scope, projectId);
     }, [addItem]);
 
     const addPtw = React.useCallback(async (formData: Omit<Ptw, 'id'| 'itemType'>, scope: Scope, projectId: string | null) => {
-        await addItem('ptws', formData, scope, projectId);
+        await addItem('ptws', formData as any, scope, projectId);
     }, [addItem]);
 
     const updateObservation = React.useCallback(async (observation: Observation, updatedData: Partial<Observation>) => {
