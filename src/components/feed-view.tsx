@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -7,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Search, Globe, Building } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Search, Globe, Building, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -17,11 +18,8 @@ import { StarRating } from '@/components/star-rating';
 import { exportToExcel } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { collection, query, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Query, where } from 'firebase/firestore';
@@ -39,6 +37,7 @@ interface FeedViewProps {
 const ObservationListItem = ({ observation, onSelect, mode }: { observation: Observation, onSelect: () => void, mode: FeedViewProps['mode'] }) => {
     const { toggleLikeObservation } = useObservations();
     const { user } = useAuth();
+    const toast = useToast();
 
     const riskColorStyles: Record<RiskLevel, string> = {
         Low: 'border-l-chart-2',
@@ -326,8 +325,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   const isLoading = mode === 'public' ? loadingPublic && data.length === 0 : myItemsLoading;
 
   const filteredData = React.useMemo(() => {
-    const cutoffDate = new Date('2025-07-02T00:00:00.000Z');
-    let baseData = [...data].filter(item => new Date(item.date) >= cutoffDate);
+    let baseData = [...data];
 
     if (mode === 'public') {
         if (searchTerm) {
