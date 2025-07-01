@@ -383,7 +383,6 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange }: Ob
     <TakeActionDialog
         isOpen={isActionDialogOpen}
         onOpenChange={setActionDialogOpen}
-        observation={observation}
         onUpdate={handleUpdate}
     />
     </>

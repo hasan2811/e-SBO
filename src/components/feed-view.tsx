@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, AlertTriangle } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Filter, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -268,7 +268,8 @@ export function FeedView({ mode }: FeedViewProps) {
     if (mode === 'public') {
       fetchPublicItems(true);
     }
-  }, [mode, viewType]); // Removed fetchPublicItems from dependency array as it's stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, viewType]); 
 
   React.useEffect(() => {
     // Reset pagination when filters change for private/project views
