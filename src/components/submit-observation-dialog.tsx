@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -25,10 +24,12 @@ import { Progress } from '@/components/ui/progress';
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
 
+// Add 'recommendation' back to the schema as optional
 const formSchema = z.object({
   location: z.enum(LOCATIONS),
   company: z.enum(COMPANIES),
   findings: z.string().min(10, { message: 'Temuan harus diisi minimal 10 karakter.' }),
+  recommendation: z.string().optional(), // It's optional, user can fill it or AI will.
   photo: z
     .instanceof(File, { message: 'Foto wajib diunggah.' })
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
@@ -59,6 +60,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       location: LOCATIONS[0],
       company: COMPANIES[0],
       findings: '',
+      recommendation: '', // Add recommendation to default values
     },
     mode: 'onChange',
   });
@@ -69,6 +71,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
             location: LOCATIONS[0],
             company: COMPANIES[0],
             findings: '',
+            recommendation: '', // Reset recommendation
         });
         setPhotoPreview(null);
         if (fileInputRef.current) {
@@ -129,7 +132,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         category: aiResult.suggestedCategory,
         riskLevel: aiResult.suggestedRiskLevel,
         findings: aiResult.improvedFindings,
-        recommendation: aiResult.suggestedRecommendation,
+        // Smart recommendation: Use user's input if provided, otherwise use AI's suggestion.
+        recommendation: values.recommendation || aiResult.suggestedRecommendation,
         photoUrl: photoUrl,
       };
 
@@ -230,6 +234,21 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                 )}
               />
               
+              {/* Add the recommendation field back */}
+              <FormField
+                control={form.control}
+                name="recommendation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Rekomendasi (Opsional)</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Tulis rekomendasi Anda di sini, atau biarkan kosong dan AI akan membuatkannya." rows={3} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="photo"
