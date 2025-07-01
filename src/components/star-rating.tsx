@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -14,8 +15,8 @@ interface StarRatingProps {
 export const StarRating = ({ rating, totalStars = 5, className, starClassName }: StarRatingProps) => {
     const colorClass = 
         rating <= 2 ? 'text-destructive fill-destructive/80' :
-        rating <= 4 ? 'text-yellow-400 fill-yellow-400/80' :
-        'text-green-500 fill-green-500/80';
+        rating <= 4 ? 'text-chart-4 fill-chart-4/80' :
+        'text-chart-2 fill-chart-2/80';
     
     return (
         <div className={cn("flex items-center gap-0.5", className)}>
