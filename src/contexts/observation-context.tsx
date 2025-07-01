@@ -13,6 +13,7 @@ import {
   Unsubscribe,
   CollectionReference,
   DocumentReference,
+  QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Observation, Inspection, Ptw, AllItems } from '@/lib/types';
@@ -80,59 +81,70 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
 
         setMyItemsLoading(true);
-        const itemMap = new Map<string, AllItems>();
         const allUnsubs: Unsubscribe[] = [];
 
-        const processSnapshot = (snapshot: any, itemType: 'observation' | 'inspection' | 'ptw', isProject: boolean, projectId?: string) => {
-            snapshot.docChanges().forEach((change: any) => {
-                const docId = change.doc.id;
-                const key = projectId ? `${projectId}-${docId}` : docId;
+        const processSnapshotChanges = (
+            changes: ReturnType<QueryDocumentSnapshot['docChanges']>,
+            itemType: 'observation' | 'inspection' | 'ptw',
+            isProject: boolean,
+            projectId?: string | null
+        ) => {
+            setMyItems(currentItems => {
+                const newItemsMap = new Map<string, AllItems>();
+                currentItems.forEach(item => {
+                    const key = item.projectId ? `${item.projectId}-${item.id}` : item.id;
+                    newItemsMap.set(key, item);
+                });
 
-                if (change.type === 'removed') {
-                    itemMap.delete(key);
-                } else {
-                    itemMap.set(key, {
-                        ...change.doc.data(),
-                        id: docId,
-                        itemType,
-                        scope: isProject ? 'project' : change.doc.data().scope,
-                        projectId: projectId || null,
-                    } as AllItems);
-                }
+                changes.forEach(change => {
+                    const docId = change.doc.id;
+                    const key = projectId ? `${projectId}-${docId}` : docId;
+
+                    if (change.type === 'removed') {
+                        newItemsMap.delete(key);
+                    } else {
+                        newItemsMap.set(key, {
+                            ...change.doc.data(),
+                            id: docId,
+                            itemType,
+                            scope: isProject ? 'project' : change.doc.data().scope,
+                            projectId: projectId || null,
+                        } as AllItems);
+                    }
+                });
+                
+                return sortItemsByDate(Array.from(newItemsMap.values()));
             });
-            setMyItems(sortItemsByDate(Array.from(itemMap.values())));
         };
-        
-        // Listen to top-level collections for user's private, non-project items
+
+        // Listen to non-project items (private and public, created by the user)
         collectionsToWatch.forEach(colName => {
             const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
             const userItemsQuery = query(collection(db, colName), where('userId', '==', user.uid), where('projectId', '==', null));
             const unsub = onSnapshot(userItemsQuery, (snapshot) => {
-                processSnapshot(snapshot, itemType, false);
-            }, (e) => console.error(`Error fetching user ${colName}:`, e));
+                processSnapshotChanges(snapshot.docChanges(), itemType, false, null);
+            }, (e) => console.error(`Error fetching private/public ${colName}:`, e));
             allUnsubs.push(unsub);
         });
-
-        // Listen to project sub-collections
-        if (!projectsLoading && projects.length > 0) {
+        
+        // Listen to project sub-collections for all projects the user is a member of
+        if (!projectsLoading) {
             projects.forEach(project => {
                 collectionsToWatch.forEach(colName => {
                     const itemType = colName.slice(0, -1) as 'observation' | 'inspection' | 'ptw';
                     const projectItemsQuery = query(collection(db, 'projects', project.id, colName));
                     
                     const unsub = onSnapshot(projectItemsQuery, (snapshot) => {
-                         processSnapshot(snapshot, itemType, true, project.id);
+                         processSnapshotChanges(snapshot.docChanges(), itemType, true, project.id);
                     }, (e) => console.error(`Error fetching from project ${project.id}/${colName}:`, e));
                     allUnsubs.push(unsub);
                 });
             });
         }
 
-        // A simple timeout to set loading to false, as managing multiple listeners is complex.
-        // This ensures the loading state doesn't get stuck.
         const loadingTimeout = setTimeout(() => {
             setMyItemsLoading(false);
-        }, 3000); 
+        }, 2500); 
 
         return () => {
             allUnsubs.forEach(unsub => unsub());
