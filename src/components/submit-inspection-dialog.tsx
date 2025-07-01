@@ -16,11 +16,12 @@ import { useProjects } from '@/hooks/use-projects';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const EQUIPMENT_TYPES = ['Heavy Machinery', 'Hand Tool', 'Vehicle', 'Electrical', 'Other'] as const;
@@ -36,7 +37,7 @@ const formSchema = z.object({
   photo: z
     .instanceof(File, { message: 'Foto wajib diunggah.' })
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
-  scopeAndProjectId: z.string().min(1, 'Pilihan berbagi harus ditentukan.'),
+  isPublic: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -53,7 +54,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { projects, loading: projectsLoading } = useProjects();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
 
@@ -66,7 +66,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
       status: INSPECTION_STATUSES[0],
       findings: '',
       recommendation: '',
-      scopeAndProjectId: 'public',
+      isPublic: false,
     },
     mode: 'onChange',
   });
@@ -101,14 +101,8 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
     try {
       const photoUrl = await uploadFile(values.photo, 'inspections', user.uid, setUploadProgress);
 
-      let scope: Scope = 'private';
-      let projectId: string | null = null;
-      if (values.scopeAndProjectId === 'public') {
-        scope = 'public';
-      } else if (values.scopeAndProjectId !== 'private') {
-        scope = 'project';
-        projectId = values.scopeAndProjectId;
-      }
+      const scope: Scope = values.isPublic ? 'public' : 'private';
+      const projectId: string | null = null; // Project selection is removed to simplify UI as requested.
 
       const newInspectionData: Omit<Inspection, 'id'> = {
         userId: user.uid,
@@ -189,34 +183,25 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField
+               <FormField
                 control={form.control}
-                name="scopeAndProjectId"
+                name="isPublic"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bagikan Ke</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih target laporan..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="public">Publik (Semua Pengguna)</SelectItem>
-                        <SelectItem value="private">Pribadi (Hanya Saya)</SelectItem>
-                        {projects.length > 0 && (
-                          <SelectGroup>
-                            <SelectLabel>Proyek</SelectLabel>
-                            {projects.map((project) => (
-                              <SelectItem key={project.id} value={project.id}>
-                                {project.name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        Bagikan ke Publik
+                      </FormLabel>
+                      <FormDescription>
+                        Jika aktif, laporan ini dapat dilihat oleh semua pengguna.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />

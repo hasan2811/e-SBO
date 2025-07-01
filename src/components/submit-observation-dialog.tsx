@@ -11,7 +11,6 @@ import { Loader2, Upload, Sparkles } from 'lucide-react';
 import type { Observation, ObservationCategory, ObservationStatus, Company, Location, RiskLevel, Scope } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { useProjects } from '@/hooks/use-projects';
 import { uploadFile } from '@/lib/storage';
 import { getAIAssistance } from '@/lib/actions/ai-actions';
 
@@ -27,6 +26,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -34,8 +34,10 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
@@ -52,7 +54,7 @@ const formSchema = z.object({
   photo: z
     .instanceof(File, { message: 'Foto wajib diunggah.' })
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
-  scopeAndProjectId: z.string().min(1, 'Pilihan berbagi harus ditentukan.'),
+  isPublic: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -70,7 +72,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { projects, loading: projectsLoading } = useProjects();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
 
@@ -83,7 +84,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       riskLevel: 'Low',
       findings: '',
       recommendation: '',
-      scopeAndProjectId: 'public',
+      isPublic: false,
     },
     mode: 'onChange',
   });
@@ -163,14 +164,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     try {
       const photoUrl = await uploadFile(values.photo, 'observations', user.uid, setUploadProgress);
       
-      let scope: Scope = 'private';
-      let projectId: string | null = null;
-      if (values.scopeAndProjectId === 'public') {
-        scope = 'public';
-      } else if (values.scopeAndProjectId !== 'private') {
-        scope = 'project';
-        projectId = values.scopeAndProjectId;
-      }
+      const scope: Scope = values.isPublic ? 'public' : 'private';
+      const projectId: string | null = null;
 
       const newObservationData: Omit<Observation, 'id'> = {
         userId: user.uid,
@@ -378,32 +373,23 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
               />
               <FormField
                 control={form.control}
-                name="scopeAndProjectId"
+                name="isPublic"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bagikan Ke</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih target laporan..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="public">Publik (Semua Pengguna)</SelectItem>
-                        <SelectItem value="private">Pribadi (Hanya Saya)</SelectItem>
-                        {projects.length > 0 && (
-                          <SelectGroup>
-                            <SelectLabel>Proyek</SelectLabel>
-                            {projects.map((project) => (
-                              <SelectItem key={project.id} value={project.id}>
-                                {project.name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        Bagikan ke Publik
+                      </FormLabel>
+                      <FormDescription>
+                        Jika aktif, laporan ini dapat dilihat oleh semua pengguna.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />

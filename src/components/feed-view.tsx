@@ -208,11 +208,17 @@ export function FeedView({ mode }: FeedViewProps) {
     if (reset) {
         lastVisibleRef.current = null;
     }
+    
+    // Filter for today's documents to avoid issues with old data schemas
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const startOfDayISO = startOfDay.toISOString();
 
     try {
         let q: Query<DocumentData> = query(
             collection(db, viewType), 
-            where('scope', '==', 'public')
+            where('scope', '==', 'public'),
+            where('date', '>=', startOfDayISO) // Only fetch documents from today
         );
 
         q = query(q, orderBy('date', 'desc'), limit(PAGE_SIZE));
@@ -249,16 +255,12 @@ export function FeedView({ mode }: FeedViewProps) {
 
 
   React.useEffect(() => {
-    // This effect handles resetting and fetching data when primary dependencies change.
     if (mode === 'public') {
       fetchPublicItems(true);
     } else {
-      // For personal mode, data comes from context, no fetch needed here.
-      // But we might want to clear public items to avoid stale data display.
       setItems([]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, viewType, filterType, filterValue]); // Filter changes will now trigger a full refetch for public items
+  }, [mode, viewType, fetchPublicItems]);
 
 
   const data = mode === 'public' ? items : myItems;
@@ -268,10 +270,8 @@ export function FeedView({ mode }: FeedViewProps) {
   const filteredData = React.useMemo(() => {
     let dataToFilter: AllItems[] = [...data];
     
-    // Always filter by viewType first
     dataToFilter = dataToFilter.filter(item => item.itemType === viewType.slice(0, -1));
 
-    // For personal feed, apply filters from state
     if (mode === 'personal' && viewType === 'observations') {
         let observationData = dataToFilter as Observation[];
         if (filterType !== 'all' && filterValue !== 'all') {
@@ -321,7 +321,7 @@ export function FeedView({ mode }: FeedViewProps) {
     const config = viewConfig[viewType];
     const emptyText = mode === 'personal' 
         ? `Anda belum membuat ${config.label.toLowerCase()} atau belum ada laporan di proyek Anda.`
-        : `Tidak ada ${config.label.toLowerCase()} publik yang tersedia.`
+        : `Tidak ada ${config.label.toLowerCase()} publik yang tersedia hari ini.`
     
     const filterText = `Tidak ada ${config.label.toLowerCase()} yang cocok dengan filter Anda.`;
 
@@ -358,7 +358,6 @@ export function FeedView({ mode }: FeedViewProps) {
                 </DropdownMenu>
 
                 <TooltipProvider>
-                  {/* Conditionally render filters only for personal mode */}
                   {mode === 'personal' && viewType === 'observations' && (
                      <Popover>
                         <Tooltip>
