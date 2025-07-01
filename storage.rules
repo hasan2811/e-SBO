@@ -3,29 +3,12 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Helper function to check project membership by accessing Firestore
-    function isProjectMember(projectId) {
-      return exists(/databases/(default)/documents/projects/$(projectId)) &&
-             get(/databases/(default)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
-    }
+    // WARNING: These rules are intentionally permissive for debugging purposes.
+    // Any authenticated user can read and write ANY file.
+    // This is NOT secure for a production environment.
 
-    // Allow public read access to all files.
-    // This is necessary because once an image URL is generated, it must be publicly accessible.
-    // Security is enforced by obscurity of the URL.
     match /{allPaths=**} {
-      allow read: if true;
-    }
-    
-    // Secure PRIVATE file uploads (observations, inspections, ptw-jsa, actions)
-    // The path should be like: /observations/USER_ID/file.jpg
-    match /{path}/{userId}/{fileName} {
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Secure PROJECT-specific file uploads
-    // The path should be like: /projects/PROJECT_ID/observations/USER_ID/file.jpg
-    match /projects/{projectId}/{path}/{userId}/{fileName} {
-       allow write: if request.auth != null && request.auth.uid == userId && isProjectMember(projectId);
+      allow read, write: if request.auth != null;
     }
   }
 }
