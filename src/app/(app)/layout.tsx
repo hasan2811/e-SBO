@@ -10,7 +10,7 @@ import { DashboardHeader } from '@/components/dashboard-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { SubmitObservationDialog } from '@/components/submit-observation-dialog';
 import { CompleteProfileDialog } from '@/components/complete-profile-dialog';
-import type { Observation, Inspection, Ptw } from '@/lib/types';
+import type { Observation, Inspection, Ptw, Scope } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MultiActionButton } from '@/components/multi-action-button';
 import { SubmitInspectionDialog } from '@/components/submit-inspection-dialog';
@@ -59,16 +59,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     exit: { opacity: 0, x: -20 },
   };
   
-  const handleAddObservation = async (observation: Omit<Observation, 'id'>) => {
-    await addObservation(observation);
+  const isPublicFeed = pathname === '/';
+  const isProjectFeed = pathname.startsWith('/proyek/');
+  
+  const getCurrentScope = (): { scope: Scope; projectId: string | null } => {
+    if (isProjectFeed) {
+      return { scope: 'project', projectId };
+    }
+    // All other authenticated pages default to private submissions
+    return { scope: 'private', projectId: null };
+  };
+  
+  const handleAddObservation = async (formData: Omit<Observation, 'id' | 'scope' | 'projectId'>) => {
+    const { scope, projectId: submissionProjectId } = getCurrentScope();
+    await addObservation(formData, scope, submissionProjectId);
   };
 
-  const handleAddInspection = async (inspection: Omit<Inspection, 'id'>) => {
-    await addInspection(inspection);
+  const handleAddInspection = async (formData: Omit<Inspection, 'id' | 'scope' | 'projectId'>) => {
+    const { scope, projectId: submissionProjectId } = getCurrentScope();
+    await addInspection(formData, scope, submissionProjectId);
   };
 
-  const handleAddPtw = async (ptw: Omit<Ptw, 'id'>) => {
-    await addPtw(ptw);
+  const handleAddPtw = async (formData: Omit<Ptw, 'id' | 'scope' | 'projectId'>) => {
+    const { scope, projectId: submissionProjectId } = getCurrentScope();
+    await addPtw(formData, scope, submissionProjectId);
   };
 
 
@@ -100,29 +114,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <BottomNavBar />
       </div>
 
-      <MultiActionButton
-        onObservationClick={() => setObservationDialogOpen(true)}
-        onInspectionClick={() => setInspectionDialogOpen(true)}
-        onPtwClick={() => setPtwDialogOpen(true)}
-      />
+      {!isPublicFeed && (
+        <MultiActionButton
+          onObservationClick={() => setObservationDialogOpen(true)}
+          onInspectionClick={() => setInspectionDialogOpen(true)}
+          onPtwClick={() => setPtwDialogOpen(true)}
+        />
+      )}
 
       <SubmitObservationDialog
         isOpen={isObservationDialogOpen}
         onOpenChange={setObservationDialogOpen}
         onAddObservation={handleAddObservation}
-        projectId={projectId}
       />
       <SubmitInspectionDialog
         isOpen={isInspectionDialogOpen}
         onOpenChange={setInspectionDialogOpen}
         onAddInspection={handleAddInspection}
-        projectId={projectId}
       />
       <SubmitPtwDialog
         isOpen={isPtwDialogOpen}
         onOpenChange={setPtwDialogOpen}
         onAddPtw={handleAddPtw}
-        projectId={projectId}
       />
     </>
   );

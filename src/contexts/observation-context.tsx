@@ -15,7 +15,7 @@ import {
   DocumentReference,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Observation, Inspection, Ptw, AllItems } from '@/lib/types';
+import type { Observation, Inspection, Ptw, AllItems, Scope } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useProjects } from '@/hooks/use-projects';
 import {
@@ -30,12 +30,20 @@ interface ObservationContextType {
   projectItems: AllItems[];
   loading: boolean;
   addObservation: (
-    observation: Omit<Observation, 'id' | 'referenceId'>
+    formData: Omit<Observation, 'id' | 'scope' | 'projectId'>,
+    scope: Scope,
+    projectId: string | null
   ) => Promise<void>;
   addInspection: (
-    inspection: Omit<Inspection, 'id' | 'referenceId'>
+    formData: Omit<Inspection, 'id' | 'scope' | 'projectId'>,
+    scope: Scope,
+    projectId: string | null
   ) => Promise<void>;
-  addPtw: (ptw: Omit<Ptw, 'id' | 'referenceId'>) => Promise<void>;
+  addPtw: (
+    formData: Omit<Ptw, 'id' | 'scope' | 'projectId'>,
+    scope: Scope,
+    projectId: string | null
+  ) => Promise<void>;
   updateObservation: (observation: Observation, updatedData: Partial<Observation>) => Promise<void>;
   approvePtw: (
     ptw: Ptw,
@@ -211,20 +219,21 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       }
     }, []);
     
-    const addObservation = React.useCallback(async (newObservation: Omit<Observation, 'id' | 'referenceId'>) => {
+    const addObservation = React.useCallback(async (formData: Omit<Observation, 'id' | 'scope' | 'projectId'>, scope: Scope, projectId: string | null) => {
         if(!user) throw new Error("User not authenticated");
         const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         
         const observationToSave = { 
-            ...newObservation, 
-            referenceId, 
+            ...formData,
+            scope,
+            projectId,
+            referenceId,
             aiStatus: 'processing' as const, 
-            userId: user.uid,
         };
         
         let collectionRef: CollectionReference;
-        if (observationToSave.scope === 'project' && observationToSave.projectId) {
-            collectionRef = collection(db, 'projects', observationToSave.projectId, 'observations');
+        if (scope === 'project' && projectId) {
+            collectionRef = collection(db, 'projects', projectId, 'observations');
         } else {
             collectionRef = collection(db, 'observations');
         }
@@ -233,20 +242,21 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         _runObservationAiAnalysis({ ...observationToSave, id: docRef.id, itemType: 'observation' });
     }, [user, _runObservationAiAnalysis]);
 
-    const addInspection = React.useCallback(async (newInspection: Omit<Inspection, 'id' | 'referenceId'>) => {
+    const addInspection = React.useCallback(async (formData: Omit<Inspection, 'id' | 'scope' | 'projectId'>, scope: Scope, projectId: string | null) => {
         if(!user) throw new Error("User not authenticated");
         const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         
         const inspectionToSave = { 
-            ...newInspection, 
+            ...formData,
+            scope,
+            projectId,
             referenceId, 
             aiStatus: 'processing' as const, 
-            userId: user.uid,
         };
 
         let collectionRef: CollectionReference;
-        if (inspectionToSave.scope === 'project' && inspectionToSave.projectId) {
-            collectionRef = collection(db, 'projects', inspectionToSave.projectId, 'inspections');
+        if (scope === 'project' && projectId) {
+            collectionRef = collection(db, 'projects', projectId, 'inspections');
         } else {
             collectionRef = collection(db, 'inspections');
         }
@@ -255,19 +265,20 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         _runInspectionAiAnalysis({ ...inspectionToSave, id: docRef.id, itemType: 'inspection' });
     }, [user, _runInspectionAiAnalysis]);
 
-    const addPtw = React.useCallback(async (newPtw: Omit<Ptw, 'id' | 'referenceId'>) => {
+    const addPtw = React.useCallback(async (formData: Omit<Ptw, 'id' | 'scope' | 'projectId'>, scope: Scope, projectId: string | null) => {
         if(!user) throw new Error("User not authenticated");
         const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         
         const ptwToSave = { 
-            ...newPtw, 
-            referenceId, 
-            userId: user.uid,
+            ...formData,
+            scope,
+            projectId,
+            referenceId,
         };
 
         let collectionRef: CollectionReference;
-        if (ptwToSave.scope === 'project' && ptwToSave.projectId) {
-            collectionRef = collection(db, 'projects', ptwToSave.projectId, 'ptws');
+        if (scope === 'project' && projectId) {
+            collectionRef = collection(db, 'projects', projectId, 'ptws');
         } else {
             collectionRef = collection(db, 'ptws');
         }

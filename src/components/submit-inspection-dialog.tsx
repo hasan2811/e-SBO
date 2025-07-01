@@ -2,26 +2,24 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Wrench } from 'lucide-react';
 
 import { uploadFile } from '@/lib/storage';
-import type { Inspection, InspectionStatus, EquipmentType, Location, Scope } from '@/lib/types';
+import type { Inspection, InspectionStatus, EquipmentType, Location } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { useProjects } from '@/hooks/use-projects';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const EQUIPMENT_TYPES = ['Heavy Machinery', 'Hand Tool', 'Vehicle', 'Electrical', 'Other'] as const;
@@ -37,16 +35,6 @@ const formSchema = z.object({
   photo: z
     .instanceof(File, { message: 'Foto wajib diunggah.' })
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
-  scope: z.enum(['private', 'public', 'project'], { required_error: 'Silakan pilih tujuan laporan.'}),
-  projectId: z.string().optional(),
-}).refine(data => {
-    if (data.scope === 'project' && !data.projectId) {
-        return false;
-    }
-    return true;
-}, {
-    message: "Silakan pilih sebuah proyek.",
-    path: ["projectId"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -54,17 +42,15 @@ type FormValues = z.infer<typeof formSchema>;
 interface SubmitInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddInspection: (inspection: Omit<Inspection, 'id'>) => Promise<void>;
-  projectId?: string | null;
+  onAddInspection: (inspection: Omit<Inspection, 'id' | 'scope' | 'projectId'>) => Promise<void>;
 }
 
-export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection, projectId }: SubmitInspectionDialogProps) {
+export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }: SubmitInspectionDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { projects, loading: projectsLoading } = useProjects();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
 
@@ -77,17 +63,12 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection, 
       status: INSPECTION_STATUSES[0],
       findings: '',
       recommendation: '',
-      scope: projectId ? 'project' : 'private',
-      projectId: projectId || undefined,
     },
     mode: 'onChange',
   });
-  
-  const scopeValue = useWatch({ control: form.control, name: 'scope' });
 
   React.useEffect(() => {
     if (isOpen) {
-        const defaultScope = projectId ? 'project' : 'private';
         form.reset({
             location: LOCATIONS[0],
             equipmentName: '',
@@ -95,13 +76,11 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection, 
             status: INSPECTION_STATUSES[0],
             findings: '',
             recommendation: '',
-            scope: defaultScope,
-            projectId: projectId || undefined,
         });
         setPhotoPreview(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [isOpen, projectId, form]);
+  }, [isOpen, form]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -133,7 +112,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection, 
     try {
       const photoUrl = await uploadFile(values.photo, 'inspections', user.uid, setUploadProgress);
       
-      const newInspectionData: Omit<Inspection, 'id'> = {
+      const newInspectionData: Omit<Inspection, 'id' | 'scope' | 'projectId'> = {
         userId: user.uid,
         date: new Date().toISOString(),
         submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
@@ -144,8 +123,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection, 
         findings: values.findings,
         recommendation: values.recommendation,
         photoUrl: photoUrl,
-        scope: values.scope as Scope,
-        projectId: values.scope === 'project' ? values.projectId! : null,
       };
 
       await onAddInspection(newInspectionData);
@@ -172,62 +149,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection, 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <Form {...form}>
             <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="scope"
-                render={({ field }) => (
-                  <FormItem className="space-y-3 p-4 border rounded-md">
-                    <FormLabel className="text-base font-semibold">Tujuan Laporan</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="flex flex-col space-y-2"
-                        disabled={!!projectId}
-                      >
-                        <FormItem className="flex items-center space-x-3 space-y-0">
-                          <FormControl><RadioGroupItem value="private" /></FormControl>
-                          <FormLabel className="font-normal">Pribadi (Hanya bisa dilihat oleh Anda)</FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-3 space-y-0">
-                          <FormControl><RadioGroupItem value="public" /></FormControl>
-                          <FormLabel className="font-normal">Publik (Bisa dilihat oleh semua pengguna)</FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-3 space-y-0">
-                          <FormControl><RadioGroupItem value="project" /></FormControl>
-                          <FormLabel className="font-normal">Proyek</FormLabel>
-                        </FormItem>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {scopeValue === 'project' && !projectId && (
-                <FormField
-                  control={form.control}
-                  name="projectId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Pilih Proyek</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={projectsLoading || projects.length === 0}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={projectsLoading ? "Memuat proyek..." : "Pilih sebuah proyek"} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      {projects.length === 0 && !projectsLoading && <FormDescription>Anda belum menjadi anggota proyek manapun.</FormDescription>}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
               <FormField name="equipmentName" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Nama Peralatan</FormLabel><FormControl><Input placeholder="e.g., Excavator EX-01" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
