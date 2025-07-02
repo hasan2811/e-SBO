@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -8,10 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LogIn, Folder, AlertCircle } from 'lucide-react';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function ProjectHubPage() {
+  const { user } = useAuth();
   const { projects, loading, error } = useProjects();
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
+  
+  const isAdmin = user?.uid === 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
 
   return (
     <>
@@ -20,15 +25,17 @@ export default function ProjectHubPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Project Hub</h1>
             <p className="text-muted-foreground">
-              Kelola atau gabung dengan proyek yang sudah ada di sini.
+              {isAdmin ? 'Mengelola semua proyek yang ada.' : 'Kelola atau gabung dengan proyek yang sudah ada di sini.'}
             </p>
           </div>
-          <div className="flex w-full sm:w-auto">
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setJoinDialogOpen(true)}>
-              <LogIn className="mr-2" />
-              Gabung Proyek
-            </Button>
-          </div>
+          {!isAdmin && (
+            <div className="flex w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => setJoinDialogOpen(true)}>
+                <LogIn className="mr-2" />
+                Gabung Proyek
+              </Button>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -54,7 +61,7 @@ export default function ProjectHubPage() {
         )}
 
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Proyek Anda</h2>
+          <h2 className="text-xl font-semibold">{isAdmin ? "Semua Proyek" : "Proyek Anda"}</h2>
           {loading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <Skeleton className="h-32" />
@@ -80,9 +87,9 @@ export default function ProjectHubPage() {
             </div>
           ) : !error ? (
             <Card className="flex flex-col items-center justify-center p-8 text-center">
-              <CardTitle>Anda Belum Bergabung dengan Proyek Apapun</CardTitle>
+              <CardTitle>{isAdmin ? "Tidak Ada Proyek" : "Anda Belum Bergabung dengan Proyek Apapun"}</CardTitle>
               <CardDescription className="mt-2 max-w-sm">
-                Gabung dengan proyek yang sudah ada untuk mulai.
+                {isAdmin ? "Buat proyek baru di Firebase Console untuk memulai." : "Gabung dengan proyek yang sudah ada untuk mulai."}
               </CardDescription>
             </Card>
           ) : null}

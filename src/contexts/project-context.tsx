@@ -39,9 +39,12 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     
     try {
-      // This query requires a composite index on 'memberUids'. 
-      // Firestore will generate a link in the browser console to create it.
-      const q = query(collection(db, 'projects'), where('memberUids', 'array-contains', user.uid));
+      const isAdmin = user.uid === 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
+      
+      // If user is admin, fetch all projects. Otherwise, fetch only projects they are a member of.
+      const q = isAdmin 
+        ? query(collection(db, 'projects'))
+        : query(collection(db, 'projects'), where('memberUids', 'array-contains', user.uid));
       
       unsubscribe = onSnapshot(q, (snapshot) => {
         const projectsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Project));
