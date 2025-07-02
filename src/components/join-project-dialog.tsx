@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -20,8 +21,9 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from './ui/skeleton';
-import { collection, query, where, getDocs, limit, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, doc, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import type { Project, UserProfile } from '@/lib/types';
 
 const formSchema = z.object({
   searchTerm: z.string().min(3, { message: 'Search term must be at least 3 characters.' }),
@@ -36,7 +38,7 @@ interface JoinProjectDialogProps {
 }
 
 export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogProps) {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const [isSearching, setIsSearching] = React.useState(false);
   const [isJoining, setIsJoining] = React.useState<string | null>(null);
@@ -73,17 +75,34 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
     }
   };
 
-  const onJoin = async (projectId: string) => {
-    if (!user) return;
-    setIsJoining(projectId);
+  const onJoin = async (projectToJoin: ProjectSearchResult) => {
+    if (!user || !userProfile) return;
+
+    if (userProfile.projectIds?.includes(projectToJoin.id)) {
+      toast({ variant: 'default', title: 'Already a Member', description: 'You are already a member of this project.' });
+      return;
+    }
+
+    setIsJoining(projectToJoin.id);
     try {
-        const projectRef = doc(db, 'projects', projectId);
-        await updateDoc(projectRef, {
-            memberUids: arrayUnion(user.uid)
+        const projectRef = doc(db, 'projects', projectToJoin.id);
+        const userRef = doc(db, 'users', user.uid);
+
+        await runTransaction(db, async (transaction) => {
+          // Add user to project's member list
+          transaction.update(projectRef, {
+              memberUids: arrayUnion(user.uid)
+          });
+          // Add project to user's project list
+          transaction.update(userRef, {
+              projectIds: arrayUnion(projectToJoin.id)
+          });
         });
-        toast({ title: 'Success!', description: 'Successfully joined the project!' });
+        
+        toast({ title: 'Success!', description: `Successfully joined the project "${projectToJoin.name}"!` });
         onOpenChange(false);
     } catch (error) {
+        console.error("Failed to join project:", error);
         toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.'});
     } finally {
         setIsJoining(null);
@@ -141,7 +160,7 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
                                 <Briefcase className="h-5 w-5 text-primary" />
                                 <span className="font-medium">{project.name}</span>
                             </div>
-                            <Button size="sm" onClick={() => onJoin(project.id)} disabled={!!isJoining}>
+                            <Button size="sm" onClick={() => onJoin(project)} disabled={!!isJoining}>
                                 {isJoining === project.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Join
                             </Button>

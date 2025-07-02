@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -16,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
 import { Loader2, LogOut } from 'lucide-react';
-import { doc, updateDoc, arrayRemove } from 'firebase/firestore';
+import { doc, updateDoc, arrayRemove, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -46,12 +47,26 @@ export function LeaveProjectDialog({
       });
       return;
     }
+    
+    if (project.ownerUid === user.uid) {
+      toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'Project owner cannot leave. Please delete the project instead.' });
+      return;
+    }
 
     setIsLeaving(true);
     try {
       const projectRef = doc(db, 'projects', project.id);
-      await updateDoc(projectRef, {
-        memberUids: arrayRemove(user.uid),
+      const userRef = doc(db, 'users', user.uid);
+
+      await runTransaction(db, async (transaction) => {
+        // Remove user from project's member list
+        transaction.update(projectRef, {
+          memberUids: arrayRemove(user.uid),
+        });
+        // Remove project from user's project list
+        transaction.update(userRef, {
+          projectIds: arrayRemove(project.id),
+        });
       });
 
       toast({

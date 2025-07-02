@@ -20,6 +20,7 @@ export type UserProfile = {
   email: string;
   position: string;
   photoURL?: string | null;
+  projectIds?: string[]; // Array of project IDs the user is a member of
 };
 
 export type Project = {

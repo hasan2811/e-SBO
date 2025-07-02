@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -13,7 +14,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, runTransaction, arrayUnion } from 'firebase/firestore';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 
@@ -65,16 +66,25 @@ export default function ProjectHubPage() {
     
     try {
       const newProjectRef = doc(collection(db, 'projects'));
-      
-      const newProjectData = {
-        id: newProjectRef.id,
-        name: projectName,
-        ownerUid: user.uid,
-        memberUids: [user.uid],
-        createdAt: new Date().toISOString(),
-      };
+      const userDocRef = doc(db, 'users', user.uid);
 
-      await setDoc(newProjectRef, newProjectData);
+      await runTransaction(db, async (transaction) => {
+        const newProjectData = {
+          id: newProjectRef.id,
+          name: projectName,
+          ownerUid: user.uid,
+          memberUids: [user.uid],
+          createdAt: new Date().toISOString(),
+        };
+
+        // 1. Create the new project document
+        transaction.set(newProjectRef, newProjectData);
+        
+        // 2. Add the new project's ID to the user's profile
+        transaction.update(userDocRef, {
+          projectIds: arrayUnion(newProjectRef.id)
+        });
+      });
       
       toast({
         title: 'Proyek Dibuat!',

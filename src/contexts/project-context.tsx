@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import * as React from 'react';
-import { collection, onSnapshot, query, Unsubscribe, getDocs, where, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, Unsubscribe, getDocs, where, doc, getDoc, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Project, UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -15,7 +16,6 @@ interface ProjectContextType {
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
 
-// This function remains the same, it's efficient for fetching member profiles.
 async function fetchUserProfiles(uids: string[]): Promise<UserProfile[]> {
     if (uids.length === 0) return [];
     
@@ -34,39 +34,53 @@ async function fetchUserProfiles(uids: string[]): Promise<UserProfile[]> {
 }
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (authLoading) {
+    let unsubscribe: Unsubscribe | undefined;
+
+    const fetchProjects = async () => {
+      if (authLoading) {
+        setLoading(true);
+        return;
+      }
+
+      if (!user || !userProfile) {
+        setProjects([]);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
       setLoading(true);
-      return;
-    }
-    
-    if (!user) {
-      setProjects([]);
-      setLoading(false);
       setError(null);
-      return;
-    }
 
-    setLoading(true);
-    
-    // NEW STRATEGY: Fetch ALL projects and filter on the client.
-    // This avoids the complex and fragile 'array-contains' query that was causing permission errors.
-    const projectsQuery = query(collection(db, 'projects'));
+      const projectIds = userProfile.projectIds || [];
 
-    const unsubscribe = onSnapshot(projectsQuery, 
-      async (snapshot) => {
-        try {
-          setError(null);
-          const allProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
+      if (projectIds.length === 0) {
+        setProjects([]);
+        setLoading(false);
+        return;
+      }
+
+      // Firestore 'in' query supports up to 30 values.
+      // Chunking to handle cases where a user might be in more projects.
+      const projectChunks: string[][] = [];
+      for (let i = 0; i < projectIds.length; i += 30) {
+          projectChunks.push(projectIds.slice(i, i + 30));
+      }
+
+      // We only need one listener for all project chunks
+      if (unsubscribe) unsubscribe();
+
+      const projectsQuery = query(collection(db, 'projects'), where(documentId(), 'in', projectIds));
+      
+      unsubscribe = onSnapshot(projectsQuery, async (snapshot) => {
+          const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
           
-          // Filter projects on the client side
-          const userProjects = allProjects.filter(p => p.memberUids && p.memberUids.includes(user.uid));
-
           const allMemberUids = [...new Set(userProjects.flatMap(p => p.memberUids || []))];
           
           if (allMemberUids.length > 0) {
@@ -83,24 +97,23 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
           } else {
               setProjects(userProjects);
           }
-        } catch (e: any) {
-           console.error("Error processing project snapshot:", e);
-           setError("Gagal memproses data proyek.");
-           setProjects([]);
-        } finally {
           setLoading(false);
-        }
-      }, 
-      (err) => {
-        console.error("GAGAL MENGAMBIL SNAPSHOT PROYEK:", err);
-        setError(`Gagal memuat proyek: ${err.message}`);
-        setProjects([]);
-        setLoading(false);
-      }
-    );
+      }, (err) => {
+          console.error("Error fetching project snapshot:", err);
+          setError(`Failed to load projects: ${err.message}`);
+          setProjects([]);
+          setLoading(false);
+      });
+    };
 
-    return () => unsubscribe();
-  }, [user, authLoading]);
+    fetchProjects();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [user, userProfile, authLoading]);
 
   const value = { projects, loading, error };
 
