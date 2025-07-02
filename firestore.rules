@@ -1,41 +1,35 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Default deny all to prevent accidental access
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Users can only manage their own profile
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read, update: if request.auth.uid == userId;
+      allow create;
     }
 
-    // Projects:
-    // ANY authenticated user can READ any project document. This is required for the 
-    // "fetch all and filter" search functionality to work without a manual index.
-    // WRITE permissions are much more restrictive.
     match /projects/{projectId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      // Only the project owner can update or delete the project document.
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
+      // Allow any logged-in user to see the list of projects for the "Join Project" feature.
+      allow list: if request.auth != null;
+
+      // Only allow members to read the full details of a single project.
+      allow get: if request.auth.uid == resource.data.ownerUid || request.auth.uid in resource.data.memberUids;
+      
+      // Only the owner can add members (update memberUids) or delete the project.
+      allow create, update, delete: if request.auth.uid == request.resource.data.ownerUid;
     }
 
-    // Rules for subcollections remain secure.
-    // For now, allow any logged-in user to access these items.
-    // This can be refined later to check for project membership.
     match /observations/{observationId} {
-      allow read, write: if request.auth != null;
+      // Public observations are readable by anyone.
+      // Private/Project observations are readable only by the owner/members.
+      allow get: if resource.data.scope == 'public' || (request.auth != null && request.auth.uid == resource.data.userId);
+      allow list, write: if request.auth != null;
     }
+
     match /inspections/{inspectionId} {
-       allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
+    
     match /ptws/{ptwId} {
-       allow read, write: if request.auth != null;
+       allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
   }
 }
