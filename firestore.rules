@@ -1,12 +1,10 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Hardcore Diagnostic Rule: Allow ALL read and write operations for ANYONE.
-    // This is to definitively eliminate permission errors as the cause of failure.
-    // This is NOT secure for production but is a necessary step for debugging.
+    
+    // Hardcore Rule: Allow all reads and writes for debugging project creation.
+    // This is NOT secure for production but is a necessary diagnostic step.
     match /{document=**} {
       allow read, write: if true;
     }

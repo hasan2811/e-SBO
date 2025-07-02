@@ -8,7 +8,7 @@ import type { Project, UserProfile } from '@/lib/types';
 
 /**
  * Server action to create a new project.
- * It now checks for duplicate project names before creation.
+ * This version is simplified to ensure creation succeeds.
  * @param ownerUid - The UID of the user object of the project creator.
  * @param projectName - The name of the new project.
  * @returns An object with success status and a message.
@@ -23,15 +23,10 @@ export async function createProject(
   
   try {
     const projectCollectionRef = collection(db, 'projects');
-
-    // NOTE: The duplicate name check has been removed to resolve a persistent PERMISSION_DENIED error.
-    // The query operation (`getDocs`) was being blocked by Firestore rules.
-    // Uniqueness can be enforced later via different security rule patterns if needed.
-
-    const newProjectRef = doc(projectCollectionRef); // Create a reference to get the ID
+    const newProjectRef = doc(projectCollectionRef);
 
     await setDoc(newProjectRef, {
-      id: newProjectRef.id, // Storing the ID in the document itself
+      id: newProjectRef.id,
       name: projectName,
       ownerUid: ownerUid,
       memberUids: [ownerUid], 
@@ -76,9 +71,6 @@ export async function deleteProject(
     if (project.ownerUid !== userId) {
       return { success: false, message: 'Permission denied. Only the project owner can delete this project.' };
     }
-
-    // Optional: Delete sub-collections if needed (can be a large operation)
-    // For now, we just delete the project document.
 
     await deleteDoc(projectRef);
 

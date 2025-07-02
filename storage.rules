@@ -1,11 +1,9 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-  
-    // Hardcore Diagnostic Rule: Allow ALL read and write operations for ANYONE.
-    // This ensures file uploads are not blocked by permissions.
+    
+    // Hardcore Rule: Allow all reads and writes for debugging.
     // This is NOT secure for production.
     match /{allPaths=**} {
       allow read, write: if true;

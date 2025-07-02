@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
@@ -19,10 +19,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Use initializeFirestore for modern cache management.
-const db = initializeFirestore(app, {
-  localCache: memoryLocalCache(),
-});
+// Use the standard, idempotent getFirestore() to ensure a stable connection
+// in both client and server environments. This is the core fix.
+const db = getFirestore(app);
 
 const auth = getAuth(app);
 const storage = getStorage(app);
