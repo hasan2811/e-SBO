@@ -58,8 +58,8 @@ export default function ProjectFeedPage() {
     if (!project) return;
     navigator.clipboard.writeText(project.id);
     toast({
-        title: "Project ID Copied!",
-        description: "You can now share this ID with new members.",
+        title: "ID Proyek Disalin!",
+        description: "Anda sekarang dapat membagikan ID ini dengan anggota baru.",
     });
   };
 
@@ -99,32 +99,12 @@ export default function ProjectFeedPage() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4 -mt-2 mb-2">
-            <div className="flex items-start gap-4">
-              <Button variant="ghost" size="icon" className="flex-shrink-0 mt-1" asChild>
+        <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="flex-shrink-0" asChild>
                   <Link href="/beranda"><ArrowLeft/></Link>
               </Button>
-              <div>
-                <h1 className="text-2xl font-bold">{project?.name || 'Loading Project...'}</h1>
-                {project && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 bg-muted/50 rounded-full px-2 py-1 max-w-fit">
-                        <span>ID: {project.id}</span>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleCopyId}>
-                                        <Copy className="h-3 w-3" />
-                                        <span className="sr-only">Copy Project ID</span>
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Copy ID</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
-                )}
-              </div>
+              <h1 className="text-2xl font-bold">{project.name}</h1>
             </div>
             <div className="flex items-center gap-2">
                 {isOwner ? (
@@ -134,11 +114,11 @@ export default function ProjectFeedPage() {
                             <TooltipTrigger asChild>
                               <Button variant="outline" size="icon" onClick={() => setAddMemberDialogOpen(true)}>
                                   <UserPlus className="h-4 w-4" />
-                                  <span className="sr-only">Add Member</span>
+                                  <span className="sr-only">Tambah Anggota</span>
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Add Member</p>
+                              <p>Tambah Anggota</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -147,11 +127,11 @@ export default function ProjectFeedPage() {
                             <TooltipTrigger asChild>
                               <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)}>
                                   <Trash2 className="h-4 w-4" />
-                                  <span className="sr-only">Delete Project</span>
+                                  <span className="sr-only">Hapus Proyek</span>
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Delete Project</p>
+                              <p>Hapus Proyek</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -162,6 +142,23 @@ export default function ProjectFeedPage() {
                     </Button>
                 )}
             </div>
+        </div>
+
+        <div className="flex items-center gap-2 p-2 mb-2 bg-muted rounded-md border">
+            <span className="font-mono text-sm text-muted-foreground">ID: {project.id}</span>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCopyId}>
+                            <Copy className="h-4 w-4" />
+                            <span className="sr-only">Salin ID Proyek</span>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Salin ID Proyek</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         </div>
 
         <Card>
@@ -184,7 +181,7 @@ export default function ProjectFeedPage() {
                             size="icon"
                             className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
                             onClick={() => setMemberToRemove(member)}
-                            aria-label={`Remove ${member.displayName}`}
+                            aria-label={`Hapus ${member.displayName}`}
                         >
                             <X className="h-4 w-4" />
                         </Button>
