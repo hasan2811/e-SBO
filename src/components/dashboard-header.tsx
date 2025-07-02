@@ -2,16 +2,19 @@
 'use client';
 
 import * as React from 'react';
-import { FilePlus2 } from 'lucide-react';
+import { FilePlus2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserAccountSheet } from '@/components/user-account-sheet';
 import { AppLogo } from '@/components/app-logo';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface DashboardHeaderProps {
-  onAddNew: () => void;
+  onNewObservation: () => void;
+  onNewInspection: () => void;
+  onNewPtw: () => void;
 }
 
-export function DashboardHeader({ onAddNew }: DashboardHeaderProps) {
+export function DashboardHeader({ onNewObservation, onNewInspection, onNewPtw }: DashboardHeaderProps) {
   return (
     <>
       <header className="bg-card border-b sticky top-0 z-10">
@@ -23,10 +26,20 @@ export function DashboardHeader({ onAddNew }: DashboardHeaderProps) {
             </div>
             <div className="flex items-center gap-4">
                <div className="hidden md:block">
-                  <Button onClick={onAddNew}>
-                    <FilePlus2 className="mr-2" />
-                    New Observation
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button>
+                        <FilePlus2 className="mr-2" />
+                        New Entry
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={onNewObservation}>New Observation</DropdownMenuItem>
+                      <DropdownMenuItem onClick={onNewInspection}>New Inspection</DropdownMenuItem>
+                      <DropdownMenuItem onClick={onNewPtw}>New PTW</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               <UserAccountSheet />
             </div>
