@@ -1,9 +1,10 @@
 
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    // Aturan ini mengizinkan semua pengguna yang sudah login (terautentikasi)
-    // untuk mengunggah (write) dan mengunduh (read) file apa pun.
+    // Default rule: Allow read and write access for all files
+    // only to authenticated users. This simplifies debugging permissions.
     match /{allPaths=**} {
       allow read, write: if request.auth != null;
     }

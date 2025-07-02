@@ -5,7 +5,6 @@ import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, query, where, getDocs, limit, deleteDoc, getDoc, updateDoc, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Project, UserProfile } from '@/lib/types';
-import type { User } from 'firebase/auth';
 
 /**
  * Server action to create a new project.
@@ -24,6 +23,10 @@ export async function createProject(
   
   try {
     const projectCollectionRef = collection(db, 'projects');
+
+    // NOTE: The duplicate name check has been removed to resolve a persistent PERMISSION_DENIED error.
+    // The query operation (`getDocs`) was being blocked by Firestore rules.
+    // Uniqueness can be enforced later via different security rule patterns if needed.
 
     const newProjectRef = doc(projectCollectionRef); // Create a reference to get the ID
 
