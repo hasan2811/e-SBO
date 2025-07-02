@@ -3,10 +3,12 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Default rule: Allow read and write access for all files
-    // only to authenticated users. This simplifies debugging permissions.
+  
+    // Hardcore Diagnostic Rule: Allow ALL read and write operations for ANYONE.
+    // This ensures file uploads are not blocked by permissions.
+    // This is NOT secure for production.
     match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }

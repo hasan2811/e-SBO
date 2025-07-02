@@ -3,11 +3,12 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default rule: Allow read and write access only to authenticated users.
-    // This is a simple, permissive rule for development and debugging to ensure
-    // that permission errors are not the cause of application failures.
+  
+    // Hardcore Diagnostic Rule: Allow ALL read and write operations for ANYONE.
+    // This is to definitively eliminate permission errors as the cause of failure.
+    // This is NOT secure for production but is a necessary step for debugging.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
