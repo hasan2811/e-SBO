@@ -1803,3 +1803,15 @@ INFO: Detected non-HTTP/2 connection.
 [debug] [2025-07-02T17:45:08.779Z] <<< [apiv2][status] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules 200
 [debug] [2025-07-02T17:45:08.784Z] <<< [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {}
 [info] ✔  firestore: Rules updated. 
+[info] i  firestore: Change detected, updating rules... 
+[debug] [2025-07-02T18:24:12.017Z] >>> [apiv2][query] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules [none]
+[debug] [2025-07-02T18:24:12.021Z] >>> [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {"ignore_errors":true,"rules":{"files":[{"name":"security.rules","content":"\nrules_version = '2';\n\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /users/{userId} {\n      // Pengguna hanya bisa membaca dan mengubah data profil mereka sendiri.\n      allow read, update: if request.auth.uid == userId;\n    }\n\n    match /projects/{projectId} {\n      // Aturan BARU & TAHAN BANTING:\n      // Izinkan pengguna membaca dokumen proyek JIKA DAN HANYA JIKA:\n      // 1. Dokumen tersebut memiliki field 'memberUids'.\n      // 2. DAN ID pengguna yang login ada di dalam daftar 'memberUids' tersebut.\n      // Aturan ini aman dan akan berfungsi untuk mengambil daftar maupun satu dokumen.\n      allow read: if 'memberUids' in resource.data && request.auth.uid in resource.data.memberUids;\n      \n      // Siapa pun yang login dapat membuat proyek.\n      allow create: if request.auth != null;\n\n      // Hanya pemilik proyek yang dapat mengubah atau menghapusnya.\n      allow update, delete: if request.auth.uid == resource.data.ownerUid;\n    }\n    \n    // Aturan untuk semua koleksi lain (observations, inspections, ptw)\n    match /{collection}/{id} {\n        // Izinkan siapa pun membaca dokumen (penting untuk feed publik).\n        allow read: if true;\n\n        // Hanya pengguna yang login yang bisa menulis (membuat, mengubah, menghapus).\n        allow write: if request.auth != null;\n    }\n  }\n}\n"}]}}
+[debug] [2025-07-02T18:24:12.033Z] Jul 02, 2025 6:24:12 PM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+INFO: Detected non-HTTP/2 connection.
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 02, 2025 6:24:12 PM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead\nINFO: Detected non-HTTP/2 connection.\n"}}
+[debug] [2025-07-02T18:24:12.076Z] Jul 02, 2025 6:24:12 PM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+INFO: Detected HTTP/2 connection.
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 02, 2025 6:24:12 PM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead\nINFO: Detected HTTP/2 connection.\n"}}
+[debug] [2025-07-02T18:24:12.236Z] <<< [apiv2][status] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules 200
+[debug] [2025-07-02T18:24:12.238Z] <<< [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {}
+[info] ✔  firestore: Rules updated. 

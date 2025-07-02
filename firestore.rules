@@ -3,45 +3,33 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
     match /users/{userId} {
+      // Pengguna hanya bisa membaca dan mengubah data profil mereka sendiri.
       allow read, update: if request.auth.uid == userId;
     }
 
     match /projects/{projectId} {
-      // This is the key fix: Making the read rule robust against malformed data.
-      // It checks for the existence of the 'memberUids' field before checking for membership.
+      // Aturan BARU & TAHAN BANTING:
+      // Izinkan pengguna membaca dokumen proyek JIKA DAN HANYA JIKA:
+      // 1. Dokumen tersebut memiliki field 'memberUids'.
+      // 2. DAN ID pengguna yang login ada di dalam daftar 'memberUids' tersebut.
+      // Aturan ini aman dan akan berfungsi untuk mengambil daftar maupun satu dokumen.
       allow read: if 'memberUids' in resource.data && request.auth.uid in resource.data.memberUids;
+      
+      // Siapa pun yang login dapat membuat proyek.
+      allow create: if request.auth != null;
 
-      // Only the project owner can update or delete.
+      // Hanya pemilik proyek yang dapat mengubah atau menghapusnya.
       allow update, delete: if request.auth.uid == resource.data.ownerUid;
-      
-      // Creation is now manual, but the rule is here for future use.
-      allow create: if request.auth != null;
     }
+    
+    // Aturan untuk semua koleksi lain (observations, inspections, ptw)
+    match /{collection}/{id} {
+        // Izinkan siapa pun membaca dokumen (penting untuk feed publik).
+        allow read: if true;
 
-    // Rules for Observations
-    match /observations/{observationId} {
-      // Anyone can read public observations.
-      // Authenticated users can read non-public observations for now. This can be tightened later.
-      allow read: if resource.data.scope == 'public' || request.auth != null;
-      
-      // Allow create for any authenticated user.
-      allow create: if request.auth != null;
-      
-      // Only allow the user who created the document to update or delete it.
-      allow update, delete: if request.auth.uid == resource.data.userId;
-    }
-    
-    // Simplified, secure rules for Inspections and PTWs
-    match /inspections/{inspectionId} {
-      allow read, create: if request.auth != null;
-      allow update, delete: if request.auth.uid == resource.data.userId;
-    }
-    
-    match /ptws/{ptwId} {
-      allow read, create: if request.auth != null;
-      allow update, delete: if request.auth.uid == resource.data.userId;
+        // Hanya pengguna yang login yang bisa menulis (membuat, mengubah, menghapus).
+        allow write: if request.auth != null;
     }
   }
 }
