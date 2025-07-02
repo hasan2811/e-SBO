@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { collection, query, where, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useAuth } from './auth-context';
+import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
 
 interface ProjectContextType {
