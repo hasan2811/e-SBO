@@ -37,6 +37,7 @@ export async function createProject(
     const newProjectRef = doc(projectCollectionRef); // Create a reference to get the ID
 
     await setDoc(newProjectRef, {
+      id: newProjectRef.id, // Storing the ID in the document itself
       name: projectName,
       ownerUid: owner.uid,
       memberUids: [owner.uid], 
