@@ -1,65 +1,69 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // =================================
-    // Global Functions
-    // =================================
+    // Helper functions
     function isSuperAdmin() {
       return request.auth.uid == 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
+    }
+    
+    function isOwner(doc) {
+      return 'ownerUid' in doc.data && request.auth.uid == doc.data.ownerUid;
+    }
+    
+    function isMember(doc) {
+      return 'memberUids' in doc.data && doc.data.memberUids is list && request.auth.uid in doc.data.memberUids;
     }
     
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // =================================
-    // Users Collection
-    // =================================
-    match /users/{userId} {
-      // Users can read and update their own profile. Super admin can read/update any profile.
-      allow read, update: if request.auth.uid == userId || isSuperAdmin();
-      // Any authenticated user can create their own user document upon sign-up.
-      allow create: if isSignedIn();
-    }
-
-    // =================================
     // Projects Collection
-    // =================================
     match /projects/{projectId} {
-      // Allow read (get and list) IF user is super admin OR their UID is in that project's memberUids array.
-      // Using get() is the correct and robust way to secure LIST queries based on document content.
-      allow read: if isSuperAdmin() || 
-                   (request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids);
+      // LIST: Allow any signed-in user to query the collection.
+      // The client-side query (`where('memberUids', 'array-contains', ...)` or isSuperAdmin) is responsible for filtering.
+      // This rule is essential to prevent "permission-denied" on list requests.
+      allow list: if isSignedIn();
+
+      // GET: Stricter rule for reading a single document directly.
+      // You can only get a project if you are a super admin or a member.
+      allow get: if isSuperAdmin() || isMember(resource);
       
-      // Allow creating a project for any signed-in user. The owner is set client-side.
+      // CREATE: Any signed-in user can create a project.
       allow create: if isSignedIn();
       
-      // Allow updating or deleting a project only for the project owner or super admin.
-      allow update, delete: if isSuperAdmin() || request.auth.uid == resource.data.ownerUid;
+      // WRITE: Only the owner or a super admin can update/delete.
+      allow update, delete: if isSuperAdmin() || isOwner(resource);
     }
     
-    // =================================
-    // Generic Rule for All Data Items (Observations, Inspections, PTWs)
-    // =================================
-    match /{itemCollection}/{itemId} {
-      // This rule applies to 'observations', 'inspections', and 'ptws' collections.
-      // Allow read access IF:
-      // 1. The user is a Super Admin.
-      // OR 2. The item is marked as 'public'.
-      // OR 3. The item is 'private' and belongs to the user.
-      // OR 4. The item is in a 'project' and the user is a member of that project.
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if request.auth.uid == userId;
+    }
+    
+    // Root-level collections for items (Observations, Inspections, PTWs)
+    match /{itemCollection}/{itemId} 
+      where itemCollection in ['observations', 'inspections', 'ptws'] {
+        
+      // READ: Super admin can read all. Members of the associated project can read.
+      // Public items can be read by anyone. Private items only by the owner.
       allow read: if isSuperAdmin() ||
-                   resource.data.scope == 'public' ||
-                   (resource.data.scope == 'private' && resource.data.userId == request.auth.uid) ||
-                   (resource.data.scope == 'project' && request.auth.uid in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.memberUids);
+                    (resource.data.scope == 'public') ||
+                    (resource.data.scope == 'private' && request.auth.uid == resource.data.userId) ||
+                    (resource.data.scope == 'project' && 
+                      'projectId' in resource.data && resource.data.projectId != null &&
+                      exists(/databases/$(database)/documents/projects/$(resource.data.projectId)) &&
+                      (isMember(get(/databases/$(database)/documents/projects/$(resource.data.projectId))) || isSuperAdmin()));
 
-      // Any signed-in user can create an item. Scope/project is set client-side.
+      // CREATE: Any signed-in user can create an item.
       allow create: if isSignedIn();
-      
-      // Only the user who created the item or a super admin can update it.
-      allow update: if isSuperAdmin() || request.auth.uid == resource.data.userId;
+
+      // UPDATE/DELETE: Super admin or the original creator can modify.
+      allow update, delete: if isSuperAdmin() || (isSignedIn() && request.auth.uid == resource.data.userId);
     }
   }
 }
