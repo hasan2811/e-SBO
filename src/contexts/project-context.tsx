@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -42,7 +41,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     let unsubscribe: Unsubscribe | undefined;
 
-    const fetchProjects = async () => {
+    const fetchProjects = () => {
       if (authLoading) {
         setLoading(true);
         return;
@@ -66,19 +65,18 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Firestore 'in' query supports up to 30 values.
-      // Chunking to handle cases where a user might be in more projects.
-      const projectChunks: string[][] = [];
-      for (let i = 0; i < projectIds.length; i += 30) {
-          projectChunks.push(projectIds.slice(i, i + 30));
-      }
-
-      // We only need one listener for all project chunks
+      // We only need one listener. If it exists, unsubscribe first.
       if (unsubscribe) unsubscribe();
 
       const projectsQuery = query(collection(db, 'projects'), where(documentId(), 'in', projectIds));
       
       unsubscribe = onSnapshot(projectsQuery, async (snapshot) => {
+          if (snapshot.empty) {
+            setProjects([]);
+            setLoading(false);
+            return;
+          }
+
           const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
           
           const allMemberUids = [...new Set(userProjects.flatMap(p => p.memberUids || []))];
@@ -100,7 +98,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
       }, (err) => {
           console.error("Error fetching project snapshot:", err);
-          setError(`Failed to load projects: ${err.message}`);
+          setError(`Failed to load projects: ${err.message}. Check Firestore rules and network connection.`);
           setProjects([]);
           setLoading(false);
       });

@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, runTransaction, arrayUnion } from 'firebase/firestore';
+import { collection, doc, runTransaction, arrayUnion } from 'firebase/firestore';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 
@@ -65,10 +65,12 @@ export default function ProjectHubPage() {
     }
     
     try {
-      const newProjectRef = doc(collection(db, 'projects'));
-      const userDocRef = doc(db, 'users', user.uid);
-
+      // This is an atomic transaction. It will either complete both steps or fail completely,
+      // ensuring data consistency.
       await runTransaction(db, async (transaction) => {
+        const newProjectRef = doc(collection(db, 'projects'));
+        const userDocRef = doc(db, 'users', user.uid);
+
         const newProjectData = {
           id: newProjectRef.id,
           name: projectName,
