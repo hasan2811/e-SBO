@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
@@ -11,8 +9,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
+  Unsubscribe,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { app, db } from '@/lib/firebase';
 import { z } from 'zod';
 import type { UserProfile } from '@/lib/types';
@@ -50,36 +49,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let profileUnsubscribe: Unsubscribe | null = null;
+
+    const authUnsubscribe = onAuthStateChanged(auth, (user) => {
+      // Unsubscribe from previous profile listener if it exists
+      if (profileUnsubscribe) {
+        profileUnsubscribe();
+      }
+      
       setLoading(true);
+
       if (user) {
         const userDocRef = doc(db, 'users', user.uid);
-        const docSnap = await getDoc(userDocRef);
-
-        if (docSnap.exists()) {
-          setUserProfile(docSnap.data() as UserProfile);
-        } else {
-          // This case handles users created via Google Sign-In for the first time
-          // or legacy users. A profile is created for them.
-           const newUserProfile: UserProfile = {
-            uid: user.uid,
-            email: user.email!,
-            displayName: user.displayName || 'New User',
-            position: 'Not Set',
-            photoURL: user.photoURL,
-            projectIds: [],
-          };
-          await setDoc(userDocRef, newUserProfile);
-          setUserProfile(newUserProfile);
-        }
-        setUser(user);
+        profileUnsubscribe = onSnapshot(userDocRef, async (docSnap) => {
+          if (docSnap.exists()) {
+            setUserProfile(docSnap.data() as UserProfile);
+          } else {
+            // Profile doesn't exist, let's create it.
+            // This handles first-time sign-ups.
+            const newUserProfile: UserProfile = {
+              uid: user.uid,
+              email: user.email!,
+              displayName: user.displayName || 'New User',
+              position: 'Not Set',
+              photoURL: user.photoURL,
+              projectIds: [],
+            };
+            try {
+              await setDoc(userDocRef, newUserProfile);
+              // The onSnapshot listener will automatically pick up the new profile data.
+            } catch (error) {
+               console.error("Failed to create user profile document:", error);
+            }
+          }
+          setUser(user);
+          setLoading(false);
+        }, (error) => {
+           console.error("Error with user profile listener:", error);
+           setUser(null);
+           setUserProfile(null);
+           setLoading(false);
+        });
       } else {
+        // User is signed out
         setUser(null);
         setUserProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
-    return () => unsubscribe();
+
+    // Cleanup function
+    return () => {
+      authUnsubscribe();
+      if (profileUnsubscribe) {
+        profileUnsubscribe();
+      }
+    };
   }, []);
 
   const signUpWithEmailAndPasswordHandler = useCallback(async ({ email, password, displayName }: SignUpInput) => {
@@ -127,8 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await updateProfile(auth.currentUser, { displayName: data.displayName });
     }
     
-    // Refresh local state to reflect changes immediately
-    setUserProfile(prev => prev ? { ...prev, ...data } as UserProfile : null);
+    // The onSnapshot listener will handle updating the state automatically.
   }, []);
 
   const logout = useCallback(async () => {
