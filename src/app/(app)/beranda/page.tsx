@@ -1,62 +1,102 @@
-
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
+import { useProjects } from '@/hooks/use-projects';
+import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PlusCircle, LogIn, Folder, AlertCircle } from 'lucide-react';
+import { CreateProjectDialog } from '@/components/create-project-dialog';
+import { JoinProjectDialog } from '@/components/join-project-dialog';
 
 export default function ProjectHubPage() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = React.useState(false);
-
-  const handleCreateTestProject = async () => {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Not Authenticated' });
-      return;
-    }
-    setIsLoading(true);
-    console.log('Mencoba membuat proyek...');
-
-    try {
-      console.log("LANGKAH 1: Mencoba menulis dokumen proyek baru...");
-      const docRef = await addDoc(collection(db, 'projects'), {
-        name: `Test Project ${new Date().getTime()}`,
-        ownerUid: user.uid,
-        memberUids: [user.uid],
-        createdAt: serverTimestamp(),
-      });
-      console.log("LANGKAH 1 BERHASIL! Dokumen dibuat dengan ID: ", docRef.id);
-      toast({ title: 'Success!', description: `Test project created with ID: ${docRef.id}` });
-    } catch (error: any) {
-      console.error("GAGAL PADA LANGKAH 1 (MEMBUAT PROYEK):", error);
-      toast({
-        variant: 'destructive',
-        title: 'Failed to Create Project',
-        description: error.message,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { projects, loading, error } = useProjects();
+  const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
+  const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
 
   return (
-    <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-card p-8 rounded-lg">
-      <h3 className="mt-4 text-2xl font-bold">Uji Coba Penulisan Database</h3>
-      <p className="mt-2 max-w-md text-muted-foreground">
-        Tekan tombol di bawah ini untuk mencoba melakukan satu operasi tulis ke koleksi 'projects'.
-        Periksa konsol browser untuk melihat pesan keberhasilan atau kegagalan.
-      </p>
-      <div className="mt-6">
-        <Button onClick={handleCreateTestProject} disabled={isLoading}>
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Jalankan Tes Tulis
-        </Button>
+    <>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Project Hub</h1>
+            <p className="text-muted-foreground">
+              Kelola, buat, atau gabung dengan proyek yang sudah ada di sini.
+            </p>
+          </div>
+          <div className="flex w-full sm:w-auto gap-2">
+            <Button className="w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)}>
+              <PlusCircle className="mr-2" />
+              Buat Proyek Baru
+            </Button>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setJoinDialogOpen(true)}>
+              <LogIn className="mr-2" />
+              Gabung Proyek
+            </Button>
+          </div>
+        </div>
+
+        {error && (
+            <Card className="border-destructive bg-destructive/10">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-destructive">
+                        <AlertCircle />
+                        Gagal Memuat Proyek
+                    </CardTitle>
+                    <CardDescription className="text-destructive/80">
+                        Tidak dapat mengambil daftar proyek Anda. Ini mungkin karena indeks database sedang dibuat.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm font-medium">
+                        Jika ini pertama kalinya Anda menjalankan fitur ini, Firebase mungkin meminta Anda untuk membuat indeks komposit. Silakan buka konsol developer browser (F12), cari pesan error yang berisi link, dan klik link tersebut untuk membuat indeks.
+                    </p>
+                    <p className="text-sm mt-2">
+                        Pembuatan indeks bisa memakan waktu beberapa menit. Setelah selesai, muat ulang halaman ini.
+                    </p>
+                </CardContent>
+            </Card>
+        )}
+
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Proyek Anda</h2>
+          {loading ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+            </div>
+          ) : projects.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {projects.map((project) => (
+                <Link href={`/proyek/${project.id}`} key={project.id}>
+                  <Card className="hover:bg-muted/50 transition-colors h-full">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-3">
+                        <Folder className="text-primary"/> 
+                        {project.name}
+                      </CardTitle>
+                      <CardDescription>
+                        {project.memberUids?.length || 0} anggota
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          ) : !error ? (
+            <Card className="flex flex-col items-center justify-center p-8 text-center">
+              <CardTitle>Anda Belum Bergabung dengan Proyek Apapun</CardTitle>
+              <CardDescription className="mt-2 max-w-sm">
+                Buat proyek baru secara manual, atau gabung dengan proyek yang sudah ada untuk mulai.
+              </CardDescription>
+            </Card>
+          ) : null}
+        </div>
       </div>
-    </div>
+
+      <CreateProjectDialog isOpen={isCreateDialogOpen} onOpenChange={setCreateDialogOpen} />
+      <JoinProjectDialog isOpen={isJoinDialogOpen} onOpenChange={setJoinDialogOpen} />
+    </>
   );
 }

@@ -7,7 +7,7 @@ import { Home, User, Briefcase, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/', label: 'Publik', icon: Home },
+  { href: '/public', label: 'Publik', icon: Home },
   { href: '/private', label: 'Pribadi', icon: User },
   { href: '/beranda', label: 'Proyek', icon: Briefcase },
   { href: '/tasks', label: 'Dashboard', icon: LayoutDashboard },

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -10,7 +11,7 @@ export function BottomNavBar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'Publik', icon: Home },
+    { href: '/public', label: 'Publik', icon: Home },
     { href: '/private', label: 'Pribadi', icon: User },
     { href: '/beranda', label: 'Project', icon: Briefcase },
     { href: '/tasks', label: 'Dashboard', icon: LayoutDashboard },

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -34,7 +35,7 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       await signUpWithEmailAndPassword(values);
-      router.push('/');
+      router.push('/beranda');
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -50,7 +51,7 @@ export default function RegisterPage() {
   
   React.useEffect(() => {
     if (!loading && user) {
-      router.push('/');
+      router.push('/beranda');
     }
   }, [user, loading, router]);
   

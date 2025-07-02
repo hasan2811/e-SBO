@@ -1,8 +1,10 @@
-'use client';
 
-import * as React from 'react';
-import { FeedView } from '@/components/feed-view';
+import { redirect } from 'next/navigation';
 
-export default function PublicFeedPage() {
-  return <FeedView mode="public" />;
+/**
+ * This page now acts as a server-side redirect to the /beranda (Project Hub) page,
+ * which is a more logical entry point for this dashboard application.
+ */
+export default function RootPage() {
+  redirect('/beranda');
 }
