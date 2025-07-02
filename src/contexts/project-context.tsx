@@ -43,20 +43,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    // This useEffect is temporarily disabled to isolate the write operation.
-    // It immediately sets loading to false and returns an empty project list.
-    // This provides a clean console for diagnosing the "Create Project" feature.
-    const diagnoseWriteOperation = () => {
-      setLoading(false);
-      setProjects([]);
-      setError(null);
-    };
-
-    diagnoseWriteOperation();
-    
-    // The original data fetching logic is kept here but commented out.
-    // We will re-enable this once the write operation is confirmed to be working.
-    /*
     let unsubscribe: Unsubscribe | undefined;
 
     const fetchProjects = () => {
@@ -83,34 +69,68 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const projectsQuery = query(collection(db, 'projects'), where(documentId(), 'in', projectIds));
-      
-      unsubscribe = onSnapshot(projectsQuery, async (snapshot) => {
-          const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
-          
-          const allMemberUids = [...new Set(userProjects.flatMap(p => p.memberUids || []))];
-          
-          if (allMemberUids.length > 0) {
-              const allMemberProfiles = await fetchUserProfiles(allMemberUids);
-              const profilesMap = new Map(allMemberProfiles.map(p => [p.uid, p]));
+      // Firestore 'in' queries are limited to 30 items. We chunk the requests.
+      const chunkedProjectIds: string[][] = [];
+      for (let i = 0; i < projectIds.length; i += 30) {
+          chunkedProjectIds.push(projectIds.slice(i, i + 30));
+      }
 
-              const enrichedProjects = userProjects.map(project => ({
-                ...project,
-                owner: profilesMap.get(project.ownerUid),
-                members: (project.memberUids || []).map(uid => profilesMap.get(uid)).filter((p): p is UserProfile => !!p),
-              }));
-              
-              setProjects(enrichedProjects);
-          } else {
-              setProjects(userProjects);
-          }
-          setLoading(false);
-      }, (err) => {
-          console.error("GAGAL MENGAMBIL SNAPSHOT PROYEK:", err);
-          setError(`Gagal memuat proyek: ${err.message}.`);
+      const allUnsubscribes: Unsubscribe[] = [];
+      let allProjects: Project[] = [];
+      let completedChunks = 0;
+
+      if (chunkedProjectIds.length === 0) {
           setProjects([]);
           setLoading(false);
+          return;
+      }
+
+      const processProjects = async () => {
+        const allMemberUids = [...new Set(allProjects.flatMap(p => p.memberUids || []))];
+        if (allMemberUids.length > 0) {
+          const allMemberProfiles = await fetchUserProfiles(allMemberUids);
+          const profilesMap = new Map(allMemberProfiles.map(p => [p.uid, p]));
+          
+          const enrichedProjects = allProjects.map(project => ({
+            ...project,
+            owner: profilesMap.get(project.ownerUid),
+            members: (project.memberUids || []).map(uid => profilesMap.get(uid)).filter((p): p is UserProfile => !!p),
+          }));
+          
+          setProjects(enrichedProjects);
+        } else {
+          setProjects(allProjects);
+        }
+        setLoading(false);
+      };
+
+      chunkedProjectIds.forEach(chunk => {
+        const projectsQuery = query(collection(db, 'projects'), where(documentId(), 'in', chunk));
+        
+        const unsub = onSnapshot(projectsQuery, (snapshot) => {
+            const newProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
+            
+            // Replace old projects from this chunk with new ones
+            const currentIds = new Set(newProjects.map(p => p.id));
+            allProjects = allProjects.filter(p => !chunk.includes(p.id));
+            allProjects.push(...newProjects);
+
+            // Debounce or process only after all chunks are initially loaded
+            // For simplicity in onSnapshot, we'll re-enrich every time.
+            processProjects();
+
+        }, (err) => {
+            console.error("GAGAL MENGAMBIL SNAPSHOT PROYEK:", err);
+            setError(`Gagal memuat proyek: ${err.message}.`);
+            setProjects([]);
+            setLoading(false);
+        });
+        allUnsubscribes.push(unsub);
       });
+
+      unsubscribe = () => {
+        allUnsubscribes.forEach(unsub => unsub());
+      };
     };
 
     fetchProjects();
@@ -120,7 +140,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         unsubscribe();
       }
     };
-    */
   }, [user, userProfile, authLoading]);
 
   const value = { projects, loading, error };

@@ -7,13 +7,9 @@ import { useProjects } from '@/hooks/use-projects';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { FolderKanban, PlusCircle, Users, User, ArrowRight, FolderPlus, LogIn, AlertTriangle, Loader2 } from 'lucide-react';
-import { ProjectDialog } from '@/components/project-dialog';
+import { FolderKanban, Users, User, ArrowRight, FolderPlus, LogIn, AlertTriangle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
-import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 
@@ -52,59 +48,14 @@ function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
 
 export default function ProjectHubPage() {
   const { projects, loading, error } = useProjects();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [isProjectDialogOpen, setProjectDialogOpen] = React.useState(false);
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
-
-  const handleAddProject = async (projectName: string) => {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Anda harus login untuk membuat proyek.' });
-      throw new Error("Anda harus login untuk membuat proyek.");
-    }
-
-    console.log("Mencoba membuat proyek...");
-    const newProjectRef = doc(collection(db, 'projects'));
-    
-    const newProjectData = {
-      id: newProjectRef.id,
-      name: projectName,
-      ownerUid: user.uid,
-      memberUids: [user.uid],
-      createdAt: new Date().toISOString(),
-    };
-
-    try {
-      console.log("LANGKAH 1: Mencoba menulis dokumen proyek baru...");
-      await setDoc(newProjectRef, newProjectData);
-      console.log("LANGKAH 1 BERHASIL: Dokumen proyek dibuat dengan ID:", newProjectRef.id);
-      
-      toast({
-        title: 'Proyek Dibuat!',
-        description: 'Proyek baru Anda akan segera muncul di daftar.',
-      });
-
-    } catch (projectCreateError) {
-      console.error("GAGAL PADA LANGKAH 1 (MEMBUAT PROYEK):", projectCreateError);
-      const error = projectCreateError as Error;
-      toast({
-        variant: "destructive",
-        title: "Pembuatan Proyek Gagal",
-        description: `Gagal membuat dokumen proyek: ${error.message}`,
-      });
-      throw error;
-    }
-  };
 
   if (loading) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <Skeleton className="h-8 w-48" />
-          <div className="flex gap-2">
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-32" />
-          </div>
+          <h2 className="text-2xl font-bold tracking-tight">Pusat Proyek</h2>
+          <Skeleton className="h-10 w-32" />
         </div>
          <div className="flex items-center justify-center h-40">
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -131,10 +82,6 @@ export default function ProjectHubPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h2 className="text-2xl font-bold tracking-tight">Pusat Proyek</h2>
           <div className="flex items-center gap-2">
-              <Button onClick={() => setProjectDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Buat Proyek
-              </Button>
               <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
                 <LogIn className="mr-2 h-4 w-4" />
                 Gabung Proyek
@@ -148,6 +95,7 @@ export default function ProjectHubPage() {
                 <AlertTitle>Gagal Memuat Proyek</AlertTitle>
                 <AlertDescription>
                     {error}
+                    <p className="mt-2 text-xs">Pastikan Anda memiliki koneksi internet yang stabil. Jika masalah berlanjut, hubungi administrator.</p>
                 </AlertDescription>
             </Alert>
         )}
@@ -164,18 +112,13 @@ export default function ProjectHubPage() {
               <FolderPlus className="h-16 w-16 text-muted-foreground" />
               <h3 className="mt-4 text-2xl font-bold">Mulai Perjalanan Anda</h3>
               <p className="mt-2 max-w-md text-muted-foreground">
-                Anda belum bergabung dengan proyek apa pun. Buat proyek baru untuk berkolaborasi, atau bergabunglah dengan proyek yang sudah ada.
+                Anda belum bergabung dengan proyek apa pun. Buat proyek baru secara manual di konsol Firebase lalu gunakan fitur "Gabung Proyek" untuk mencarinya.
               </p>
             </div>
           )
         )}
       </div>
 
-      <ProjectDialog 
-        isOpen={isProjectDialogOpen}
-        onOpenChange={setProjectDialogOpen}
-        onAddProject={handleAddProject}
-      />
       <JoinProjectDialog
         isOpen={isJoinDialogOpen}
         onOpenChange={setJoinDialogOpen}
