@@ -3,10 +3,18 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Aturan paling mendasar: Izinkan baca dan tulis jika pengguna sudah login.
-    // Ini memastikan tidak ada masalah izin saat mengunggah file.
+    
+    // Allow public read access to all files. 
+    // This is simple and suitable for this app's public feed nature where anyone can see images.
     match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read;
+    }
+
+    // Secure write access. 
+    // Users can only write to paths that are namespaced under their own UID.
+    // This covers all upload paths used by the app, e.g., 'observations/{userId}/{fileName}'.
+    match /{path}/{userId}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
