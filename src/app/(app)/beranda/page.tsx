@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction, arrayUnion, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 
@@ -62,49 +62,56 @@ export default function ProjectHubPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Anda harus login untuk membuat proyek.' });
       throw new Error("Anda harus login untuk membuat proyek.");
     }
-    
-    console.log("Mencoba membuat proyek...");
-    
-    try {
-      // This is an atomic transaction. It will either complete both steps or fail completely,
-      // ensuring data consistency.
-      await runTransaction(db, async (transaction) => {
-        const newProjectRef = doc(collection(db, 'projects'));
-        const userDocRef = doc(db, 'users', user.uid);
 
-        const newProjectData = {
-          id: newProjectRef.id,
-          name: projectName,
-          ownerUid: user.uid,
-          memberUids: [user.uid],
-          createdAt: new Date().toISOString(),
-        };
-        
-        console.log("Langkah 1: Membuat dokumen proyek baru...");
-        transaction.set(newProjectRef, newProjectData);
-        
-        console.log("Langkah 2: Memperbarui profil pengguna...");
-        transaction.update(userDocRef, {
+    console.log("Mencoba membuat proyek...");
+    const newProjectRef = doc(collection(db, 'projects'));
+    const userDocRef = doc(db, 'users', user.uid);
+
+    const newProjectData = {
+      id: newProjectRef.id,
+      name: projectName,
+      ownerUid: user.uid,
+      memberUids: [user.uid],
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      console.log("LANGKAH 1: Menulis dokumen proyek baru ke 'projects'...");
+      await setDoc(newProjectRef, newProjectData);
+      console.log("LANGKAH 1 BERHASIL: Dokumen proyek dibuat dengan ID:", newProjectRef.id);
+
+      try {
+        console.log("LANGKAH 2: Memperbarui dokumen pengguna di 'users'...");
+        await updateDoc(userDocRef, {
           projectIds: arrayUnion(newProjectRef.id)
         });
-      });
-      
-      console.log("Transaksi pembuatan proyek berhasil!");
-      toast({
-        title: 'Proyek Dibuat!',
-        description: 'Proyek baru Anda akan segera muncul di daftar.',
-      });
+        console.log("LANGKAH 2 BERHASIL: Profil pengguna diperbarui.");
+        
+        toast({
+          title: 'Proyek Dibuat!',
+          description: 'Proyek baru Anda akan segera muncul di daftar.',
+        });
 
-    } catch (err) {
-       const error = err as Error;
-       console.error("GAGAL MEMBUAT PROYEK:", error);
-       const errorMessage = error instanceof Error ? error.message : "Terjadi galat yang tidak diketahui.";
-       toast({
-         variant: "destructive",
-         title: "Pembuatan Proyek Gagal",
-         description: errorMessage,
-       });
-       throw error;
+      } catch (userUpdateError) {
+        console.error("GAGAL PADA LANGKAH 2 (Update User):", userUpdateError);
+        const error = userUpdateError as Error;
+        toast({
+          variant: "destructive",
+          title: "Pembuatan Proyek Gagal (Langkah 2)",
+          description: `Gagal memperbarui profil pengguna: ${error.message}`,
+        });
+        throw error;
+      }
+
+    } catch (projectCreateError) {
+      console.error("GAGAL PADA LANGKAH 1 (Create Project):", projectCreateError);
+      const error = projectCreateError as Error;
+      toast({
+        variant: "destructive",
+        title: "Pembuatan Proyek Gagal (Langkah 1)",
+        description: `Gagal membuat dokumen proyek: ${error.message}`,
+      });
+      throw error;
     }
   };
 
