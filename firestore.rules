@@ -1,50 +1,44 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Super admin can read/write anything
+    
     function isSuperAdmin() {
       return request.auth.uid == 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
     }
 
-    // Projects:
-    // 1. Super admin can do anything.
-    // 2. Any logged-in user can CREATE a project.
-    // 3. Members can READ their projects.
-    // 4. Only the owner can UPDATE or DELETE a project.
     match /projects/{projectId} {
-      // Allow any authenticated user to attempt a list query. 
-      // The query itself is secured on the client to only fetch relevant projects.
-      allow list: if request.auth != null;
+      // To read (get or list), a user must be an admin, OR the document must have a `memberUids` array that contains the user's ID.
+      // This check (`'memberUids' in resource.data`) is crucial to prevent the rule from failing on incomplete documents.
+      allow read: if isSuperAdmin() || 
+                   ('memberUids' in resource.data && request.auth.uid in resource.data.memberUids);
 
-      // Allow getting a specific document only if the user is a super admin or a member.
-      allow get: if isSuperAdmin() || ('memberUids' in resource.data && request.auth.uid in resource.data.memberUids);
-      
+      // Any authenticated user can create a project.
       allow create: if request.auth != null;
-      allow update, delete: if isSuperAdmin() || resource.data.ownerUid == request.auth.uid;
+      
+      // To update or delete, a user must be an admin, OR the document must have an `ownerUid` that matches the user's ID.
+      allow update, delete: if isSuperAdmin() || 
+                             ('ownerUid' in resource.data && request.auth.uid == resource.data.ownerUid);
     }
 
-    // Users:
-    // 1. Super admin can do anything.
-    // 2. Users can only read/update their OWN profile.
     match /users/{userId} {
-      allow read, update: if isSuperAdmin() || request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read, write: if request.auth.uid == userId || isSuperAdmin();
     }
-
-    // Observations, Inspections, PTWs
-    // Generic rules for all item types
-    match /{itemCollection}/{itemId} {
-      // Allow read for super admin or if it's public. For private/project, check ownership.
-      allow read: if isSuperAdmin() || resource.data.scope == 'public' || request.auth.uid == resource.data.userId;
-      
-      // Allow create for any logged-in user.
-      allow create: if request.auth != null;
-      
-      // Allow update only by the original creator or a super admin.
-      allow update: if isSuperAdmin() || request.auth.uid == resource.data.userId;
-
-      // No one can delete items for data integrity.
-      allow delete: if false;
+    
+    match /{collection}/{docId} {
+       // This generic rule applies to observations, inspections, and ptws.
+       // It's intentionally placed last.
+       if collection != 'projects' && collection != 'users' {
+         allow read: if isSuperAdmin() || 
+                        ('scope' in resource.data && resource.data.scope == 'public') ||
+                        ('scope' in resource.data && resource.data.scope == 'private' && 'userId' in resource.data && resource.data.userId == request.auth.uid) ||
+                        ('scope' in resource.data && resource.data.scope == 'project' && 'projectId' in resource.data && 
+                          request.auth.uid in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.memberUids);
+                        
+         allow create: if request.auth != null;
+         allow update, delete: if isSuperAdmin() || ('userId' in resource.data && request.auth.uid == resource.data.userId);
+       }
     }
   }
 }
