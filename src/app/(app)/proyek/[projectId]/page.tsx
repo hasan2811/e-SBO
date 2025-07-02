@@ -7,7 +7,7 @@ import { FeedView } from '@/components/feed-view';
 import { useProjects } from '@/hooks/use-projects';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Trash2, UserPlus, Users, X, LogOut } from 'lucide-react';
+import { ArrowLeft, Trash2, UserPlus, Users, X, LogOut, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useCurrentProject } from '@/hooks/use-current-project';
@@ -17,7 +17,15 @@ import { LeaveProjectDialog } from '@/components/leave-project-dialog';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import type { UserProfile } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
 
 export default function ProjectFeedPage() {
   const params = useParams();
@@ -27,6 +35,7 @@ export default function ProjectFeedPage() {
   
   const { projects, loading: projectsLoading } = useProjects();
   const { setProjectId } = useCurrentProject();
+  const { toast } = useToast();
   
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isAddMemberDialogOpen, setAddMemberDialogOpen] = React.useState(false);
@@ -44,6 +53,15 @@ export default function ProjectFeedPage() {
   }, [projects, projectId, projectsLoading]);
   
   const isOwner = user && project && user.uid === project.ownerUid;
+
+  const handleCopyId = () => {
+    if (!project) return;
+    navigator.clipboard.writeText(project.id);
+    toast({
+        title: "Project ID Copied!",
+        description: "You can now share this ID with new members.",
+    });
+  };
 
   const getInitials = (name: string | null | undefined) => {
     if (!name?.trim()) {
@@ -82,23 +100,61 @@ export default function ProjectFeedPage() {
     <>
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4 -mt-2 mb-2">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" asChild>
+            <div className="flex items-start gap-4">
+              <Button variant="ghost" size="icon" className="flex-shrink-0 mt-1" asChild>
                   <Link href="/beranda"><ArrowLeft/></Link>
               </Button>
-              <h1 className="text-xl font-bold">{project?.name || 'Loading Project...'}</h1>
+              <div>
+                <h1 className="text-2xl font-bold">{project?.name || 'Loading Project...'}</h1>
+                {isOwner && project && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 bg-muted/50 rounded-full px-2 py-1 max-w-fit">
+                        <span>ID: {project.id}</span>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleCopyId}>
+                                        <Copy className="h-3 w-3" />
+                                        <span className="sr-only">Copy Project ID</span>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Copy ID</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
                 {isOwner ? (
                     <>
-                        <Button variant="outline" size="icon" onClick={() => setAddMemberDialogOpen(true)}>
-                            <UserPlus className="h-4 w-4" />
-                            <span className="sr-only">Add Member</span>
-                        </Button>
-                        <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)}>
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Delete Project</span>
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="icon" onClick={() => setAddMemberDialogOpen(true)}>
+                                  <UserPlus className="h-4 w-4" />
+                                  <span className="sr-only">Add Member</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Add Member</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <TooltipProvider>
+                           <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)}>
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Delete Project</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Delete Project</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                     </>
                 ) : (
                     <Button variant="destructive" onClick={() => setLeaveProjectDialogOpen(true)}>
@@ -112,11 +168,14 @@ export default function ProjectFeedPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
                 <Users className="h-5 w-5"/>
-                Anggota Proyek ({project.members?.length || 0})
+                Anggota Proyek
             </CardTitle>
+            <CardDescription>
+                {project.members?.length || 0} anggota tergabung dalam proyek ini.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-x-6 gap-y-4">
               {project.members?.map(member => (
                 <div key={member.uid} className="relative group flex flex-col items-center gap-2 text-center w-20">
                     {isOwner && user?.uid !== member.uid && (
@@ -130,12 +189,14 @@ export default function ProjectFeedPage() {
                             <X className="h-4 w-4" />
                         </Button>
                     )}
-                    <Avatar>
+                    <Avatar className="h-12 w-12">
                         <AvatarImage src={member.photoURL ?? undefined} alt={member.displayName ?? ''} />
-                        <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
+                        <AvatarFallback className="text-lg">{getInitials(member.displayName)}</AvatarFallback>
                     </Avatar>
-                    <span className="text-xs font-medium leading-tight truncate w-full">{member.displayName}</span>
-                    {member.uid === project.ownerUid && <span className="text-xs text-muted-foreground -mt-1.5">(Owner)</span>}
+                    <div className="text-center">
+                        <p className="text-xs font-medium leading-tight truncate w-full">{member.displayName}</p>
+                        {member.uid === project.ownerUid && <p className="text-xs text-primary font-semibold -mt-0.5">(Owner)</p>}
+                    </div>
                 </div>
               ))}
             </div>
