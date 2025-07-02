@@ -7,12 +7,10 @@ import { db } from '@/lib/firebase';
 import type { Project, UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { createProject } from '@/lib/actions/project-actions';
 
 interface ProjectContextType {
   projects: Project[];
   loading: boolean;
-  addProject: (projectName: string) => Promise<{ success: boolean; message: string; }>;
 }
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -94,21 +92,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     };
   }, [userId]); // Depend on the stable userId string, not the whole user object
 
-  const addProject = React.useCallback(async (projectName: string) => {
-    if (!user || !userProfile) {
-      return { success: false, message: 'User profile not loaded. Please try again.' };
-    }
-    try {
-      // Pass the serializable user.uid instead of the whole user object
-      return await createProject(user.uid, projectName);
-    } catch (error) {
-      console.error("Error creating project via context:", error);
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-      return { success: false, message: errorMessage };
-    }
-  }, [user, userProfile]);
-
-  const value = React.useMemo(() => ({ projects, loading, addProject }), [projects, loading, addProject]);
+  const value = React.useMemo(() => ({ projects, loading }), [projects, loading]);
 
   return (
     <ProjectContext.Provider value={value}>

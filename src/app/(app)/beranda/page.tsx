@@ -12,6 +12,7 @@ import { ProjectDialog } from '@/components/project-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { createProject } from '@/lib/actions/project-actions';
 
 function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
   return (
@@ -47,7 +48,7 @@ function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
 }
 
 export default function ProjectHubPage() {
-  const { projects, loading, addProject } = useProjects();
+  const { projects, loading } = useProjects();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isProjectDialogOpen, setProjectDialogOpen] = React.useState(false);
@@ -56,7 +57,7 @@ export default function ProjectHubPage() {
   const handleAddProject = async (projectName: string) => {
     if (!user) return;
     try {
-      const result = await addProject(projectName);
+      const result = await createProject(user.uid, projectName);
       if (result.success) {
         toast({ title: 'Success!', description: result.message });
         setProjectDialogOpen(false);
@@ -65,7 +66,8 @@ export default function ProjectHubPage() {
       }
     } catch (e) {
       console.error(e);
-      toast({ variant: 'destructive', title: 'Error', description: 'An unexpected client error occurred.' });
+      const errorMessage = e instanceof Error ? e.message : 'An unexpected client error occurred.';
+      toast({ variant: 'destructive', title: 'Error', description: errorMessage });
     }
   };
 
