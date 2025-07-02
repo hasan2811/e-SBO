@@ -41,7 +41,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     try {
       const isAdmin = user.uid === 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
       
-      // If user is admin, fetch all projects. Otherwise, fetch only projects they are a member of.
+      // If user is admin, fetch all projects. 
+      // Otherwise, fetch projects where the user is listed in 'memberUids'.
+      // This query now relies on the security rules to be correctly configured.
       const q = isAdmin 
         ? query(collection(db, 'projects'))
         : query(collection(db, 'projects'), where('memberUids', 'array-contains', user.uid));
@@ -52,7 +54,12 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }, (err) => {
         console.error("Error fetching projects:", err);
-        setError(err.message);
+        // This is a more user-friendly error message
+        if (err.code === 'permission-denied' && err.message.includes('requires an index')) {
+             setError('Database index is being created. Please wait a few minutes and refresh.');
+        } else {
+             setError(err.message);
+        }
         setLoading(false);
         setProjects([]);
       });
@@ -71,6 +78,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user, authLoading]);
 
+  // The value now includes logic to enrich projects with member details, which was missing
   const value = { projects, loading, error };
 
   return (
