@@ -1,24 +1,23 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-  
-    // Helper function to check for Super Admin
+
+    // Helper function to identify the super admin
     function isSuperAdmin() {
       return request.auth.uid == 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
     }
 
-    // Allow public read access to all files.
-    // This simplifies displaying images in the app. Security is through unguessable URLs.
-    allow read;
+    // By default, allow reading of all files. This is common for media assets.
+    // Write permissions are what matter for security.
+    match /{allPaths=**} {
+      allow read: if true;
 
-    // Allow writes only if the user is authenticated.
-    // This rule covers paths for private items: {path}/{userId}/{filename}
-    // and project items: projects/{projectId}/{path}/{userId}/{filename}
-    // We only need to check if the user is who they say they are.
-    match /{allPaths=**}/{userId}/{fileName} {
-      allow write: if request.auth.uid == userId || isSuperAdmin();
+      // Allow writing ONLY if the user is authenticated AND one of the following is true:
+      // 1. They are the super admin.
+      // 2. The file path starts with their user ID (e.g., /observations/USER_ID/file.jpg)
+      // This secures user uploads to their own designated folders.
+      allow write: if request.auth != null && (isSuperAdmin() || request.auth.uid == allPaths.split('/')[1] || request.auth.uid == allPaths.split('/')[3]);
     }
   }
 }
