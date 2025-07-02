@@ -2,64 +2,60 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if a user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
 
-    // Users: Allow any authenticated user to read profiles, but only the owner can write.
+    // Users: Allow authenticated reads for profiles, but only self-updates.
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+      allow get: if request.auth != null;
+      allow update: if request.auth.uid == userId;
+      // Disallow listing all users for security.
+      allow list, create, delete: if false;
     }
 
-    // Projects:
-    // list: Allow any authenticated user to perform the query for their projects.
-    // read: Allow if the user's UID is in the project's member list.
-    // write: Allow any authenticated user to create/update (for joining/leaving).
-    // delete: Only the owner can delete.
+    // Projects: Secure access based on membership.
     match /projects/{projectId} {
-      // The client-side query contains the security clause (where('memberUids', 'array-contains', uid))
-      // so we just need to ensure the user is logged in to run a query.
-      // Firestore then checks the 'read' rule for each document returned.
-      allow list: if isAuthenticated();
-
-      // This is the key fix: Use resource.data directly instead of a self-referential get()
-      allow read: if isAuthenticated() && request.auth.uid in resource.data.memberUids;
+      // Any authenticated user can create a project.
+      allow create: if request.auth != null;
       
-      // Allow create/update for any authenticated user. Logic for joining/creating is in server actions.
-      allow write: if isAuthenticated(); 
+      // Allow reads (get/list) and updates only if the user is a member.
+      // This is the key rule that allows queries like `where('memberUids', 'array-contains', ...)`
+      allow read, update: if request.auth.uid in resource.data.memberUids;
       
-      // Only the project owner can delete the project document.
-      allow delete: if isAuthenticated() && resource.data.ownerUid == request.auth.uid;
+      // Allow deletion only by the project owner.
+      allow delete: if request.auth.uid == resource.data.ownerUid;
+
+      // Subcollections within a project (observations, inspections, ptws).
+      // Access is granted if the user is a member of the parent project.
+      match /{collection}/{docId} {
+        allow read, write: if request.auth != null && get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.hasAny([request.auth.uid]);
+      }
     }
 
-    // Project Sub-collections (Observations, Inspections, PTWs)
-    match /projects/{projectId}/{collection}/{docId} {
-      // Use the parent project's data to verify membership.
-      // The `get()` here is efficient as it only reads the parent document once per sub-collection access.
-      allow read, write: if isAuthenticated() && get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.includes(request.auth.uid);
+    // Root "observations" collection for public and private scopes.
+    match /observations/{obsId} {
+      // READ: Allow if the observation is public, OR if it's private and owned by the user.
+      // This single rule covers both `get` and `list` operations correctly.
+      allow read: if resource.data.scope == 'public' || (request.auth != null && request.auth.uid == resource.data.userId);
+
+      // CREATE: Allow if the new observation is correctly owned by the user.
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+
+      // UPDATE: Allow owner to update their private/public observation.
+      // Also allow any authenticated user to update like/view counts on public posts.
+      allow update: if request.auth != null && (
+        (request.auth.uid == resource.data.userId) ||
+        (resource.data.scope == 'public' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likeCount', 'viewCount', 'commentCount']))
+      );
+
+      // DELETE: Disallow for data integrity.
+      allow delete: if false;
     }
 
-    // Root-level collections for private/public items.
-    match /observations/{docId} {
-      // This rule applies to the root 'observations' collection.
-      
-      // PUBLIC: Anyone can read. Authenticated users can update (for likes, etc.).
-      allow read: if resource.data.scope == 'public';
-      allow update: if isAuthenticated() && resource.data.scope == 'public';
-
-      // PRIVATE: Only the user who created the document can read or write it.
-      allow read, write: if isAuthenticated() && resource.data.userId == request.auth.uid && resource.data.scope == 'private';
-    }
-     match /inspections/{docId} {
-      // PRIVATE: Only the user who created the document can read or write it.
-      allow read, write: if isAuthenticated() && resource.data.userId == request.auth.uid && resource.data.scope == 'private';
-    }
-     match /ptws/{docId} {
-      // PRIVATE: Only the user who created the document can read or write it.
-      allow read, write: if isAuthenticated() && resource.data.userId == request.auth.uid && resource.data.scope == 'private';
+    // Root "inspections" and "ptws" collections (always private).
+    match /{itemType in ['inspections', 'ptws']}/{docId} {
+      // Simple ownership check for all operations.
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Disallow listing for security.
+      allow list, delete: if false;
     }
   }
 }

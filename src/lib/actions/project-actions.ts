@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, limit, doc, deleteDoc, getDoc, updateDoc, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
+import { collection, doc, setDoc, query, where, getDocs, limit, deleteDoc, getDoc, updateDoc, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Project, UserProfile } from '@/lib/types';
 import type { User } from 'firebase/auth';
@@ -34,12 +34,10 @@ export async function createProject(
     });
     
     revalidatePath('/beranda');
-    toast({ title: 'Success!', description: `Project "${projectName}" was created successfully!` });
     return { success: true, message: `Project "${projectName}" was created successfully!` };
   } catch (error) {
     console.error('Error creating project:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-    toast({ variant: 'destructive', title: 'Project Creation Failed', description: errorMessage });
     return { success: false, message: `Project creation failed: ${errorMessage}` };
   }
 }

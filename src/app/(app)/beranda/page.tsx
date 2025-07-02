@@ -11,6 +11,7 @@ import { FolderKanban, PlusCircle, Users, User, ArrowRight, FolderPlus, LogIn } 
 import { ProjectDialog } from '@/components/project-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
   return (
@@ -48,16 +49,23 @@ function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
 export default function ProjectHubPage() {
   const { projects, loading, addProject } = useProjects();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [isProjectDialogOpen, setProjectDialogOpen] = React.useState(false);
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
 
   const handleAddProject = async (projectName: string) => {
     if (!user) return;
     try {
-      await addProject(projectName);
-      setProjectDialogOpen(false);
+      const result = await addProject(projectName);
+      if (result.success) {
+        toast({ title: 'Success!', description: result.message });
+        setProjectDialogOpen(false);
+      } else {
+        toast({ variant: 'destructive', title: 'Project Creation Failed', description: result.message });
+      }
     } catch (e) {
       console.error(e);
+      toast({ variant: 'destructive', title: 'Error', description: 'An unexpected client error occurred.' });
     }
   };
 
@@ -66,6 +74,10 @@ export default function ProjectHubPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <Skeleton className="h-8 w-48" />
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-32" />
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -83,8 +95,18 @@ export default function ProjectHubPage() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex items-center">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h2 className="text-2xl font-bold tracking-tight">Pusat Proyek</h2>
+          <div className="flex items-center gap-2">
+              <Button onClick={() => setProjectDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Buat Proyek
+              </Button>
+              <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
+                <LogIn className="mr-2 h-4 w-4" />
+                Gabung Proyek
+              </Button>
+          </div>
         </div>
 
         {projects.length > 0 ? (
@@ -98,18 +120,8 @@ export default function ProjectHubPage() {
             <FolderPlus className="h-16 w-16 text-muted-foreground" />
             <h3 className="mt-4 text-2xl font-bold">Mulai Perjalanan Anda</h3>
             <p className="mt-2 max-w-md text-muted-foreground">
-              Buat proyek baru untuk berkolaborasi dengan tim Anda, atau bergabunglah dengan proyek yang sudah ada.
+              Anda belum bergabung dengan proyek apa pun. Buat proyek baru untuk berkolaborasi, atau bergabunglah dengan proyek yang sudah ada.
             </p>
-            <div className="flex flex-wrap justify-center gap-4 mt-6">
-              <Button onClick={() => setProjectDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Buat Proyek
-              </Button>
-              <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
-                <LogIn className="mr-2 h-4 w-4" />
-                Gabung Proyek
-              </Button>
-            </div>
           </div>
         )}
       </div>
