@@ -1,34 +1,45 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Allow logged-in users to read/write their own user profile
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read, update, write: if request.auth.uid == userId;
     }
 
+    // Projects Rules - Granular permissions
     match /projects/{projectId} {
-      // Allow any authenticated user to see the list of projects for the "Join" dialog
+      // Allow any logged-in user to LIST projects (for Project Hub and Join Dialog)
       allow list: if request.auth != null;
-      // Allow a user to read a specific project's details if they are a member
+
+      // Allow a user to GET (read a single document) a project only if they are a member
       allow get: if request.auth.uid in resource.data.memberUids;
-      // Creation is manual, but we can allow it for authenticated users if needed later
+
+      // Allow a user to CREATE a project if they are logged in
       allow create: if request.auth != null;
-      // Only the owner can update (e.g., add members) or delete the project
-      allow update, delete: if request.auth.uid == resource.data.ownerUid;
+
+      // Allow a user to UPDATE a project only if they are the owner (e.g., for adding members)
+      allow update: if request.auth.uid == resource.data.ownerUid;
+
+      // Allow a user to DELETE a project only if they are the owner
+      allow delete: if request.auth.uid == resource.data.ownerUid;
     }
 
-    // Generic rule for other collections to reduce noise during this specific fix.
-    // We allow any authenticated user to read/write for now.
-    match /observations/{obsId} {
+    // Allow any authenticated user to create/read/update/delete items.
+    // This keeps the item logic simple while projects are secured.
+    match /observations/{docId} {
       allow read, write: if request.auth != null;
     }
-    match /inspections/{inspId} {
+    match /inspections/{docId} {
       allow read, write: if request.auth != null;
     }
-    match /ptws/{ptwId} {
+    match /ptws/{docId} {
       allow read, write: if request.auth != null;
     }
   }
