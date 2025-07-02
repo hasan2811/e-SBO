@@ -6,13 +6,11 @@ import { useProjects } from '@/hooks/use-projects';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlusCircle, LogIn, Folder, AlertCircle } from 'lucide-react';
-import { CreateProjectDialog } from '@/components/create-project-dialog';
+import { LogIn, Folder, AlertCircle } from 'lucide-react';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
 
 export default function ProjectHubPage() {
   const { projects, loading, error } = useProjects();
-  const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
 
   return (
@@ -22,14 +20,10 @@ export default function ProjectHubPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Project Hub</h1>
             <p className="text-muted-foreground">
-              Kelola, buat, atau gabung dengan proyek yang sudah ada di sini.
+              Kelola atau gabung dengan proyek yang sudah ada di sini.
             </p>
           </div>
-          <div className="flex w-full sm:w-auto gap-2">
-            <Button className="w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)}>
-              <PlusCircle className="mr-2" />
-              Buat Proyek Baru
-            </Button>
+          <div className="flex w-full sm:w-auto">
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => setJoinDialogOpen(true)}>
               <LogIn className="mr-2" />
               Gabung Proyek
@@ -88,14 +82,13 @@ export default function ProjectHubPage() {
             <Card className="flex flex-col items-center justify-center p-8 text-center">
               <CardTitle>Anda Belum Bergabung dengan Proyek Apapun</CardTitle>
               <CardDescription className="mt-2 max-w-sm">
-                Buat proyek baru secara manual, atau gabung dengan proyek yang sudah ada untuk mulai.
+                Gabung dengan proyek yang sudah ada untuk mulai.
               </CardDescription>
             </Card>
           ) : null}
         </div>
       </div>
 
-      <CreateProjectDialog isOpen={isCreateDialogOpen} onOpenChange={setCreateDialogOpen} />
       <JoinProjectDialog isOpen={isJoinDialogOpen} onOpenChange={setJoinDialogOpen} />
     </>
   );
