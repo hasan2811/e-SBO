@@ -106,7 +106,7 @@ export default function ProjectFeedPage() {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold">{project?.name || 'Loading Project...'}</h1>
-                {isOwner && project && (
+                {project && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 bg-muted/50 rounded-full px-2 py-1 max-w-fit">
                         <span>ID: {project.id}</span>
                         <TooltipProvider>
