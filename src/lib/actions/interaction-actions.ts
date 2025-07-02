@@ -4,28 +4,25 @@
 import { db } from '@/lib/firebase';
 import { doc, runTransaction } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
-import type { Scope } from '@/lib/types';
 
 interface ToggleLikeParams {
   docId: string;
   userId: string;
-  scope: Scope;
-  projectId: string | null;
+  collectionName: 'observations'; // Now we specify collection as path is always root
 }
 
 /**
- * Toggles a like on an observation document.
+ * Toggles a like on an observation document in a flat structure.
  * This is an atomic operation to prevent race conditions.
  * @param params - The parameters for the toggle operation.
  */
-export async function toggleLike({ docId, userId, scope, projectId }: ToggleLikeParams) {
-  if (!docId || !userId) {
-    throw new Error('Document ID and User ID are required.');
+export async function toggleLike({ docId, userId, collectionName }: ToggleLikeParams) {
+  if (!docId || !userId || !collectionName) {
+    throw new Error('Document ID, User ID, and Collection Name are required.');
   }
 
-  const docRef = (scope === 'project' && projectId)
-    ? doc(db, 'projects', projectId, 'observations', docId)
-    : doc(db, 'observations', docId);
+  // The path is now always at the root level.
+  const docRef = doc(db, collectionName, docId);
 
   try {
     const observation = await runTransaction(db, async (transaction) => {

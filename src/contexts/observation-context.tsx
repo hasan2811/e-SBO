@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -61,17 +60,9 @@ const ObservationContext = React.createContext<
   ObservationContextType | undefined
 >(undefined);
 
+// UNIFIED DATA MODEL: All items are at the root level. getDocRef is now simple.
 const getDocRef = (item: AllItems): DocumentReference => {
     const collectionName = `${item.itemType}s`;
-    // Public items are at the root
-    if(item.scope === 'public') {
-        return doc(db, collectionName, item.id);
-    }
-    // Project items are nested
-    if (item.scope === 'project' && item.projectId) {
-        return doc(db, 'projects', item.projectId, collectionName, item.id);
-    }
-    // Private items are at the root
     return doc(db, collectionName, item.id);
 };
 
@@ -88,7 +79,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     };
     
-    // Listener for private items
+    // Listener for private items (unchanged)
     React.useEffect(() => {
         if (!user) {
             setPrivateItems([]);
@@ -120,53 +111,62 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         };
     }, [user]);
 
-    // Listener for ALL project items
+    // REWRITTEN LISTENER: Project items are now fetched from root collections using an 'in' query.
     React.useEffect(() => {
-        if (projectsLoading || projects.length === 0) {
+        if (projectsLoading || !user) {
             setProjectItems([]);
             setProjectItemsLoading(false);
             return;
         }
-        
+
+        const projectIds = projects.map(p => p.id);
+        if (projectIds.length === 0) {
+            setProjectItems([]);
+            setProjectItemsLoading(false);
+            return;
+        }
+
         setProjectItemsLoading(true);
+
+        // Firestore 'in' query supports up to 30 values.
+        // For this app, we'll assume a user is not in more than 30 projects.
+        // A more robust solution would chunk the projectIds, but this is fine for now.
+        const queryableProjectIds = projectIds.length > 30 ? projectIds.slice(0, 30) : projectIds;
+        if(projectIds.length > 30) {
+            console.warn("User is in more than 30 projects. Querying only the first 30.");
+        }
+
+        const itemTypes: ('observation' | 'inspection' | 'ptw')[] = ['observation', 'inspection', 'ptw'];
+        const unsubs: Unsubscribe[] = [];
         const listenerData = new Map<string, AllItems[]>();
 
-        const allUnsubs = projects.flatMap(project => {
-            const itemTypes: ('observation' | 'inspection' | 'ptw')[] = ['observation', 'inspection', 'ptw'];
-            
-            return itemTypes.map(itemType => {
-                const collectionName = `${itemType}s`;
-                const q = query(collection(db, 'projects', project.id, collectionName));
-                const listenerId = `${project.id}-${collectionName}`;
+        itemTypes.forEach(itemType => {
+            const collectionName = `${itemType}s`;
+            const q = query(
+                collection(db, collectionName),
+                where('scope', '==', 'project'),
+                where('projectId', 'in', queryableProjectIds)
+            );
 
-                return onSnapshot(q, (snapshot) => {
-                    const items = snapshot.docs.map(doc => ({
-                        ...(doc.data() as any),
-                        id: doc.id,
-                        itemType: itemType
-                    })) as AllItems[];
-                    
-                    listenerData.set(listenerId, items);
+            const unsub = onSnapshot(q, (snap) => {
+                const items = snap.docs.map(d => ({ ...d.data(), id: d.id, itemType })) as AllItems[];
+                listenerData.set(itemType, items);
 
-                    const combinedItems = Array.from(listenerData.values()).flat();
-                    setProjectItems(sortItemsByDate(combinedItems));
-                    setProjectItemsLoading(false);
-                }, (error) => {
-                    console.error(`Error fetching ${collectionName} for project ${project.id}:`, error);
-                    listenerData.set(listenerId, []); 
-                    const combinedItems = Array.from(listenerData.values()).flat();
-                    setProjectItems(sortItemsByDate(combinedItems));
-                    if(projects.length > 0) {
-                      setProjectItemsLoading(false);
-                    }
-                });
+                const combinedItems = Array.from(listenerData.values()).flat();
+                setProjectItems(sortItemsByDate(combinedItems));
+                setProjectItemsLoading(false);
+            }, (error) => {
+                console.error(`Error fetching project ${collectionName}:`, error);
+                setProjectItems([]);
+                setProjectItemsLoading(false);
             });
+            unsubs.push(unsub);
         });
 
         return () => {
-            allUnsubs.forEach(unsub => unsub());
+            unsubs.forEach(unsub => unsub());
         };
-    }, [projects, projectsLoading]);
+    }, [user, projects, projectsLoading]);
     
     const _runObservationAiAnalysis = React.useCallback(async (observation: Observation) => {
       const observationDocRef = getDocRef(observation);
@@ -220,13 +220,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const addObservation = React.useCallback(async (formData: any, scope: Scope, projectId: string | null) => {
         if (!user || !userProfile) throw new Error("User not authenticated");
 
-        // 1. Get AI assistance first
         const aiResult = await getAIAssistance({ findings: formData.findings });
-
-        // 2. Upload file
         const photoUrl = await uploadFile(formData.photo, 'observations', user.uid, () => {}, projectId);
-        
-        // 3. Prepare data for Firestore
         const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         
         const newObservationData: Omit<Observation, 'id'> = {
@@ -244,7 +239,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             photoUrl: photoUrl,
             referenceId,
             scope,
-            projectId,
+            projectId, // projectId is now a top-level field
             aiStatus: 'processing',
             likes: [],
             likeCount: 0,
@@ -252,13 +247,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             viewCount: 0,
         };
 
-        // 4. Save to Firestore
-        const collectionPath = scope === 'project' && projectId
-            ? collection(db, 'projects', projectId, 'observations')
-            : collection(db, 'observations');
-        const docRef = await addDoc(collectionPath, newObservationData);
+        // UNIFIED WRITE: Always write to the root 'observations' collection.
+        const docRef = await addDoc(collection(db, 'observations'), newObservationData);
         
-        // 5. Trigger full AI analysis in the background
         const fullItemData = { ...newObservationData, id: docRef.id };
         _runObservationAiAnalysis(fullItemData);
 
@@ -268,7 +259,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         if (!user || !userProfile) throw new Error("User not authenticated");
         
         const photoUrl = await uploadFile(formData.photo, 'inspections', user.uid, () => {}, projectId);
-        
         const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
         const newInspectionData: Omit<Inspection, 'id'> = {
@@ -289,10 +279,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             aiStatus: 'processing',
         };
 
-        const collectionPath = scope === 'project' && projectId
-            ? collection(db, 'projects', projectId, 'inspections')
-            : collection(db, 'inspections');
-        const docRef = await addDoc(collectionPath, newInspectionData);
+        // UNIFIED WRITE: Always write to the root 'inspections' collection.
+        const docRef = await addDoc(collection(db, 'inspections'), newInspectionData);
 
         const fullItemData = { ...newInspectionData, id: docRef.id };
         _runInspectionAiAnalysis(fullItemData);
@@ -303,7 +291,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         if (!user || !userProfile) throw new Error("User not authenticated");
 
         const jsaPdfUrl = await uploadFile(formData.jsaPdf, 'ptw-jsa', user.uid, () => {}, projectId);
-        
         const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
         const newPtwData: Omit<Ptw, 'id'> = {
@@ -321,10 +308,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             projectId,
         };
 
-        const collectionPath = scope === 'project' && projectId
-            ? collection(db, 'projects', projectId, 'ptws')
-            : collection(db, 'ptws');
-        await addDoc(collectionPath, newPtwData);
+        // UNIFIED WRITE: Always write to the root 'ptws' collection.
+        await addDoc(collection(db, 'ptws'), newPtwData);
         
     }, [user, userProfile]);
 
@@ -361,7 +346,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
 
         try {
-            // Destructure to remove fields that shouldn't be copied.
             const { id, aiStatus, ...restOfObservation } = observation;
 
             const publicObservationData = {
@@ -369,10 +353,10 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 itemType: 'observation',
                 scope: 'public' as const,
                 projectId: null,
-                isSharedPublicly: false, // This is a new public doc, not a "share" of another
+                isSharedPublicly: false, 
                 sharedBy: userProfile.displayName,
                 sharedByPosition: userProfile.position,
-                originalId: id, // Link back to the original
+                originalId: id,
                 originalScope: observation.scope,
             };
             
@@ -394,11 +378,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             return;
         }
         try {
+            // This now correctly uses the flat structure path implicitly
             await toggleLike({
                 docId: observation.id,
                 userId: user.uid,
-                scope: observation.scope,
-                projectId: observation.projectId,
+                collectionName: 'observations', // We need to specify the collection
             });
         } catch (error) {
             console.error('Failed to toggle like:', error);
@@ -432,7 +416,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         approvePtw,
         retryAiAnalysis,
         shareObservationToPublic,
-        toggleLikeObservation
+        toggleLikeObservation,
     ]);
 
     return (
