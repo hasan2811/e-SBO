@@ -21,12 +21,12 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from './ui/skeleton';
-import { collection, query, where, getDocs, limit, doc, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
+import { collection, query, getDocs, limit, doc, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Project, UserProfile } from '@/lib/types';
 
 const formSchema = z.object({
-  searchTerm: z.string().min(3, { message: 'Search term must be at least 3 characters.' }),
+  searchTerm: z.string().min(1, { message: 'Please enter a search term.' }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -54,22 +54,27 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
     setIsSearching(true);
     setSearchResults([]);
     try {
+      // Fetch all projects (or a reasonable limit) and filter on the client.
+      // This avoids the need for a composite index on the 'name' field.
       const projectsRef = collection(db, 'projects');
-      const q = query(
-          projectsRef,
-          where('name', '>=', values.searchTerm),
-          where('name', '<=', values.searchTerm + '\uf8ff'),
-          limit(10)
-      );
+      const q = query(projectsRef, limit(200)); // Limit to 200 projects for performance
       const snapshot = await getDocs(q);
-      const results = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name as string }));
+      
+      const allProjects = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name as string }));
+
+      const lowerCaseSearchTerm = values.searchTerm.toLowerCase();
+      const results = allProjects.filter(project => 
+        project.name.toLowerCase().includes(lowerCaseSearchTerm)
+      );
 
       setSearchResults(results);
+
       if (results.length === 0) {
-        toast({ variant: 'default', title: 'No Results', description: 'No projects found with that name.' });
+        toast({ variant: 'default', title: 'No Results', description: 'No projects found matching your search.' });
       }
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Search Error', description: 'Could not perform search.' });
+      console.error("Project search failed:", error);
+      toast({ variant: 'destructive', title: 'Search Error', description: 'Could not perform search. Please check your connection and try again.' });
     } finally {
       setIsSearching(false);
     }
