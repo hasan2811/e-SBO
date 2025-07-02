@@ -59,12 +59,12 @@ export default function ProjectHubPage() {
 
   const handleAddProject = async (projectName: string) => {
     if (!user) {
-      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to create a project.' });
-      throw new Error("You must be logged in to create a project.");
+      toast({ variant: 'destructive', title: 'Error', description: 'Anda harus login untuk membuat proyek.' });
+      throw new Error("Anda harus login untuk membuat proyek.");
     }
     
     try {
-      console.log('Attempting to create project...');
+      console.log('Mencoba membuat proyek...');
       const newProjectRef = doc(collection(db, 'projects'));
       
       const newProjectData = {
@@ -76,19 +76,19 @@ export default function ProjectHubPage() {
       };
 
       await setDoc(newProjectRef, newProjectData);
-      console.log('Project document written to Firestore successfully.');
+      console.log('Dokumen proyek berhasil ditulis ke Firestore.');
       toast({
-        title: 'Project Created!',
-        description: 'The project list will update shortly.',
+        title: 'Proyek Dibuat!',
+        description: 'Daftar proyek Anda akan segera diperbarui.',
       });
 
     } catch (err) {
        const error = err as Error;
-       console.error("Failed to create project:", error);
-       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+       console.error("GAGAL MEMBUAT PROYEK:", error);
+       const errorMessage = error instanceof Error ? error.message : "Terjadi galat yang tidak diketahui.";
        toast({
          variant: "destructive",
-         title: "Project Creation Failed",
+         title: "Pembuatan Proyek Gagal",
          description: errorMessage,
        });
        throw error;
