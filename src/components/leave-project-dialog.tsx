@@ -14,9 +14,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { leaveProject } from '@/lib/actions/project-actions';
 import type { Project } from '@/lib/types';
 import { Loader2, LogOut } from 'lucide-react';
+import { doc, updateDoc, arrayRemove } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
 
 interface LeaveProjectDialogProps {
   isOpen: boolean;
@@ -47,21 +49,17 @@ export function LeaveProjectDialog({
 
     setIsLeaving(true);
     try {
-      const result = await leaveProject(project.id, user.uid);
-      if (result.success) {
-        toast({
-          title: 'You Have Left the Project',
-          description: result.message,
-        });
-        onOpenChange(false);
-        onSuccess?.();
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Action Failed',
-          description: result.message,
-        });
-      }
+      const projectRef = doc(db, 'projects', project.id);
+      await updateDoc(projectRef, {
+        memberUids: arrayRemove(user.uid),
+      });
+
+      toast({
+        title: 'You Have Left the Project',
+        description: `You have successfully left "${project.name}".`,
+      });
+      onOpenChange(false);
+      onSuccess?.();
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -81,7 +79,7 @@ export function LeaveProjectDialog({
           <AlertDialogDescription>
             You are about to leave the project{' '}
             <span className="font-bold">"{project?.name}"</span>. You will lose access
-            to all of its data. You can only rejoin if the project owner invites you again.
+            to all of its data. You can only rejoin if you are invited again.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -15,9 +15,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { deleteProject } from '@/lib/actions/project-actions';
 import type { Project } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
+import { doc, deleteDoc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface DeleteProjectDialogProps {
   isOpen: boolean;
@@ -48,21 +49,24 @@ export function DeleteProjectDialog({
 
     setIsDeleting(true);
     try {
-      const result = await deleteProject(project.id, user.uid);
-      if (result.success) {
-        toast({
-          title: 'Project Deleted',
-          description: result.message,
-        });
-        onOpenChange(false);
-        onSuccess?.();
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Deletion Failed',
-          description: result.message,
-        });
+      const projectRef = doc(db, 'projects', project.id);
+      
+      // Client-side check to ensure only the owner can delete
+      const projectSnap = await getDoc(projectRef);
+      if (!projectSnap.exists() || projectSnap.data()?.ownerUid !== user.uid) {
+        toast({ variant: 'destructive', title: 'Permission Denied', description: 'Only the project owner can delete the project.' });
+        setIsDeleting(false);
+        return;
       }
+      
+      await deleteDoc(projectRef);
+
+      toast({
+        title: 'Project Deleted',
+        description: `Project "${project.name}" has been successfully deleted.`,
+      });
+      onOpenChange(false);
+      onSuccess?.();
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -81,8 +85,7 @@ export function DeleteProjectDialog({
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone. This will permanently delete the project{' '}
-            <span className="font-bold">"{project?.name}"</span> and all of its associated
-            data from our servers.
+            <span className="font-bold">"{project?.name}"</span>. Note: This action does not delete associated reports, which will need to be managed separately.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
