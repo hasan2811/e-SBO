@@ -2,15 +2,15 @@
 'use client';
 
 import * as React from 'react';
-import { collection, onSnapshot, query, where, Unsubscribe, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, Unsubscribe, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Project, UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { toast } from '@/hooks/use-toast';
 
 interface ProjectContextType {
   projects: Project[];
   loading: boolean;
+  error: string | null; // New state to hold error messages
 }
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -32,11 +32,11 @@ async function fetchUserProfiles(uids: string[]): Promise<UserProfile[]> {
     return profiles;
 }
 
-
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null); // New error state
   const userId = user?.uid;
 
   React.useEffect(() => {
@@ -45,10 +45,12 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     if (!userId) {
       setProjects([]);
       setLoading(false);
+      setError(null);
       return;
     }
 
     setLoading(true);
+    setError(null); // Reset error on new fetch
     
     const projectsQuery = query(
       collection(db, 'projects'),
@@ -77,25 +79,18 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         }
         
         setLoading(false);
+        setError(null); // Clear error on success
       }, 
-      (error) => {
-        console.error("Error fetching projects:", error);
-
-        if (error.code === 'failed-precondition') {
-            toast({
-                variant: 'destructive',
-                title: 'Database Configuration Required',
-                description: 'A database index is required. Please check the browser console (F12) for a link to create it automatically. The app may not function correctly until this is resolved.',
-                duration: Infinity, // Keep the toast visible
-            });
+      (err) => {
+        console.error("Error fetching projects:", err);
+        // This is the crucial part: detect the missing index error
+        if (err.code === 'failed-precondition') {
+          setError(
+            'Diperlukan Konfigurasi Database. Galat ini biasanya berarti indeks Firestore yang diperlukan belum dibuat. Silakan buka konsol developer browser (tekan F12), temukan pesan galat Firestore yang asli (cari "FAILED_PRECONDITION"), dan klik tautan yang disediakan untuk membuat indeks secara otomatis. Aplikasi mungkin tidak akan berfungsi dengan benar sampai ini diselesaikan.'
+          );
         } else {
-            toast({
-                variant: 'destructive',
-                title: 'Failed to Load Projects',
-                description: error.message,
-            });
+          setError(`Gagal memuat proyek: ${err.message}`);
         }
-
         setProjects([]);
         setLoading(false);
       }
@@ -108,7 +103,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     };
   }, [userId]);
 
-  const value = React.useMemo(() => ({ projects, loading }), [projects, loading]);
+  const value = React.useMemo(() => ({ projects, loading, error }), [projects, loading, error]);
 
   return (
     <ProjectContext.Provider value={value}>

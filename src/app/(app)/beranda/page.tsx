@@ -7,13 +7,15 @@ import { useProjects } from '@/hooks/use-projects';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { FolderKanban, PlusCircle, Users, User, ArrowRight, FolderPlus, LogIn } from 'lucide-react';
+import { FolderKanban, PlusCircle, Users, User, ArrowRight, FolderPlus, LogIn, AlertTriangle } from 'lucide-react';
 import { ProjectDialog } from '@/components/project-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+
 
 function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
   return (
@@ -49,7 +51,7 @@ function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
 }
 
 export default function ProjectHubPage() {
-  const { projects, loading } = useProjects();
+  const { projects, loading, error } = useProjects(); // Now consuming the error state
   const { user } = useAuth();
   const { toast } = useToast();
   const [isProjectDialogOpen, setProjectDialogOpen] = React.useState(false);
@@ -62,6 +64,7 @@ export default function ProjectHubPage() {
     }
     
     try {
+      console.log('Attempting to create project...');
       const newProjectRef = doc(collection(db, 'projects'));
       
       const newProjectData = {
@@ -73,7 +76,14 @@ export default function ProjectHubPage() {
       };
 
       await setDoc(newProjectRef, newProjectData);
-    } catch (error) {
+      console.log('Project document written to Firestore successfully.');
+      toast({
+        title: 'Project Created!',
+        description: 'The project list will update shortly.',
+      });
+
+    } catch (err) {
+       const error = err as Error;
        console.error("Failed to create project:", error);
        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
        toast({
@@ -125,6 +135,17 @@ export default function ProjectHubPage() {
           </div>
         </div>
 
+        {/* Display a prominent error message if the index is missing */}
+        {error && (
+            <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Tindakan Diperlukan</AlertTitle>
+                <AlertDescription>
+                    {error}
+                </AlertDescription>
+            </Alert>
+        )}
+
         {projects.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
@@ -132,13 +153,16 @@ export default function ProjectHubPage() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-card p-8 rounded-lg">
-            <FolderPlus className="h-16 w-16 text-muted-foreground" />
-            <h3 className="mt-4 text-2xl font-bold">Mulai Perjalanan Anda</h3>
-            <p className="mt-2 max-w-md text-muted-foreground">
-              Anda belum bergabung dengan proyek apa pun. Buat proyek baru untuk berkolaborasi, atau bergabunglah dengan proyek yang sudah ada.
-            </p>
-          </div>
+          // Hide the empty state if there's an error, to not confuse the user
+          !error && (
+            <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-card p-8 rounded-lg">
+              <FolderPlus className="h-16 w-16 text-muted-foreground" />
+              <h3 className="mt-4 text-2xl font-bold">Mulai Perjalanan Anda</h3>
+              <p className="mt-2 max-w-md text-muted-foreground">
+                Anda belum bergabung dengan proyek apa pun. Buat proyek baru untuk berkolaborasi, atau bergabunglah dengan proyek yang sudah ada.
+              </p>
+            </div>
+          )
         )}
       </div>
 

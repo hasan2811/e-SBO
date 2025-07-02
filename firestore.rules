@@ -9,45 +9,56 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Allow authenticated users to read/write their own user profile
+    // Allow logged-in users to read their own profile and others' public profiles
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth.uid == userId;
     }
 
-    // Rules for projects collection
+    // Rules for the 'projects' collection
     match /projects/{projectId} {
-      // Any authenticated user can create a project
-      allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid && request.auth.uid in request.resource.data.memberUids;
-
-      // Only members of a project can read or update it
-      allow read, update: if request.auth != null && resource.data.memberUids.hasAny([request.auth.uid]);
+      // READ: Allow if the user's UID is in the memberUids array.
+      // This is the query that requires a composite index.
+      allow read: if request.auth != null && request.auth.uid in resource.data.memberUids;
       
-      // Only the owner can delete a project
+      // CREATE: Allow if the user is logged in, and they are setting themselves as the owner and a member.
+      // This prevents a user from creating a project for someone else.
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.auth.uid in request.resource.data.memberUids;
+                    
+      // UPDATE: Allow if the user is the project owner.
+      // Used for adding/removing members.
+      allow update: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+      
+      // DELETE: Allow only if the user is the project owner.
       allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
-      
-      // Nested Collections (Observations, Inspections, PTWs)
+
+      // Rules for subcollections (observations, inspections, ptws)
       match /{collection}/{docId} {
-         // Members can create/read/update documents within their project
-         allow create, read, update, delete: if request.auth != null && get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.hasAny([request.auth.uid]);
+        // Allow full access if the user is a member of the parent project.
+        allow read, write: if request.auth != null && get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.hasAny([request.auth.uid]);
       }
     }
     
-    // Allow any authenticated user to list projects for joining/searching
-    match /projects/{projectId} {
-        allow list: if request.auth != null;
+    // Rules for root collections (for private/public items)
+    match /observations/{docId} {
+        // READ: Allow if the item is public, or if the user is the owner (for private items).
+        allow read: if resource.data.scope == 'public' || (request.auth != null && request.auth.uid == resource.data.userId);
+
+        // CREATE: Allow if the user is creating it for themselves.
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        
+        // UPDATE: Allow if the user is the owner. Used for status changes, likes, etc.
+        allow update: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
-    // Rules for top-level private collections (not in projects)
-    match /observations/{docId} {
-      allow create, read, update, delete: if request.auth != null && (request.resource == null || request.resource.data.userId == request.auth.uid);
-      allow list: if request.auth != null;
-    }
     match /inspections/{docId} {
-      allow create, read, update, delete: if request.auth != null && (request.resource == null || request.resource.data.userId == request.auth.uid);
+        allow read, create, update: if request.auth != null && request.auth.uid == resource.data.userId;
     }
+    
     match /ptws/{docId} {
-      allow create, read, update, delete: if request.auth != null && (request.resource == null || request.resource.data.userId == request.auth.uid);
+       allow read, create, update: if request.auth != null && request.auth.uid == resource.data.userId;
     }
   }
 }
