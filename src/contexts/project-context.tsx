@@ -65,9 +65,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // We only need one listener. If it exists, unsubscribe first.
-      if (unsubscribe) unsubscribe();
-
       const projectsQuery = query(collection(db, 'projects'), where(documentId(), 'in', projectIds));
       
       unsubscribe = onSnapshot(projectsQuery, async (snapshot) => {

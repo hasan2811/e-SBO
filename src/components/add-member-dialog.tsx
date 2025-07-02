@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { collection, query, where, getDocs, limit, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, doc, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const formSchema = z.object({
@@ -55,44 +55,64 @@ export function AddMemberDialog({ isOpen, onOpenChange, project }: AddMemberDial
     }
     setIsSubmitting(true);
     try {
-        const projectRef = doc(db, 'projects', project.id);
-        const projectSnap = await getDoc(projectRef);
-        
-        if (!projectSnap.exists() || projectSnap.data()?.ownerUid !== user.uid) {
-            toast({ variant: 'destructive', title: 'Permission Denied', description: 'Only the project owner can add members.' });
-            return;
-        }
-        
         const usersRef = collection(db, 'users');
-        const userQuery = query(usersRef, where("email", "==", values.email.toLowerCase()), limit(1));
-        const userSnap = await getDocs(userQuery);
+        const q = query(usersRef, where("email", "==", values.email.toLowerCase()), limit(1));
+        const userQuerySnapshot = await getDocs(q);
 
-        if (userSnap.empty) {
-            toast({ variant: 'destructive', title: 'Not Found', description: `User with email ${values.email} not found.` });
+        if (userQuerySnapshot.empty) {
+            toast({ variant: 'destructive', title: 'User Not Found', description: `User with email ${values.email} not found.` });
+            setIsSubmitting(false);
             return;
         }
 
-        const newMember = userSnap.docs[0].data() as UserProfile;
+        const newMember = userQuerySnapshot.docs[0].data() as UserProfile;
+        const newMemberRef = doc(db, 'users', newMember.uid);
+        const projectRef = doc(db, 'projects', project.id);
 
-        if (project.memberUids.includes(newMember.uid)) {
-            toast({ variant: 'destructive', title: 'Already a Member', description: `User ${newMember.displayName} is already in this project.`});
-            return;
-        }
-        
-        await updateDoc(projectRef, {
-            memberUids: arrayUnion(newMember.uid)
+        await runTransaction(db, async (transaction) => {
+            const projectSnap = await transaction.get(projectRef);
+            if (!projectSnap.exists()) {
+                throw new Error("Project does not exist.");
+            }
+            
+            const currentProject = projectSnap.data();
+
+            if (currentProject.ownerUid !== user.uid) {
+                throw new Error("Only the project owner can add members.");
+            }
+
+            if (currentProject.memberUids?.includes(newMember.uid)) {
+                throw new Error("User is already a member.");
+            }
+            
+            // 1. Add user to project's memberUids list
+            transaction.update(projectRef, {
+                memberUids: arrayUnion(newMember.uid)
+            });
+
+            // 2. Add project to the new member's projectIds list
+            transaction.update(newMemberRef, {
+                projectIds: arrayUnion(project.id)
+            });
         });
 
         toast({ title: 'Success!', description: `${newMember.displayName} has been added to the project.` });
         onOpenChange(false);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'An unexpected error occurred.',
-      });
+    } catch (error: any) {
+        let description = 'An unexpected error occurred.';
+        if (error.message === "User is already a member.") {
+            description = `This user is already in the project.`;
+        } else if (error.message === "Only the project owner can add members.") {
+            description = "You do not have permission to add members.";
+        }
+        
+        toast({
+            variant: 'destructive',
+            title: 'Failed to Add Member',
+            description: description,
+        });
     } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
     }
   };
   
