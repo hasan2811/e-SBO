@@ -1,9 +1,10 @@
-
-
 'use client';
 
 import * as React from 'react';
-import { Loader2, LogIn, Briefcase } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Loader2, LogIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
@@ -11,16 +12,20 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from './ui/skeleton';
-import { collection, query, getDocs, limit, doc, runTransaction, arrayUnion } from 'firebase/firestore';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { doc, runTransaction, arrayUnion, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { UserProfile } from '@/lib/types';
 
-type ProjectSearchResult = { id: string; name: string };
+const formSchema = z.object({
+  projectId: z.string().trim().min(1, { message: 'Project ID tidak boleh kosong.' }),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface JoinProjectDialogProps {
   isOpen: boolean;
@@ -30,69 +35,68 @@ interface JoinProjectDialogProps {
 export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogProps) {
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
-  const [isFetching, setIsFetching] = React.useState(false);
-  const [isJoining, setIsJoining] = React.useState<string | null>(null);
-  const [allProjects, setAllProjects] = React.useState<ProjectSearchResult[]>([]);
+  const [isJoining, setIsJoining] = React.useState(false);
+  const formId = React.useId();
 
-  React.useEffect(() => {
-    const fetchProjects = async () => {
-      if (isOpen) {
-        setIsFetching(true);
-        setAllProjects([]);
-        try {
-          const projectsRef = collection(db, 'projects');
-          const q = query(projectsRef, limit(200)); // Limit to 200 projects for performance
-          const snapshot = await getDocs(q);
-          
-          const results = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name as string }));
-          setAllProjects(results);
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      projectId: '',
+    },
+  });
 
-          if (results.length === 0) {
-            toast({ variant: 'default', title: 'No Projects Available', description: 'There are no projects to join at the moment.' });
-          }
-        } catch (error) {
-          console.error("Failed to fetch projects:", error);
-          toast({ variant: 'destructive', title: 'Error Fetching Projects', description: 'Could not load the list of projects. Please try again later.' });
-        } finally {
-          setIsFetching(false);
-        }
-      }
-    };
-
-    fetchProjects();
-  }, [isOpen, toast]);
-
-  const onJoin = async (projectToJoin: ProjectSearchResult) => {
-    if (!user || !userProfile) return;
-
-    if (userProfile.projectIds?.includes(projectToJoin.id)) {
-      toast({ variant: 'default', title: 'Already a Member', description: 'You are already a member of this project.' });
+  const onJoin = async (values: FormValues) => {
+    if (!user || !userProfile) {
+      toast({ variant: 'destructive', title: 'Authentication Error' });
       return;
     }
 
-    setIsJoining(projectToJoin.id);
-    try {
-        const projectRef = doc(db, 'projects', projectToJoin.id);
-        const userRef = doc(db, 'users', user.uid);
+    const projectId = values.projectId.trim();
 
-        await runTransaction(db, async (transaction) => {
-          transaction.update(projectRef, {
-              memberUids: arrayUnion(user.uid)
-          });
-          transaction.update(userRef, {
-              projectIds: arrayUnion(projectToJoin.id)
-          });
-        });
-        
-        toast({ title: 'Success!', description: `Successfully joined the project "${projectToJoin.name}"!` });
-        onOpenChange(false);
-    } catch (error) {
-        console.error("Failed to join project:", error);
-        toast({ variant: 'destructive', title: 'Error Joining Project', description: 'An unexpected error occurred.'});
-    } finally {
-        setIsJoining(null);
+    if (userProfile.projectIds?.includes(projectId)) {
+      toast({ variant: 'default', title: 'Sudah menjadi anggota', description: 'Anda sudah menjadi anggota proyek ini.' });
+      return;
     }
-  }
+
+    setIsJoining(true);
+    try {
+      const projectRef = doc(db, 'projects', projectId);
+      const userRef = doc(db, 'users', user.uid);
+
+      await runTransaction(db, async (transaction) => {
+        const projectSnap = await transaction.get(projectRef);
+        if (!projectSnap.exists()) {
+          throw new Error('Project not found');
+        }
+
+        // Add user to project's member list
+        transaction.update(projectRef, {
+          memberUids: arrayUnion(user.uid),
+        });
+        // Add project to user's project list
+        transaction.update(userRef, {
+          projectIds: arrayUnion(projectId),
+        });
+      });
+      
+      toast({ title: 'Sukses!', description: `Berhasil bergabung dengan proyek!` });
+      onOpenChange(false);
+    } catch (error: any) {
+      let description = 'Terjadi kesalahan tak terduga.';
+      if (error.message === 'Project not found') {
+        description = 'Proyek dengan ID tersebut tidak ditemukan. Periksa kembali ID yang Anda masukkan.';
+      }
+      toast({ variant: 'destructive', title: 'Gagal Bergabung dengan Proyek', description });
+    } finally {
+      setIsJoining(false);
+    }
+  };
+  
+  React.useEffect(() => {
+    if (!isOpen) {
+      form.reset();
+    }
+  }, [isOpen, form]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -100,38 +104,38 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <LogIn className="h-5 w-5" />
-            Join an Existing Project
+            Gabung dengan Proyek
           </DialogTitle>
           <DialogDescription>
-            Select a project from the list below to join.
+            Masukkan ID Proyek yang diberikan oleh pemilik proyek untuk bergabung.
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="mt-4 h-[250px]">
-            <ScrollArea className="h-full">
-                <div className="space-y-2 pr-4">
-                    {isFetching && (
-                      <div className="space-y-2">
-                        {Array.from({length: 4}).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
-                      </div>
-                    )}
-                    {!isFetching && allProjects.length === 0 && (
-                        <p className="text-center text-sm text-muted-foreground py-10">No projects available to join.</p>
-                    )}
-                    {!isFetching && allProjects.map(project => (
-                        <div key={project.id} className="flex items-center justify-between rounded-md border p-3">
-                            <div className="flex items-center gap-3">
-                                <Briefcase className="h-5 w-5 text-primary" />
-                                <span className="font-medium">{project.name}</span>
-                            </div>
-                            <Button size="sm" onClick={() => onJoin(project)} disabled={!!isJoining}>
-                                {isJoining === project.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Join'}
-                            </Button>
-                        </div>
-                    ))}
-                </div>
-            </ScrollArea>
-        </div>
+        <Form {...form}>
+          <form id={formId} onSubmit={form.handleSubmit(onJoin)} className="space-y-4 py-4">
+            <FormField
+              control={form.control}
+              name="projectId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project ID</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Contoh: a1b2c3d4e5f6g7h8i9j0" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </form>
+        </Form>
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isJoining}>
+            Batal
+          </Button>
+          <Button type="submit" form={formId} disabled={isJoining || !form.formState.isValid}>
+            {isJoining && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Gabung
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
