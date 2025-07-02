@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useObservations } from '@/contexts/observation-context';
 import { DashboardHeader } from '@/components/dashboard-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
+import { Sidebar } from '@/components/sidebar';
 import { SubmitObservationDialog } from '@/components/submit-observation-dialog';
 import { CompleteProfileDialog } from '@/components/complete-profile-dialog';
 import type { Observation, Inspection, Ptw, Scope } from '@/lib/types';
@@ -94,22 +95,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <div className="flex flex-col min-h-screen">
         <DashboardHeader onAddNew={() => setObservationDialogOpen(true)} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 overflow-y-auto">
-          <div className="max-w-4xl mx-auto h-full">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={pathname}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                variants={variants}
-                transition={{ duration: 0.3, ease: 'easeInOut' }}
-              >
-                {!isProfileDialogOpen && children}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </main>
+        <div className="flex-1 md:grid md:grid-cols-[220px_1fr]">
+          <Sidebar />
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 overflow-y-auto">
+            <div className="max-w-4xl mx-auto h-full">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={pathname}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  variants={variants}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                >
+                  {!isProfileDialogOpen && children}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </main>
+        </div>
         <BottomNavBar />
       </div>
 
