@@ -1,39 +1,39 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Default rule: Allow operations only for authenticated users.
+    
+    // Default deny all to prevent accidental access
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
 
-    // Explicit rule for users collection
+    // Users can only manage their own profile
     match /users/{userId} {
-      // Users can only read and update their own profile.
       allow read, update: if request.auth != null && request.auth.uid == userId;
-      // Users can create their own profile document upon signup.
       allow create: if request.auth != null;
     }
-    
-    // Explicit rule for projects collection
+
+    // Projects:
+    // ANY authenticated user can READ any project document. This is required for the 
+    // "fetch all and filter" search functionality to work without a manual index.
+    // WRITE permissions are much more restrictive.
     match /projects/{projectId} {
-      // Any authenticated user can create a project.
+      allow read: if request.auth != null;
       allow create: if request.auth != null;
-      // Only members of the project can read, update or delete it.
-      allow read, update, delete: if request.auth != null && resource.data.memberUids.hasAny([request.auth.uid]);
+      // Only the project owner can update or delete the project document.
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
     }
-    
-    // Explicit rules for observation, inspection, and PTW collections
-    match /observations/{obsId} {
+
+    // Rules for subcollections remain secure.
+    // For now, allow any logged-in user to access these items.
+    // This can be refined later to check for project membership.
+    match /observations/{observationId} {
+      allow read, write: if request.auth != null;
+    }
+    match /inspections/{inspectionId} {
        allow read, write: if request.auth != null;
     }
-    
-    match /inspections/{inspId} {
-       allow read, write: if request.auth != null;
-    }
-    
     match /ptws/{ptwId} {
        allow read, write: if request.auth != null;
     }
