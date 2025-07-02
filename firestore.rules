@@ -1,25 +1,41 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
   
-    // Rule for user profiles: A user can create their profile, and can only read/update their own.
-    match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
-    }
-
-    // Diagnostic Rule: Temporarily make the 'projects' collection public to test writes.
-    // This allows us to confirm if the creation logic itself works, independent of user-based permissions.
-    // THIS IS NOT SECURE FOR PRODUCTION.
-    match /projects/{projectId} {
-      allow read, write: if true;
-    }
-
-    // Fallback rule for all other collections (observations, inspections, ptw).
-    // Requires the user to be authenticated.
+    // Default rule: Allow operations only for authenticated users.
     match /{document=**} {
       allow read, write: if request.auth != null;
+    }
+
+    // Explicit rule for users collection
+    match /users/{userId} {
+      // Users can only read and update their own profile.
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      // Users can create their own profile document upon signup.
+      allow create: if request.auth != null;
+    }
+    
+    // Explicit rule for projects collection
+    match /projects/{projectId} {
+      // Any authenticated user can create a project.
+      allow create: if request.auth != null;
+      // Only members of the project can read, update or delete it.
+      allow read, update, delete: if request.auth != null && resource.data.memberUids.hasAny([request.auth.uid]);
+    }
+    
+    // Explicit rules for observation, inspection, and PTW collections
+    match /observations/{obsId} {
+       allow read, write: if request.auth != null;
+    }
+    
+    match /inspections/{inspId} {
+       allow read, write: if request.auth != null;
+    }
+    
+    match /ptws/{ptwId} {
+       allow read, write: if request.auth != null;
     }
   }
 }

@@ -65,8 +65,7 @@ export default function ProjectHubPage() {
 
     console.log("Mencoba membuat proyek...");
     const newProjectRef = doc(collection(db, 'projects'));
-    const userDocRef = doc(db, 'users', user.uid);
-
+    
     const newProjectData = {
       id: newProjectRef.id,
       name: projectName,
@@ -76,39 +75,21 @@ export default function ProjectHubPage() {
     };
 
     try {
-      console.log("LANGKAH 1: Menulis dokumen proyek baru ke 'projects'...");
+      console.log("LANGKAH 1: Mencoba menulis dokumen proyek baru...");
       await setDoc(newProjectRef, newProjectData);
       console.log("LANGKAH 1 BERHASIL: Dokumen proyek dibuat dengan ID:", newProjectRef.id);
-
-      try {
-        console.log("LANGKAH 2: Memperbarui dokumen pengguna di 'users'...");
-        await updateDoc(userDocRef, {
-          projectIds: arrayUnion(newProjectRef.id)
-        });
-        console.log("LANGKAH 2 BERHASIL: Profil pengguna diperbarui.");
-        
-        toast({
-          title: 'Proyek Dibuat!',
-          description: 'Proyek baru Anda akan segera muncul di daftar.',
-        });
-
-      } catch (userUpdateError) {
-        console.error("GAGAL PADA LANGKAH 2 (Update User):", userUpdateError);
-        const error = userUpdateError as Error;
-        toast({
-          variant: "destructive",
-          title: "Pembuatan Proyek Gagal (Langkah 2)",
-          description: `Gagal memperbarui profil pengguna: ${error.message}`,
-        });
-        throw error;
-      }
+      
+      toast({
+        title: 'Proyek Dibuat!',
+        description: 'Proyek baru Anda akan segera muncul di daftar.',
+      });
 
     } catch (projectCreateError) {
-      console.error("GAGAL PADA LANGKAH 1 (Create Project):", projectCreateError);
+      console.error("GAGAL PADA LANGKAH 1 (MEMBUAT PROYEK):", projectCreateError);
       const error = projectCreateError as Error;
       toast({
         variant: "destructive",
-        title: "Pembuatan Proyek Gagal (Langkah 1)",
+        title: "Pembuatan Proyek Gagal",
         description: `Gagal membuat dokumen proyek: ${error.message}`,
       });
       throw error;

@@ -19,7 +19,6 @@ async function fetchUserProfiles(uids: string[]): Promise<UserProfile[]> {
     if (uids.length === 0) return [];
     
     const profiles: UserProfile[] = [];
-    // Firestore 'in' query can handle up to 30 items. Chunking for safety.
     const chunkSize = 30; 
     for (let i = 0; i < uids.length; i += chunkSize) {
         const chunk = uids.slice(i, i + chunkSize);
@@ -31,7 +30,6 @@ async function fetchUserProfiles(uids: string[]): Promise<UserProfile[]> {
             });
         } catch (error) {
             console.error("Gagal mengambil profil anggota:", error);
-            // Continue even if some profiles fail to load
         }
     }
     
@@ -45,6 +43,20 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    // This useEffect is temporarily disabled to isolate the write operation.
+    // It immediately sets loading to false and returns an empty project list.
+    // This provides a clean console for diagnosing the "Create Project" feature.
+    const diagnoseWriteOperation = () => {
+      setLoading(false);
+      setProjects([]);
+      setError(null);
+    };
+
+    diagnoseWriteOperation();
+    
+    // The original data fetching logic is kept here but commented out.
+    // We will re-enable this once the write operation is confirmed to be working.
+    /*
     let unsubscribe: Unsubscribe | undefined;
 
     const fetchProjects = () => {
@@ -71,14 +83,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // 'in' query can take up to 30 arguments. Chunking for safety.
-      const projectIdsChunks: string[][] = [];
-      for (let i = 0; i < projectIds.length; i += 30) {
-        projectIdsChunks.push(projectIds.slice(i, i + 30));
-      }
-
-      // We will listen to the first chunk for real-time, and fetch others once.
-      const projectsQuery = query(collection(db, 'projects'), where(documentId(), 'in', projectIdsChunks[0]));
+      const projectsQuery = query(collection(db, 'projects'), where(documentId(), 'in', projectIds));
       
       unsubscribe = onSnapshot(projectsQuery, async (snapshot) => {
           const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
@@ -115,6 +120,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         unsubscribe();
       }
     };
+    */
   }, [user, userProfile, authLoading]);
 
   const value = { projects, loading, error };
