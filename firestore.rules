@@ -1,69 +1,65 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check for Super Admin
+    
+    // =================================
+    // Global Functions
+    // =================================
     function isSuperAdmin() {
       return request.auth.uid == 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
     }
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
-    // Rules for User Profiles
+    // =================================
+    // Users Collection
+    // =================================
     match /users/{userId} {
-      // Super admin can read any profile. Users can only read/update their own.
-      allow read, update: if isSuperAdmin() || request.auth.uid == userId;
-      // Any authenticated user can create their own profile.
-      allow create: if request.auth != null;
+      // Users can read and update their own profile. Super admin can read/update any profile.
+      allow read, update: if request.auth.uid == userId || isSuperAdmin();
+      // Any authenticated user can create their own user document upon sign-up.
+      allow create: if isSignedIn();
     }
 
-    // Rules for Projects
+    // =================================
+    // Projects Collection
+    // =================================
     match /projects/{projectId} {
-      // To read a project document (get or list), user must be a member or super admin.
-      // This is the key rule that fixes the "Failed to load projects" error.
-      allow read: if isSuperAdmin() || (resource.data.memberUids.size() > 0 && resource.data.memberUids.hasAny([request.auth.uid]));
+      // Allow read (get and list) IF user is super admin OR their UID is in that project's memberUids array.
+      // Using get() is the correct and robust way to secure LIST queries based on document content.
+      allow read: if isSuperAdmin() || 
+                   (request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids);
       
-      // Let any authenticated user create a project (manual flow).
-      allow create: if request.auth != null;
+      // Allow creating a project for any signed-in user. The owner is set client-side.
+      allow create: if isSignedIn();
       
-      // Only the project owner or super admin can update/delete it.
-      allow update, delete: if isSuperAdmin() || resource.data.ownerUid == request.auth.uid;
+      // Allow updating or deleting a project only for the project owner or super admin.
+      allow update, delete: if isSuperAdmin() || request.auth.uid == resource.data.ownerUid;
     }
+    
+    // =================================
+    // Generic Rule for All Data Items (Observations, Inspections, PTWs)
+    // =================================
+    match /{itemCollection}/{itemId} {
+      // This rule applies to 'observations', 'inspections', and 'ptws' collections.
+      // Allow read access IF:
+      // 1. The user is a Super Admin.
+      // OR 2. The item is marked as 'public'.
+      // OR 3. The item is 'private' and belongs to the user.
+      // OR 4. The item is in a 'project' and the user is a member of that project.
+      allow read: if isSuperAdmin() ||
+                   resource.data.scope == 'public' ||
+                   (resource.data.scope == 'private' && resource.data.userId == request.auth.uid) ||
+                   (resource.data.scope == 'project' && request.auth.uid in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.memberUids);
 
-    // Generic Rules for ALL other collections (observations, inspections, ptws)
-    match /{collection}/{docId} {
+      // Any signed-in user can create an item. Scope/project is set client-side.
+      allow create: if isSignedIn();
       
-      function isOwner() {
-        return request.auth.uid == resource.data.userId;
-      }
-      
-      function isProjectItem() {
-        return 'projectId' in resource.data && resource.data.projectId != null;
-      }
-
-      function isProjectMember() {
-        // This function checks if the user is a member of the project linked to the document.
-        let projectId = resource.data.projectId;
-        return get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.hasAny([request.auth.uid]);
-      }
-
-      // READ access is granted if:
-      // 1. It's a public item.
-      // 2. The user is the owner (for private items).
-      // 3. It's a project item AND the user is a member of that project.
-      // 4. The user is a super admin.
-      allow read: if resource.data.scope == 'public' 
-                  || isOwner() 
-                  || (isProjectItem() && isProjectMember()) 
-                  || isSuperAdmin();
-
-      // WRITE access is granted if:
-      // 1. User is the owner (for creating/updating their private items).
-      // 2. It's a project item AND the user is a member of that project.
-      // 3. User is super admin.
-      allow write: if isOwner() 
-                   || (isProjectItem() && isProjectMember()) 
-                   || isSuperAdmin();
+      // Only the user who created the item or a super admin can update it.
+      allow update: if isSuperAdmin() || request.auth.uid == resource.data.userId;
     }
   }
 }
