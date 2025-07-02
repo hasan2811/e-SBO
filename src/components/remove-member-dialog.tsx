@@ -12,12 +12,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { removeProjectMember } from '@/lib/actions/project-actions';
 import type { Project, UserProfile } from '@/lib/types';
 import { Loader2, UserX } from 'lucide-react';
+import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface RemoveMemberDialogProps {
   isOpen: boolean;
@@ -48,20 +48,25 @@ export function RemoveMemberDialog({
 
     setIsRemoving(true);
     try {
-      const result = await removeProjectMember(project.id, member.uid, user.uid);
-      if (result.success) {
-        toast({
-          title: 'Member Removed',
-          description: result.message,
-        });
-        onOpenChange(false);
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Removal Failed',
-          description: result.message,
-        });
+      const projectRef = doc(db, 'projects', project.id);
+      const projectSnap = await getDoc(projectRef);
+
+      if (!projectSnap.exists() || projectSnap.data()?.ownerUid !== user.uid) {
+        toast({ variant: 'destructive', title: 'Permission Denied', description: 'Only the project owner can remove members.'});
+        return;
       }
+      
+      if (member.uid === user.uid) {
+        toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'The project owner cannot be removed.'});
+        return;
+      }
+
+      await updateDoc(projectRef, {
+        memberUids: arrayRemove(member.uid),
+      });
+
+      toast({ title: 'Member Removed', description: 'The member has been removed from the project.' });
+      onOpenChange(false);
     } catch (error) {
       toast({
         variant: 'destructive',

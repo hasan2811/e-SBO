@@ -8,7 +8,6 @@ import * as z from 'zod';
 import { Loader2, Search, LogIn, Briefcase } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { findProjectsByName, joinProject } from '@/lib/actions/project-actions';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,6 +20,8 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from './ui/skeleton';
+import { collection, query, where, getDocs, limit, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const formSchema = z.object({
   searchTerm: z.string().min(3, { message: 'Search term must be at least 3 characters.' }),
@@ -38,7 +39,7 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSearching, setIsSearching] = React.useState(false);
-  const [isJoining, setIsJoining] = React.useState<string | null>(null); // store project id being joined
+  const [isJoining, setIsJoining] = React.useState<string | null>(null);
   const [searchResults, setSearchResults] = React.useState<ProjectSearchResult[]>([]);
   const formId = React.useId();
 
@@ -51,7 +52,16 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
     setIsSearching(true);
     setSearchResults([]);
     try {
-      const results = await findProjectsByName(values.searchTerm);
+      const projectsRef = collection(db, 'projects');
+      const q = query(
+          projectsRef,
+          where('name', '>=', values.searchTerm),
+          where('name', '<=', values.searchTerm + '\uf8ff'),
+          limit(10)
+      );
+      const snapshot = await getDocs(q);
+      const results = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name as string }));
+
       setSearchResults(results);
       if (results.length === 0) {
         toast({ variant: 'default', title: 'No Results', description: 'No projects found with that name.' });
@@ -67,13 +77,12 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
     if (!user) return;
     setIsJoining(projectId);
     try {
-        const result = await joinProject(projectId, user.uid);
-        if (result.success) {
-            toast({ title: 'Success!', description: result.message });
-            onOpenChange(false);
-        } else {
-            toast({ variant: 'destructive', title: 'Join Failed', description: result.message });
-        }
+        const projectRef = doc(db, 'projects', projectId);
+        await updateDoc(projectRef, {
+            memberUids: arrayUnion(user.uid)
+        });
+        toast({ title: 'Success!', description: 'Successfully joined the project!' });
+        onOpenChange(false);
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.'});
     } finally {

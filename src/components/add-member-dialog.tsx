@@ -5,11 +5,10 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, UserPlus } from 'lucide-react';
+import { Loader2, UserPlus, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import type { Project } from '@/lib/types';
-import { addProjectMember } from '@/lib/actions/project-actions';
+import type { Project, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,6 +20,8 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { collection, query, where, getDocs, limit, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -54,13 +55,36 @@ export function AddMemberDialog({ isOpen, onOpenChange, project }: AddMemberDial
     }
     setIsSubmitting(true);
     try {
-      const result = await addProjectMember(project.id, values.email, user.uid);
-      if (result.success) {
-        toast({ title: 'Success!', description: result.message });
+        const projectRef = doc(db, 'projects', project.id);
+        const projectSnap = await getDoc(projectRef);
+        
+        if (!projectSnap.exists() || projectSnap.data()?.ownerUid !== user.uid) {
+            toast({ variant: 'destructive', title: 'Permission Denied', description: 'Only the project owner can add members.' });
+            return;
+        }
+        
+        const usersRef = collection(db, 'users');
+        const userQuery = query(usersRef, where("email", "==", values.email.toLowerCase()), limit(1));
+        const userSnap = await getDocs(userQuery);
+
+        if (userSnap.empty) {
+            toast({ variant: 'destructive', title: 'Not Found', description: `User with email ${values.email} not found.` });
+            return;
+        }
+
+        const newMember = userSnap.docs[0].data() as UserProfile;
+
+        if (project.memberUids.includes(newMember.uid)) {
+            toast({ variant: 'destructive', title: 'Already a Member', description: `User ${newMember.displayName} is already in this project.`});
+            return;
+        }
+        
+        await updateDoc(projectRef, {
+            memberUids: arrayUnion(newMember.uid)
+        });
+
+        toast({ title: 'Success!', description: `${newMember.displayName} has been added to the project.` });
         onOpenChange(false);
-      } else {
-        toast({ variant: 'destructive', title: 'Failed to Add Member', description: result.message });
-      }
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -87,7 +111,7 @@ export function AddMemberDialog({ isOpen, onOpenChange, project }: AddMemberDial
             Add Member to "{project.name}"
           </DialogTitle>
           <DialogDescription>
-            Enter the email of the user you want to add to this project. They cannot be a member of any other project.
+            Enter the email of the user you want to add to this project. They will be added as a member.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

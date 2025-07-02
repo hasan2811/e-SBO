@@ -79,19 +79,32 @@ export function UserAccountSheet() {
 
   const handleAddProject = async (projectName: string) => {
     if (!user) {
+      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to create a project.' });
       throw new Error("You must be logged in to create a project.");
     }
-    const newProjectRef = doc(collection(db, 'projects'));
-    
-    const newProjectData = {
-      id: newProjectRef.id,
-      name: projectName,
-      ownerUid: user.uid,
-      memberUids: [user.uid],
-      createdAt: new Date().toISOString(),
-    };
 
-    await setDoc(newProjectRef, newProjectData);
+    try {
+      const newProjectRef = doc(collection(db, 'projects'));
+      
+      const newProjectData = {
+        id: newProjectRef.id,
+        name: projectName,
+        ownerUid: user.uid,
+        memberUids: [user.uid],
+        createdAt: new Date().toISOString(),
+      };
+
+      await setDoc(newProjectRef, newProjectData);
+    } catch (error) {
+       console.error("Failed to create project:", error);
+       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+       toast({
+         variant: "destructive",
+         title: "Project Creation Failed",
+         description: errorMessage,
+       });
+       throw error;
+    }
   };
 
   const getInitials = (name: string | null | undefined) => {
