@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import {
   Sheet,
   SheetContent,
@@ -15,17 +16,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { useAuth } from '@/hooks/use-auth';
-import { LogOut, UserCircle, Loader2, Edit, PlusCircle, Folder, LogIn } from 'lucide-react';
+import { LogOut, UserCircle, Loader2, Edit, Folder } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 import { useProjects } from '@/hooks/use-projects';
-import { ProjectDialog } from './project-dialog';
-import { JoinProjectDialog } from './join-project-dialog';
-import { db } from '@/lib/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
 
 export function UserAccountSheet() {
   const { user, userProfile, loading: authLoading, logout, updateUserProfile } = useAuth();
@@ -35,8 +32,6 @@ export function UserAccountSheet() {
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [isProjectDialogOpen, setProjectDialogOpen] = React.useState(false);
-  const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
 
   const [displayName, setDisplayName] = React.useState('');
   const [position, setPosition] = React.useState('');
@@ -76,36 +71,6 @@ export function UserAccountSheet() {
       setIsSaving(false);
     }
   }
-
-  const handleAddProject = async (projectName: string) => {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to create a project.' });
-      throw new Error("You must be logged in to create a project.");
-    }
-
-    try {
-      const newProjectRef = doc(collection(db, 'projects'));
-      
-      const newProjectData = {
-        id: newProjectRef.id,
-        name: projectName,
-        ownerUid: user.uid,
-        memberUids: [user.uid],
-        createdAt: new Date().toISOString(),
-      };
-
-      await setDoc(newProjectRef, newProjectData);
-    } catch (error) {
-       console.error("Failed to create project:", error);
-       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-       toast({
-         variant: "destructive",
-         title: "Project Creation Failed",
-         description: errorMessage,
-       });
-       throw error;
-    }
-  };
 
   const getInitials = (name: string | null | undefined) => {
     if (!name?.trim()) {
@@ -229,17 +194,7 @@ export function UserAccountSheet() {
                   </ul>
                 ) : (
                     <>
-                        <p className="text-sm text-muted-foreground pl-3">You are not in any project yet.</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button variant="outline" className="w-full" onClick={() => { setProjectDialogOpen(true); setIsSheetOpen(false); }}>
-                              <PlusCircle className="mr-2" />
-                              Create
-                          </Button>
-                          <Button variant="outline" className="w-full" onClick={() => { setJoinDialogOpen(true); setIsSheetOpen(false); }}>
-                              <LogIn className="mr-2" />
-                              Join
-                          </Button>
-                        </div>
+                        <p className="text-sm text-muted-foreground pl-3">You are not in any project yet. Go to the <Link href="/beranda" onClick={() => setIsSheetOpen(false)} className="text-primary hover:underline">Project Hub</Link> to create or join one.</p>
                     </>
                 )}
               </div>
@@ -277,16 +232,6 @@ export function UserAccountSheet() {
         )}
       </SheetContent>
     </Sheet>
-    
-    <ProjectDialog
-        isOpen={isProjectDialogOpen}
-        onOpenChange={setProjectDialogOpen}
-        onAddProject={handleAddProject}
-    />
-    <JoinProjectDialog 
-      isOpen={isJoinDialogOpen}
-      onOpenChange={setJoinDialogOpen}
-    />
     </>
   );
 }
