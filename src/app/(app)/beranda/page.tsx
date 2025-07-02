@@ -51,7 +51,7 @@ function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
 }
 
 export default function ProjectHubPage() {
-  const { projects, loading, error } = useProjects(); // Now consuming the error state
+  const { projects, loading, error } = useProjects();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isProjectDialogOpen, setProjectDialogOpen] = React.useState(false);
@@ -135,7 +135,6 @@ export default function ProjectHubPage() {
           </div>
         </div>
 
-        {/* Display a prominent error message if the index is missing */}
         {error && (
             <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
@@ -153,7 +152,6 @@ export default function ProjectHubPage() {
             ))}
           </div>
         ) : (
-          // Hide the empty state if there's an error, to not confuse the user
           !error && (
             <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-card p-8 rounded-lg">
               <FolderPlus className="h-16 w-16 text-muted-foreground" />

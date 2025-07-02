@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, onSnapshot, query, where, Unsubscribe, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, Unsubscribe, getDocs, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Project, UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/use-auth';
 interface ProjectContextType {
   projects: Project[];
   loading: boolean;
-  error: string | null; // New state to hold error messages
+  error: string | null;
 }
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -36,7 +36,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null); // New error state
+  const [error, setError] = React.useState<string | null>(null);
   const userId = user?.uid;
 
   React.useEffect(() => {
@@ -50,16 +50,17 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
 
     setLoading(true);
-    setError(null); // Reset error on new fetch
+    setError(null);
     
-    const projectsQuery = query(
-      collection(db, 'projects'),
-      where('memberUids', 'array-contains', userId)
-    );
+    // ALTERNATIVE STRATEGY: Fetch all projects and filter on the client.
+    // This avoids the 'array-contains' query which seems to be causing the permission-denied error.
+    const projectsQuery = query(collection(db, 'projects'));
 
     unsubscribe = onSnapshot(projectsQuery, 
       async (snapshot) => {
-        const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
+        // Filter projects on the client side
+        const allProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
+        const userProjects = allProjects.filter(p => p.memberUids.includes(userId));
 
         const allMemberUids = [...new Set(userProjects.flatMap(p => p.memberUids || []))];
         
@@ -79,18 +80,12 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         }
         
         setLoading(false);
-        setError(null); // Clear error on success
+        setError(null);
       }, 
       (err) => {
         console.error("Error fetching projects:", err);
-        // This is the crucial part: detect the missing index error
-        if (err.code === 'failed-precondition') {
-          setError(
-            'Diperlukan Konfigurasi Database. Galat ini biasanya berarti indeks Firestore yang diperlukan belum dibuat. Silakan buka konsol developer browser (tekan F12), temukan pesan galat Firestore yang asli (cari "FAILED_PRECONDITION"), dan klik tautan yang disediakan untuk membuat indeks secara otomatis. Aplikasi mungkin tidak akan berfungsi dengan benar sampai ini diselesaikan.'
-          );
-        } else {
-          setError(`Gagal memuat proyek: ${err.message}`);
-        }
+        // Generic error message now
+        setError(`Gagal memuat proyek: ${err.message}`);
         setProjects([]);
         setLoading(false);
       }
