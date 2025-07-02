@@ -2,46 +2,9 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, query, where, getDocs, limit, deleteDoc, getDoc, updateDoc, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, limit, deleteDoc, getDoc, updateDoc, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Project, UserProfile } from '@/lib/types';
-
-/**
- * Server action to create a new project.
- * This version is simplified to ensure creation succeeds.
- * @param ownerUid - The UID of the user object of the project creator.
- * @param projectName - The name of the new project.
- * @returns An object with success status and a message.
- */
-export async function createProject(
-  ownerUid: string,
-  projectName: string
-): Promise<{ success: boolean; message:string; }> {
-  if (!ownerUid) {
-    return { success: false, message: 'Authentication required to create a project.' };
-  }
-  
-  try {
-    const projectCollectionRef = collection(db, 'projects');
-    const newProjectRef = doc(projectCollectionRef);
-
-    await setDoc(newProjectRef, {
-      id: newProjectRef.id,
-      name: projectName,
-      ownerUid: ownerUid,
-      memberUids: [ownerUid], 
-      createdAt: new Date().toISOString(),
-    });
-    
-    revalidatePath('/beranda');
-    return { success: true, message: `Project "${projectName}" was created successfully!` };
-  } catch (error) {
-    console.error('Error creating project:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-    return { success: false, message: `Project creation failed: ${errorMessage}` };
-  }
-}
-
 
 /**
  * Server action to delete a project.

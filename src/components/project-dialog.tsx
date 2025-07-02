@@ -47,16 +47,18 @@ export function ProjectDialog({ isOpen, onOpenChange, onAddProject }: ProjectDia
     setIsSubmitting(true);
     try {
       await onAddProject(values.name);
-      // The parent hook (`useProjects`) now handles the toast and dialog closing logic
-      // based on the return value of the server action.
+      toast({
+        title: 'Success!',
+        description: `Project "${values.name}" was created successfully!`,
+      });
+      onOpenChange(false);
     } catch (error) {
-      // This catch block is for unexpected client-side errors.
-      // Server-side errors are handled by the parent hook.
       console.error('Failed to create project:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
       toast({
         variant: 'destructive',
-        title: 'Client Error',
-        description: 'An unexpected error occurred on the client.',
+        title: 'Project Creation Failed',
+        description: errorMessage,
       });
     } finally {
       setIsSubmitting(false);

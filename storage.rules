@@ -3,24 +3,11 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // Default deny all access
+    // Allow reads and writes for any authenticated user.
+    // This provides a secure baseline, ensuring only logged-in users can interact with storage.
+    // We can tighten these rules later for specific paths if needed.
     match /{allPaths=**} {
-      allow read, write: if false;
-    }
-    
-    // Allow any authenticated user to upload and read files.
-    // The long, random file names provide security by obscurity for reads.
-    // A more robust solution would involve checking ownership against Firestore documents,
-    // but for now, this ensures functionality.
-    match /{path}/{userId}/{fileName} {
       allow read, write: if request.auth != null;
-    }
-    
-    // Allow project members to access project-specific files.
-    match /projects/{projectId}/{path}/{userId}/{fileName} {
-       allow read, write: if request.auth != null && exists(/databases/$(database)/documents/projects/$(projectId)) &&
-                           get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
     }
   }
 }

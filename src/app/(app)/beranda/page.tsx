@@ -12,7 +12,8 @@ import { ProjectDialog } from '@/components/project-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { createProject } from '@/lib/actions/project-actions';
+import { db } from '@/lib/firebase';
+import { collection, doc, setDoc } from 'firebase/firestore';
 
 function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
   return (
@@ -55,20 +56,21 @@ export default function ProjectHubPage() {
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
 
   const handleAddProject = async (projectName: string) => {
-    if (!user) return;
-    try {
-      const result = await createProject(user.uid, projectName);
-      if (result.success) {
-        toast({ title: 'Success!', description: result.message });
-        setProjectDialogOpen(false);
-      } else {
-        toast({ variant: 'destructive', title: 'Project Creation Failed', description: result.message });
-      }
-    } catch (e) {
-      console.error(e);
-      const errorMessage = e instanceof Error ? e.message : 'An unexpected client error occurred.';
-      toast({ variant: 'destructive', title: 'Error', description: errorMessage });
+    if (!user) {
+      throw new Error("You must be logged in to create a project.");
     }
+    // Logic is now client-side
+    const newProjectRef = doc(collection(db, 'projects'));
+    
+    const newProjectData = {
+      id: newProjectRef.id,
+      name: projectName,
+      ownerUid: user.uid,
+      memberUids: [user.uid],
+      createdAt: new Date().toISOString(),
+    };
+
+    await setDoc(newProjectRef, newProjectData);
   };
 
   if (loading) {
