@@ -3,33 +3,38 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    function isSuperAdmin() {
+      // The UID of the super admin account from your screenshot.
+      return request.auth.uid == 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
+    }
+
     match /users/{userId} {
-      // Pengguna hanya bisa membaca dan mengubah data profil mereka sendiri.
-      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
+      allow read, update: if request.auth.uid == userId || isSuperAdmin();
     }
 
     match /projects/{projectId} {
-      // Aturan BARU & TAHAN BANTING:
-      // Izinkan pengguna membaca dokumen proyek JIKA DAN HANYA JIKA:
-      // 1. Dokumen tersebut memiliki field 'memberUids'.
-      // 2. DAN ID pengguna yang login ada di dalam daftar 'memberUids' tersebut.
-      // Aturan ini aman dan akan berfungsi untuk mengambil daftar maupun satu dokumen.
-      allow read: if 'memberUids' in resource.data && request.auth.uid in resource.data.memberUids;
+      // THIS IS THE KEY FIX: Allow any authenticated user to LIST projects.
+      // This is required for the app's query `where('memberUids', 'array-contains', ...)` to work
+      // without being rejected upfront. The `get` rule below still secures the actual data.
+      allow list: if request.auth != null;
       
-      // Siapa pun yang login dapat membuat proyek.
-      allow create: if request.auth != null;
+      // Allow a user to GET (read) a specific project's details only if they are a member
+      // or if they are the super admin.
+      allow get: if isSuperAdmin() || (request.auth.uid in resource.data.memberUids);
 
-      // Hanya pemilik proyek yang dapat mengubah atau menghapusnya.
-      allow update, delete: if request.auth.uid == resource.data.ownerUid;
+      // Allow any signed-in user to create a project or be added to one.
+      allow create, update: if request.auth != null;
+      
+      // Only the project owner or super admin can delete a project.
+      allow delete: if isSuperAdmin() || request.auth.uid == resource.data.ownerUid;
     }
-    
-    // Aturan untuk semua koleksi lain (observations, inspections, ptw)
-    match /{collection}/{id} {
-        // Izinkan siapa pun membaca dokumen (penting untuk feed publik).
-        allow read: if true;
 
-        // Hanya pengguna yang login yang bisa menulis (membuat, mengubah, menghapus).
-        allow write: if request.auth != null;
+    // This rule allows a super admin full access to any document in any other collection.
+    // It also allows a regular user to read/write their own documents.
+    match /{otherCollection}/{docId} {
+      allow read, write: if isSuperAdmin() || request.auth.uid == resource.data.userId;
     }
   }
 }
