@@ -10,37 +10,28 @@ import type { User } from 'firebase/auth';
 /**
  * Server action to create a new project.
  * It now checks for duplicate project names before creation.
- * @param owner - The user object of the project creator.
+ * @param ownerUid - The UID of the user object of the project creator.
  * @param projectName - The name of the new project.
  * @returns An object with success status and a message.
  */
 export async function createProject(
-  owner: User,
+  ownerUid: string,
   projectName: string
 ): Promise<{ success: boolean; message:string; }> {
-  if (!owner || !owner.uid) {
+  if (!ownerUid) {
     return { success: false, message: 'Authentication required to create a project.' };
   }
   
   try {
     const projectCollectionRef = collection(db, 'projects');
 
-    // Check for existing project with the same name.
-    const duplicateCheckQuery = query(projectCollectionRef, where("name", "==", projectName), limit(1));
-    const duplicateCheckSnapshot = await getDocs(duplicateCheckQuery);
-
-    if (!duplicateCheckSnapshot.empty) {
-      // A project with this name already exists.
-      return { success: false, message: `A project named "${projectName}" already exists. Please choose a different name.` };
-    }
-
     const newProjectRef = doc(projectCollectionRef); // Create a reference to get the ID
 
     await setDoc(newProjectRef, {
       id: newProjectRef.id, // Storing the ID in the document itself
       name: projectName,
-      ownerUid: owner.uid,
-      memberUids: [owner.uid], 
+      ownerUid: ownerUid,
+      memberUids: [ownerUid], 
       createdAt: new Date().toISOString(),
     });
     

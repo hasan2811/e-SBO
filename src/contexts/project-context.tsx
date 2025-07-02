@@ -99,7 +99,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: 'User profile not loaded. Please try again.' };
     }
     try {
-      return await createProject(user, projectName);
+      // Pass the serializable user.uid instead of the whole user object
+      return await createProject(user.uid, projectName);
     } catch (error) {
       console.error("Error creating project via context:", error);
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
