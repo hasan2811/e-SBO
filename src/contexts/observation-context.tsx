@@ -390,7 +390,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
     }, [user]);
 
-    const value = React.useMemo(() => ({
+    // This is the fix: Remove the useMemo wrapper that was causing the build error.
+    const value = {
         privateItems,
         projectItems,
         loading: authLoading || projectsLoading || privateItemsLoading || projectItemsLoading,
@@ -402,22 +403,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         retryAiAnalysis,
         shareObservationToPublic,
         toggleLikeObservation,
-    }), [
-        privateItems,
-        projectItems,
-        authLoading,
-        projectsLoading,
-        privateItemsLoading,
-        projectItemsLoading,
-        addObservation,
-        addInspection,
-        addPtw,
-        updateObservation,
-        approvePtw,
-        retryAiAnalysis,
-        shareObservationToPublic,
-        toggleLikeObservation,
-    ]);
+    };
 
     return (
         <ObservationContext.Provider value={value}>
