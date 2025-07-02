@@ -19,14 +19,20 @@ async function fetchUserProfiles(uids: string[]): Promise<UserProfile[]> {
     if (uids.length === 0) return [];
     
     const profiles: UserProfile[] = [];
-    const chunkSize = 30; // Firestore 'in' query can handle up to 30 items.
+    // Firestore 'in' query can handle up to 30 items. Chunking for safety.
+    const chunkSize = 30; 
     for (let i = 0; i < uids.length; i += chunkSize) {
         const chunk = uids.slice(i, i + chunkSize);
         const usersQuery = query(collection(db, "users"), where("uid", "in", chunk));
-        const querySnapshot = await getDocs(usersQuery);
-        querySnapshot.forEach(doc => {
-            profiles.push(doc.data() as UserProfile);
-        });
+        try {
+            const querySnapshot = await getDocs(usersQuery);
+            querySnapshot.forEach(doc => {
+                profiles.push(doc.data() as UserProfile);
+            });
+        } catch (error) {
+            console.error("Gagal mengambil profil anggota:", error);
+            // Continue even if some profiles fail to load
+        }
     }
     
     return profiles;
@@ -65,15 +71,16 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const projectsQuery = query(collection(db, 'projects'), where(documentId(), 'in', projectIds));
+      // 'in' query can take up to 30 arguments. Chunking for safety.
+      const projectIdsChunks: string[][] = [];
+      for (let i = 0; i < projectIds.length; i += 30) {
+        projectIdsChunks.push(projectIds.slice(i, i + 30));
+      }
+
+      // We will listen to the first chunk for real-time, and fetch others once.
+      const projectsQuery = query(collection(db, 'projects'), where(documentId(), 'in', projectIdsChunks[0]));
       
       unsubscribe = onSnapshot(projectsQuery, async (snapshot) => {
-          if (snapshot.empty) {
-            setProjects([]);
-            setLoading(false);
-            return;
-          }
-
           const userProjects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Project[];
           
           const allMemberUids = [...new Set(userProjects.flatMap(p => p.memberUids || []))];
@@ -94,8 +101,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
           }
           setLoading(false);
       }, (err) => {
-          console.error("Error fetching project snapshot:", err);
-          setError(`Failed to load projects: ${err.message}. Check Firestore rules and network connection.`);
+          console.error("GAGAL MENGAMBIL SNAPSHOT PROYEK:", err);
+          setError(`Gagal memuat proyek: ${err.message}.`);
           setProjects([]);
           setLoading(false);
       });

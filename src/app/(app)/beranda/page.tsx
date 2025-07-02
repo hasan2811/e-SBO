@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -14,7 +13,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, doc, runTransaction, arrayUnion } from 'firebase/firestore';
+import { collection, doc, runTransaction, arrayUnion, setDoc, updateDoc } from 'firebase/firestore';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 
@@ -64,6 +63,8 @@ export default function ProjectHubPage() {
       throw new Error("Anda harus login untuk membuat proyek.");
     }
     
+    console.log("Mencoba membuat proyek...");
+    
     try {
       // This is an atomic transaction. It will either complete both steps or fail completely,
       // ensuring data consistency.
@@ -78,16 +79,17 @@ export default function ProjectHubPage() {
           memberUids: [user.uid],
           createdAt: new Date().toISOString(),
         };
-
-        // 1. Create the new project document
+        
+        console.log("Langkah 1: Membuat dokumen proyek baru...");
         transaction.set(newProjectRef, newProjectData);
         
-        // 2. Add the new project's ID to the user's profile
+        console.log("Langkah 2: Memperbarui profil pengguna...");
         transaction.update(userDocRef, {
           projectIds: arrayUnion(newProjectRef.id)
         });
       });
       
+      console.log("Transaksi pembuatan proyek berhasil!");
       toast({
         title: 'Proyek Dibuat!',
         description: 'Proyek baru Anda akan segera muncul di daftar.',
