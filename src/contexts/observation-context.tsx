@@ -406,8 +406,34 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
     }, [user]);
 
-
-    const value = { privateItems, projectItems, loading: authLoading || projectsLoading || privateItemsLoading || projectItemsLoading, addObservation, addInspection, addPtw, updateObservation, approvePtw, retryAiAnalysis, shareObservationToPublic, toggleLikeObservation };
+    const value = React.useMemo(() => ({
+        privateItems,
+        projectItems,
+        loading: authLoading || projectsLoading || privateItemsLoading || projectItemsLoading,
+        addObservation,
+        addInspection,
+        addPtw,
+        updateObservation,
+        approvePtw,
+        retryAiAnalysis,
+        shareObservationToPublic,
+        toggleLikeObservation,
+    }), [
+        privateItems,
+        projectItems,
+        authLoading,
+        projectsLoading,
+        privateItemsLoading,
+        projectItemsLoading,
+        addObservation,
+        addInspection,
+        addPtw,
+        updateObservation,
+        approvePtw,
+        retryAiAnalysis,
+        shareObservationToPublic,
+        toggleLikeObservation
+    ]);
 
     return (
         <ObservationContext.Provider value={value}>

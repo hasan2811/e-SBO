@@ -21,7 +21,7 @@ async function fetchUserProfiles(uids: string[]): Promise<UserProfile[]> {
     if (uids.length === 0) return [];
     
     const profiles: UserProfile[] = [];
-    const chunkSize = 30;
+    const chunkSize = 30; // Firestore 'in' query can handle up to 30 items.
     for (let i = 0; i < uids.length; i += chunkSize) {
         const chunk = uids.slice(i, i + chunkSize);
         const usersQuery = query(collection(db, "users"), where("uid", "in", chunk));
@@ -39,11 +39,12 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const { user, userProfile } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const userId = user?.uid; // Use a stable primitive for the dependency array
 
   React.useEffect(() => {
     let unsubscribe: Unsubscribe | undefined;
 
-    if (!user) {
+    if (!userId) {
       setProjects([]);
       setLoading(false);
       return;
@@ -53,7 +54,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     
     const projectsQuery = query(
       collection(db, 'projects'),
-      where('memberUids', 'array-contains', user.uid)
+      where('memberUids', 'array-contains', userId)
     );
 
     unsubscribe = onSnapshot(projectsQuery, 
@@ -91,7 +92,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         unsubscribe();
       }
     };
-  }, [user]);
+  }, [userId]); // Depend on the stable userId string, not the whole user object
 
   const addProject = React.useCallback(async (projectName: string) => {
     if (!user || !userProfile) {
@@ -106,7 +107,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, userProfile]);
 
-  const value = { projects, loading, addProject };
+  const value = React.useMemo(() => ({ projects, loading, addProject }), [projects, loading, addProject]);
 
   return (
     <ProjectContext.Provider value={value}>
