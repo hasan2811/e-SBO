@@ -1,10 +1,23 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // For debugging: Allow any authenticated user to read/write any document.
-    // This removes permission rules as a source of error to isolate the problem.
+  
+    // Rule for user profiles: A user can create their profile, and can only read/update their own.
+    match /users/{userId} {
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+
+    // Diagnostic Rule: Temporarily make the 'projects' collection public to test writes.
+    // This allows us to confirm if the creation logic itself works, independent of user-based permissions.
+    // THIS IS NOT SECURE FOR PRODUCTION.
+    match /projects/{projectId} {
+      allow read, write: if true;
+    }
+
+    // Fallback rule for all other collections (observations, inspections, ptw).
+    // Requires the user to be authenticated.
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
