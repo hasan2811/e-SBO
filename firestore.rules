@@ -1,12 +1,50 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Hardcore Rule: Allow all reads and writes for debugging project creation.
-    // This is NOT secure for production but is a necessary diagnostic step.
+  
+    // Default deny all
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
+
+    // Allow authenticated users to read any user's profile
+    // This is needed to display member names and photos in projects
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
+    }
+
+    // Rules for projects collection
+    match /projects/{projectId} {
+      // Allow creation by any authenticated user
+      allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid;
+      
+      // Allow read/write/delete only by members of the project
+      allow read, update, delete: if request.auth != null && request.auth.uid in resource.data.memberUids;
+    }
+
+    // Rules for all subcollections within a project (observations, inspections, ptws)
+    match /projects/{projectId}/{collection}/{docId} {
+        // Inherit read access from the parent project
+        allow read: if get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
+        
+        // Allow write access only to members of the project
+        allow write: if get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
+    }
+    
+    // Allow users to manage their own private items
+    // (This covers observations, inspections, and ptws with scope='private')
+    match /{collection}/{docId} {
+       allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // Allow any authenticated user to read public observations
+    match /observations/{docId} {
+      allow read: if request.auth != null && resource.data.scope == 'public';
+      // Do not allow direct writes to public observations for safety
+    }
+
   }
 }

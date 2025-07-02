@@ -24,10 +24,11 @@ import { Separator } from './ui/separator';
 import { useProjects } from '@/hooks/use-projects';
 import { ProjectDialog } from './project-dialog';
 import { JoinProjectDialog } from './join-project-dialog';
+import { createProject } from '@/lib/actions/project-actions';
 
 export function UserAccountSheet() {
   const { user, userProfile, loading: authLoading, logout, updateUserProfile } = useAuth();
-  const { projects, loading: projectsLoading, addProject } = useProjects();
+  const { projects, loading: projectsLoading } = useProjects();
   const { toast } = useToast();
   
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
@@ -76,8 +77,20 @@ export function UserAccountSheet() {
   }
 
   const handleAddProject = async (projectName: string) => {
-    await addProject(projectName);
-    setProjectDialogOpen(false);
+    if (!user) return;
+    try {
+      const result = await createProject(user.uid, projectName);
+      if (result.success) {
+        toast({ title: 'Success!', description: result.message });
+        setProjectDialogOpen(false);
+      } else {
+        toast({ variant: 'destructive', title: 'Project Creation Failed', description: result.message });
+      }
+    } catch (e) {
+        console.error(e);
+        const errorMessage = e instanceof Error ? e.message : 'An unexpected client error occurred.';
+        toast({ variant: 'destructive', title: 'Error', description: errorMessage });
+    }
   };
 
   const getInitials = (name: string | null | undefined) => {
