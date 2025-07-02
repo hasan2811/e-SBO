@@ -2,127 +2,61 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
-import { useProjects } from '@/hooks/use-projects';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { FolderKanban, Users, User, ArrowRight, FolderPlus, LogIn, AlertTriangle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { JoinProjectDialog } from '@/components/join-project-dialog';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-
-
-function ProjectCard({ project }: { project: import('@/lib/types').Project }) {
-  return (
-    <Card className="flex flex-col h-full hover:border-primary transition-all duration-200">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <FolderKanban className="h-8 w-8 text-primary mb-4" />
-        </div>
-        <CardTitle className="text-lg">{project.name}</CardTitle>
-        <CardDescription className="line-clamp-2 h-[40px]">
-          Kelola laporan dan progres untuk proyek ini.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 space-y-2 text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            <span>Owner: {project.owner?.displayName || '...'}</span>
-        </div>
-        <div className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            <span>{project.memberUids.length} Anggota</span>
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Button asChild className="w-full">
-          <Link href={`/proyek/${project.id}`}>
-            Buka Proyek <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
-      </CardFooter>
-    </Card>
-  );
-}
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 export default function ProjectHubPage() {
-  const { projects, loading, error } = useProjects();
-  const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = React.useState(false);
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold tracking-tight">Pusat Proyek</h2>
-          <Skeleton className="h-10 w-32" />
-        </div>
-         <div className="flex items-center justify-center h-40">
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                <p>Memuat data proyek...</p>
-            </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader><Skeleton className="h-8 w-8 rounded-lg" /><Skeleton className="h-6 w-3/4 mt-4" /></CardHeader>
-              <CardContent className="space-y-3"><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-1/3" /></CardContent>
-              <CardFooter><Skeleton className="h-10 w-full" /></CardFooter>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  
+  const handleCreateTestProject = async () => {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Not Authenticated' });
+      return;
+    }
+    setIsLoading(true);
+    console.log('Mencoba membuat proyek...');
+
+    try {
+      console.log("LANGKAH 1: Mencoba menulis dokumen proyek baru...");
+      const docRef = await addDoc(collection(db, 'projects'), {
+        name: `Test Project ${new Date().getTime()}`,
+        ownerUid: user.uid,
+        memberUids: [user.uid],
+        createdAt: serverTimestamp(),
+      });
+      console.log("LANGKAH 1 BERHASIL! Dokumen dibuat dengan ID: ", docRef.id);
+      toast({ title: 'Success!', description: `Test project created with ID: ${docRef.id}` });
+    } catch (error: any) {
+      console.error("GAGAL PADA LANGKAH 1 (MEMBUAT PROYEK):", error);
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Create Project',
+        description: error.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h2 className="text-2xl font-bold tracking-tight">Pusat Proyek</h2>
-          <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
-                <LogIn className="mr-2 h-4 w-4" />
-                Gabung Proyek
-              </Button>
-          </div>
-        </div>
-
-        {error && (
-            <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Gagal Memuat Proyek</AlertTitle>
-                <AlertDescription>
-                    {error}
-                    <p className="mt-2 text-xs">Pastikan Anda memiliki koneksi internet yang stabil. Jika masalah berlanjut, hubungi administrator.</p>
-                </AlertDescription>
-            </Alert>
-        )}
-
-        {projects.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        ) : (
-          !error && (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-card p-8 rounded-lg">
-              <FolderPlus className="h-16 w-16 text-muted-foreground" />
-              <h3 className="mt-4 text-2xl font-bold">Mulai Perjalanan Anda</h3>
-              <p className="mt-2 max-w-md text-muted-foreground">
-                Anda belum bergabung dengan proyek apa pun. Buat proyek baru secara manual di konsol Firebase lalu gunakan fitur "Gabung Proyek" untuk mencarinya.
-              </p>
-            </div>
-          )
-        )}
+    <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-card p-8 rounded-lg">
+      <h3 className="mt-4 text-2xl font-bold">Uji Coba Penulisan Database</h3>
+      <p className="mt-2 max-w-md text-muted-foreground">
+        Tekan tombol di bawah ini untuk mencoba melakukan satu operasi tulis ke koleksi 'projects'.
+        Periksa konsol browser untuk melihat pesan keberhasilan atau kegagalan.
+      </p>
+      <div className="mt-6">
+        <Button onClick={handleCreateTestProject} disabled={isLoading}>
+          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Jalankan Tes Tulis
+        </Button>
       </div>
-
-      <JoinProjectDialog
-        isOpen={isJoinDialogOpen}
-        onOpenChange={setJoinDialogOpen}
-      />
-    </>
+    </div>
   );
 }
