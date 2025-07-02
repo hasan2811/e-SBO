@@ -6,7 +6,7 @@ import { collection, onSnapshot, query, where, Unsubscribe, getDocs, doc, getDoc
 import { db } from '@/lib/firebase';
 import type { Project, UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 interface ProjectContextType {
   projects: Project[];
@@ -34,10 +34,10 @@ async function fetchUserProfiles(uids: string[]): Promise<UserProfile[]> {
 
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const { user, userProfile } = useAuth();
+  const { user } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const userId = user?.uid; // Use a stable primitive for the dependency array
+  const userId = user?.uid;
 
   React.useEffect(() => {
     let unsubscribe: Unsubscribe | undefined;
@@ -80,6 +80,22 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       }, 
       (error) => {
         console.error("Error fetching projects:", error);
+
+        if (error.code === 'failed-precondition') {
+            toast({
+                variant: 'destructive',
+                title: 'Database Configuration Required',
+                description: 'A database index is required. Please check the browser console (F12) for a link to create it automatically. The app may not function correctly until this is resolved.',
+                duration: Infinity, // Keep the toast visible
+            });
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Failed to Load Projects',
+                description: error.message,
+            });
+        }
+
         setProjects([]);
         setLoading(false);
       }
@@ -90,7 +106,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         unsubscribe();
       }
     };
-  }, [userId]); // Depend on the stable userId string, not the whole user object
+  }, [userId]);
 
   const value = React.useMemo(() => ({ projects, loading }), [projects, loading]);
 
