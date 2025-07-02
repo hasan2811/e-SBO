@@ -7,7 +7,7 @@ import { useProjects } from '@/hooks/use-projects';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { FolderKanban, PlusCircle, Users, User, ArrowRight, FolderPlus, LogIn, AlertTriangle } from 'lucide-react';
+import { FolderKanban, PlusCircle, Users, User, ArrowRight, FolderPlus, LogIn, AlertTriangle, Loader2 } from 'lucide-react';
 import { ProjectDialog } from '@/components/project-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
@@ -64,7 +64,6 @@ export default function ProjectHubPage() {
     }
     
     try {
-      console.log('Mencoba membuat proyek...');
       const newProjectRef = doc(collection(db, 'projects'));
       
       const newProjectData = {
@@ -76,10 +75,10 @@ export default function ProjectHubPage() {
       };
 
       await setDoc(newProjectRef, newProjectData);
-      console.log('Dokumen proyek berhasil ditulis ke Firestore.');
+      
       toast({
         title: 'Proyek Dibuat!',
-        description: 'Daftar proyek Anda akan segera diperbarui.',
+        description: 'Proyek baru Anda akan segera muncul di daftar.',
       });
 
     } catch (err) {
@@ -104,6 +103,12 @@ export default function ProjectHubPage() {
             <Skeleton className="h-10 w-32" />
             <Skeleton className="h-10 w-32" />
           </div>
+        </div>
+         <div className="flex items-center justify-center h-40">
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <p>Memuat data proyek...</p>
+            </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -138,7 +143,7 @@ export default function ProjectHubPage() {
         {error && (
             <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Tindakan Diperlukan</AlertTitle>
+                <AlertTitle>Gagal Memuat Proyek</AlertTitle>
                 <AlertDescription>
                     {error}
                 </AlertDescription>
