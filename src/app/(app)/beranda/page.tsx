@@ -70,19 +70,17 @@ export default function ProjectHubPage() {
           ) : projects.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {projects.map((project) => (
-                <Link href={`/proyek/${project.id}`} key={project.id}>
-                  <Card className="hover:bg-muted/50 transition-colors h-full">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-3">
-                        <Folder className="text-primary"/> 
-                        {project.name}
-                      </CardTitle>
-                      <CardDescription>
-                        {project.memberUids?.length || 0} anggota
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
-                </Link>
+                <Card key={project.id} className="h-full">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-3">
+                      <Folder className="text-primary"/> 
+                      {project.name}
+                    </CardTitle>
+                    <CardDescription>
+                      {project.memberUids?.length || 0} anggota
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
               ))}
             </div>
           ) : !error ? (
