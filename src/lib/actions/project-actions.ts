@@ -9,7 +9,7 @@ import type { User } from 'firebase/auth';
 
 /**
  * Server action to create a new project.
- * No longer checks if user is in another project.
+ * It now checks for duplicate project names before creation.
  * @param owner - The user object of the project creator.
  * @param projectName - The name of the new project.
  * @returns An object with success status and a message.
@@ -24,6 +24,16 @@ export async function createProject(
   
   try {
     const projectCollectionRef = collection(db, 'projects');
+
+    // Check for existing project with the same name.
+    const duplicateCheckQuery = query(projectCollectionRef, where("name", "==", projectName), limit(1));
+    const duplicateCheckSnapshot = await getDocs(duplicateCheckQuery);
+
+    if (!duplicateCheckSnapshot.empty) {
+      // A project with this name already exists.
+      return { success: false, message: `A project named "${projectName}" already exists. Please choose a different name.` };
+    }
+
     const newProjectRef = doc(projectCollectionRef); // Create a reference to get the ID
 
     await setDoc(newProjectRef, {
