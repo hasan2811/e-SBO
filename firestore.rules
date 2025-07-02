@@ -3,42 +3,67 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    // Helper function to check for Super Admin
     function isSuperAdmin() {
       return request.auth.uid == 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
     }
 
-    match /projects/{projectId} {
-      // To read (get or list), a user must be an admin, OR the document must have a `memberUids` array that contains the user's ID.
-      // This check (`'memberUids' in resource.data`) is crucial to prevent the rule from failing on incomplete documents.
-      allow read: if isSuperAdmin() || 
-                   ('memberUids' in resource.data && request.auth.uid in resource.data.memberUids);
+    // Rules for User Profiles
+    match /users/{userId} {
+      // Super admin can read any profile. Users can only read/update their own.
+      allow read, update: if isSuperAdmin() || request.auth.uid == userId;
+      // Any authenticated user can create their own profile.
+      allow create: if request.auth != null;
+    }
 
-      // Any authenticated user can create a project.
+    // Rules for Projects
+    match /projects/{projectId} {
+      // To read a project document (get or list), user must be a member or super admin.
+      // This is the key rule that fixes the "Failed to load projects" error.
+      allow read: if isSuperAdmin() || (resource.data.memberUids.size() > 0 && resource.data.memberUids.hasAny([request.auth.uid]));
+      
+      // Let any authenticated user create a project (manual flow).
       allow create: if request.auth != null;
       
-      // To update or delete, a user must be an admin, OR the document must have an `ownerUid` that matches the user's ID.
-      allow update, delete: if isSuperAdmin() || 
-                             ('ownerUid' in resource.data && request.auth.uid == resource.data.ownerUid);
+      // Only the project owner or super admin can update/delete it.
+      allow update, delete: if isSuperAdmin() || resource.data.ownerUid == request.auth.uid;
     }
 
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId || isSuperAdmin();
-    }
-    
+    // Generic Rules for ALL other collections (observations, inspections, ptws)
     match /{collection}/{docId} {
-       // This generic rule applies to observations, inspections, and ptws.
-       // It's intentionally placed last.
-       if collection != 'projects' && collection != 'users' {
-         allow read: if isSuperAdmin() || 
-                        ('scope' in resource.data && resource.data.scope == 'public') ||
-                        ('scope' in resource.data && resource.data.scope == 'private' && 'userId' in resource.data && resource.data.userId == request.auth.uid) ||
-                        ('scope' in resource.data && resource.data.scope == 'project' && 'projectId' in resource.data && 
-                          request.auth.uid in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.memberUids);
-                        
-         allow create: if request.auth != null;
-         allow update, delete: if isSuperAdmin() || ('userId' in resource.data && request.auth.uid == resource.data.userId);
-       }
+      
+      function isOwner() {
+        return request.auth.uid == resource.data.userId;
+      }
+      
+      function isProjectItem() {
+        return 'projectId' in resource.data && resource.data.projectId != null;
+      }
+
+      function isProjectMember() {
+        // This function checks if the user is a member of the project linked to the document.
+        let projectId = resource.data.projectId;
+        return get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.hasAny([request.auth.uid]);
+      }
+
+      // READ access is granted if:
+      // 1. It's a public item.
+      // 2. The user is the owner (for private items).
+      // 3. It's a project item AND the user is a member of that project.
+      // 4. The user is a super admin.
+      allow read: if resource.data.scope == 'public' 
+                  || isOwner() 
+                  || (isProjectItem() && isProjectMember()) 
+                  || isSuperAdmin();
+
+      // WRITE access is granted if:
+      // 1. User is the owner (for creating/updating their private items).
+      // 2. It's a project item AND the user is a member of that project.
+      // 3. User is super admin.
+      allow write: if isOwner() 
+                   || (isProjectItem() && isProjectMember()) 
+                   || isSuperAdmin();
     }
   }
 }
