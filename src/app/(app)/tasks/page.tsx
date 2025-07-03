@@ -382,7 +382,7 @@ export default function DashboardPage() {
       }
     };
     getAnalysis();
-  }, [projectObservations, loading]);
+  }, [projectObservations, loading, overviewData, criticalPercentageData, riskDetailsData, companyDistributionData, dailyData]);
 
 
   const RADIAN = Math.PI / 180;
