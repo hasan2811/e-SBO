@@ -56,7 +56,7 @@ interface ObservationDetailSheetProps {
 }
 
 export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode }: ObservationDetailSheetProps) {
-  const { updateObservation, retryAiAnalysis, shareObservationToPublic, toggleLikeObservation } = useObservations();
+  const { updateObservation, retryAiAnalysis, shareObservationToPublic, toggleLikeObservation, incrementViewCount } = useObservations();
   const { projects } = useProjects();
   const { user } = useAuth();
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
@@ -64,12 +64,18 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
   const { toast } = useToast();
   
   if (!observation) return null;
-
-  const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
+  
   const hasLiked = user && observation.likes?.includes(user.uid);
+  const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
   const categoryDefinition = categoryDefinitions[observation.category];
 
-  const handleUpdate = async (data: Partial<Observation>) => {
+  React.useEffect(() => {
+      if (isOpen && observation && mode === 'public') {
+          incrementViewCount(observation.id);
+      }
+  }, [isOpen, observation, mode, incrementViewCount]);
+
+  const handleUpdate = (data: Partial<Observation>) => {
     if (!observation) return;
     updateObservation(observation, data);
     setActionDialogOpen(false);
@@ -95,16 +101,15 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
     if (!observation) return;
     setIsSharing(true);
     try {
-        // The context function now handles all logic and toasting
         await shareObservationToPublic(observation);
     } finally {
         setIsSharing(false);
     }
   };
 
-  const showAiSection = observation.aiStatus || observation.aiSummary;
   const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;
-
+  const showAiSection = observation.aiStatus || observation.aiSummary;
+  
   const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
     <div className="pl-8 space-y-2">
       {text.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((item, index) => (
@@ -203,7 +208,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
 
             <Separator />
             
-            {mode !== 'private' && (
+            {mode === 'public' && (
               <>
                 <div className="flex items-center justify-around">
                     <button
@@ -216,10 +221,10 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                         <ThumbsUp className={cn("h-5 w-5", hasLiked && "fill-current")} />
                         <span>{observation.likeCount || 0} Suka</span>
                     </button>
-                    <button className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors">
+                    <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
                         <MessageCircle className="h-5 w-5" />
                         <span>{observation.commentCount || 0} Komentar</span>
-                    </button>
+                    </div>
                      <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
                         <Eye className="h-5 w-5" />
                         <span>{observation.viewCount || 0} Dilihat</span>

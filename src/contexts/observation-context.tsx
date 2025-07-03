@@ -24,7 +24,7 @@ import {
 } from '@/ai/flows/summarize-observation-data';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { toggleLike } from '@/lib/actions/interaction-actions';
+import { toggleLike, incrementViewCount as incrementViewCountAction } from '@/lib/actions/interaction-actions';
 
 interface ObservationContextType {
   privateItems: AllItems[];
@@ -54,6 +54,7 @@ interface ObservationContextType {
   retryAiAnalysis: (item: Observation | Inspection) => Promise<void>;
   shareObservationToPublic: (observation: Observation) => Promise<void>;
   toggleLikeObservation: (observation: Observation) => Promise<void>;
+  incrementViewCount: (observationId: string) => Promise<void>;
 }
 
 const ObservationContext = React.createContext<
@@ -226,6 +227,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             toast({ variant: 'destructive', title: 'Not Authenticated', description: 'Anda harus login untuk mengirim.' });
             return;
         };
+        
+        toast({ title: 'Laporan Terkirim', description: `Observasi Anda sedang diproses.` });
 
         try {
             let photoUrl: string;
@@ -283,6 +286,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             return;
         }
 
+        toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda sedang diproses.` });
+
         try {
             const photoUrl = await uploadFile(formData.photo, 'inspections', user.uid, () => {}, projectId);
             const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -324,6 +329,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             return;
         }
 
+        toast({ title: 'PTW Diajukan', description: `Izin kerja Anda sedang diproses.` });
+
         try {
             const jsaPdfUrl = await uploadFile(formData.jsaPdf, 'ptw-jsa', user.uid, () => {}, projectId);
             const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -360,6 +367,12 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             toast({ variant: 'destructive', title: 'Not Authenticated', description: 'Anda harus login.' });
             return;
         }
+
+        toast({
+            title: 'Tindakan Disimpan',
+            description: `Status laporan ${observation.referenceId || observation.id} sedang diperbarui.`,
+        });
+
         try {
             const closerName = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
     
@@ -465,6 +478,18 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
     }, [user]);
 
+    const incrementViewCount = React.useCallback(async (observationId: string) => {
+        try {
+            await incrementViewCountAction({
+                docId: observationId,
+                collectionName: 'observations',
+            });
+        } catch (error) {
+            console.error('Failed to increment view count:', error);
+            // Don't toast here as it's a background, non-critical task
+        }
+    }, []);
+
     const value = {
         privateItems,
         projectItems,
@@ -477,6 +502,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         retryAiAnalysis,
         shareObservationToPublic,
         toggleLikeObservation,
+        incrementViewCount,
     };
 
     return (

@@ -144,10 +144,10 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
                   <ThumbsUp className={cn("h-3.5 w-3.5", hasLiked && "fill-current")} />
                   <span>{observation.likeCount || 0}</span>
                 </button>
-                <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
+                <div className="flex items-center gap-1.5 text-muted-foreground cursor-pointer hover:text-primary">
                   <MessageCircle className="h-3.5 w-3.5" />
                   <span>{observation.commentCount || 0}</span>
-                </button>
+                </div>
                 <div className="flex items-center gap-1.5 text-muted-foreground ml-auto">
                   <Eye className="h-3.5 w-3.5" />
                   <span>{observation.viewCount || 0}</span>
@@ -427,7 +427,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
      <div className="space-y-4">
         <div className="flex justify-between items-center gap-4">
             <h2 className="text-2xl font-bold tracking-tight">
-                {mode === 'public' ? 'Feed Publik' : mode === 'private' ? 'Pribadi' : viewConfig[viewType].label}
+                {mode === 'public' ? 'Feed Publik' : 'Laporan ' + viewConfig[viewType].label}
             </h2>
             <div className="flex items-center gap-2">
                 {mode !== 'public' && (
