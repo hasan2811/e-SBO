@@ -76,7 +76,28 @@ Then, perform the following analysis and generate the JSON object:
 1.  **suggestedCategory**: Classify the observation into ONE of the following categories. Choose the most fitting one based on these definitions:
     *   'Unsafe Act': A person's action that deviates from standard procedures or is unsafe (e.g., not wearing PPE, operating equipment without authorization, horseplay).
     *   'Unsafe Condition': A hazardous physical condition in the workplace (e.g., slippery floors, damaged equipment, poor lighting, unguarded machinery).
-    *   'Environmental': An issue related to environmental impact (e.g., oil spills, improper waste disposal, pollution).
+    *   'Tools & Equipment': Issues related to the condition, use, or storage of tools and equipment.
+    *   'Safe Zone Position': A person's positioning relative to potential hazards (e.g., standing in the line of fire, under a suspended load).
+    *   'Permit to Work': Compliance with formal permit-to-work systems for high-risk jobs.
+    *   'Isolation': Correctness of energy isolation procedures (LOTO - Lockout/Tagout).
+    *   'Confined Space Entry': Compliance with safety procedures for entering confined spaces.
+    *   'Lifting Operations': Safety of crane, forklift, or other lifting activities.
+    *   'Fit to Work': A person's fitness for duty, including fatigue and impairment.
+    *   'Working at Height': Safety of work performed at elevated locations, including scaffolding and fall protection.
+    *   'Personal Flotation Device': Correct use of PFDs when working over or near water.
+    *   'System Override': Unauthorized or undocumented bypassing of safety systems.
+    *   'Asset Integrity': Issues related to the physical condition of equipment and structures (e.g., corrosion, leaks).
+    *   'Driving Safety': Safety related to vehicle operation within the worksite.
+    *   'Environment': Issues related to environmental impact (e.g., spills, waste management).
+    *   'Signage & Warning': Adequacy and effectiveness of safety signs and barricades.
+    *   'Personal Protective Equipment (PPE)': Correct selection, use, and condition of PPE.
+    *   'Emergency Response Preparedness': Readiness of emergency equipment and personnel.
+    *   'Management of Change (MOC)': Control of changes to processes, equipment, or procedures.
+    *   'Incident Reporting & Investigation': Issues related to the reporting and handling of incidents.
+    *   'Safety Communication': Effectiveness of safety meetings, toolbox talks, etc.
+    *   'Excavation Management': Safety of trenching and excavation work.
+    *   'Competence & Training': Adequacy of worker training and competence for their tasks.
+    *   'Supervision': Quality and effectiveness of supervision on site.
     *   'Security': An issue related to physical or asset security (e.g., broken fences, unlocked doors, unauthorized access).
     *   'General': A general safety observation that doesn't fit other categories.
     Your choice MUST be one of these: ${OBSERVATION_CATEGORIES.join(', ')}.

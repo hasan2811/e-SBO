@@ -4,13 +4,13 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { useObservations } from '@/contexts/observation-context';
-import type { Observation, RiskLevel, Scope } from '@/lib/types';
+import type { Observation, RiskLevel, Scope, ObservationCategory } from '@/lib/types';
 import { TakeActionDialog } from '@/components/take-action-dialog';
 import { StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder, ThumbsUp, MessageCircle, Eye } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder, ThumbsUp, MessageCircle, Eye, Info } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -20,7 +20,37 @@ import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+
+const categoryDefinitions: Record<ObservationCategory, string> = {
+  'Unsafe Act': 'Tindakan seseorang yang menyimpang dari prosedur standar atau tidak aman (misalnya, tidak memakai APD, mengoperasikan peralatan tanpa izin, bercanda saat bekerja).',
+  'Unsafe Condition': 'Kondisi fisik yang berbahaya di tempat kerja (misalnya, lantai licin, peralatan rusak, penerangan buruk, mesin tanpa pelindung).',
+  'Tools & Equipment': 'Pemeriksaan dan penggunaan alat-alat kerja, baik manual maupun mesin, untuk memastikan kelayakan dan keamanannya.',
+  'Safe Zone Position': 'Penempatan diri pekerja di area yang aman, jauh dari potensi bahaya seperti jalur alat berat, area jatuhan benda, atau zona berbahaya lainnya.',
+  'Permit to Work': 'Kepatuhan terhadap sistem izin kerja formal untuk pekerjaan berisiko tinggi, memastikan semua prosedur keselamatan telah diikuti sebelum pekerjaan dimulai.',
+  'Isolation': 'Proses mengisolasi sumber energi berbahaya (listrik, mekanik, tekanan) sebelum melakukan perbaikan atau pemeliharaan untuk mencegah pelepasan energi yang tidak disengaja.',
+  'Confined Space Entry': 'Kepatuhan terhadap prosedur keselamatan saat memasuki ruang terbatas, seperti tangki atau bejana, yang memiliki risiko kekurangan oksigen atau gas beracun.',
+  'Lifting Operations': 'Keamanan dalam operasi pengangkatan menggunakan crane atau alat angkat lainnya, termasuk inspeksi rigging, komunikasi, dan area pengangkatan.',
+  'Fit to Work': 'Kesiapan kondisi fisik dan mental pekerja untuk melakukan tugasnya dengan aman, bebas dari pengaruh kelelahan, alkohol, atau obat-obatan.',
+  'Working at Height': 'Penggunaan metode dan peralatan yang aman saat bekerja di ketinggian, termasuk perancah, tangga, dan penggunaan alat pelindung jatuh.',
+  'Personal Flotation Device': 'Penggunaan perangkat pelampung pribadi (jaket pelampung) saat bekerja di atas atau di dekat air untuk mencegah tenggelam.',
+  'System Override': 'Pengelolaan pengabaian atau bypass sistem keselamatan kritis secara tidak sah atau tidak terdokumentasi, yang dapat menimbulkan risiko besar.',
+  'Asset Integrity': 'Pemeliharaan dan inspeksi integritas aset fisik (seperti pipa, struktur, bejana tekan) untuk mencegah kegagalan yang dapat menyebabkan insiden.',
+  'Driving Safety': 'Kepatuhan terhadap praktik mengemudi yang aman di area kerja, termasuk batas kecepatan, penggunaan sabuk pengaman, dan kondisi kendaraan.',
+  'Environment': 'Isu yang berkaitan dengan dampak lingkungan, seperti tumpahan bahan kimia, pengelolaan limbah, polusi udara, atau perusakan habitat.',
+  'Signage & Warning': 'Ketersediaan dan kejelasan rambu-rambu keselamatan, barikade, dan sinyal peringatan untuk menginformasikan pekerja tentang bahaya.',
+  'Personal Protective Equipment (PPE)': 'Penggunaan Alat Pelindung Diri (APD) yang sesuai dan dalam kondisi baik oleh pekerja sesuai dengan risiko pekerjaannya.',
+  'Emergency Response Preparedness': 'Kesiapan tim dan peralatan tanggap darurat untuk menghadapi situasi darurat seperti kebakaran, tumpahan bahan kimia, atau cedera.',
+  'Management of Change (MOC)': 'Pengelolaan perubahan pada proses, peralatan, atau personel secara sistematis untuk memastikan risiko baru yang timbul dapat diidentifikasi dan dikendalikan.',
+  'Incident Reporting & Investigation': 'Pelaporan dan investigasi insiden atau nyaris celaka (near miss) untuk menemukan akar penyebab dan mencegah kejadian serupa di masa depan.',
+  'Safety Communication': 'Efektivitas komunikasi keselamatan, seperti safety meeting, toolbox talk, atau penyampaian informasi bahaya kepada seluruh pekerja.',
+  'Excavation Management': 'Pengelolaan keselamatan dalam pekerjaan galian, termasuk stabilitas lereng, penopang galian, dan deteksi utilitas bawah tanah.',
+  'Competence & Training': 'Kecukupan kompetensi dan pelatihan yang dimiliki pekerja untuk melakukan tugas mereka dengan aman dan benar.',
+  'Supervision': 'Kualitas pengawasan di lapangan untuk memastikan pekerjaan dilakukan sesuai dengan prosedur keselamatan yang telah ditetapkan.',
+  'Security': 'Masalah terkait keamanan fisik atau aset (misalnya, pagar rusak, pintu tidak terkunci, akses tidak sah).',
+  'General': 'Observasi keselamatan umum yang tidak cocok dengan kategori lain.',
+};
 
 interface ObservationDetailSheetProps {
     observation: Observation | null;
@@ -41,6 +71,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
 
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
   const hasLiked = user && observation.likes?.includes(user.uid);
+  const categoryDefinition = categoryDefinitions[observation.category];
 
   const handleUpdate = async (data: Partial<Observation>) => {
     if (!observation) return;
@@ -200,6 +231,16 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                 </div>
                 <Separator />
               </>
+            )}
+            
+            {categoryDefinition && (
+              <Alert className="border-primary/50 bg-primary/5 text-primary">
+                <Info className="h-4 w-4 text-primary" />
+                <AlertTitle className="font-semibold">{observation.category}</AlertTitle>
+                <AlertDescription className="text-primary/90">
+                  {categoryDefinition}
+                </AlertDescription>
+              </Alert>
             )}
 
             <div className="space-y-1">

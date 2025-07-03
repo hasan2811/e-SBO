@@ -2,7 +2,6 @@
 import { z } from 'zod';
 
 export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed';
-export type ObservationCategory = 'Unsafe Act' | 'Unsafe Condition' | 'Environmental' | 'Security' | 'General';
 export type Company = 'Tambang' | 'Migas' | 'Konstruksi' | 'Manufaktur';
 export type Location = 'International' | 'National' | 'Local' | 'Regional';
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
@@ -10,7 +9,38 @@ export type Scope = 'public' | 'private' | 'project';
 
 export const RISK_LEVELS: [RiskLevel, ...RiskLevel[]] = ['Low', 'Medium', 'High', 'Critical'];
 export const OBSERVATION_STATUSES: [ObservationStatus, ...ObservationStatus[]] = ['Pending', 'In Progress', 'Completed'];
-export const OBSERVATION_CATEGORIES: [ObservationCategory, ...ObservationCategory[]] = ['Unsafe Act', 'Unsafe Condition', 'Environmental', 'Security', 'General'];
+
+// Expanded list of observation categories
+export const OBSERVATION_CATEGORIES = [
+  'Unsafe Act',
+  'Unsafe Condition',
+  'Tools & Equipment',
+  'Safe Zone Position',
+  'Permit to Work',
+  'Isolation',
+  'Confined Space Entry',
+  'Lifting Operations',
+  'Fit to Work',
+  'Working at Height',
+  'Personal Flotation Device',
+  'System Override',
+  'Asset Integrity',
+  'Driving Safety',
+  'Environment',
+  'Signage & Warning',
+  'Personal Protective Equipment (PPE)',
+  'Emergency Response Preparedness',
+  'Management of Change (MOC)',
+  'Incident Reporting & Investigation',
+  'Safety Communication',
+  'Excavation Management',
+  'Competence & Training',
+  'Supervision',
+  'Security',
+  'General',
+] as const;
+
+export type ObservationCategory = (typeof OBSERVATION_CATEGORIES)[number];
 
 
 export type UserProfile = {
@@ -171,7 +201,7 @@ export type SummarizeObservationDataInput = z.infer<typeof SummarizeObservationD
 
 export const SummarizeObservationDataOutputSchema = z.object({
   summary: z.string().describe('Ringkasan singkat dari temuan inti dalam Bahasa Indonesia.'),
-  suggestedCategory: z.enum(OBSERVATION_CATEGORIES).describe('Saran kategori (Unsafe Act, Unsafe Condition, etc.) berdasarkan analisis temuan.'),
+  suggestedCategory: z.enum(OBSERVATION_CATEGORIES).describe('Saran kategori berdasarkan analisis temuan.'),
   risks: z.string().describe('Analisis potensi bahaya dan risiko dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
   suggestedActions: z.string().describe('Saran tindakan perbaikan dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
   relevantRegulations: z.string().describe('Poin-poin inti dari peraturan nasional & internasional yang relevan beserta penjelasan singkatnya (Bahasa Indonesia).'),
