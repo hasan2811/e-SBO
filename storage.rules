@@ -1,34 +1,12 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // Default-deny all access
+    // PERINGATAN: Aturan ini sangat longgar dan hanya untuk tujuan pengembangan.
+    // Aturan ini mengizinkan semua pengguna yang sudah login untuk mengunggah,
+    // membaca, dan menghapus file apa pun di Storage.
     match /{allPaths=**} {
-      allow read, write: if false;
-    }
-    
-    // --- Public Read Access ---
-    // Anyone can read any file. This is standard as download URLs are unguessable
-    // and this allows images to be displayed publicly in the app.
-    match /{allPaths=**} {
-      allow read: if true;
-    }
-    
-    // --- Write Access Control ---
-    // Allow any authenticated user to upload files into the designated folders.
-    // The folder structure (including userId) is created by the client-side code,
-    // which prevents users from overwriting each other's files.
-    match /{folder}/{userId}/{fileName} {
-      allow write: if request.auth != null && request.auth.uid == userId
-                   && (folder == 'observations' || folder == 'inspections' || folder == 'ptw-jsa' || folder == 'actions');
-    }
-    
-    // Allow writes to project-specific folders
-    match /projects/{projectId}/{folder}/{userId}/{fileName} {
-      allow write: if request.auth != null && request.auth.uid == userId
-                   && (folder == 'observations' || folder == 'inspections' || folder == 'ptw-jsa' || folder == 'actions');
+      allow read, write: if request.auth != null;
     }
   }
 }
