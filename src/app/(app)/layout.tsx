@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -34,7 +33,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     // This effect ensures the global project context is aware of the current project ID
-    // by looking at the URL path.
+    // by looking at the URL path. This is still useful for other components like the dashboard.
     const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
     const currentId = match ? match[1] : null;
     if (currentId !== projectId) { // Only update if it changes
@@ -72,26 +71,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   
   const showMultiActionButton = pathname.startsWith('/proyek/') || pathname === '/private';
   
-  const getCurrentScope = (): { scope: Scope; projectId: string | null } => {
-    if (pathname.startsWith('/proyek/')) {
-      return { scope: 'project', projectId };
-    }
-    // All other authenticated pages default to private submissions
-    return { scope: 'private', projectId: null };
-  };
-  
+  // These handlers now parse the projectId directly from the pathname to avoid race conditions
   const handleAddObservation = async (formData: any) => {
-    const { scope, projectId: submissionProjectId } = getCurrentScope();
+    const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
+    const submissionProjectId = match ? match[1] : null;
+    const scope: Scope = submissionProjectId ? 'project' : 'private';
     await addObservation(formData, scope, submissionProjectId);
   };
 
   const handleAddInspection = async (formData: any) => {
-    const { scope, projectId: submissionProjectId } = getCurrentScope();
+    const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
+    const submissionProjectId = match ? match[1] : null;
+    const scope: Scope = submissionProjectId ? 'project' : 'private';
     await addInspection(formData, scope, submissionProjectId);
   };
 
   const handleAddPtw = async (formData: any) => {
-    const { scope, projectId: submissionProjectId } = getCurrentScope();
+    const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
+    const submissionProjectId = match ? match[1] : null;
+    const scope: Scope = submissionProjectId ? 'project' : 'private';
     await addPtw(formData, scope, submissionProjectId);
   };
 
