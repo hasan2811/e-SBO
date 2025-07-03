@@ -42,9 +42,9 @@ export function uploadFile(
       },
       (error) => {
         console.error('Firebase Storage upload error:', error);
-        // This is the most likely error for CORS issues.
         if (error.code === 'storage/unauthorized') {
-            reject(new Error('Gagal mengunggah file. Pastikan konfigurasi CORS di Firebase Storage sudah diatur. Lihat petunjuk di file README.md.'));
+            const detailedError = 'Gagal mengunggah file karena masalah izin. Ini bisa disebabkan oleh dua hal: 1) Konfigurasi CORS di Firebase Storage belum diatur (lihat README.md), atau 2) Aturan keamanan (storage.rules) tidak mengizinkan unggahan ini. Silakan periksa kedua hal tersebut.';
+            reject(new Error(detailedError));
         } else {
             reject(new Error('Gagal mengunggah file. Silakan periksa koneksi Anda.'));
         }
