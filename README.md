@@ -27,7 +27,7 @@ For file uploads to work, you must configure Cross-Origin Resource Sharing (CORS
 Run the following command in your terminal, ensuring you have the `gcloud` CLI installed and authenticated:
 
 ```bash
-
+gsutil cors set gs://hssetech-e1710.firebasestorage.app
 ```
 
 This command allows the web app to upload files directly to your storage bucket.

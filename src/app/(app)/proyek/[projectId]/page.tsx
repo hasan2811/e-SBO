@@ -29,6 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const getInitials = (name: string) => {
     if (!name) return 'U';
@@ -113,7 +114,7 @@ export default function ProjectDetailsPage() {
 
   return (
     <>
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Header Section */}
         <div className="flex justify-between items-start gap-4">
           <div>
@@ -172,9 +173,16 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
         
-        {/* Members Section */}
-        <div>
-            <h2 className="text-xl font-semibold mb-4">Members ({project.members?.length || 0})</h2>
+        {/* Tabs Section */}
+        <Tabs defaultValue="feed" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
+            <TabsTrigger value="feed">Activity Feed</TabsTrigger>
+            <TabsTrigger value="members">Members ({project.members?.length || 0})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="feed" className="mt-6">
+            <FeedView mode="project" projectId={projectId} />
+          </TabsContent>
+          <TabsContent value="members" className="mt-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {project.members?.sort((a,b) => (a.uid === project.ownerUid ? -1 : 1)).map(member => (
                 <Card key={member.uid} className="flex flex-col">
@@ -217,12 +225,8 @@ export default function ProjectDetailsPage() {
                 </Card>
             ))}
             </div>
-        </div>
-
-        {/* Feed Section */}
-        <div className="space-y-4 pt-4 border-t">
-          <FeedView mode="project" projectId={projectId} />
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Dialogs */}
