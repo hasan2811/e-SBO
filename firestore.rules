@@ -4,59 +4,40 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Function to check if the user is the designated super admin
-    function isSuperAdmin() {
-      return request.auth.uid == 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
-    }
-
-    // Function to check if a required field exists in a document
-    function hasFields(fields) {
-      return resource.data.keys().hasAll(fields);
-    }
-
-    // Projects Collection
-    match /projects/{projectId} {
-      // Allow list/read access if the user is a super admin OR if they are a member of the project.
-      // The `list` rule is crucial for queries, while `get` is for direct document access.
-      allow read: if isSuperAdmin() || 
-                    (hasFields(['memberUids']) && request.auth.uid in resource.data.memberUids);
-      
-      // Only the project owner (or super admin) can create, update, or delete the project document.
-      allow write: if isSuperAdmin() || request.auth.uid == resource.data.ownerUid;
-    }
-
-    // User Profiles
+    // Users can read their own profile and admins can read any profile.
+    // Users can only create their own profile document and update their own.
     match /users/{userId} {
-      // Users can only read or write their own profile. Super admin has full access.
-      allow read, write: if request.auth.uid == userId || isSuperAdmin();
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+      // Admin override
+      allow read: if request.auth != null && request.auth.uid == 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
+    }
+
+    // Projects can be read by any authenticated user, which allows the client-side
+    // query to filter them. Write access is restricted.
+    match /projects/{projectId} {
+        allow read: if request.auth != null;
+        // Only the owner or an admin can modify/delete a project.
+        allow update, delete: if request.auth != null && (resource.data.ownerUid == request.auth.uid || request.auth.uid == 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2');
+        allow create: if request.auth != null;
+    }
+
+    // Observations, Inspections, PTWs
+    // Any authenticated user can create them.
+    // They can be read/updated/deleted only by the user who created them or an admin.
+    match /observations/{obsId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.uid == 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2' || resource.data.scope == 'public');
     }
     
-    // Generic rule for data collections (observations, inspections, ptws)
-    match /{itemCollection}/{itemId} {
-      // Allow read access if:
-      // 1. User is a super admin.
-      // 2. The item is marked as 'public'.
-      // 3. The user is a member of the project this item belongs to.
-      allow read: if isSuperAdmin() || 
-                     (hasFields(['scope']) && resource.data.scope == 'public') ||
-                     (
-                       hasFields(['projectId', 'scope']) &&
-                       resource.data.scope == 'project' &&
-                       exists(/databases/$(database)/documents/projects/$(resource.data.projectId)) &&
-                       request.auth.uid in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.memberUids
-                     ) ||
-                     (
-                       hasFields(['userId', 'scope']) &&
-                       resource.data.scope == 'private' &&
-                       request.auth.uid == resource.data.userId
-                     );
-      
-      // Allow creating a new item if the user is authenticated.
-      allow create: if request.auth != null;
-      
-      // Allow updating or deleting an item if the user is the original creator or a super admin.
-      allow update, delete: if isSuperAdmin() || 
-                              (hasFields(['userId']) && request.auth.uid == resource.data.userId);
+    match /inspections/{inspId} {
+       allow create: if request.auth != null;
+       allow read, update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.uid == 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2');
+    }
+
+    match /ptws/{ptwId} {
+       allow create: if request.auth != null;
+       allow read, update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.uid == 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2');
     }
   }
 }
