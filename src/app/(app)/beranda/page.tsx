@@ -20,19 +20,19 @@ export default function ProjectHubPage() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Project Hub</h1>
             <p className="text-muted-foreground">
               Kelola, buat, atau gabung dengan proyek yang sudah ada di sini.
             </p>
           </div>
-          <div className="flex w-full sm:w-auto gap-2">
-            <Button className="w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)}>
+          <div className="flex shrink-0 gap-2">
+            <Button onClick={() => setCreateDialogOpen(true)}>
               <FolderPlus className="mr-2" />
-              Buat Proyek Baru
+              Buat Proyek
             </Button>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setJoinDialogOpen(true)}>
+            <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
               <LogIn className="mr-2" />
               Gabung Proyek
             </Button>
