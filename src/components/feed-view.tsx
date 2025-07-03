@@ -51,9 +51,12 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
         'In Progress': { icon: RefreshCw, className: 'text-chart-4 animate-spin-slow', label: 'In Progress' },
         'Completed': { icon: CheckCircle2, className: 'text-chart-2', label: 'Completed' },
     };
-    const StatusIcon = statusIcons[observation.status].icon;
-    const statusClassName = statusIcons[observation.status].className;
-    const statusLabel = statusIcons[observation.status].label;
+
+    // Safeguard against invalid status values to prevent crashes
+    const statusInfo = statusIcons[observation.status] || statusIcons['Pending'];
+    const StatusIcon = statusInfo.icon;
+    const statusClassName = statusInfo.className;
+    const statusLabel = statusInfo.label;
 
     const hasLiked = user && observation.likes?.includes(user.uid);
 
@@ -70,7 +73,7 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
       <li>
         <div onClick={onSelect} className={cn(
             "bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden border-l-4",
-            riskColorStyles[observation.riskLevel]
+            riskColorStyles[observation.riskLevel] || 'border-l-muted'
         )}>
           <div className="flex items-start gap-3">
               <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
@@ -120,7 +123,8 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
                     <div className="text-xs text-muted-foreground mt-1.5 truncate">
                         <Share2 className="inline-block h-3 w-3 mr-1.5 align-middle text-primary"/>
                         <span className="align-middle">
-                            Dibagikan oleh <strong>{observation.sharedBy.split(' ')[0]}</strong> ({observation.sharedByPosition})
+                            Dibagikan oleh <strong>{observation.sharedBy.split(' ')[0]}</strong>
+                            {observation.sharedByPosition && ` (${observation.sharedByPosition})`}
                         </span>
                     </div>
                  ) : mode !== 'public' ? (

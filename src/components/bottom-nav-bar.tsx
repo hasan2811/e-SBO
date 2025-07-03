@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -21,7 +20,9 @@ export function BottomNavBar() {
     <nav className="md:hidden fixed bottom-0 left-0 z-50 w-full h-16 bg-card border-t">
       <div className="grid h-full grid-cols-4 mx-auto">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = item.href === '/beranda'
+              ? pathname.startsWith('/beranda') || pathname.startsWith('/proyek/')
+              : pathname === item.href;
           return (
             <Link
               key={item.href}
