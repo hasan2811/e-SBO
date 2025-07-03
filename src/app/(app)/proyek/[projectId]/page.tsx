@@ -17,6 +17,7 @@ import { DeleteProjectDialog } from '@/components/delete-project-dialog';
 import type { Project, UserProfile } from '@/lib/types';
 import Link from 'next/link';
 import { FeedView } from '@/components/feed-view';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const getInitials = (name: string) => {
     if (!name) return 'U';
@@ -101,10 +102,18 @@ export default function ProjectDetailsPage() {
                 </Button>
               </>
             ) : (
-              <Button variant="destructive" onClick={() => setLeaveOpen(true)}>
-                <LogOut className="mr-2" />
-                Leave Project
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="destructive" size="icon" onClick={() => setLeaveOpen(true)}>
+                      <LogOut className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Leave Project</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
         </div>
