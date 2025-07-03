@@ -45,6 +45,10 @@ function findClosestMatch<T extends string>(value: string | undefined, options: 
     // Next, try to see if the value contains one of the options
     const partialMatch = options.find(opt => lowerValue.includes(opt.toLowerCase()));
     if (partialMatch) return partialMatch;
+    
+    // A slightly more fuzzy match
+    const fuzzyMatch = options.find(opt => opt.toLowerCase().includes(lowerValue));
+    if (fuzzyMatch) return fuzzyMatch;
 
     return defaultValue;
 }
@@ -73,12 +77,28 @@ First, carefully analyze the user's observation data to understand the situation
 
 Then, perform the following analysis and generate the JSON object:
 
-1.  **suggestedCategory**: Classify the observation into ONE of the following categories. Choose the most fitting one.
-    *   'Unsafe Act': A person's action that deviates from standard procedures or is unsafe.
-    *   'Unsafe Condition': A hazardous physical condition in the workplace.
-    *   'Environmental': An issue related to environmental impact (e.g., spills, waste management).
-    *   'Security': An issue related to physical or asset security.
-    *   'General': A general safety observation that doesn't fit other categories.
+1.  **suggestedCategory**: Classify the observation into ONE of the following Life-Saving Rules (LSR) categories. Choose the single most fitting one.
+    *   'Safe Zone Position': Being in a safe position away from hazards like moving equipment or falling objects.
+    *   'Permit to Work': Ensuring a valid work permit is issued and understood for high-risk jobs.
+    *   'Isolation': Verifying all hazardous energy sources are isolated and locked out before work begins.
+    *   'Confined Space Entry': Adhering to safe entry procedures, including atmospheric testing and rescue plans.
+    *   'Lifting Operations': Following a safe lifting plan and never walking under a suspended load.
+    *   'Fit to Work': Ensuring physical and mental readiness for work, free from impairment.
+    *   'Working at Height': Using proper fall protection when working above 1.8 meters.
+    *   'Personal Flotation Device': Wearing a personal flotation device (PFD) when working over or near water.
+    *   'System Override': Obtaining authorization before overriding critical safety systems.
+    *   'Asset Integrity': Ensuring equipment is maintained in a safe and fit-for-purpose condition.
+    *   'Driving Safety': Obeying traffic rules, not using phones, and wearing seatbelts.
+    *   'Environment': Preventing pollution, managing waste correctly, and reporting spills.
+    *   'Signage & Warning': Heeding all safety signs, barricades, and warning signals.
+    *   'Personal Protective Equipment (PPE)': Using the correct and well-maintained PPE for the task.
+    *   'Emergency Response Preparedness': Knowing emergency procedures, equipment locations, and evacuation routes.
+    *   'Management of Change (MOC)': Managing changes to processes or equipment with formal risk assessment.
+    *   'Incident Reporting & Investigation': Reporting all incidents and participating in investigations.
+    *   'Safety Communication': Effectively communicating hazards and controls (e.g., toolbox talks).
+    *   'Excavation Management': Ensuring excavations are safe from collapse and utilities are identified.
+    *   'Competence & Training': Ensuring only competent and trained personnel perform tasks.
+    *   'Supervision': Providing adequate on-site supervision to ensure work is done safely.
     Your choice MUST be one of these: ${OBSERVATION_CATEGORIES.join(', ')}.
 
 2.  **suggestedRiskLevel**: Based on the potential severity of the findings, classify the risk level. Choose ONE: 'Low', 'Medium', 'High', or 'Critical'.
@@ -119,7 +139,7 @@ const summarizeObservationDataFlow = ai.defineFlow(
     // Sanitize the output to prevent errors from minor AI deviations.
     output = {
       ...output,
-      suggestedCategory: findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'General'),
+      suggestedCategory: findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'Supervision'),
       suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
     };
     

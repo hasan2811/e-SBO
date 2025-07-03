@@ -10,13 +10,29 @@ export type Scope = 'public' | 'private' | 'project';
 export const RISK_LEVELS: [RiskLevel, ...RiskLevel[]] = ['Low', 'Medium', 'High', 'Critical'];
 export const OBSERVATION_STATUSES: [ObservationStatus, ...ObservationStatus[]] = ['Pending', 'In Progress', 'Completed'];
 
-// Reverted to a more fundamental list of categories. The previous list was identified as Life-Saving Rules (LSRs), not categories.
+// Updated list to reflect Life-Saving Rules (LSR) as categories
 export const OBSERVATION_CATEGORIES = [
-  'Unsafe Act',
-  'Unsafe Condition',
-  'Environmental',
-  'Security',
-  'General',
+  'Safe Zone Position',
+  'Permit to Work',
+  'Isolation',
+  'Confined Space Entry',
+  'Lifting Operations',
+  'Fit to Work',
+  'Working at Height',
+  'Personal Flotation Device',
+  'System Override',
+  'Asset Integrity',
+  'Driving Safety',
+  'Environment',
+  'Signage & Warning',
+  'Personal Protective Equipment (PPE)',
+  'Emergency Response Preparedness',
+  'Management of Change (MOC)',
+  'Incident Reporting & Investigation',
+  'Safety Communication',
+  'Excavation Management',
+  'Competence & Training',
+  'Supervision',
 ] as const;
 
 export type ObservationCategory = (typeof OBSERVATION_CATEGORIES)[number];

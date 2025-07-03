@@ -24,12 +24,29 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 const categoryDefinitions: Record<ObservationCategory, string> = {
-  'Unsafe Act': 'Tindakan seseorang yang menyimpang dari prosedur standar atau tidak aman (misalnya, tidak memakai APD, mengoperasikan peralatan tanpa izin).',
-  'Unsafe Condition': 'Kondisi fisik yang berbahaya di tempat kerja (misalnya, lantai licin, peralatan rusak, penerangan buruk, mesin tanpa pelindung).',
-  'Environmental': 'Isu yang berkaitan dengan dampak lingkungan (misalnya, tumpahan bahan kimia, pengelolaan limbah, polusi udara).',
-  'Security': 'Isu terkait keamanan fisik atau aset (misalnya, pagar rusak, pintu tidak terkunci, akses tidak sah).',
-  'General': 'Observasi keselamatan umum yang tidak cocok dengan kategori lain.',
+  'Safe Zone Position': 'Berada di posisi yang aman terlindung dari bahaya seperti peralatan bergerak, benda jatuh, atau pelepasan energi.',
+  'Permit to Work': 'Memastikan izin kerja yang sah telah dikeluarkan dan dipahami sebelum memulai pekerjaan yang berisiko tinggi.',
+  'Isolation': 'Memastikan semua sumber energi berbahaya telah diisolasi, dikunci, dan diuji sebelum memulai pekerjaan pada peralatan.',
+  'Confined Space Entry': 'Mematuhi prosedur masuk ruang terbatas yang aman, termasuk pengujian atmosfer dan rencana penyelamatan.',
+  'Lifting Operations': 'Mengikuti rencana pengangkatan yang aman, tidak pernah berjalan di bawah beban yang diangkat, dan memastikan peralatan layak pakai.',
+  'Fit to Work': 'Memastikan kondisi fisik dan mental siap untuk bekerja, bebas dari pengaruh alkohol atau obat-obatan terlarang.',
+  'Working at Height': 'Menggunakan pelindung jatuh yang tepat (seperti full body harness) saat bekerja di ketinggian lebih dari 1.8 meter.',
+  'Personal Flotation Device': 'Mengenakan perangkat pelampung pribadi (PFD) saat bekerja di atas atau di dekat air.',
+  'System Override': 'Mendapatkan otorisasi sebelum menonaktifkan atau meng-override sistem keselamatan kritis.',
+  'Asset Integrity': 'Memastikan peralatan dan fasilitas dijaga dalam kondisi aman dan layak pakai sesuai standar.',
+  'Driving Safety': 'Mematuhi peraturan lalu lintas, tidak menggunakan ponsel saat mengemudi, dan selalu mengenakan sabuk pengaman.',
+  'Environment': 'Mencegah pencemaran, mengelola limbah dengan benar, dan melaporkan tumpahan atau insiden lingkungan.',
+  'Signage & Warning': 'Memperhatikan dan mematuhi semua rambu keselamatan, barikade, dan sinyal peringatan di area kerja.',
+  'Personal Protective Equipment (PPE)': 'Menggunakan Alat Pelindung Diri (APD) yang sesuai dan dalam kondisi baik untuk setiap pekerjaan.',
+  'Emergency Response Preparedness': 'Mengetahui prosedur darurat, lokasi peralatan darurat (seperti APAR, P3K), dan jalur evakuasi.',
+  'Management of Change (MOC)': 'Mengelola perubahan pada proses, peralatan, atau personel melalui evaluasi risiko dan otorisasi formal.',
+  'Incident Reporting & Investigation': 'Melaporkan semua insiden dan nearmiss, serta berpartisipasi dalam investigasi untuk mencegah terulang kembali.',
+  'Safety Communication': 'Berkomunikasi secara efektif tentang bahaya dan kontrol keselamatan, misalnya saat toolbox meeting atau JSA.',
+  'Excavation Management': 'Memastikan galian aman dari keruntuhan, mengidentifikasi utilitas bawah tanah, dan mengontrol akses.',
+  'Competence & Training': 'Memastikan hanya personel yang kompeten dan terlatih yang melakukan tugas, dan terus mengembangkan keterampilan.',
+  'Supervision': 'Memberikan pengawasan yang memadai di lapangan untuk memastikan pekerjaan dilakukan dengan aman sesuai prosedur.',
 };
+
 
 interface ObservationDetailSheetProps {
     observation: Observation | null;
@@ -54,7 +71,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
 
   const handleUpdate = async (data: Partial<Observation>) => {
     if (!observation) return;
-    await updateObservation(observation, data);
+    updateObservation(observation, data);
     setActionDialogOpen(false);
   };
   
