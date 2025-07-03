@@ -9,20 +9,26 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Crown, User, UserPlus, LogOut, Trash2, UserX, ArrowLeft, Feed } from 'lucide-react';
+import { Crown, User, UserX, ArrowLeft, MoreVertical, UserPlus, Trash2, LogOut } from 'lucide-react';
 import { AddMemberDialog } from '@/components/add-member-dialog';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
 import { LeaveProjectDialog } from '@/components/leave-project-dialog';
 import { DeleteProjectDialog } from '@/components/delete-project-dialog';
 import type { Project, UserProfile } from '@/lib/types';
-import Link from 'next/link';
 import { FeedView } from '@/components/feed-view';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger, 
+  DropdownMenuSeparator,
+  DropdownMenuLabel
+} from '@/components/ui/dropdown-menu';
 
 const getInitials = (name: string) => {
     if (!name) return 'U';
@@ -109,7 +115,7 @@ export default function ProjectDetailsPage() {
     <>
       <div className="space-y-8">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex justify-between items-start gap-4">
           <div>
              <Button variant="ghost" size="sm" className="mb-2 -ml-3" onClick={() => router.push('/beranda')}>
               <ArrowLeft className="mr-2" />
@@ -118,62 +124,57 @@ export default function ProjectDetailsPage() {
             <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
             <p className="text-muted-foreground">Manage project members and view its activity feed.</p>
           </div>
-          <div className="flex w-full flex-shrink-0 sm:w-auto gap-2">
-            {isOwner ? (
-              <>
-                <Button onClick={() => setAddMemberOpen(true)} disabled={!(project.isOpen ?? true)}>
-                  <UserPlus className="mr-2" />
-                  Add Member
+          <div className="flex-shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-5 w-5" />
+                  <span className="sr-only">Project Options</span>
                 </Button>
-                <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-                  <Trash2 className="mr-2" />
-                  Delete
-                </Button>
-              </>
-            ) : (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="destructive" size="icon" onClick={() => setLeaveOpen(true)}>
-                      <LogOut className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Leave Project</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {isOwner ? (
+                  <>
+                    <DropdownMenuLabel>Owner Actions</DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={() => setAddMemberOpen(true)} disabled={!(project.isOpen ?? true)}>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      <span>Add Member</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <div className="relative flex items-center select-none rounded-sm px-2 py-1.5 text-sm outline-none">
+                      <Label htmlFor="project-status-switch" className="flex-1 pr-2 cursor-pointer">
+                        Open to Join
+                      </Label>
+                      <Switch
+                        id="project-status-switch"
+                        checked={project.isOpen ?? true}
+                        onCheckedChange={handleStatusChange}
+                        disabled={isUpdatingStatus}
+                        aria-label="Project open for joining switch"
+                      />
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setDeleteOpen(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      <span>Delete Project</span>
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem onSelect={() => setLeaveOpen(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Leave Project</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-
-        {/* Owner Settings */}
-        {isOwner && (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Owner Settings</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center space-x-3">
-                        <Switch
-                            id="project-status-switch"
-                            checked={project.isOpen ?? true}
-                            onCheckedChange={handleStatusChange}
-                            disabled={isUpdatingStatus}
-                            aria-label="Project open for joining switch"
-                        />
-                        <Label htmlFor="project-status-switch" className="flex flex-col">
-                           <span className="font-semibold">{project.isOpen ?? true ? 'Open' : 'Closed'}</span>
-                           <span className="text-xs text-muted-foreground">Allows new members to join this project.</span>
-                        </Label>
-                    </div>
-                </CardContent>
-            </Card>
-        )}
         
         {/* Members Section */}
         <div>
-            <h2 className="text-xl font-semibold mb-4">Members</h2>
+            <h2 className="text-xl font-semibold mb-4">Members ({project.members?.length || 0})</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {project.members?.sort((a,b) => (a.uid === project.ownerUid ? -1 : 1)).map(member => (
                 <Card key={member.uid} className="flex flex-col">
@@ -232,11 +233,11 @@ export default function ProjectDetailsPage() {
         </>
       )}
       
-      {!isOwner && (
+      {!isOwner && project && (
         <LeaveProjectDialog isOpen={isLeaveOpen} onOpenChange={setLeaveOpen} project={project} onSuccess={handleSuccess} />
       )}
 
-      {memberToRemove && (
+      {memberToRemove && project && (
         <RemoveMemberDialog
           isOpen={!!memberToRemove}
           onOpenChange={(open) => !open && setMemberToRemove(null)}
