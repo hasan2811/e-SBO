@@ -2,19 +2,20 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
 import { useProjects } from '@/hooks/use-projects';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LogIn, Folder, AlertCircle } from 'lucide-react';
+import { LogIn, Folder, AlertCircle, FolderPlus } from 'lucide-react';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
+import { CreateProjectDialog } from '@/components/create-project-dialog';
 import { useAuth } from '@/hooks/use-auth';
 
 export default function ProjectHubPage() {
   const { user } = useAuth();
   const { projects, loading, error } = useProjects();
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
+  const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
   
   const isAdmin = user?.uid === 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
 
@@ -28,14 +29,20 @@ export default function ProjectHubPage() {
               {isAdmin ? 'Mengelola semua proyek yang ada.' : 'Kelola atau gabung dengan proyek yang sudah ada di sini.'}
             </p>
           </div>
-          {!isAdmin && (
-            <div className="flex w-full sm:w-auto">
+          <div className="flex w-full sm:w-auto gap-2">
+            {isAdmin && (
+              <Button className="w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)}>
+                <FolderPlus className="mr-2" />
+                Buat Proyek Baru
+              </Button>
+            )}
+            {!isAdmin && (
               <Button variant="outline" className="w-full sm:w-auto" onClick={() => setJoinDialogOpen(true)}>
                 <LogIn className="mr-2" />
                 Gabung Proyek
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {error && (
@@ -87,7 +94,7 @@ export default function ProjectHubPage() {
             <Card className="flex flex-col items-center justify-center p-8 text-center">
               <CardTitle>{isAdmin ? "Tidak Ada Proyek" : "Anda Belum Bergabung dengan Proyek Apapun"}</CardTitle>
               <CardDescription className="mt-2 max-w-sm">
-                {isAdmin ? "Buat proyek baru di Firebase Console untuk memulai." : "Gabung dengan proyek yang sudah ada untuk mulai."}
+                {isAdmin ? "Buat proyek baru untuk memulai." : "Gabung dengan proyek yang sudah ada untuk mulai."}
               </CardDescription>
             </Card>
           ) : null}
@@ -95,6 +102,7 @@ export default function ProjectHubPage() {
       </div>
 
       <JoinProjectDialog isOpen={isJoinDialogOpen} onOpenChange={setJoinDialogOpen} />
+      <CreateProjectDialog isOpen={isCreateDialogOpen} onOpenChange={setCreateDialogOpen} />
     </>
   );
 }
