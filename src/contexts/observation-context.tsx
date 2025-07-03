@@ -31,21 +31,21 @@ interface ObservationContextType {
   projectItems: AllItems[];
   loading: boolean;
   addObservation: (
-    formData: any, // Using any for simplicity as it comes from a form
+    formData: any,
     scope: Scope,
     projectId: string | null
-  ) => Promise<void>;
+  ) => void;
   addInspection: (
     formData: any,
     scope: Scope,
     projectId: string | null
-  ) => Promise<void>;
+  ) => void;
   addPtw: (
     formData: any,
     scope: Scope,
     projectId: string | null
-  ) => Promise<void>;
-  updateObservation: (observation: Observation, updatedData: Partial<Observation>) => Promise<void>;
+  ) => void;
+  updateObservation: (observation: Observation, actionData: { actionTakenDescription: string; actionTakenPhoto?: File }) => void;
   approvePtw: (
     ptw: Ptw,
     signatureDataUrl: string,
@@ -222,108 +222,177 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }, []);
 
     const addObservation = React.useCallback(async (formData: any, scope: Scope, projectId: string | null) => {
-        if (!user || !userProfile) throw new Error("User not authenticated");
-
-        let photoUrl: string;
-        if (formData.photo) {
-          photoUrl = await uploadFile(formData.photo, 'observations', user.uid, () => {}, projectId);
-        } else {
-          // Use a default placeholder image if no photo is provided.
-          photoUrl = 'https://placehold.co/600x400.png';
-        }
-        
-        const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-        
-        const newObservationData: Omit<Observation, 'id'> = {
-            itemType: 'observation',
-            userId: user.uid,
-            date: new Date().toISOString(),
-            status: 'Pending',
-            submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-            location: formData.location as Location,
-            company: formData.company as Company,
-            category: 'General', // Default, AI will update
-            riskLevel: 'Low', // Default, AI will update
-            findings: formData.findings,
-            recommendation: formData.recommendation || '',
-            photoUrl: photoUrl,
-            referenceId,
-            scope,
-            projectId, // projectId is now a top-level field
-            aiStatus: 'processing',
-            likes: [],
-            likeCount: 0,
-            commentCount: 0,
-            viewCount: 0,
+        if (!user || !userProfile) {
+            toast({ variant: 'destructive', title: 'Not Authenticated', description: 'Anda harus login untuk mengirim.' });
+            return;
         };
 
-        const docRef = await addDoc(collection(db, 'observations'), newObservationData);
-        
-        const fullItemData = { ...newObservationData, id: docRef.id };
-        _runObservationAiAnalysis(fullItemData);
+        try {
+            let photoUrl: string;
+            if (formData.photo) {
+              photoUrl = await uploadFile(formData.photo, 'observations', user.uid, () => {}, projectId);
+            } else {
+              photoUrl = 'https://placehold.co/600x400.png';
+            }
+            
+            const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+            
+            const newObservationData: Omit<Observation, 'id'> = {
+                itemType: 'observation',
+                userId: user.uid,
+                date: new Date().toISOString(),
+                status: 'Pending',
+                submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+                location: formData.location as Location,
+                company: formData.company as Company,
+                category: 'General', // Default, AI will update
+                riskLevel: 'Low', // Default, AI will update
+                findings: formData.findings,
+                recommendation: formData.recommendation || '',
+                photoUrl: photoUrl,
+                referenceId,
+                scope,
+                projectId, // projectId is now a top-level field
+                aiStatus: 'processing',
+                likes: [],
+                likeCount: 0,
+                commentCount: 0,
+                viewCount: 0,
+            };
+    
+            const docRef = await addDoc(collection(db, 'observations'), newObservationData);
+            
+            const fullItemData = { ...newObservationData, id: docRef.id };
+            _runObservationAiAnalysis(fullItemData);
+            
+            toast({ title: 'Sukses!', description: 'Laporan observasi baru berhasil disimpan.' });
 
+        } catch (error) {
+            console.error("Submission failed: ", error);
+            toast({
+                variant: 'destructive',
+                title: 'Pengiriman Gagal',
+                description: error instanceof Error ? error.message : 'Tidak dapat menyimpan observasi.',
+            });
+        }
     }, [user, userProfile, _runObservationAiAnalysis]);
     
     const addInspection = React.useCallback(async (formData: any, scope: Scope, projectId: string | null) => {
-        if (!user || !userProfile) throw new Error("User not authenticated");
-        
-        const photoUrl = await uploadFile(formData.photo, 'inspections', user.uid, () => {}, projectId);
-        const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        if (!user || !userProfile) {
+            toast({ variant: 'destructive', title: 'Not Authenticated', description: 'Anda harus login untuk mengirim.' });
+            return;
+        }
 
-        const newInspectionData: Omit<Inspection, 'id'> = {
-            itemType: 'inspection',
-            userId: user.uid,
-            date: new Date().toISOString(),
-            submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-            location: formData.location,
-            equipmentName: formData.equipmentName,
-            equipmentType: formData.equipmentType,
-            status: formData.status,
-            findings: formData.findings,
-            recommendation: formData.recommendation,
-            photoUrl: photoUrl,
-            referenceId,
-            scope,
-            projectId,
-            aiStatus: 'processing',
-        };
+        try {
+            const photoUrl = await uploadFile(formData.photo, 'inspections', user.uid, () => {}, projectId);
+            const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    
+            const newInspectionData: Omit<Inspection, 'id'> = {
+                itemType: 'inspection',
+                userId: user.uid,
+                date: new Date().toISOString(),
+                submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+                location: formData.location,
+                equipmentName: formData.equipmentName,
+                equipmentType: formData.equipmentType,
+                status: formData.status,
+                findings: formData.findings,
+                recommendation: formData.recommendation,
+                photoUrl: photoUrl,
+                referenceId,
+                scope,
+                projectId,
+                aiStatus: 'processing',
+            };
+    
+            const docRef = await addDoc(collection(db, 'inspections'), newInspectionData);
+    
+            const fullItemData = { ...newInspectionData, id: docRef.id };
+            _runInspectionAiAnalysis(fullItemData);
+            
+            toast({ title: 'Sukses!', description: 'Laporan inspeksi baru berhasil disimpan.' });
 
-        const docRef = await addDoc(collection(db, 'inspections'), newInspectionData);
-
-        const fullItemData = { ...newInspectionData, id: docRef.id };
-        _runInspectionAiAnalysis(fullItemData);
-
+        } catch (error) {
+            console.error("Submission failed: ", error);
+            toast({ variant: 'destructive', title: 'Pengiriman Gagal', description: error instanceof Error ? error.message : 'Tidak dapat menyimpan laporan.' });
+        }
     }, [user, userProfile, _runInspectionAiAnalysis]);
 
     const addPtw = React.useCallback(async (formData: any, scope: Scope, projectId: string | null) => {
-        if (!user || !userProfile) throw new Error("User not authenticated");
+        if (!user || !userProfile) {
+            toast({ variant: 'destructive', title: 'Not Authenticated', description: 'Anda harus login untuk mengirim.' });
+            return;
+        }
 
-        const jsaPdfUrl = await uploadFile(formData.jsaPdf, 'ptw-jsa', user.uid, () => {}, projectId);
-        const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        try {
+            const jsaPdfUrl = await uploadFile(formData.jsaPdf, 'ptw-jsa', user.uid, () => {}, projectId);
+            const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    
+            const newPtwData: Omit<Ptw, 'id'> = {
+                itemType: 'ptw',
+                userId: user.uid,
+                date: new Date().toISOString(),
+                submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+                location: formData.location,
+                workDescription: formData.workDescription,
+                contractor: formData.contractor,
+                jsaPdfUrl,
+                status: 'Pending Approval',
+                referenceId,
+                scope,
+                projectId,
+            };
+    
+            await addDoc(collection(db, 'ptws'), newPtwData);
+            toast({ title: 'Sukses!', description: 'Permit to Work baru berhasil diajukan.' });
 
-        const newPtwData: Omit<Ptw, 'id'> = {
-            itemType: 'ptw',
-            userId: user.uid,
-            date: new Date().toISOString(),
-            submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-            location: formData.location,
-            workDescription: formData.workDescription,
-            contractor: formData.contractor,
-            jsaPdfUrl,
-            status: 'Pending Approval',
-            referenceId,
-            scope,
-            projectId,
-        };
-
-        await addDoc(collection(db, 'ptws'), newPtwData);
-        
+        } catch (error) {
+            console.error("Submission failed: ", error);
+            toast({ variant: 'destructive', title: 'Pengajuan Gagal', description: error instanceof Error ? error.message : 'Tidak dapat menyimpan PTW.' });
+        }
     }, [user, userProfile]);
 
-    const updateObservation = React.useCallback(async (observation: Observation, updatedData: Partial<Observation>) => {
-        const observationDocRef = getDocRef(observation);
-        await updateDoc(observationDocRef, updatedData);
-    }, []);
+    const updateObservation = React.useCallback(async (
+        observation: Observation, 
+        actionData: { actionTakenDescription: string, actionTakenPhoto?: File }
+    ) => {
+        if (!user || !userProfile) {
+            toast({ variant: 'destructive', title: 'Not Authenticated', description: 'Anda harus login.' });
+            return;
+        }
+        try {
+            const closerName = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
+    
+            const updatedData: Partial<Observation> = {
+                status: 'Completed',
+                actionTakenDescription: actionData.actionTakenDescription,
+                closedBy: closerName,
+                closedDate: new Date().toISOString(),
+            };
+            
+            if (actionData.actionTakenPhoto) {
+                const file = actionData.actionTakenPhoto;
+                const actionTakenPhotoUrl = await uploadFile(file, 'actions', user.uid, () => {}, observation.projectId);
+                updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
+            }
+    
+            const observationDocRef = getDocRef(observation);
+            await updateDoc(observationDocRef, updatedData);
+            
+            toast({
+                title: 'Sukses!',
+                description: `Observasi ${observation.referenceId || observation.id} telah ditandai selesai.`,
+            });
+    
+        } catch (error) {
+            console.error("Failed to update observation: ", error);
+            toast({
+                variant: 'destructive',
+                title: 'Update Gagal',
+                description: error instanceof Error ? error.message : 'Tidak dapat memperbarui observasi.',
+            });
+        }
+    }, [user, userProfile]);
 
     const approvePtw = React.useCallback(async (ptw: Ptw, signatureDataUrl: string, approver: string) => {
         const ptwDocRef = getDocRef(ptw);

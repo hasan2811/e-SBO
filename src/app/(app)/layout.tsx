@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -72,25 +73,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const showMultiActionButton = pathname.startsWith('/proyek/') || pathname === '/private';
   
   // These handlers now parse the projectId directly from the pathname to avoid race conditions
-  const handleAddObservation = async (formData: any) => {
+  const handleAddObservation = (formData: any) => {
     const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
     const submissionProjectId = match ? match[1] : null;
     const scope: Scope = submissionProjectId ? 'project' : 'private';
-    await addObservation(formData, scope, submissionProjectId);
+    addObservation(formData, scope, submissionProjectId);
   };
 
-  const handleAddInspection = async (formData: any) => {
+  const handleAddInspection = (formData: any) => {
     const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
     const submissionProjectId = match ? match[1] : null;
     const scope: Scope = submissionProjectId ? 'project' : 'private';
-    await addInspection(formData, scope, submissionProjectId);
+    addInspection(formData, scope, submissionProjectId);
   };
 
-  const handleAddPtw = async (formData: any) => {
+  const handleAddPtw = (formData: any) => {
     const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
     const submissionProjectId = match ? match[1] : null;
     const scope: Scope = submissionProjectId ? 'project' : 'private';
-    await addPtw(formData, scope, submissionProjectId);
+    addPtw(formData, scope, submissionProjectId);
   };
 
 

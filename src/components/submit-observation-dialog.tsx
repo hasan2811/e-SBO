@@ -38,18 +38,16 @@ type FormValues = z.infer<typeof formSchema>;
 interface SubmitObservationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddObservation: (observation: FormValues) => Promise<void>;
+  onAddObservation: (observation: FormValues) => void;
 }
 
 export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation }: SubmitObservationDialogProps) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   
-
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -99,32 +97,19 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     }
   };
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = (values: FormValues) => {
     if (!user || !userProfile) {
       toast({ variant: 'destructive', title: 'Belum Terautentikasi', description: 'Anda harus login untuk mengirim.' });
       return;
     }
 
-    setIsSubmitting(true);
+    onAddObservation(values);
 
-    try {
-      await onAddObservation(values);
-
-      toast({
-        title: 'Sukses!',
-        description: `Laporan observasi baru berhasil dikirim.`,
-      });
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Submission failed: ", error);
-      toast({
-        variant: 'destructive',
-        title: 'Pengiriman Gagal',
-        description: error instanceof Error ? error.message : 'Tidak dapat menyimpan observasi.',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    toast({
+      title: 'Laporan Terkirim',
+      description: `Observasi Anda sedang diproses di latar belakang.`,
+    });
+    onOpenChange(false);
   };
   
   const renderSelectItems = (items: readonly string[]) => {
@@ -161,7 +146,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                         className="hidden"
                         ref={fileInputRef}
                         onChange={handlePhotoChange}
-                        disabled={isSubmitting}
                       />
                     </FormControl>
                     <Button
@@ -169,7 +153,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                       variant="outline"
                       className="w-full"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={isSubmitting}
                     >
                       <Upload className="mr-2 h-4 w-4" />
                       {photoPreview ? 'Ganti Foto' : 'Pilih Foto'}
@@ -253,12 +236,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
 
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
-            <Button type="submit" form={formId} disabled={isSubmitting || !form.formState.isValid}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSubmitting ? 'Mengirim...' : 'Kirim Laporan'}
+            <Button type="submit" form={formId} disabled={!form.formState.isValid}>
+              Kirim Laporan
             </Button>
           </div>
         </DialogFooter>

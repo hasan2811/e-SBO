@@ -41,11 +41,10 @@ type FormValues = z.infer<typeof formSchema>;
 interface SubmitInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddInspection: (inspection: FormValues) => Promise<void>;
+  onAddInspection: (inspection: FormValues) => void;
 }
 
 export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }: SubmitInspectionDialogProps) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
@@ -97,25 +96,17 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
     }
   };
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = (values: FormValues) => {
     if (!user || !userProfile) return;
     if (!values.photo) {
       toast({ variant: 'destructive', title: 'Foto Wajib', description: 'Silakan unggah foto temuan.' });
       return;
     }
 
-    setIsSubmitting(true);
+    onAddInspection(values);
 
-    try {
-      await onAddInspection(values);
-      toast({ title: 'Sukses!', description: `Laporan inspeksi baru berhasil dikirim.` });
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Submission failed: ", error);
-      toast({ variant: 'destructive', title: 'Pengiriman Gagal', description: error instanceof Error ? error.message : 'Tidak dapat menyimpan laporan.' });
-    } finally {
-      setIsSubmitting(false);
-    }
+    toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda sedang diproses.` });
+    onOpenChange(false);
   };
   
   const renderSelectItems = (items: readonly string[]) => items.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>);
@@ -153,9 +144,9 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
               <FormField name="photo" control={form.control} render={() => (
                 <FormItem><FormLabel>Unggah Foto</FormLabel>
                   <FormControl>
-                    <Input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handlePhotoChange} disabled={isSubmitting} />
+                    <Input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handlePhotoChange} />
                   </FormControl>
-                  <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting}>
+                  <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
                     <Upload className="mr-2 h-4 w-4" />{photoPreview ? 'Ganti Foto' : 'Pilih Foto'}
                   </Button>
                   {photoPreview && <div className="mt-2 relative w-full h-48 rounded-md overflow-hidden border"><Image src={photoPreview} alt="Pratinjau" fill sizes="100vw" className="object-cover" /></div>}
@@ -166,11 +157,10 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
           </Form>
         </div>
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
-          {/* Progress bar is now handled by the context */}
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Batal</Button>
-            <Button type="submit" form={formId} disabled={isSubmitting || !form.formState.isValid}>
-              {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Mengirim...</> : 'Kirim Laporan'}
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Batal</Button>
+            <Button type="submit" form={formId} disabled={!form.formState.isValid}>
+              Kirim Laporan
             </Button>
           </div>
         </DialogFooter>

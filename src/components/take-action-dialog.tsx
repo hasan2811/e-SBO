@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -7,7 +8,6 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, ListChecks } from 'lucide-react';
 
-import { uploadFile } from '@/lib/storage';
 import type { Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -31,7 +31,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 
@@ -49,7 +48,7 @@ interface TakeActionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   observation?: Observation;
-  onUpdate: (data: Partial<Observation>) => Promise<void>;
+  onUpdate: (data: FormValues) => void;
 }
 
 export function TakeActionDialog({
@@ -58,11 +57,9 @@ export function TakeActionDialog({
   observation,
   onUpdate,
 }: TakeActionDialogProps) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const { toast } = useToast();
-  const { user, userProfile } = useAuth();
+  const { user } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
 
@@ -101,7 +98,6 @@ export function TakeActionDialog({
     if (!open) {
       form.reset();
       setPhotoPreview(null);
-      setUploadProgress(null);
       setCheckedActions([]);
       userHasTyped.current = false;
       if (fileInputRef.current) {
@@ -132,56 +128,23 @@ export function TakeActionDialog({
     }
   };
   
-  // This is the critical guard clause. If observation doesn't exist, don't render the dialog.
   if (!observation) {
     return null;
   }
 
-  const onSubmit = async (values: FormValues) => {
-    if (!user || !userProfile) {
+  const onSubmit = (values: FormValues) => {
+    if (!user) {
         toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to update an observation.' });
         return;
     }
-    setIsSubmitting(true);
-    setUploadProgress(null);
     
-    try {
-        const closerName = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
-
-        const updatedData: Partial<Observation> = {
-            status: 'Completed',
-            actionTakenDescription: values.actionTakenDescription,
-            closedBy: closerName,
-            closedDate: new Date().toISOString(),
-        };
+    onUpdate(values);
         
-        if (values.actionTakenPhoto) {
-            const file = values.actionTakenPhoto as File;
-            setUploadProgress(0);
-            // This is the fix: pass the observation's projectId to uploadFile
-            const actionTakenPhotoUrl = await uploadFile(file, 'actions', user.uid, setUploadProgress, observation.projectId);
-            updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
-        }
-
-        await onUpdate(updatedData);
-        
-        toast({
-            title: 'Success!',
-            description: `Observation ${observation.referenceId || observation.id} has been marked as completed.`,
-        });
-        handleOpenChange(false);
-
-    } catch (error) {
-        console.error("Failed to update observation: ", error);
-        toast({
-            variant: 'destructive',
-            title: 'Update Failed',
-            description: error instanceof Error ? error.message : 'Could not update the observation. Please try again.',
-        });
-    } finally {
-        setIsSubmitting(false);
-        setUploadProgress(null);
-    }
+    toast({
+        title: 'Tindakan Disimpan',
+        description: `Status laporan ${observation.referenceId || observation.id} sedang diperbarui.`,
+    });
+    handleOpenChange(false);
   };
 
   return (
@@ -263,14 +226,12 @@ export function TakeActionDialog({
                             className="hidden"
                             ref={fileInputRef}
                             onChange={handlePhotoChange}
-                            disabled={isSubmitting}
                           />
                           <Button
                             type="button"
                             variant="outline"
                             className="w-full"
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={isSubmitting}
                           >
                             <Upload className="mr-2 h-4 w-4" />
                             {photoPreview ? 'Change Photo' : 'Select Photo'}
@@ -291,19 +252,12 @@ export function TakeActionDialog({
         </div>
 
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2 flex-shrink-0">
-          {isSubmitting && uploadProgress !== null && (
-            <div className="w-full">
-              <Progress value={uploadProgress} />
-              <p className="text-center text-xs mt-1 text-muted-foreground">Uploading: {Math.round(uploadProgress)}%</p>
-            </div>
-          )}
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
+            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" form={formId} disabled={isSubmitting || !form.formState.isValid || form.getValues('actionTakenDescription').length === 0}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSubmitting ? 'Submitting...' : 'Mark as Completed'}
+            <Button type="submit" form={formId} disabled={!form.formState.isValid || form.getValues('actionTakenDescription').length === 0}>
+              Mark as Completed
             </Button>
           </div>
         </DialogFooter>

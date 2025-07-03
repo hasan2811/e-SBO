@@ -35,11 +35,10 @@ type FormValues = z.infer<typeof formSchema>;
 interface SubmitPtwDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddPtw: (ptw: FormValues) => Promise<void>;
+  onAddPtw: (ptw: FormValues) => void;
 }
 
 export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDialogProps) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [fileName, setFileName] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
@@ -83,25 +82,16 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
     }
   };
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = (values: FormValues) => {
     if (!user || !userProfile) return;
     if (!values.jsaPdf) {
       toast({ variant: 'destructive', title: 'PDF Wajib', description: 'Silakan unggah file JSA.' });
       return;
     }
 
-    setIsSubmitting(true);
-    
-    try {
-      await onAddPtw(values);
-      toast({ title: 'Sukses!', description: `Permit to Work baru berhasil diajukan.` });
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Submission failed: ", error);
-      toast({ variant: 'destructive', title: 'Pengajuan Gagal', description: error instanceof Error ? error.message : 'Tidak dapat menyimpan PTW.' });
-    } finally {
-      setIsSubmitting(false);
-    }
+    onAddPtw(values);
+    toast({ title: 'PTW Diajukan', description: `Izin kerja Anda sedang diproses.` });
+    onOpenChange(false);
   };
 
   return (
@@ -128,9 +118,9 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
               <FormField name="jsaPdf" control={form.control} render={() => (
                 <FormItem><FormLabel>Unggah JSA (PDF)</FormLabel>
                   <FormControl>
-                    <Input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} disabled={isSubmitting} />
+                    <Input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
                   </FormControl>
-                  <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting}>
+                  <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
                     <Upload className="mr-2 h-4 w-4" />{fileName ? 'Ganti File' : 'Pilih File PDF'}
                   </Button>
                   {fileName && <div className="mt-2 text-sm text-muted-foreground flex items-center gap-2"><FileText className="h-4 w-4" /><span>{fileName}</span></div>}
@@ -141,11 +131,10 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
           </Form>
         </div>
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
-           {/* Progress bar is now handled by the context */}
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Batal</Button>
-            <Button type="submit" form={formId} disabled={isSubmitting || !form.formState.isValid}>
-              {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Mengajukan...</> : 'Ajukan PTW'}
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Batal</Button>
+            <Button type="submit" form={formId} disabled={!form.formState.isValid}>
+              Ajukan PTW
             </Button>
           </div>
         </DialogFooter>
