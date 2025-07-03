@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -159,7 +158,8 @@ export function TakeActionDialog({
         if (values.actionTakenPhoto) {
             const file = values.actionTakenPhoto as File;
             setUploadProgress(0);
-            const actionTakenPhotoUrl = await uploadFile(file, 'actions', user.uid, setUploadProgress);
+            // This is the fix: pass the observation's projectId to uploadFile
+            const actionTakenPhotoUrl = await uploadFile(file, 'actions', user.uid, setUploadProgress, observation.projectId);
             updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
         }
 
