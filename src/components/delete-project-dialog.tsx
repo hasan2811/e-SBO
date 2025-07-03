@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { doc, deleteDoc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface DeleteProjectDialogProps {
@@ -51,7 +51,7 @@ export function DeleteProjectDialog({
     try {
       const projectRef = doc(db, 'projects', project.id);
       
-      // Client-side check to ensure only the owner can delete
+      // Verify ownership before proceeding
       const projectSnap = await getDoc(projectRef);
       if (!projectSnap.exists() || projectSnap.data()?.ownerUid !== user.uid) {
         toast({ variant: 'destructive', title: 'Permission Denied', description: 'Only the project owner can delete the project.' });
@@ -59,19 +59,40 @@ export function DeleteProjectDialog({
         return;
       }
       
-      await deleteDoc(projectRef);
+      const batch = writeBatch(db);
+
+      // 1. Find and queue deletion for all associated items (observations, inspections, ptws)
+      const itemTypes = ['observations', 'inspections', 'ptws'];
+      for (const itemType of itemTypes) {
+        const q = query(collection(db, itemType), where("projectId", "==", project.id));
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+      }
+      
+      // 2. Queue deletion for the project document itself
+      batch.delete(projectRef);
+      
+      // Note: We are not removing the projectId from users' profiles here.
+      // This would require many individual reads and writes, which is not suitable for a client-side batch operation.
+      // Leaving the dangling projectId is a safe trade-off as it won't break the app.
+
+      // Commit the batch
+      await batch.commit();
 
       toast({
         title: 'Project Deleted',
-        description: `Project "${project.name}" has been successfully deleted.`,
+        description: `Project "${project.name}" and all its contents have been successfully deleted.`,
       });
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
+      console.error("Error deleting project:", error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'An unexpected error occurred while deleting the project.',
+        description: 'An unexpected error occurred while deleting the project and its contents.',
       });
     } finally {
       setIsDeleting(false);
@@ -85,7 +106,7 @@ export function DeleteProjectDialog({
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone. This will permanently delete the project{' '}
-            <span className="font-bold">"{project?.name}"</span>. Note: This action does not delete associated reports, which will need to be managed separately.
+            <span className="font-bold">"{project?.name}"</span> AND ALL of its associated reports (observations, inspections, and PTWs).
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -100,7 +121,7 @@ export function DeleteProjectDialog({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            Yes, delete project
+            Yes, delete everything
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
