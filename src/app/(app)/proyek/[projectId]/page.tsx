@@ -137,7 +137,7 @@ export default function ProjectDetailsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                {isOwner ? (
+                {isOwner && (
                   <>
                     <DropdownMenuLabel>Owner Actions</DropdownMenuLabel>
                     <DropdownMenuItem onSelect={() => setAddMemberOpen(true)} disabled={!(project.isOpen ?? true)}>
@@ -163,8 +163,10 @@ export default function ProjectDetailsPage() {
                       <span>Delete Project</span>
                     </DropdownMenuItem>
                   </>
-                ) : (
+                )}
+                {!isOwner && (
                   <>
+                    <DropdownMenuLabel>Member Actions</DropdownMenuLabel>
                     <DropdownMenuItem onSelect={() => setLeaveOpen(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Leave Project</span>
