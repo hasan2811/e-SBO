@@ -1,31 +1,27 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Loader2, LogIn } from 'lucide-react';
+import { Loader2, LogIn, User, Folder } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import type { Project, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { doc, runTransaction, arrayUnion, getDoc } from 'firebase/firestore';
+import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 
-const formSchema = z.object({
-  projectId: z.string().trim().min(1, { message: 'Project ID tidak boleh kosong.' }),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+interface JoinableProject extends Project {
+  owner: UserProfile | null;
+}
 
 interface JoinProjectDialogProps {
   isOpen: boolean;
@@ -35,30 +31,56 @@ interface JoinProjectDialogProps {
 export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogProps) {
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
-  const [isJoining, setIsJoining] = React.useState(false);
-  const formId = React.useId();
+  const [loadingProjects, setLoadingProjects] = React.useState(true);
+  const [joiningProjectId, setJoiningProjectId] = React.useState<string | null>(null);
+  const [joinableProjects, setJoinableProjects] = React.useState<JoinableProject[]>([]);
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      projectId: '',
-    },
-  });
+  React.useEffect(() => {
+    if (isOpen && user && userProfile) {
+      const fetchJoinableProjects = async () => {
+        setLoadingProjects(true);
+        try {
+          const projectsQuery = query(collection(db, 'projects'));
+          const projectsSnapshot = await getDocs(projectsQuery);
+          const allProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
 
-  const onJoin = async (values: FormValues) => {
+          const userProjectIds = userProfile.projectIds || [];
+          const projectsToFetch = allProjects.filter(p => !userProjectIds.includes(p.id));
+
+          const projectsWithOwners = await Promise.all(
+            projectsToFetch.map(async project => {
+              let owner: UserProfile | null = null;
+              if (project.ownerUid) {
+                const userDocRef = doc(db, 'users', project.ownerUid);
+                const userDocSnap = await getDoc(userDocRef);
+                if (userDocSnap.exists()) {
+                  owner = userDocSnap.data() as UserProfile;
+                }
+              }
+              return { ...project, owner };
+            })
+          );
+
+          setJoinableProjects(projectsWithOwners);
+        } catch (error) {
+          console.error("Failed to fetch joinable projects:", error);
+          toast({ variant: 'destructive', title: 'Gagal Memuat Proyek', description: 'Tidak dapat mengambil daftar proyek yang tersedia.' });
+        } finally {
+          setLoadingProjects(false);
+        }
+      };
+
+      fetchJoinableProjects();
+    }
+  }, [isOpen, user, userProfile, toast]);
+
+  const onJoin = async (projectId: string) => {
     if (!user || !userProfile) {
       toast({ variant: 'destructive', title: 'Authentication Error' });
       return;
     }
 
-    const projectId = values.projectId.trim();
-
-    if (userProfile.projectIds?.includes(projectId)) {
-      toast({ variant: 'default', title: 'Sudah menjadi anggota', description: 'Anda sudah menjadi anggota proyek ini.' });
-      return;
-    }
-
-    setIsJoining(true);
+    setJoiningProjectId(projectId);
     try {
       const projectRef = doc(db, 'projects', projectId);
       const userRef = doc(db, 'users', user.uid);
@@ -80,62 +102,88 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
       });
       
       toast({ title: 'Sukses!', description: `Berhasil bergabung dengan proyek!` });
-      onOpenChange(false);
+      onOpenChange(false); // Close dialog on success
     } catch (error: any) {
       let description = 'Terjadi kesalahan tak terduga.';
       if (error.message === 'Project not found') {
-        description = 'Proyek dengan ID tersebut tidak ditemukan. Periksa kembali ID yang Anda masukkan.';
+        description = 'Proyek dengan ID tersebut tidak ditemukan.';
       }
-      toast({ variant: 'destructive', title: 'Gagal Bergabung dengan Proyek', description });
+      toast({ variant: 'destructive', title: 'Gagal Bergabung', description });
     } finally {
-      setIsJoining(false);
+      setJoiningProjectId(null);
     }
   };
-  
-  React.useEffect(() => {
-    if (!isOpen) {
-      form.reset();
-    }
-  }, [isOpen, form]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <LogIn className="h-5 w-5" />
             Gabung dengan Proyek
           </DialogTitle>
           <DialogDescription>
-            Masukkan ID Proyek yang diberikan oleh pemilik proyek untuk bergabung.
+            Pilih proyek dari daftar di bawah ini untuk bergabung.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form id={formId} onSubmit={form.handleSubmit(onJoin)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="projectId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Project ID</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Contoh: a1b2c3d4e5f6g7h8i9j0" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+        <div className="py-4 max-h-[60vh]">
+          <ScrollArea className="h-full pr-4">
+            <div className="space-y-4">
+              {loadingProjects ? (
+                // Skeleton Loader
+                Array.from({ length: 3 }).map((_, index) => (
+                  <Card key={index} className="p-4 space-y-3">
+                    <div className="flex items-center space-x-4">
+                        <Skeleton className="h-8 w-8" />
+                        <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
+                        </div>
+                    </div>
+                     <div className="flex justify-between items-center bg-muted/50 py-3 px-6 -m-4 mt-4">
+                        <Skeleton className="h-4 w-1/3" />
+                        <Skeleton className="h-9 w-20 rounded-md" />
+                    </div>
+                  </Card>
+                ))
+              ) : joinableProjects.length > 0 ? (
+                joinableProjects.map((project) => (
+                  <Card key={project.id}>
+                    <CardHeader>
+                        <div className="flex items-start gap-4">
+                            <Folder className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
+                            <div>
+                                <CardTitle>{project.name}</CardTitle>
+                                <CardDescription>Proyek yang tersedia untuk diikuti</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <User className="h-4 w-4" />
+                            <span className="font-medium">Pemilik: {project.owner?.displayName || 'Tidak Diketahui'}</span>
+                        </div>
+                        <Button
+                            size="sm"
+                            onClick={() => onJoin(project.id)}
+                            disabled={!!joiningProjectId}
+                        >
+                            {joiningProjectId === project.id ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : null}
+                            Gabung
+                        </Button>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-10">
+                  <p className="text-muted-foreground">Tidak ada proyek lain yang tersedia untuk diikuti.</p>
+                </div>
               )}
-            />
-          </form>
-        </Form>
-        <DialogFooter>
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isJoining}>
-            Batal
-          </Button>
-          <Button type="submit" form={formId} disabled={isJoining || !form.formState.isValid}>
-            {isJoining && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Gabung
-          </Button>
-        </DialogFooter>
+            </div>
+          </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
