@@ -7,6 +7,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import {z} from 'genkit';
 import {
     AnalyzeDashboardDataInput,
     AnalyzeDashboardDataInputSchema,
@@ -15,10 +16,20 @@ import {
 } from '@/lib/types';
 
 
+// New schema for the prompt itself, where complex objects are pre-stringified.
+const AnalyzeDashboardPromptInputSchema = z.object({
+  totalObservations: z.number(),
+  pendingPercentage: z.number(),
+  criticalPercentage: z.number(),
+  riskDistribution: z.string().describe("A JSON string representing the risk distribution."),
+  companyDistribution: z.string().describe("A JSON string representing the company observation distribution."),
+  dailyTrend: z.string().describe("A JSON string representing the daily observation trend for the last 7 days."),
+});
+
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
     model: 'googleai/gemini-2.0-flash',
-    input: { schema: AnalyzeDashboardDataInputSchema },
+    input: { schema: AnalyzeDashboardPromptInputSchema },
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
         safetySettings: [
@@ -32,9 +43,9 @@ Analyze the following data points:
 - Total Observations: {{totalObservations}}
 - Percentage of Pending Observations: {{pendingPercentage}}%
 - Percentage of Critical Risk Observations: {{criticalPercentage}}%
-- Risk Level Distribution: {{jsonStringify riskDistribution}}
-- Observations by Company: {{jsonStringify companyDistribution}}
-- Daily Trend (Last 7 Days): {{jsonStringify dailyTrend}}
+- Risk Level Distribution: {{{riskDistribution}}}
+- Observations by Company: {{{companyDistribution}}}
+- Daily Trend (Last 7 Days): {{{dailyTrend}}}
 
 Based on this data, provide the following insights in Bahasa Indonesia. Each point should be a bullet point starting with a hyphen (-).
 
@@ -50,7 +61,14 @@ const analyzeDashboardDataFlow = ai.defineFlow(
     outputSchema: AnalyzeDashboardDataOutputSchema,
   },
   async (input) => {
-    const response = await analyzeDashboardPrompt(input);
+    const promptInput = {
+        ...input,
+        riskDistribution: JSON.stringify(input.riskDistribution),
+        companyDistribution: JSON.stringify(input.companyDistribution),
+        dailyTrend: JSON.stringify(input.dailyTrend),
+    };
+    
+    const response = await analyzeDashboardPrompt(promptInput);
     const output = response.output;
 
     if (!output) {
