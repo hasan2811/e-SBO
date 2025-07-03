@@ -224,9 +224,12 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const addObservation = React.useCallback(async (formData: any, scope: Scope, projectId: string | null) => {
         if (!user || !userProfile) throw new Error("User not authenticated");
 
-        let photoUrl: string | undefined;
+        let photoUrl: string;
         if (formData.photo) {
           photoUrl = await uploadFile(formData.photo, 'observations', user.uid, () => {}, projectId);
+        } else {
+          // Use a default placeholder image if no photo is provided.
+          photoUrl = 'https://placehold.co/600x400.png';
         }
         
         const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
