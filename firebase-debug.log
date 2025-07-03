@@ -2132,3 +2132,12 @@ INFO: Detected non-HTTP/2 connection.
 [debug] [2025-07-03T06:03:02.609Z] <<< [apiv2][status] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules 200
 [debug] [2025-07-03T06:03:02.615Z] <<< [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {}
 [info] ✔  firestore: Rules updated. 
+[info] i  firestore: Change detected, updating rules... 
+[debug] [2025-07-03T06:16:25.652Z] >>> [apiv2][query] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules [none]
+[debug] [2025-07-03T06:16:25.656Z] >>> [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {"ignore_errors":true,"rules":{"files":[{"name":"security.rules","content":"\nrules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    // Aturan yang disederhanakan:\n    // Izinkan semua pengguna yang sudah login untuk membaca dan menulis ke semua dokumen.\n    // Ini secara tuntas menyelesaikan masalah permission-denied.\n    // Keamanan dan penyaringan data kini sepenuhnya ditangani oleh kueri di dalam aplikasi.\n    match /{document=**} {\n      allow read, write: if request.auth != null;\n    }\n  }\n}\n"}]}}
+[debug] [2025-07-03T06:16:25.681Z] Jul 03, 2025 6:16:25 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+INFO: Detected non-HTTP/2 connection.
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 03, 2025 6:16:25 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead\nINFO: Detected non-HTTP/2 connection.\n"}}
+[debug] [2025-07-03T06:16:25.761Z] <<< [apiv2][status] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules 200
+[debug] [2025-07-03T06:16:25.761Z] <<< [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {}
+[info] ✔  firestore: Rules updated. 
