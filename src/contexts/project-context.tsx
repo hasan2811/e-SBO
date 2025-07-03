@@ -2,10 +2,10 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, query, onSnapshot, Unsubscribe, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
-import type { Project } from '@/lib/types';
+import type { Project, UserProfile } from '@/lib/types';
 
 interface ProjectContextType {
   projects: Project[];
@@ -22,7 +22,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     let unsubscribe: Unsubscribe = () => {};
 
-    // Do not fetch if auth is still loading or if there's no user
     if (authLoading || !user) {
       setProjects([]);
       setLoading(false);
@@ -32,32 +31,48 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
 
     const projectsCollection = collection(db, 'projects');
-    // Simplified query: Always fetch ALL projects. Filtering will be done on the client.
-    // This avoids complex query/security rule conflicts.
     const q = query(projectsCollection);
 
-    unsubscribe = onSnapshot(q, (snapshot) => {
+    unsubscribe = onSnapshot(q, async (snapshot) => {
       const allProjects = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Project[];
 
-      // Client-side filtering logic:
       const userProjects = isAdmin
-        ? allProjects // Admin sees all projects
+        ? allProjects
         : allProjects.filter(p => p.memberUids && p.memberUids.includes(user.uid));
 
-      // Sort projects by creation date, newest first
-      setProjects(userProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      // Enrich projects with full member and owner profiles
+      const enrichedProjects = await Promise.all(
+        userProjects.map(async (project) => {
+          const memberProfiles: UserProfile[] = [];
+          if (project.memberUids && project.memberUids.length > 0) {
+            const memberDocs = await Promise.all(
+              project.memberUids.map(uid => getDoc(doc(db, 'users', uid)))
+            );
+            memberDocs.forEach(docSnap => {
+              if (docSnap.exists()) {
+                memberProfiles.push(docSnap.data() as UserProfile);
+              }
+            });
+          }
+          
+          const ownerProfile = memberProfiles.find(m => m.uid === project.ownerUid);
+          
+          return { ...project, members: memberProfiles, owner: ownerProfile };
+        })
+      );
+
+
+      setProjects(enrichedProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       setLoading(false);
     }, (error) => {
-      // This error block is hit when security rules reject the query.
-      console.error("Error fetching projects (check Firestore security rules):", error);
+      console.error("Error fetching projects:", error);
       setProjects([]);
       setLoading(false);
     });
 
-    // Cleanup the listener when the component unmounts or dependencies change
     return () => unsubscribe();
   }, [user, isAdmin, authLoading]);
 

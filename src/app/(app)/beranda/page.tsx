@@ -2,30 +2,20 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useProjects } from '@/hooks/use-projects';
-import { Card, CardDescription, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LogIn, Folder, AlertCircle, FolderPlus, Copy, User } from 'lucide-react';
+import { LogIn, Folder, AlertCircle, FolderPlus, Users } from 'lucide-react';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
 
 export default function ProjectHubPage() {
-  const { user } = useAuth();
   const { projects, loading, error } = useProjects();
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
   const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
-  const { toast } = useToast();
-
-  const handleCopyId = (projectId: string) => {
-    navigator.clipboard.writeText(projectId);
-    toast({
-      title: 'Project ID Copied!',
-      description: `ID ${projectId} has been copied to your clipboard.`,
-    });
-  };
   
   return (
     <>
@@ -71,39 +61,30 @@ export default function ProjectHubPage() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Proyek Anda</h2>
           {loading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Skeleton className="h-48" />
-              <Skeleton className="h-48" />
-              <Skeleton className="h-48" />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <Skeleton className="h-40" />
+              <Skeleton className="h-40" />
+              <Skeleton className="h-40" />
             </div>
           ) : projects.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {projects.map((project) => (
-                <Card key={project.id} className="h-full flex flex-col">
-                  <CardHeader className="flex-1">
-                    <CardTitle className="flex items-start gap-3">
-                      <Folder className="text-primary mt-1 flex-shrink-0"/> 
-                      <span className="flex-1">{project.name}</span>
-                    </CardTitle>
-                  </CardHeader>
-                   <CardContent className="flex-grow">
-                     <div className="text-sm text-muted-foreground flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        {project.memberUids?.length || 0} anggota
-                     </div>
-                  </CardContent>
-                  <CardFooter className="bg-muted/50 p-3">
-                    <div className="text-xs text-muted-foreground space-y-1 w-full">
-                        <p className="font-semibold">Project ID:</p>
-                        <div className="flex items-center gap-2">
-                          <p className="font-mono text-sm bg-background p-1.5 rounded-md flex-1 truncate">{project.id}</p>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => handleCopyId(project.id)}>
-                              <Copy className="h-4 w-4"/>
-                          </Button>
-                        </div>
-                    </div>
-                  </CardFooter>
-                </Card>
+                <Link key={project.id} href={`/proyek/${project.id}`} className="block h-full">
+                    <Card className="h-full flex flex-col hover:border-primary transition-colors duration-200">
+                        <CardHeader className="flex-1">
+                            <CardTitle className="flex items-start gap-3">
+                                <Folder className="text-primary mt-1 flex-shrink-0"/> 
+                                <span className="flex-1">{project.name}</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex-grow pt-2">
+                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                <Users className="h-4 w-4" />
+                                {project.memberUids?.length || 0} anggota
+                            </div>
+                        </CardContent>
+                    </Card>
+                </Link>
               ))}
             </div>
           ) : !error ? (
