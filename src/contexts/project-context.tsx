@@ -10,7 +10,6 @@ import type { Project } from '@/lib/types';
 interface ProjectContextType {
   projects: Project[];
   loading: boolean;
-  error: string | null;
 }
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -19,60 +18,55 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    let unsubscribe: Unsubscribe | null = null;
-    
+    let unsubscribe: Unsubscribe = () => {};
+
     if (authLoading) {
-      setLoading(true);
+      // Wait for authentication to resolve before doing anything
       return;
     }
 
     if (!user) {
+      // If no user is logged in, there are no projects to fetch.
       setProjects([]);
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setError(null);
-    
-    try {
-      const q = isAdmin 
-        ? query(collection(db, 'projects'))
-        : query(collection(db, 'projects'), where('memberUids', 'array-contains', user.uid));
-      
-      unsubscribe = onSnapshot(q, (snapshot) => {
-        const projectsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Project));
-        setProjects(projectsData);
-        setLoading(false);
-      }, (err) => {
-        console.error("Error fetching projects:", err);
-        if (err.code === 'permission-denied' && err.message.includes('index')) {
-             setError('Database index is being created. Please wait a few minutes and refresh.');
-        } else {
-             setError(err.message);
-        }
-        setLoading(false);
-        setProjects([]);
-      });
 
-    } catch (e: any) {
-        console.error("Error setting up project query:", e);
-        setError(e.message);
-        setLoading(false);
-        setProjects([]);
+    const projectsCollection = collection(db, 'projects');
+    let q;
+
+    if (isAdmin) {
+      // If the user is an admin, fetch all projects.
+      q = query(projectsCollection);
+    } else {
+      // For regular users, fetch only the projects they are a member of.
+      q = query(projectsCollection, where('memberUids', 'array-contains', user.uid));
     }
 
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
+    unsubscribe = onSnapshot(q, (snapshot) => {
+      const projectsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Project[];
+      
+      // Sort projects by creation date, newest first
+      setProjects(projectsData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching projects:", error);
+      setProjects([]);
+      setLoading(false);
+    });
+
+    // Cleanup the listener when the component unmounts or dependencies change
+    return () => unsubscribe();
   }, [user, isAdmin, authLoading]);
 
-  const value = { projects, loading, error };
+  const value = { projects, loading };
 
   return (
     <ProjectContext.Provider value={value}>

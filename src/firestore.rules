@@ -1,42 +1,60 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // Users: Can only read/write their own profile
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
 
-    // Projects: Members can read.
+    // Projects: Secure rules for creation, access, and management
     match /projects/{projectId} {
-      allow read: if resource.data.memberUids.hasAny([request.auth.uid]);
-      allow create: if request.auth.uid != null;
+      // 1. ACCESS: Allow members to get a single project, and logged-in users to list (with secure queries)
+      allow get: if request.auth.uid in resource.data.memberUids;
+      allow list: if request.auth.uid != null;
+
+      // 2. CREATE: Creator must be a member of the new project
+      allow create: if request.auth.uid != null &&
+                      request.auth.uid in request.resource.data.memberUids;
+                      
+      // 3. UPDATE: Only members can update project details (e.g., add new members)
+      allow update: if request.auth.uid in resource.data.memberUids;
       
+      // 4. DELETE: Only the project owner can delete it (assuming you add an 'ownerId' field)
+      allow delete: if request.auth.uid == resource.data.ownerId;
+
       // Items within a project can be read/written by members
       match /{subcollection}/{itemId} {
+        // Logika ini sudah benar, menggunakan get() adalah cara yang tepat.
         allow read, write: if get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.hasAny([request.auth.uid]);
       }
     }
 
-    function isOwner(doc) {
-        return request.auth.uid == doc.userId;
+    // -- Aturan untuk 'Pribadi' dan 'Publik' sudah bagus --
+    // Anda bisa menyatukan function karena logikanya sama.
+    function isOwner(docData) {
+      return request.auth.uid == docData.userId;
+    }
+    
+    function canRead(docData) {
+        return docData.scope == 'public' || isOwner(docData);
     }
 
-    // Top-level collections for items
     match /observations/{obsId} {
-      allow read: if resource.data.scope == 'public' || isOwner(resource.data);
+      allow read: if canRead(resource.data);
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
 
     match /inspections/{inspId} {
-      allow read: if resource.data.scope == 'public' || isOwner(resource.data);
+      allow read: if canRead(resource.data);
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
 
     match /ptws/{ptwId} {
-      allow read: if resource.data.scope == 'public' || isOwner(resource.data);
+      allow read: if canRead(resource.data);
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }

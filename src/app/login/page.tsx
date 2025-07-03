@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -7,14 +6,27 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
+import * as z from 'zod'; // Perubahan 1: Tambahkan impor Zod
+
 import { useAuth } from '@/hooks/use-auth';
-import { SignInSchema, type SignInInput } from '@/contexts/auth-context';
+// Perubahan 2: Hapus 'SignInSchema' dari impor di bawah ini
+import { type SignInInput as AuthSignInInput } from '@/contexts/auth-context'; // Kita beri nama alias untuk menghindari konflik
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { AppLogo } from '@/components/app-logo';
+
+
+// Perubahan 3: Definisikan Schema dan Tipe DI SINI
+const SignInSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email." }),
+  password: z.string().min(1, { message: "Password is required." }),
+});
+
+type SignInInput = z.infer<typeof SignInSchema>;
+
 
 export default function LoginPage() {
   const { signInWithEmailAndPassword, user, loading } = useAuth();
@@ -30,10 +42,12 @@ export default function LoginPage() {
     },
   });
 
+  // Perubahan 4: Perbaiki cara memanggil fungsi signInWithEmailAndPassword
   async function onSubmit(values: SignInInput) {
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(values);
+      // Panggil dengan dua argumen (email dan password), bukan satu objek
+      await signInWithEmailAndPassword(values.email, values.password);
       router.push('/beranda');
     } catch (error: any) {
       toast({
@@ -62,6 +76,7 @@ export default function LoginPage() {
     );
   }
 
+  // Tidak ada perubahan sama sekali pada bagian tampilan di bawah ini
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-secondary/50 p-4">
       <Card className="w-full max-w-sm p-4 shadow-xl">
