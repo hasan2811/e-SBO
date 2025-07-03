@@ -57,8 +57,9 @@ export async function toggleLike({ docId, userId, collectionName }: ToggleLikePa
           revalidatePath(`/proyek/${observation.projectId}`);
         } else if (observation.scope === 'private') {
            revalidatePath('/private');
+        } else if (observation.scope === 'public') {
+           revalidatePath('/public');
         }
-        revalidatePath('/'); // Always revalidate public feed
     }
 
   } catch (error) {

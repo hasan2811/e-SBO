@@ -160,3 +160,6 @@ INFO: Websocket client disconnected
 [debug] [2025-07-03T10:15:34.283Z] Jul 03, 2025 10:15:34 AM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler channelClosed
 INFO: Websocket client disconnected
  {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 03, 2025 10:15:34 AM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler channelClosed\nINFO: Websocket client disconnected\n"}}
+[debug] [2025-07-03T10:40:31.681Z] Jul 03, 2025 10:40:31 AM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler channelClosed
+INFO: Websocket client disconnected
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 03, 2025 10:40:31 AM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler channelClosed\nINFO: Websocket client disconnected\n"}}

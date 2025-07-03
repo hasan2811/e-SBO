@@ -37,7 +37,7 @@ interface FeedViewProps {
 const ObservationListItem = ({ observation, onSelect, mode }: { observation: Observation, onSelect: () => void, mode: FeedViewProps['mode'] }) => {
     const { toggleLikeObservation } = useObservations();
     const { user } = useAuth();
-    const toast = useToast();
+    const { toast } = useToast();
 
     const riskColorStyles: Record<RiskLevel, string> = {
         Low: 'border-l-chart-2',
@@ -499,9 +499,9 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
           <ul className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <li key={i}>
-                <div className="flex items-start bg-card p-3 rounded-lg shadow-sm h-[104px]">
-                  <Skeleton className="h-20 w-20 rounded-md" />
-                  <div className="flex-1 space-y-2 ml-3"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-full" /><Skeleton className="h-5 w-2/3" /></div>
+                <div className="flex items-start bg-card p-3 rounded-lg shadow-sm h-[124px]">
+                  <Skeleton className="h-16 w-16 rounded-md" />
+                  <div className="flex-1 space-y-2 ml-3"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-full" /><Skeleton className="h-4 w-2/3" /></div>
                 </div>
               </li>
             ))}

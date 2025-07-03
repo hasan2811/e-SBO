@@ -198,7 +198,6 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                         <span>{observation.viewCount || 0} Dilihat</span>
                     </div>
                 </div>
-
                 <Separator />
               </>
             )}
