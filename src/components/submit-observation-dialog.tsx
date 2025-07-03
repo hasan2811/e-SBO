@@ -11,7 +11,6 @@ import { Loader2, Upload } from 'lucide-react';
 import type { Observation, ObservationCategory, Company, Location, RiskLevel } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { getAIAssistance } from '@/lib/actions/ai-actions';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';

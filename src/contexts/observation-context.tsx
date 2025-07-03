@@ -22,7 +22,6 @@ import {
   summarizeObservationData,
   analyzeInspectionData,
 } from '@/ai/flows/summarize-observation-data';
-import { getAIAssistance } from '@/lib/actions/ai-actions';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { toggleLike } from '@/lib/actions/interaction-actions';
@@ -172,12 +171,16 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const _runObservationAiAnalysis = React.useCallback(async (observation: Observation) => {
       const observationDocRef = getDocRef(observation);
       const observationData = `
-        Location: ${observation.location}, Company: ${observation.company}, Category: ${observation.category}, Risk Level: ${observation.riskLevel}, Submitted By: ${observation.submittedBy}, Date: ${new Date(observation.date).toLocaleString()}, Findings: ${observation.findings}, Recommendation: ${observation.recommendation}
+        Submitted By: ${observation.submittedBy}, Date: ${new Date(observation.date).toLocaleString()}, Findings: ${observation.findings}, User's Recommendation: ${observation.recommendation}
       `;
 
       try {
         const summary = await summarizeObservationData({ observationData });
-        const aiData = {
+        const aiData: Partial<Observation> = {
+          // Update the main fields with AI suggestions
+          riskLevel: summary.suggestedRiskLevel,
+          category: summary.suggestedCategory,
+          // Store the detailed analysis
           aiSummary: summary.summary,
           aiRisks: summary.risks,
           aiSuggestedActions: summary.suggestedActions,
@@ -221,7 +224,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const addObservation = React.useCallback(async (formData: any, scope: Scope, projectId: string | null) => {
         if (!user || !userProfile) throw new Error("User not authenticated");
 
-        const aiResult = await getAIAssistance({ findings: formData.findings });
         const photoUrl = await uploadFile(formData.photo, 'observations', user.uid, () => {}, projectId);
         const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         
@@ -233,10 +235,10 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
             location: formData.location as Location,
             company: formData.company as Company,
-            category: aiResult.suggestedCategory,
-            riskLevel: aiResult.suggestedRiskLevel,
-            findings: aiResult.improvedFindings,
-            recommendation: formData.recommendation || aiResult.suggestedRecommendation,
+            category: 'General', // Default, AI will update
+            riskLevel: 'Low', // Default, AI will update
+            findings: formData.findings,
+            recommendation: formData.recommendation || '',
             photoUrl: photoUrl,
             referenceId,
             scope,

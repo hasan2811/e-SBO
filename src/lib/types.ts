@@ -171,6 +171,7 @@ export type SummarizeObservationDataInput = z.infer<typeof SummarizeObservationD
 
 export const SummarizeObservationDataOutputSchema = z.object({
   summary: z.string().describe('Ringkasan singkat dari temuan inti dalam Bahasa Indonesia.'),
+  suggestedCategory: z.enum(OBSERVATION_CATEGORIES).describe('Saran kategori (Unsafe Act, Unsafe Condition, etc.) berdasarkan analisis temuan.'),
   risks: z.string().describe('Analisis potensi bahaya dan risiko dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
   suggestedActions: z.string().describe('Saran tindakan perbaikan dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
   relevantRegulations: z.string().describe('Poin-poin inti dari peraturan nasional & internasional yang relevan beserta penjelasan singkatnya (Bahasa Indonesia).'),
