@@ -16,7 +16,7 @@ interface ProjectContextType {
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -39,11 +39,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     
     try {
-      const isAdmin = user.uid === 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
-      
-      // If user is admin, fetch all projects. 
-      // Otherwise, fetch projects where the user is listed in 'memberUids'.
-      // This query now relies on the security rules to be correctly configured.
       const q = isAdmin 
         ? query(collection(db, 'projects'))
         : query(collection(db, 'projects'), where('memberUids', 'array-contains', user.uid));
@@ -54,8 +49,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }, (err) => {
         console.error("Error fetching projects:", err);
-        // This is a more user-friendly error message
-        if (err.code === 'permission-denied' && err.message.includes('requires an index')) {
+        if (err.code === 'permission-denied' && err.message.includes('index')) {
              setError('Database index is being created. Please wait a few minutes and refresh.');
         } else {
              setError(err.message);
@@ -76,9 +70,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         unsubscribe();
       }
     };
-  }, [user, authLoading]);
+  }, [user, isAdmin, authLoading]);
 
-  // The value now includes logic to enrich projects with member details, which was missing
   const value = { projects, loading, error };
 
   return (

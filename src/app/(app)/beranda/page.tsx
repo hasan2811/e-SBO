@@ -6,19 +6,27 @@ import { useProjects } from '@/hooks/use-projects';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LogIn, Folder, AlertCircle, FolderPlus } from 'lucide-react';
+import { LogIn, Folder, AlertCircle, FolderPlus, Copy } from 'lucide-react';
 import { JoinProjectDialog } from '@/components/join-project-dialog';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
 import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ProjectHubPage() {
-  const { user } = useAuth();
+  const { isAdmin } = useAuth();
   const { projects, loading, error } = useProjects();
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
   const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
-  
-  const isAdmin = user?.uid === 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
+  const { toast } = useToast();
 
+  const handleCopyId = (projectId: string) => {
+    navigator.clipboard.writeText(projectId);
+    toast({
+      title: 'Project ID Copied!',
+      description: `ID ${projectId} has been copied to your clipboard.`,
+    });
+  };
+  
   return (
     <>
       <div className="space-y-6">
@@ -71,14 +79,14 @@ export default function ProjectHubPage() {
           <h2 className="text-xl font-semibold">{isAdmin ? "Semua Proyek" : "Proyek Anda"}</h2>
           {loading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Skeleton className="h-32" />
-              <Skeleton className="h-32" />
+              <Skeleton className="h-40" />
+              <Skeleton className="h-40" />
             </div>
           ) : projects.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {projects.map((project) => (
-                <Card key={project.id} className="h-full">
-                  <CardHeader>
+                <Card key={project.id} className="h-full flex flex-col">
+                  <CardHeader className="flex-1">
                     <CardTitle className="flex items-center gap-3">
                       <Folder className="text-primary"/> 
                       {project.name}
@@ -87,11 +95,22 @@ export default function ProjectHubPage() {
                       {project.memberUids?.length || 0} anggota
                     </CardDescription>
                   </CardHeader>
+                  <CardContent>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                        <p className="font-semibold">Project ID:</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-mono text-sm bg-muted p-1.5 rounded-md flex-1 truncate">{project.id}</p>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopyId(project.id)}>
+                              <Copy className="h-4 w-4"/>
+                          </Button>
+                        </div>
+                    </div>
+                  </CardContent>
                 </Card>
               ))}
             </div>
           ) : !error ? (
-            <Card className="flex flex-col items-center justify-center p-8 text-center">
+            <Card className="flex flex-col items-center justify-center p-8 text-center min-h-[200px]">
               <CardTitle>{isAdmin ? "Tidak Ada Proyek" : "Anda Belum Bergabung dengan Proyek Apapun"}</CardTitle>
               <CardDescription className="mt-2 max-w-sm">
                 {isAdmin ? "Buat proyek baru untuk memulai." : "Gabung dengan proyek yang sudah ada untuk mulai."}

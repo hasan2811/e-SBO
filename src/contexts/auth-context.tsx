@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
@@ -32,6 +33,7 @@ export type SignInInput = z.infer<typeof SignInSchema>;
 interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
+  isAdmin: boolean;
   loading: boolean;
   signUpWithEmailAndPassword: (data: SignUpInput) => Promise<void>;
   signInWithEmailAndPassword: (data: SignInInput) => Promise<void>;
@@ -42,17 +44,19 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const auth = getAuth(app);
+const ADMIN_UID = 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const isAdmin = useMemo(() => user?.uid === ADMIN_UID, [user]);
+
   useEffect(() => {
     let profileUnsubscribe: Unsubscribe | null = null;
 
     const authUnsubscribe = onAuthStateChanged(auth, (user) => {
-      // Unsubscribe from previous profile listener if it exists
       if (profileUnsubscribe) {
         profileUnsubscribe();
       }
@@ -65,19 +69,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (docSnap.exists()) {
             setUserProfile(docSnap.data() as UserProfile);
           } else {
-            // Profile doesn't exist, let's create it.
-            // This handles first-time sign-ups.
             const newUserProfile: UserProfile = {
               uid: user.uid,
               email: user.email!,
               displayName: user.displayName || 'New User',
               position: 'Not Set',
-              photoURL: user.photoURL,
               projectIds: [],
             };
             try {
               await setDoc(userDocRef, newUserProfile);
-              // The onSnapshot listener will automatically pick up the new profile data.
             } catch (error) {
                console.error("Failed to create user profile document:", error);
             }
@@ -91,14 +91,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
            setLoading(false);
         });
       } else {
-        // User is signed out
         setUser(null);
         setUserProfile(null);
         setLoading(false);
       }
     });
 
-    // Cleanup function
     return () => {
       authUnsubscribe();
       if (profileUnsubscribe) {
@@ -120,11 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: user.email!,
         displayName: displayName,
         position: 'Not Set',
-        photoURL: user.photoURL,
         projectIds: [],
       };
       await setDoc(userDocRef, newUserProfile);
-       // The onAuthStateChanged listener will then pick this up.
     } catch (error) {
       console.error('Error signing up: ', error);
       throw error;
@@ -151,8 +147,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (data.displayName && data.displayName !== auth.currentUser.displayName) {
       await updateProfile(auth.currentUser, { displayName: data.displayName });
     }
-    
-    // The onSnapshot listener will handle updating the state automatically.
   }, []);
 
   const logout = useCallback(async () => {
@@ -166,12 +160,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({
     user,
     userProfile,
+    isAdmin,
     loading,
     signUpWithEmailAndPassword: signUpWithEmailAndPasswordHandler,
     signInWithEmailAndPassword: signInWithEmailAndPasswordHandler,
     updateUserProfile: handleUpdateUserProfile,
     logout,
-  }), [user, userProfile, loading, signUpWithEmailAndPasswordHandler, signInWithEmailAndPasswordHandler, handleUpdateUserProfile, logout]);
+  }), [user, userProfile, isAdmin, loading, signUpWithEmailAndPasswordHandler, signInWithEmailAndPasswordHandler, handleUpdateUserProfile, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
