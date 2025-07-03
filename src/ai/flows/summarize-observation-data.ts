@@ -67,24 +67,39 @@ const summarizeObservationPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `Anda adalah asisten HSSE yang cerdas, objektif, dan efisien. Tugas Anda adalah menganalisis data observasi dan memberikan poin-poin analisis yang jelas, langsung ke inti permasalahan, dan mudah dipahami dalam Bahasa Indonesia.
-PENTING: Respons Anda harus berupa objek JSON mentah saja, tanpa penjelasan atau pemformatan tambahan.
+    prompt: `You are an expert HSSE (Health, Safety, Security, and Environment) analyst. Your task is to analyze an observation report and provide a structured JSON output in Indonesian. Your response MUST be a raw JSON object only.
 
-Berdasarkan data observasi yang diberikan, hasilkan objek JSON dengan format berikut. Semua respons harus dalam Bahasa Indonesia.
+First, carefully analyze the user's observation data to understand the situation.
 
-1.  "summary": Berikan ringkasan yang sangat singkat (satu atau dua kalimat) dari temuan inti.
-2.  "suggestedCategory": Berdasarkan temuan, tentukan kategori yang paling sesuai. Pilih salah satu dari: ${OBSERVATION_CATEGORIES.join(', ')}.
-3.  "risks": Jelaskan potensi bahaya dan risiko dalam bentuk **poin-poin singkat yang diawali dengan tanda hubung (-)**. Fokus pada risiko utama dan konsekuensi paling signifikan jika tidak ditangani.
-4.  "suggestedActions": Berikan saran tindakan yang jelas dan dapat dieksekusi dalam bentuk **poin-poin singkat yang diawali dengan tanda hubung (-)**, berdasarkan rekomendasi yang ada di data.
-5.  "relevantRegulations": Identifikasi peraturan/standar yang paling relevan. Prioritaskan peraturan nasional Indonesia (UU, PP, Permenaker) yang terbaru. Jika tidak ada yang spesifik, cari dari standar internasional seperti **ISO, ILO, ANSI, ASTM, OSHA, ASME, atau JIS**. Sebutkan **hanya 1-3 aturan paling relevan**. Untuk setiap peraturan, sebutkan **inti aturannya dalam satu poin yang diawali dengan tanda hubung (-)**.
-6.  "suggestedRiskLevel": Berdasarkan tingkat keparahan temuan, sarankan satu tingkat risiko yang paling sesuai: 'Low', 'Medium', 'High', atau 'Critical'.
-7.  "rootCauseAnalysis": Lakukan analisis singkat untuk mengidentifikasi kemungkinan akar penyebab dari temuan yang dilaporkan.
-8.  "observerAssessment": Sebuah objek berisi:
-    - "rating": Angka **(1 sampai 5)** untuk menilai kualitas laporan dan pemahaman HSSE dari si observer. Nilai berdasarkan detail temuan, foto, dan rekomendasi. (1: Sangat Dasar, 2: Dasar, 3: Cukup Paham, 4: Paham, 5: Sangat Paham/Ahli).
-    - "explanation": Berikan analisis singkat dan personal tentang laporan yang dibuat observer tersebut. **Sebutkan nama observer** dan jelaskan mengapa Anda memberikan rating tersebut.
+Then, perform the following analysis and generate the JSON object:
 
-Data Observasi:
-{{{observationData}}}`,
+1.  **suggestedCategory**: Classify the observation into ONE of the following categories. Choose the most fitting one based on these definitions:
+    *   'Unsafe Act': A person's action that deviates from standard procedures or is unsafe (e.g., not wearing PPE, operating equipment without authorization, horseplay).
+    *   'Unsafe Condition': A hazardous physical condition in the workplace (e.g., slippery floors, damaged equipment, poor lighting, unguarded machinery).
+    *   'Environmental': An issue related to environmental impact (e.g., oil spills, improper waste disposal, pollution).
+    *   'Security': An issue related to physical or asset security (e.g., broken fences, unlocked doors, unauthorized access).
+    *   'General': A general safety observation that doesn't fit other categories.
+    Your choice MUST be one of these: ${OBSERVATION_CATEGORIES.join(', ')}.
+
+2.  **suggestedRiskLevel**: Based on the potential severity of the findings, classify the risk level. Choose ONE: 'Low', 'Medium', 'High', or 'Critical'.
+
+3.  **summary**: A very brief, one-sentence summary of the core finding.
+
+4.  **risks**: A bulleted list (using '-') of the main potential hazards and consequences if the issue is not addressed.
+
+5.  **suggestedActions**: A bulleted list (using '-') of clear, actionable steps to mitigate the risk. Base this on the user's recommendation if available, but improve it.
+
+6.  **relevantRegulations**: Identify 1-3 of the most relevant regulations (Indonesian laws like UU, PP, Permenaker, or international standards like ISO, OSHA, ANSI). For each, provide a bullet point (using '-') explaining its core relevance.
+
+7.  **rootCauseAnalysis**: A brief analysis of the likely root cause of the reported issue.
+
+8.  **observerAssessment**: An object containing:
+    *   "rating": A number (1 to 5) assessing the observer's HSSE awareness based on the quality of their report. (1: Very Basic, 3: Competent, 5: Expert).
+    *   "explanation": A brief, personalized assessment of the report, mentioning the observer's name and justifying the rating.
+
+Here is the observation data to analyze:
+{{{observationData}}}
+`,
 });
 
 const summarizeObservationDataFlow = ai.defineFlow(
