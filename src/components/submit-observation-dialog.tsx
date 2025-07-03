@@ -22,15 +22,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
 
-// Add 'recommendation' back to the schema as optional
 const formSchema = z.object({
+  photo: z
+    .instanceof(File)
+    .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`)
+    .optional(),
   location: z.enum(LOCATIONS),
   company: z.enum(COMPANIES),
   findings: z.string().min(10, { message: 'Temuan harus diisi minimal 10 karakter.' }),
-  recommendation: z.string().optional(), // It's optional, user can fill it or AI will.
-  photo: z
-    .instanceof(File, { message: 'Foto wajib diunggah.' })
-    .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
+  recommendation: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -53,10 +53,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      photo: undefined,
       location: LOCATIONS[0],
       company: COMPANIES[0],
       findings: '',
-      recommendation: '', // Add recommendation to default values
+      recommendation: '',
     },
     mode: 'onChange',
   });
@@ -64,10 +65,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
   React.useEffect(() => {
     if (isOpen) {
         form.reset({
+            photo: undefined,
             location: LOCATIONS[0],
             company: COMPANIES[0],
             findings: '',
-            recommendation: '', // Reset recommendation
+            recommendation: '',
         });
         setPhotoPreview(null);
         if (fileInputRef.current) {
@@ -102,16 +104,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       toast({ variant: 'destructive', title: 'Belum Terautentikasi', description: 'Anda harus login untuk mengirim.' });
       return;
     }
-    
-    if (!values.photo) {
-       toast({ variant: 'destructive', title: 'Foto Wajib', description: 'Silakan unggah foto temuan.' });
-       return;
-    }
 
     setIsSubmitting(true);
 
     try {
-      // The context will now handle the upload and AI processing.
       await onAddObservation(values);
 
       toast({
@@ -152,6 +148,42 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <Form {...form}>
             <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+               <FormField
+                control={form.control}
+                name="photo"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Unggah Foto (Opsional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handlePhotoChange}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isSubmitting}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      {photoPreview ? 'Ganti Foto' : 'Pilih Foto'}
+                    </Button>
+                    {photoPreview && (
+                      <div className="mt-2 relative w-full h-48 rounded-md overflow-hidden border">
+                        <Image src={photoPreview} alt="Pratinjau Foto" fill sizes="(max-width: 525px) 100vw, 525px" className="object-cover" />
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -201,7 +233,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                 )}
               />
               
-              {/* Add the recommendation field back */}
               <FormField
                 control={form.control}
                 name="recommendation"
@@ -216,47 +247,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="photo"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Unggah Foto</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={handlePhotoChange}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isSubmitting}
-                    >
-                      <Upload className="mr-2 h-4 w-4" />
-                      {photoPreview ? 'Ganti Foto' : 'Pilih Foto'}
-                    </Button>
-                    {photoPreview && (
-                      <div className="mt-2 relative w-full h-48 rounded-md overflow-hidden border">
-                        <Image src={photoPreview} alt="Pratinjau Foto" fill sizes="(max-width: 525px) 100vw, 525px" className="object-cover" />
-                      </div>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </form>
           </Form>
         </div>
 
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
-           {/* Progress bar is now handled by the context */}
           <div className="flex w-full justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Batal

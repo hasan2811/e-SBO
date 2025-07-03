@@ -224,7 +224,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const addObservation = React.useCallback(async (formData: any, scope: Scope, projectId: string | null) => {
         if (!user || !userProfile) throw new Error("User not authenticated");
 
-        const photoUrl = await uploadFile(formData.photo, 'observations', user.uid, () => {}, projectId);
+        let photoUrl: string | undefined;
+        if (formData.photo) {
+          photoUrl = await uploadFile(formData.photo, 'observations', user.uid, () => {}, projectId);
+        }
+        
         const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         
         const newObservationData: Omit<Observation, 'id'> = {
@@ -250,7 +254,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             viewCount: 0,
         };
 
-        // UNIFIED WRITE: Always write to the root 'observations' collection.
         const docRef = await addDoc(collection(db, 'observations'), newObservationData);
         
         const fullItemData = { ...newObservationData, id: docRef.id };
@@ -282,7 +285,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             aiStatus: 'processing',
         };
 
-        // UNIFIED WRITE: Always write to the root 'inspections' collection.
         const docRef = await addDoc(collection(db, 'inspections'), newInspectionData);
 
         const fullItemData = { ...newInspectionData, id: docRef.id };
@@ -311,7 +313,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             projectId,
         };
 
-        // UNIFIED WRITE: Always write to the root 'ptws' collection.
         await addDoc(collection(db, 'ptws'), newPtwData);
         
     }, [user, userProfile]);
@@ -381,11 +382,10 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             return;
         }
         try {
-            // This now correctly uses the flat structure path implicitly
             await toggleLike({
                 docId: observation.id,
                 userId: user.uid,
-                collectionName: 'observations', // We need to specify the collection
+                collectionName: 'observations',
             });
         } catch (error) {
             console.error('Failed to toggle like:', error);
@@ -393,7 +393,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
     }, [user]);
 
-    // This is the fix: Remove the useMemo wrapper that was causing the build error.
     const value = {
         privateItems,
         projectItems,
