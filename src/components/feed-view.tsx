@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -427,7 +426,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
      <div className="space-y-4">
         <div className="flex justify-between items-center gap-4">
             <h2 className="text-2xl font-bold tracking-tight">
-                {mode === 'public' ? 'Feed Publik' : mode === 'private' ? 'Laporan Pribadi' : viewConfig[viewType].label}
+                {mode === 'public' ? 'Feed Publik' : mode === 'private' ? 'Pribadi' : viewConfig[viewType].label}
             </h2>
             <div className="flex items-center gap-2">
                 {mode !== 'public' && (
@@ -579,5 +578,3 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
    </>
   );
 }
-
-    
