@@ -5,7 +5,7 @@ import type { Project, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Crown, User, UserX, Loader2, X } from 'lucide-react';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
@@ -133,14 +133,13 @@ const ProjectSettings = ({ project }: { project: Project }) => {
             ))}
           </div>
         </CardContent>
+        <CardFooter className="flex justify-end border-t pt-6">
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save All Settings
+            </Button>
+        </CardFooter>
       </Card>
-      
-      <div className="flex justify-end pt-4">
-        <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save All Settings
-        </Button>
-      </div>
     </div>
   );
 };
