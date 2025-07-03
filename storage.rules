@@ -1,35 +1,10 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // Helper function to check project membership from Firestore
-    function isProjectMember(projectId) {
-      // Use get() to read the project document from Firestore
-      let projectData = get(/databases/$(database)/documents/projects/$(projectId)).data;
-      // Check if the authenticated user's UID is in the memberUids array
-      return request.auth.uid in projectData.memberUids;
-    }
-
-    // Secure files for observations, inspections, PTWs, etc., in a user's private space.
-    // Path format: "observations/{userId}/{fileName}"
-    match /{path}/{userId}/{fileName} {
-      // READ access can be broad for logged-in users, as public feed items may link here.
-      // The Firestore document security prevents unauthorized access to the data itself.
-      allow read: if request.auth != null;
-      // WRITE access is restricted to the user who owns that directory.
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Secure files within projects.
-    // Path format: "projects/{projectId}/observations/{userId}/{fileName}"
-    match /projects/{projectId}/{path}/{userId}/{fileName} {
-      // Allow READ access if the user is a member of the project.
-      allow read: if request.auth != null && isProjectMember(projectId);
-      // Allow WRITE access only if the user is creating a file under their own UID directory,
-      // and they are a member of the project.
-      allow write: if request.auth != null && request.auth.uid == userId && isProjectMember(projectId);
+    // WARNING: For development only. Allows any authenticated user to read/write all files.
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }
