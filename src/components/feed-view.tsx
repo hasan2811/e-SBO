@@ -127,10 +127,6 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
                             {observation.sharedByPosition && ` (${observation.sharedByPosition})`}
                         </span>
                     </div>
-                 ) : mode !== 'public' ? (
-                     <div className="text-xs text-muted-foreground mt-1.5 truncate">
-                        <span className="font-medium text-muted-foreground">{format(new Date(observation.date), 'd MMM yy, HH:mm')}</span>
-                    </div>
                  ) : null}
               </div>
           </div>
@@ -160,7 +156,7 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
             ) : (
                 <div className="flex justify-between w-full">
                     <span className="font-medium text-muted-foreground truncate pr-2">{observation.company} &bull; {observation.location}</span>
-                    <span className="text-muted-foreground flex-shrink-0">{format(new Date(observation.date), 'd MMM yy')}</span>
+                    <span className="text-muted-foreground flex-shrink-0">{format(new Date(observation.date), 'd MMM yy, HH:mm')}</span>
                 </div>
             )}
           </div>
@@ -583,3 +579,5 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
    </>
   );
 }
+
+    
