@@ -18,6 +18,11 @@ import type { Project, UserProfile } from '@/lib/types';
 import Link from 'next/link';
 import { FeedView } from '@/components/feed-view';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 const getInitials = (name: string) => {
     if (!name) return 'U';
@@ -33,6 +38,7 @@ export default function ProjectDetailsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { projects, loading: projectsLoading } = useProjects();
+  const { toast } = useToast();
   
   const projectId = params.projectId as string;
   const project = React.useMemo(() => projects.find(p => p.id === projectId), [projects, projectId]);
@@ -41,6 +47,7 @@ export default function ProjectDetailsPage() {
   const [isDeleteOpen, setDeleteOpen] = React.useState(false);
   const [isLeaveOpen, setLeaveOpen] = React.useState(false);
   const [memberToRemove, setMemberToRemove] = React.useState<UserProfile | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = React.useState(false);
 
   const isOwner = user && project && project.ownerUid === user.uid;
   const isLoading = projectsLoading;
@@ -48,6 +55,28 @@ export default function ProjectDetailsPage() {
   const handleSuccess = () => {
     router.push('/beranda');
   };
+
+  const handleStatusChange = async (checked: boolean) => {
+    if (!project) return;
+    setIsUpdatingStatus(true);
+    const projectRef = doc(db, 'projects', project.id);
+    try {
+      await updateDoc(projectRef, { isOpen: checked });
+      toast({
+        title: 'Project Status Updated',
+        description: `Project is now ${checked ? 'open' : 'closed'} for new members.`,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'Could not update project status. Please try again.',
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -92,7 +121,7 @@ export default function ProjectDetailsPage() {
           <div className="flex w-full flex-shrink-0 sm:w-auto gap-2">
             {isOwner ? (
               <>
-                <Button onClick={() => setAddMemberOpen(true)}>
+                <Button onClick={() => setAddMemberOpen(true)} disabled={!(project.isOpen ?? true)}>
                   <UserPlus className="mr-2" />
                   Add Member
                 </Button>
@@ -117,6 +146,30 @@ export default function ProjectDetailsPage() {
             )}
           </div>
         </div>
+
+        {/* Owner Settings */}
+        {isOwner && (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Owner Settings</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center space-x-3">
+                        <Switch
+                            id="project-status-switch"
+                            checked={project.isOpen ?? true}
+                            onCheckedChange={handleStatusChange}
+                            disabled={isUpdatingStatus}
+                            aria-label="Project open for joining switch"
+                        />
+                        <Label htmlFor="project-status-switch" className="flex flex-col">
+                           <span className="font-semibold">{project.isOpen ?? true ? 'Open' : 'Closed'}</span>
+                           <span className="text-xs text-muted-foreground">Allows new members to join this project.</span>
+                        </Label>
+                    </div>
+                </CardContent>
+            </Card>
+        )}
         
         {/* Members Section */}
         <div>

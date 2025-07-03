@@ -60,6 +60,7 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
         ownerUid: user.uid,
         memberUids: [user.uid], // Owner is automatically a member
         createdAt: new Date().toISOString(),
+        isOpen: true, // New projects are open by default
       });
       
       // Also add the project ID to the user's profile

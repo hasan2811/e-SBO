@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query } from 'firebase/firestore';
+import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,12 +41,14 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
       const fetchJoinableProjects = async () => {
         setLoadingProjects(true);
         try {
-          const projectsQuery = query(collection(db, 'projects'));
+          // Query only for projects that are open for joining
+          const projectsQuery = query(collection(db, 'projects'), where("isOpen", "==", true));
           const projectsSnapshot = await getDocs(projectsQuery);
-          const allProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
+          const openProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
 
           const userProjectIds = userProfile.projectIds || [];
-          const projectsToFetch = allProjects.filter(p => !userProjectIds.includes(p.id));
+          // Filter out projects the user is already a member of
+          const projectsToFetch = openProjects.filter(p => !userProjectIds.includes(p.id));
 
           const projectsWithOwners = await Promise.all(
             projectsToFetch.map(async project => {
@@ -91,6 +93,10 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
         if (!projectSnap.exists()) {
           throw new Error('Project not found');
         }
+        
+        if (projectSnap.data()?.isOpen !== true) {
+            throw new Error('Project is not open for joining.');
+        }
 
         // Add user to project's member list
         transaction.update(projectRef, {
@@ -108,6 +114,8 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
       let description = 'Terjadi kesalahan tak terduga.';
       if (error.message === 'Project not found') {
         description = 'Proyek dengan ID tersebut tidak ditemukan.';
+      } else if (error.message === 'Project is not open for joining.') {
+        description = 'Proyek ini sedang ditutup untuk anggota baru.';
       }
       toast({ variant: 'destructive', title: 'Gagal Bergabung', description });
     } finally {
@@ -179,7 +187,7 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
                 ))
               ) : (
                 <div className="text-center py-10">
-                  <p className="text-muted-foreground">Tidak ada proyek lain yang tersedia untuk diikuti.</p>
+                  <p className="text-muted-foreground">Tidak ada proyek yang tersedia untuk diikuti saat ini.</p>
                 </div>
               )}
             </div>

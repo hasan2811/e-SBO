@@ -1,5 +1,4 @@
 
-
 import { z } from 'zod';
 
 export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed';
@@ -29,6 +28,7 @@ export type Project = {
     ownerUid: string;
     memberUids: string[];
     createdAt: string;
+    isOpen?: boolean; // Controls if non-members can see it in the "Join" dialog.
     // Enriched client-side
     owner?: UserProfile; 
     members?: UserProfile[];
