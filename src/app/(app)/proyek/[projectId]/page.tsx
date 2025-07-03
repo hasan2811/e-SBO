@@ -31,13 +31,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const getInitials = (name: string) => {
-    if (!name) return 'U';
-    const names = name.trim().split(' ');
+const getInitials = (name: string | null | undefined): string => {
+    if (!name?.trim()) return 'U';
+    const names = name.trim().split(' ').filter(n => n.length > 0);
     if (names.length > 1) {
       return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
     }
-    return name[0]?.toUpperCase() ?? 'U';
+    if (names.length === 1) {
+        return names[0][0].toUpperCase();
+    }
+    return 'U';
 };
 
 export default function ProjectDetailsPage() {
@@ -192,8 +195,8 @@ export default function ProjectDetailsPage() {
                     <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                    <CardTitle className="truncate">{member.displayName}</CardTitle>
-                    <CardDescription className="truncate">{member.position}</CardDescription>
+                    <CardTitle className="truncate">{member.displayName || 'Unknown User'}</CardTitle>
+                    <CardDescription className="truncate">{member.position || 'No Position'}</CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
