@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -18,7 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const formSchema = z.object({
@@ -54,11 +55,17 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
     setIsCreating(true);
     try {
       const projectsCollection = collection(db, 'projects');
-      await addDoc(projectsCollection, {
+      const newProjectRef = await addDoc(projectsCollection, {
         name: values.name,
         ownerUid: user.uid,
         memberUids: [user.uid], // Owner is automatically a member
         createdAt: new Date().toISOString(),
+      });
+      
+      // Also add the project ID to the user's profile
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, {
+          projectIds: arrayUnion(newProjectRef.id)
       });
       
       toast({ title: 'Sukses!', description: `Proyek "${values.name}" berhasil dibuat.` });
@@ -86,7 +93,7 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
             Buat Proyek Baru
           </DialogTitle>
           <DialogDescription>
-            Masukkan nama untuk proyek baru Anda. Anda akan otomatis menjadi pemilik proyek.
+            Masukkan nama untuk proyek baru Anda. Anda akan otomatis menjadi pemilik dan anggota proyek.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

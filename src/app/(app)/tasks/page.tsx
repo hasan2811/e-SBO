@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FolderPlus, TrendingUp, AlertTriangle, CheckCircle, Sparkles } from 'lucide-react';
 import { analyzeDashboardData, AnalyzeDashboardDataOutput } from '@/ai/flows/analyze-dashboard-data';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 const ChartContainer = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartContainer), {
   ssr: false,
@@ -411,12 +413,15 @@ export default function DashboardPage() {
   
   if (!loading && projects.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-card p-8 rounded-lg">
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-card p-8 rounded-lg border-dashed">
         <FolderPlus className="h-16 w-16 text-muted-foreground" />
         <h3 className="mt-4 text-2xl font-bold">Mulai dengan Proyek Pertama Anda</h3>
         <p className="mt-2 max-w-md text-muted-foreground">
-          Dashboard ini akan menampilkan analitik dari laporan observasi di dalam proyek Anda. Buat proyek baru untuk mulai melacak data.
+          Dashboard ini akan menampilkan analitik dari laporan di dalam proyek Anda. Buat atau gabung dengan proyek untuk memulai.
         </p>
+         <Button asChild className="mt-6">
+          <Link href="/beranda">Pergi ke Project Hub</Link>
+        </Button>
       </div>
     );
   }
