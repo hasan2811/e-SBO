@@ -54,6 +54,8 @@ export type Project = {
     memberUids: string[];
     createdAt: string;
     isOpen?: boolean; // Controls if non-members can see it in the "Join" dialog.
+    customCompanies?: string[];
+    customLocations?: string[];
     // Enriched client-side
     owner?: UserProfile; 
     members?: UserProfile[];

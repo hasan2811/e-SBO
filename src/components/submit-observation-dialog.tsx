@@ -8,7 +8,7 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload } from 'lucide-react';
 
-import type { Observation, ObservationCategory, Company, Location, RiskLevel } from '@/lib/types';
+import type { Observation, ObservationCategory, Company, Location, RiskLevel, Project } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,16 +19,16 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
-const COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
+const DEFAULT_LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
+const DEFAULT_COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
 
 const formSchema = z.object({
   photo: z
     .instanceof(File)
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`)
     .optional(),
-  location: z.enum(LOCATIONS),
-  company: z.enum(COMPANIES),
+  location: z.string({ required_error: "Location is required." }).min(1, "Location is required."),
+  company: z.string({ required_error: "Company is required." }).min(1, "Company is required."),
   findings: z.string().min(10, { message: 'Temuan harus diisi minimal 10 karakter.' }),
   recommendation: z.string().optional(),
 });
@@ -39,21 +39,30 @@ interface SubmitObservationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onAddObservation: (observation: FormValues) => void;
+  project: Project | null;
 }
 
-export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation }: SubmitObservationDialogProps) {
+export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation, project }: SubmitObservationDialogProps) {
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   
+  const companyOptions = React.useMemo(() => 
+    (project?.customCompanies && project.customCompanies.length > 0) ? project.customCompanies : DEFAULT_COMPANIES,
+  [project]);
+
+  const locationOptions = React.useMemo(() => 
+    (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : DEFAULT_LOCATIONS,
+  [project]);
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       photo: undefined,
-      location: LOCATIONS[0],
-      company: COMPANIES[0],
+      location: '',
+      company: '',
       findings: '',
       recommendation: '',
     },
@@ -64,8 +73,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     if (isOpen) {
         form.reset({
             photo: undefined,
-            location: LOCATIONS[0],
-            company: COMPANIES[0],
+            location: locationOptions[0],
+            company: companyOptions[0],
             findings: '',
             recommendation: '',
         });
@@ -74,7 +83,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
             fileInputRef.current.value = '';
         }
     }
-  }, [isOpen, form]);
+  }, [isOpen, form, locationOptions, companyOptions]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -174,11 +183,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Lokasi</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger><SelectValue placeholder="Pilih lokasi" /></SelectTrigger>
                         </FormControl>
-                        <SelectContent>{renderSelectItems(LOCATIONS)}</SelectContent>
+                        <SelectContent>{renderSelectItems(locationOptions)}</SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
@@ -190,11 +199,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Perusahaan</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger><SelectValue placeholder="Pilih perusahaan" /></SelectTrigger>
                         </FormControl>
-                        <SelectContent>{renderSelectItems(COMPANIES)}</SelectContent>
+                        <SelectContent>{renderSelectItems(companyOptions)}</SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>

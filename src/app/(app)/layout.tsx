@@ -11,12 +11,13 @@ import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { Sidebar } from '@/components/sidebar';
 import { SubmitObservationDialog } from '@/components/submit-observation-dialog';
 import { CompleteProfileDialog } from '@/components/complete-profile-dialog';
-import type { Observation, Inspection, Ptw, Scope } from '@/lib/types';
+import type { Observation, Inspection, Ptw, Scope, Project } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MultiActionButton } from '@/components/multi-action-button';
 import { SubmitInspectionDialog } from '@/components/submit-inspection-dialog';
 import { SubmitPtwDialog } from '@/components/submit-ptw-dialog';
 import { useCurrentProject } from '@/hooks/use-current-project';
+import { useProjects } from '@/hooks/use-projects';
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isProfileDialogOpen, setProfileDialogOpen] = React.useState(false);
 
   const { projectId, setProjectId } = useCurrentProject();
+  const { projects, loading: projectsLoading } = useProjects();
+
+  const currentProject = React.useMemo(() => {
+    if (!projectId || projectsLoading) return null;
+    return projects.find(p => p.id === projectId) ?? null;
+  }, [projectId, projects, projectsLoading]);
 
   React.useEffect(() => {
     // This effect ensures the global project context is aware of the current project ID
@@ -142,6 +149,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         isOpen={isObservationDialogOpen}
         onOpenChange={setObservationDialogOpen}
         onAddObservation={handleAddObservation}
+        project={currentProject}
       />
       <SubmitInspectionDialog
         isOpen={isInspectionDialogOpen}

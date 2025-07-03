@@ -1,20 +1,17 @@
-
 'use client';
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useProjects } from '@/hooks/use-projects';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Crown, User, UserX, ArrowLeft, MoreVertical, UserPlus, Trash2, LogOut } from 'lucide-react';
+import { ArrowLeft, MoreVertical, UserPlus, Trash2, LogOut, Loader2, Users, FileCog } from 'lucide-react';
 import { AddMemberDialog } from '@/components/add-member-dialog';
-import { RemoveMemberDialog } from '@/components/remove-member-dialog';
 import { LeaveProjectDialog } from '@/components/leave-project-dialog';
 import { DeleteProjectDialog } from '@/components/delete-project-dialog';
-import type { Project, UserProfile } from '@/lib/types';
+import { ManageProjectDialog } from '@/components/manage-project-dialog';
+import type { Project } from '@/lib/types';
 import { FeedView } from '@/components/feed-view';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -29,19 +26,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-const getInitials = (name: string | null | undefined): string => {
-    if (!name?.trim()) return 'U';
-    const names = name.trim().split(' ').filter(n => n.length > 0);
-    if (names.length > 1) {
-      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
-    }
-    if (names.length === 1) {
-        return names[0][0].toUpperCase();
-    }
-    return 'U';
-};
 
 export default function ProjectDetailsPage() {
   const params = useParams();
@@ -53,10 +37,13 @@ export default function ProjectDetailsPage() {
   const projectId = params.projectId as string;
   const project = React.useMemo(() => projects.find(p => p.id === projectId), [projects, projectId]);
 
+  // State for dialogs
   const [isAddMemberOpen, setAddMemberOpen] = React.useState(false);
   const [isDeleteOpen, setDeleteOpen] = React.useState(false);
   const [isLeaveOpen, setLeaveOpen] = React.useState(false);
-  const [memberToRemove, setMemberToRemove] = React.useState<UserProfile | null>(null);
+  const [isManageOpen, setManageOpen] = React.useState(false);
+  const [manageDefaultTab, setManageDefaultTab] = React.useState<'members' | 'settings'>('members');
+
   const [isUpdatingStatus, setIsUpdatingStatus] = React.useState(false);
 
   const isOwner = user && project && project.ownerUid === user.uid;
@@ -86,17 +73,20 @@ export default function ProjectDetailsPage() {
       setIsUpdatingStatus(false);
     }
   };
-
+  
+  const openManageDialog = (tab: 'members' | 'settings') => {
+    setManageDefaultTab(tab);
+    setManageOpen(true);
+  }
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-3/4" />
-        <Skeleton className="h-10 w-48" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Skeleton className="h-28" />
-          <Skeleton className="h-28" />
-          <Skeleton className="h-28" />
+        <Skeleton className="h-8 w-1/4" />
+        <Skeleton className="h-8 w-1/3" />
+        <div className="mt-8">
+            <Skeleton className="h-96 w-full" />
         </div>
       </div>
     );
@@ -126,7 +116,7 @@ export default function ProjectDetailsPage() {
               Back to Hub
             </Button>
             <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-            <p className="text-muted-foreground">Manage project members and view its activity feed.</p>
+            <p className="text-muted-foreground">Project activity feed and management options.</p>
           </div>
           <div className="flex-shrink-0">
             <DropdownMenu>
@@ -137,14 +127,23 @@ export default function ProjectDetailsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onSelect={() => openManageDialog('members')}>
+                  <Users className="mr-2 h-4 w-4" />
+                  <span>View Members ({project.members?.length || 0})</span>
+                </DropdownMenuItem>
+
                 {isOwner && (
                   <>
+                    <DropdownMenuItem onSelect={() => openManageDialog('settings')}>
+                      <FileCog className="mr-2 h-4 w-4" />
+                      <span>Project Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuLabel>Owner Actions</DropdownMenuLabel>
                     <DropdownMenuItem onSelect={() => setAddMemberOpen(true)} disabled={!(project.isOpen ?? true)}>
                       <UserPlus className="mr-2 h-4 w-4" />
                       <span>Add Member</span>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                     <div className="relative flex items-center select-none rounded-sm px-2 py-1.5 text-sm outline-none">
                       <Label htmlFor="project-status-switch" className="flex-1 pr-2 cursor-pointer">
                         Open to Join
@@ -164,9 +163,10 @@ export default function ProjectDetailsPage() {
                     </DropdownMenuItem>
                   </>
                 )}
+                
                 {!isOwner && (
                   <>
-                    <DropdownMenuLabel>Member Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => setLeaveOpen(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Leave Project</span>
@@ -178,64 +178,23 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
         
-        {/* Tabs Section */}
-        <Tabs defaultValue="feed" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
-            <TabsTrigger value="feed">Activity Feed</TabsTrigger>
-            <TabsTrigger value="members">Members ({project.members?.length || 0})</TabsTrigger>
-          </TabsList>
-          <TabsContent value="feed" className="mt-6">
+        {/* Main Content: Activity Feed */}
+        <div className="mt-6">
             <FeedView mode="project" projectId={projectId} />
-          </TabsContent>
-          <TabsContent value="members" className="mt-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {project.members?.sort((a,b) => (a.uid === project.ownerUid ? -1 : 1)).map(member => (
-                <Card key={member.uid} className="flex flex-col">
-                <CardHeader className="flex flex-row items-center gap-4">
-                    <Avatar className="h-12 w-12">
-                    <AvatarImage src={member.photoURL ?? undefined} data-ai-hint="person face" />
-                    <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                    <CardTitle className="truncate">{member.displayName || 'Unknown User'}</CardTitle>
-                    <CardDescription className="truncate">{member.position || 'No Position'}</CardDescription>
-                    </div>
-                </CardHeader>
-                <CardContent className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                    {member.uid === project.ownerUid ? (
-                        <>
-                        <Crown className="h-4 w-4 text-amber-500" />
-                        <span className="text-amber-600">Owner</span>
-                        </>
-                    ) : (
-                        <>
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">Member</span>
-                        </>
-                    )}
-                    </div>
-                    {isOwner && member.uid !== user?.uid && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => setMemberToRemove(member)}
-                    >
-                        <UserX className="mr-2 h-4 w-4" />
-                        Remove
-                    </Button>
-                    )}
-                </CardContent>
-                </Card>
-            ))}
-            </div>
-          </TabsContent>
-        </Tabs>
+        </div>
       </div>
 
       {/* Dialogs */}
-      {isOwner && (
+      {project && (
+          <ManageProjectDialog
+              isOpen={isManageOpen}
+              onOpenChange={setManageOpen}
+              project={project}
+              defaultTab={manageDefaultTab}
+          />
+      )}
+
+      {isOwner && project && (
         <>
           <AddMemberDialog isOpen={isAddMemberOpen} onOpenChange={setAddMemberOpen} project={project} />
           <DeleteProjectDialog isOpen={isDeleteOpen} onOpenChange={setDeleteOpen} project={project} onSuccess={handleSuccess} />
@@ -244,15 +203,6 @@ export default function ProjectDetailsPage() {
       
       {!isOwner && project && (
         <LeaveProjectDialog isOpen={isLeaveOpen} onOpenChange={setLeaveOpen} project={project} onSuccess={handleSuccess} />
-      )}
-
-      {memberToRemove && project && (
-        <RemoveMemberDialog
-          isOpen={!!memberToRemove}
-          onOpenChange={(open) => !open && setMemberToRemove(null)}
-          project={project}
-          member={memberToRemove}
-        />
       )}
     </>
   );
