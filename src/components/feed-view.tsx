@@ -136,7 +136,7 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
           </div>
           
           <div className="flex items-center gap-4 text-xs pt-2 mt-2 border-t border-border/50">
-            {mode !== 'private' ? (
+            {mode === 'public' ? (
               <>
                 <button
                   onClick={handleLikeClick}
@@ -159,8 +159,8 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
               </>
             ) : (
                 <div className="flex justify-between w-full">
-                    <span className="font-medium text-muted-foreground">{observation.company} &bull; {observation.location}</span>
-                    <span className="text-muted-foreground">{format(new Date(observation.date), 'd MMM yy')}</span>
+                    <span className="font-medium text-muted-foreground truncate pr-2">{observation.company} &bull; {observation.location}</span>
+                    <span className="text-muted-foreground flex-shrink-0">{format(new Date(observation.date), 'd MMM yy')}</span>
                 </div>
             )}
           </div>
