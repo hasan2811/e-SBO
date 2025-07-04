@@ -7,7 +7,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Upload, FileSignature, FileText } from 'lucide-react';
 import { useObservations } from '@/hooks/use-observations';
-import { createPtw } from '@/lib/actions/item-actions';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
 
 import type { Ptw, Location, Project, Scope } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -103,8 +105,10 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
         const jsaPdfUrl = await uploadFile(values.jsaPdf, 'ptw-jsa', userProfile.uid, () => {}, projectId);
 
         const scope: Scope = projectId ? 'project' : 'private';
+        const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         
-        const payload = {
+        const newPtwData: Omit<Ptw, 'id'> = {
+            itemType: 'ptw',
             userId: userProfile.uid,
             date: new Date().toISOString(),
             submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
@@ -114,9 +118,12 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
             jsaPdfUrl: jsaPdfUrl,
             scope,
             projectId,
+            referenceId,
+            status: 'Pending Approval',
         };
 
-        const newPtw = await createPtw(payload);
+        const docRef = await addDoc(collection(db, 'ptws'), newPtwData);
+        const newPtw = { ...newPtwData, id: docRef.id };
         addItem(newPtw);
         
         toast({ title: 'PTW Diajukan', description: `Izin kerja Anda telah berhasil disimpan.` });

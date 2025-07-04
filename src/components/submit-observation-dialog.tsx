@@ -8,9 +8,11 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Sparkles } from 'lucide-react';
 import { useObservations } from '@/hooks/use-observations';
-import { createObservation } from '@/lib/actions/item-actions';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
 
-import type { Project, Scope, Location, Company } from '@/lib/types';
+import type { Project, Scope, Location, Company, Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
@@ -127,8 +129,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         }
 
         const scope: Scope = projectId ? 'project' : 'private';
-        
-        const payload = {
+        const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+        const newObservationData: Omit<Observation, 'id'> = {
+            itemType: 'observation',
             userId: userProfile.uid,
             date: new Date().toISOString(),
             submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
@@ -139,11 +143,18 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             photoUrl: photoUrl,
             scope,
             projectId,
+            referenceId,
+            category: 'Supervision', // Default category
+            riskLevel: 'Low', // Default risk level
+            status: 'Pending',
+            aiStatus: 'n/a', // AI processing is disabled for now to ensure stability
+            likes: [], likeCount: 0, commentCount: 0, viewCount: 0,
         };
         
-        const newObservation = await createObservation(payload);
+        const docRef = await addDoc(collection(db, "observations"), newObservationData);
         
-        addItem(newObservation);
+        const finalObservation = { ...newObservationData, id: docRef.id };
+        addItem(finalObservation);
 
         toast({ title: 'Laporan Terkirim', description: 'Observasi Anda telah berhasil disimpan.' });
         onOpenChange(false);

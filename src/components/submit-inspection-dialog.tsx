@@ -8,7 +8,9 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Wrench } from 'lucide-react';
 import { useObservations } from '@/hooks/use-observations';
-import { createInspection } from '@/lib/actions/item-actions';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
 
 import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -116,8 +118,10 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         const photoUrl = await uploadFile(values.photo, 'inspections', userProfile.uid, () => {}, projectId);
         
         const scope: Scope = projectId ? 'project' : 'private';
+        const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-        const payload = {
+        const newInspectionData: Omit<Inspection, 'id'> = {
+            itemType: 'inspection',
             userId: userProfile.uid,
             date: new Date().toISOString(),
             submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
@@ -130,9 +134,12 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
             photoUrl: photoUrl,
             scope,
             projectId,
+            referenceId,
+            aiStatus: 'n/a', // AI processing is disabled for now
         };
 
-        const newInspection = await createInspection(payload);
+        const docRef = await addDoc(collection(db, "inspections"), newInspectionData);
+        const newInspection = { ...newInspectionData, id: docRef.id };
         addItem(newInspection);
 
         toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda telah berhasil disimpan.` });

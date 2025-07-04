@@ -10,66 +10,9 @@ import { format } from 'date-fns';
 
 // ==================================
 // CREATE ACTIONS
+// NOTE: These are now handled client-side to prevent server auth issues.
+// This file is kept for other potential server-side logic.
 // ==================================
-type CreateObservationPayload = Omit<Observation, 'id' | 'itemType' | 'referenceId' | 'status' | 'category' | 'riskLevel' | 'aiStatus' | 'likes' | 'likeCount' | 'commentCount' | 'viewCount' | 'isSharedPublicly' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate'>;
-export async function createObservation(payload: CreateObservationPayload): Promise<Observation> {
-    const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    
-    // AI-handled fields are given sensible defaults.
-    const observationData: Omit<Observation, 'id'> = {
-        itemType: 'observation',
-        ...payload,
-        referenceId,
-        category: 'Supervision', // Default category
-        riskLevel: 'Low', // Default risk level
-        status: 'Pending',
-        aiStatus: 'n/a', // AI processing is disabled for now to ensure stability
-        likes: [], likeCount: 0, commentCount: 0, viewCount: 0,
-    };
-
-    const docRef = await adminDb.collection('observations').add(observationData);
-    const newObservation = { ...observationData, id: docRef.id };
-    
-    // Revalidate paths to update the UI
-    revalidatePath(newObservation.projectId ? `/proyek/${newObservation.projectId}` : '/private', 'page');
-    revalidatePath('/tasks', 'page');
-    
-    return newObservation;
-}
-
-
-type CreateInspectionPayload = Omit<Inspection, 'id' | 'itemType' | 'referenceId' | 'aiStatus' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate'>;
-export async function createInspection(payload: CreateInspectionPayload): Promise<Inspection> {
-    const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    const inspectionData: Omit<Inspection, 'id'> = {
-        itemType: 'inspection',
-        ...payload,
-        referenceId,
-        aiStatus: 'n/a', // AI processing is disabled for now
-    };
-    
-    const docRef = await adminDb.collection('inspections').add(inspectionData);
-    const newInspection = { ...inspectionData, id: docRef.id };
-
-    revalidatePath(newInspection.projectId ? `/proyek/${newInspection.projectId}` : '/private', 'page');
-    return newInspection;
-}
-
-type CreatePtwPayload = Omit<Ptw, 'id' | 'itemType' | 'referenceId' | 'status' | 'approver' | 'approvedDate' | 'rejectionReason' | 'signatureDataUrl'>;
-export async function createPtw(payload: CreatePtwPayload): Promise<Ptw> {
-    const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    const ptwData: Omit<Ptw, 'id'> = {
-        itemType: 'ptw',
-        ...payload,
-        referenceId,
-        status: 'Pending Approval',
-    };
-    
-    const docRef = await adminDb.collection('ptws').add(ptwData);
-    const newPtw = { ...ptwData, id: docRef.id };
-    revalidatePath(newPtw.projectId ? `/proyek/${newPtw.projectId}` : '/private', 'page');
-    return newPtw;
-}
 
 
 // ==================================
