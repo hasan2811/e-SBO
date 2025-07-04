@@ -8,7 +8,7 @@ import { InspectionStatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft, Folder, Trash2, Gavel } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft, Folder, Trash2, Gavel, SearchCheck } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose, SheetFooter } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
@@ -18,20 +18,25 @@ import { DeleteInspectionDialog } from './delete-inspection-dialog';
 import { useObservations } from '@/hooks/use-observations';
 import { FollowUpInspectionDialog } from './follow-up-inspection-dialog';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { runDeeperInspectionAnalysis } from '@/lib/actions/item-actions';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface InspectionDetailSheetProps {
     inspection: Inspection | null;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
-    onItemUpdate: (updatedItem: Inspection) => void; // Kept for consistency, but context handles updates
+    onItemUpdate: (updatedItem: Inspection) => void;
 }
 
 export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItemUpdate }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
   const { user } = useAuth();
-  const { removeItem, retryAnalysis } = useObservations();
+  const { removeItem, retryAnalysis, updateItem } = useObservations();
+  const { toast } = useToast();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
+  const [isAnalyzing, setIsAnalyzing] = React.useState(false);
 
   if (!inspection) return null;
 
@@ -39,10 +44,24 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItem
   const isOwner = user && inspection.userId === user.uid;
   const canDelete = isOwner;
   const canFollowUp = inspection.status === 'Fail' || inspection.status === 'Needs Repair';
+  const hasDeepAnalysis = inspection.aiRisks && inspection.aiSuggestedActions && !inspection.aiRisks.includes('Analisis risiko tersedia');
 
   const handleRetry = async () => {
     if (!inspection) return;
     await retryAnalysis(inspection);
+  };
+  
+  const handleRunDeeperAnalysis = async () => {
+    if (!inspection) return;
+    setIsAnalyzing(true);
+    try {
+        const updatedInspection = await runDeeperInspectionAnalysis(inspection.id);
+        updateItem(updatedInspection);
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.' });
+    } finally {
+        setIsAnalyzing(false);
+    }
   };
 
   const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
@@ -141,77 +160,69 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItem
                 </div>
               )}
 
-              {inspection.aiStatus && (
-                <div className="space-y-4 pt-4 mt-4 border-t">
-                   <div className="bg-primary/5 p-4 rounded-lg border-l-4 border-primary space-y-4">
+              {/* AI ANALYSIS SECTION */}
+              <div className="space-y-4 pt-4 mt-4 border-t">
+                  <div className="bg-primary/5 p-4 rounded-lg border-l-4 border-primary space-y-4">
                       <h4 className="font-semibold text-base flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-primary" />
-                        HSSE Tech Analysis
+                          <Sparkles className="h-5 w-5 text-primary" />
+                          HSSE Tech Analysis
                       </h4>
 
-                      {inspection.aiStatus === 'processing' && (
-                        <div className="flex items-center gap-3 p-4 rounded-lg">
-                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                            <p className="text-sm text-muted-foreground">AI analysis is in progress...</p>
-                        </div>
+                      {inspection.aiStatus === 'processing' && !hasDeepAnalysis && (
+                          <div className="flex items-center gap-3 p-4 rounded-lg">
+                              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                              <p className="text-sm text-muted-foreground">Analisis awal sedang diproses...</p>
+                          </div>
                       )}
-
+                      
                       {inspection.aiStatus === 'failed' && (
-                        <div className="flex flex-col items-start gap-3 bg-destructive/10 p-4 rounded-lg border border-destructive/20">
-                            <p className="text-sm text-destructive font-medium">The AI analysis could not be completed.</p>
-                            <Button variant="destructive" size="sm" onClick={handleRetry}>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Retry Analysis
-                            </Button>
-                        </div>
+                          <Alert variant="destructive">
+                              <AlertTriangle className="h-4 w-4" />
+                              <AlertTitle>Analisis Gagal</AlertTitle>
+                              <AlertDescription>
+                                  Analisis AI tidak dapat diselesaikan.
+                                  <Button variant="link" size="sm" onClick={handleRetry} className="p-0 h-auto ml-2 text-destructive">Coba lagi</Button>
+                              </AlertDescription>
+                          </Alert>
                       )}
 
-                      {inspection.aiStatus === 'completed' && (
-                        <Accordion type="multiple" defaultValue={['summary']} className="w-full">
-                          {inspection.aiSummary && (
-                            <AccordionItem value="summary">
-                              <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                                <div className="flex items-center gap-2">
-                                  <FileText className="h-4 w-4 text-muted-foreground" />
-                                  Summary
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="pt-2">
-                                <p className="text-sm text-muted-foreground pl-8">{inspection.aiSummary}</p>
-                              </AccordionContent>
-                            </AccordionItem>
-                          )}
-                          {inspection.aiRisks && (
-                            <AccordionItem value="risks">
-                              <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                                <div className="flex items-center gap-2">
-                                  <ShieldAlert className="h-4 w-4 text-destructive" />
-                                  Potential Risks
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="pt-2">
-                                 {renderBulletedList(inspection.aiRisks, AlertTriangle, "text-destructive")}
-                              </AccordionContent>
-                            </AccordionItem>
-                          )}
-                          {inspection.aiSuggestedActions && (
-                            <AccordionItem value="actions" className="border-b-0">
-                              <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                                  <div className="flex items-center gap-2">
-                                    <ListChecks className="h-4 w-4 text-green-600" />
-                                    Suggested Actions
-                                  </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="pt-2">
-                                {renderBulletedList(inspection.aiSuggestedActions, CheckCircle2, "text-green-600")}
-                              </AccordionContent>
-                            </AccordionItem>
-                          )}
-                        </Accordion>
+                      {inspection.aiStatus === 'completed' && inspection.aiSummary && (
+                          <p className="text-sm text-muted-foreground">{inspection.aiSummary}</p>
                       )}
-                   </div>
-                </div>
-              )}
+                  </div>
+                  
+                  {/* DEEP ANALYSIS SECTION */}
+                  <div className="bg-accent/5 p-4 rounded-lg border-l-4 border-accent space-y-4">
+                      <h4 className="font-semibold text-base flex items-center gap-2 text-accent">
+                          <SearchCheck className="h-5 w-5" />
+                          Analisis HSSE Mendalam
+                      </h4>
+                      {isAnalyzing ? (
+                          <div className="flex items-center gap-3 p-4 rounded-lg">
+                              <Loader2 className="h-5 w-5 animate-spin text-accent" />
+                              <p className="text-sm text-muted-foreground">Menganalisis lebih dalam...</p>
+                          </div>
+                      ) : hasDeepAnalysis ? (
+                          <Accordion type="multiple" className="w-full">
+                              {inspection.aiRisks && (
+                                  <AccordionItem value="risks"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-destructive" />Potensi Risiko</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiRisks, AlertTriangle, "text-destructive")}</AccordionContent></AccordionItem>
+                              )}
+                              {inspection.aiSuggestedActions && (
+                                  <AccordionItem value="actions" className="border-b-0"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-green-600" />Saran Tindakan</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiSuggestedActions, CheckCircle2, "text-green-600")}</AccordionContent></AccordionItem>
+                              )}
+                          </Accordion>
+                      ) : (
+                          <div className="flex flex-col items-start gap-3 p-2">
+                              <p className="text-sm text-muted-foreground">Jalankan analisis mendalam untuk mengidentifikasi risiko dan saran tindakan.</p>
+                              <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={inspection.aiStatus === 'processing'}>
+                                  <SearchCheck className="mr-2 h-4 w-4" />
+                                  Jalankan Analisis Mendalam
+                              </Button>
+                          </div>
+                      )}
+                  </div>
+              </div>
+
 
               {inspection.status === 'Pass' && inspection.actionTakenDescription && (
                   <div className="space-y-4 pt-4 border-t mt-4">

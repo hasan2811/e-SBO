@@ -4,7 +4,7 @@
 import { adminDb, adminStorage } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
 import type { Observation, Inspection, Ptw, AllItems, UserProfile } from '@/lib/types';
-import { summarizeObservationData, analyzeDeeperObservation } from '@/ai/flows/summarize-observation-data';
+import { summarizeObservationData, analyzeDeeperObservation, analyzeDeeperInspection } from '@/ai/flows/summarize-observation-data';
 import { analyzeInspectionData } from '@/ai/flows/summarize-observation-data';
 import { triggerSmartNotify } from '@/ai/flows/smart-notify-flow';
 
@@ -357,8 +357,6 @@ export async function triggerInspectionAnalysis(inspection: Inspection) {
     const updatePayload = {
       aiStatus: 'completed',
       aiSummary: analysis.summary,
-      aiRisks: analysis.risks,
-      aiSuggestedActions: analysis.suggestedActions,
     };
 
     await docRef.update(updatePayload);
@@ -369,6 +367,51 @@ export async function triggerInspectionAnalysis(inspection: Inspection) {
   } finally {
     revalidatePath(inspection.projectId ? `/proyek/${inspection.projectId}` : '/private', 'page');
   }
+}
+
+export async function runDeeperInspectionAnalysis(inspectionId: string): Promise<Inspection> {
+    const docRef = adminDb.collection('inspections').doc(inspectionId);
+    
+    try {
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) {
+            throw new Error("Inspection not found.");
+        }
+        const inspection = docSnap.data() as Inspection;
+
+        await docRef.update({ aiStatus: 'processing' });
+        revalidatePath(inspection.projectId ? `/proyek/${inspection.projectId}` : '/private', 'page');
+
+        const inspectionData = `
+          Nama Peralatan: ${inspection.equipmentName}
+          Jenis Peralatan: ${inspection.equipmentType}
+          Temuan: ${inspection.findings}
+          Rekomendasi: ${inspection.recommendation || 'Tidak ada'}
+          Lokasi: ${inspection.location}
+          Status Laporan: ${inspection.status}
+          Penginspeksi: ${inspection.submittedBy}
+        `;
+        
+        const deepAnalysis = await analyzeDeeperInspection({ inspectionData });
+        
+        const updatePayload: Partial<Inspection> = {
+            aiStatus: 'completed',
+            aiSummary: deepAnalysis.summary,
+            aiRisks: deepAnalysis.risks,
+            aiSuggestedActions: deepAnalysis.suggestedActions,
+        };
+        
+        await docRef.update(updatePayload);
+        const updatedDoc = await docRef.get();
+        revalidatePath(inspection.projectId ? `/proyek/${inspection.projectId}` : '/private', 'page');
+        
+        return { ...updatedDoc.data(), id: updatedDoc.id } as Inspection;
+
+    } catch (error) {
+        console.error(`Deeper AI analysis failed for inspection ${inspectionId}:`, error);
+        await docRef.update({ aiStatus: 'failed' });
+        throw error;
+    }
 }
 
 

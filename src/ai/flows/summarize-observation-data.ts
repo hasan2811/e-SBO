@@ -6,7 +6,8 @@
  * This file defines Genkit flows for analyzing different types of HSSE reports.
  * - summarizeObservationData: A fast, initial analysis of a standard observation report.
  * - analyzeDeeperObservation: A slower, more detailed analysis of an observation.
- * - analyzeInspectionData: Analyzes an equipment inspection report.
+ * - analyzeInspectionData: A fast, initial analysis of an equipment inspection report.
+ * - analyzeDeeperInspection: A slower, more detailed analysis of an inspection.
  */
 
 import {ai} from '@/ai/genkit';
@@ -88,6 +89,7 @@ const summarizeObservationPrompt = ai.definePrompt({
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
@@ -96,10 +98,6 @@ const summarizeObservationPrompt = ai.definePrompt({
 Your ONLY job is to analyze the following observation report and provide a rating, a category, and a very short explanation.
 Your response MUST be a raw JSON object and nothing else.
 You MUST respond with a JSON object containing 'aiObserverSkillRating', 'aiObserverSkillExplanation', and 'suggestedCategory'.
-
-1.  **aiObserverSkillRating**: First, rate the observer's report from 1 (unclear, low impact) to 5 (clear, high impact). This MUST be a number.
-2.  **aiObserverSkillExplanation**: Second, write a single, very brief sentence in Bahasa Indonesia explaining your rating.
-3.  **suggestedCategory**: Third, classify the report into ONE category from this list: ${OBSERVATION_CATEGORIES.join(', ')}.
 
 Example response format:
 {
@@ -197,20 +195,77 @@ export async function analyzeDeeperObservation(input: SummarizeObservationDataIn
 
 
 // =================================================================================
-// 3. INSPECTION ANALYSIS FLOW
+// 3. FAST INSPECTION ANALYSIS FLOW
 // =================================================================================
 
-const analyzeInspectionPrompt = ai.definePrompt({
-    name: 'analyzeInspectionPrompt',
+const FastSummarizeInspectionOutputSchema = z.object({
+  summary: z.string().describe('Ringkasan yang sangat singkat (satu atau dua kalimat) dari temuan inti inspeksi.'),
+});
+
+const summarizeInspectionPrompt = ai.definePrompt({
+    name: 'summarizeInspectionPrompt',
     model: 'googleai/gemini-1.5-flash-latest',
     input: { schema: AnalyzeInspectionInputSchema },
-    output: { schema: AnalyzeInspectionOutputSchema },
+    output: { schema: FastSummarizeInspectionOutputSchema },
     config: {
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+        ],
+    },
+    prompt: `Anda adalah seorang ahli inspeksi yang sangat cepat. Tugas Anda HANYA menganalisis data laporan inspeksi dan memberikan ringkasan satu kalimat dalam Bahasa Indonesia.
+PENTING: Respons Anda harus berupa objek JSON mentah saja dengan satu kunci: "summary".
+
+Contoh Respons:
+{
+  "summary": "Ditemukan kerusakan pada kabel hidrolik ekskavator yang berpotensi menyebabkan kegagalan fungsi."
+}
+
+Data Inspeksi untuk dianalisis:
+{{{inspectionData}}}`,
+});
+
+const analyzeInspectionDataFlow = ai.defineFlow(
+  {
+    name: 'analyzeInspectionDataFlow',
+    inputSchema: AnalyzeInspectionInputSchema,
+    outputSchema: AnalyzeInspectionOutputSchema, // Still returns the full schema for type safety
+  },
+  async (input) => {
+    const response = await summarizeInspectionPrompt(input);
+    const output = response.output;
+
+    if (!output) {
+      throw new Error('AI analysis returned no structured output for inspection.');
+    }
+
+    // Compose the full output object, filling in "slower" fields with default values.
+    return {
+        summary: output.summary,
+        risks: 'Analisis risiko tersedia di fitur "Analisis Mendalam".',
+        suggestedActions: 'Saran tindakan tersedia di fitur "Analisis Mendalam".',
+    };
+  }
+);
+
+export async function analyzeInspectionData(input: AnalyzeInspectionInput): Promise<AnalyzeInspectionOutput> {
+  return analyzeInspectionDataFlow(input);
+}
+
+
+// =================================================================================
+// 4. DEEP INSPECTION ANALYSIS FLOW (ON-DEMAND)
+// =================================================================================
+
+const deeperAnalysisInspectionPrompt = ai.definePrompt({
+    name: 'deeperAnalysisInspectionPrompt',
+    model: 'googleai/gemini-1.5-flash-latest',
+    input: { schema: AnalyzeInspectionInputSchema },
+    output: { schema: AnalyzeInspectionOutputSchema }, // Re-uses the full output schema
+    config: {
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
     prompt: `Anda adalah seorang ahli inspeksi peralatan dan analis keselamatan. Tugas Anda adalah menganalisis data laporan inspeksi peralatan dan memberikan poin-poin analisis yang jelas dan praktis dalam Bahasa Indonesia.
@@ -226,23 +281,23 @@ Data Inspeksi:
 {{{inspectionData}}}`,
 });
 
-const analyzeInspectionDataFlow = ai.defineFlow(
+const analyzeDeeperInspectionFlow = ai.defineFlow(
   {
-    name: 'analyzeInspectionDataFlow',
+    name: 'analyzeDeeperInspectionFlow',
     inputSchema: AnalyzeInspectionInputSchema,
     outputSchema: AnalyzeInspectionOutputSchema,
   },
   async (input) => {
-    const response = await analyzeInspectionPrompt(input);
+    const response = await deeperAnalysisInspectionPrompt(input);
     const output = response.output;
 
     if (!output) {
-      throw new Error('AI analysis returned no structured output for inspection.');
+      throw new Error('AI deep inspection analysis returned no structured output.');
     }
     return output;
   }
 );
 
-export async function analyzeInspectionData(input: AnalyzeInspectionInput): Promise<AnalyzeInspectionOutput> {
-  return analyzeInspectionDataFlow(input);
+export async function analyzeDeeperInspection(input: AnalyzeInspectionInput): Promise<AnalyzeInspectionOutput> {
+  return analyzeDeeperInspectionFlow(input);
 }
