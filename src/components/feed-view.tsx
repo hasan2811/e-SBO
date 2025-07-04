@@ -36,6 +36,12 @@ interface FeedViewProps {
   projectId?: string;
 }
 
+const viewTypeInfo = {
+    observations: { label: 'Observasi', icon: Briefcase },
+    inspections: { label: 'Inspeksi', icon: Wrench },
+    ptws: { label: 'PTW', icon: PtwIcon },
+};
+
 const ObservationListItem = ({ observation, onSelect, mode, isSelectionMode, isSelected, onToggleSelect }: { observation: Observation, onSelect: () => void, mode: FeedViewProps['mode'], isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
     const { toggleLikeObservation } = useObservations();
     const { user } = useAuth();
@@ -454,12 +460,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
         );
     }
     
-    const config = {
-      observations: { label: 'Observasi', icon: Briefcase },
-      inspections: { label: 'Inspeksi', icon: Wrench },
-      ptws: { label: 'PTW', icon: PtwIcon },
-    };
-    const currentConfig = config[viewType];
+    const currentConfig = viewTypeInfo[viewType];
     let emptyText = `Tidak ada ${currentConfig.label.toLowerCase()} yang tersedia.`;
     let Icon = Home;
 
@@ -501,49 +502,22 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
                 </h2>
                 <div className="flex items-center gap-2">
                     {mode !== 'public' && (
-                        <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant={viewType === 'observations' ? 'secondary' : 'ghost'}
-                                            size="sm"
-                                            className="h-8 px-2"
-                                            onClick={() => setViewType('observations')}
-                                        >
-                                            <Briefcase className="h-5 w-5" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>Observasi</p></TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant={viewType === 'inspections' ? 'secondary' : 'ghost'}
-                                            size="sm"
-                                            className="h-8 px-2"
-                                            onClick={() => setViewType('inspections')}
-                                        >
-                                            <Wrench className="h-5 w-5" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>Inspeksi</p></TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant={viewType === 'ptws' ? 'secondary' : 'ghost'}
-                                            size="sm"
-                                            className="h-8 px-2"
-                                            onClick={() => setViewType('ptws')}
-                                        >
-                                            <PtwIcon className="h-5 w-5" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>PTW</p></TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </div>
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="w-[140px] justify-between">
+                                    <span>{viewTypeInfo[viewType].label}</span>
+                                    <ChevronDown className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[140px]">
+                                {Object.entries(viewTypeInfo).map(([key, { label, icon: Icon }]) => (
+                                    <DropdownMenuItem key={key} onSelect={() => setViewType(key as 'observations' | 'inspections' | 'ptws')}>
+                                        <Icon className="mr-2 h-4 w-4" />
+                                        <span>{label}</span>
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     )}
                     <Popover>
                         <DropdownMenu>
