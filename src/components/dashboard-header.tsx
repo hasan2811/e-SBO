@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { UserAccountSheet } from '@/components/user-account-sheet';
 import { AppLogo } from '@/components/app-logo';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { NotificationSheet } from './notification-sheet';
 
 interface DashboardHeaderProps {
   onNewObservation: () => void;
@@ -24,7 +25,7 @@ export function DashboardHeader({ onNewObservation, onNewInspection, onNewPtw }:
               <AppLogo />
               <h1 className="text-2xl font-bold ml-3 text-foreground">HSSE Tech</h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
                <div className="hidden md:block">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -41,6 +42,7 @@ export function DashboardHeader({ onNewObservation, onNewInspection, onNewPtw }:
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
+              <NotificationSheet />
               <UserAccountSheet />
             </div>
           </div>
