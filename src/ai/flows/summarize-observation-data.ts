@@ -21,8 +21,6 @@ import {
     AnalyzeInspectionInputSchema,
     AnalyzeInspectionOutput,
     AnalyzeInspectionOutputSchema,
-    RiskLevel,
-    ObservationCategory
 } from '@/lib/types';
 
 /**
@@ -71,51 +69,42 @@ const summarizeObservationPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `You are an expert HSSE (Health, Safety, Security, and Environment) analyst. Your task is to analyze an observation report and provide a structured JSON output in Indonesian. Your response MUST be a raw JSON object only.
+    prompt: `You are an expert HSSE (Health, Safety, Security, and Environment) analyst. Your task is to analyze an observation report and provide a structured, core analysis in a JSON object. Your response MUST be a raw JSON object only, in Indonesian.
 
 First, carefully analyze the user's observation data to understand the situation.
 
-Then, perform the following analysis and generate the JSON object:
+Then, perform the following core analysis and generate the JSON object:
 
-1.  **suggestedCategory**: Classify the observation into ONE of the following Life-Saving Rules (LSR) categories. Choose the single most fitting one.
-    *   'Safe Zone Position': Being in a safe position away from hazards like moving equipment or falling objects.
-    *   'Permit to Work': Ensuring a valid work permit is issued and understood for high-risk jobs.
-    *   'Isolation': Verifying all hazardous energy sources are isolated and locked out before work begins.
-    *   'Confined Space Entry': Adhering to safe entry procedures, including atmospheric testing and rescue plans.
-    *   'Lifting Operations': Following a safe lifting plan and never walking under a suspended load.
-    *   'Fit to Work': Ensuring physical and mental readiness for work, free from impairment.
-    *   'Working at Height': Using proper fall protection when working above 1.8 meters.
-    *   'Personal Flotation Device': Wearing a personal flotation device (PFD) when working over or near water.
-    *   'System Override': Obtaining authorization before overriding critical safety systems.
-    *   'Asset Integrity': Ensuring equipment is maintained in a safe and fit-for-purpose condition.
-    *   'Driving Safety': Obeying traffic rules, not using phones, and wearing seatbelts.
-    *   'Environment': Preventing pollution, managing waste correctly, and reporting spills.
-    *   'Signage & Warning': Heeding all safety signs, barricades, and warning signals.
-    *   'Personal Protective Equipment (PPE)': Using the correct and well-maintained PPE for the task.
-    *   'Emergency Response Preparedness': Knowing emergency procedures, equipment locations, and evacuation routes.
-    *   'Management of Change (MOC)': Managing changes to processes or equipment with formal risk assessment.
-    *   'Incident Reporting & Investigation': Reporting all incidents and participating in investigations.
-    *   'Safety Communication': Effectively communicating hazards and controls (e.g., toolbox talks).
-    *   'Excavation Management': Ensuring excavations are safe from collapse and utilities are identified.
-    *   'Competence & Training': Ensuring only competent and trained personnel perform tasks.
-    *   'Supervision': Providing adequate on-site supervision to ensure work is done safely.
+1.  **summary**: A very brief, one-sentence summary of the core finding.
+2.  **suggestedCategory**: Classify the observation into ONE of the following Life-Saving Rules (LSR) categories. Choose the single most fitting one.
+    *   'Safe Zone Position'
+    *   'Permit to Work'
+    *   'Isolation'
+    *   'Confined Space Entry'
+    *   'Lifting Operations'
+    *   'Fit to Work'
+    *   'Working at Height'
+    *   'Personal Flotation Device'
+    *   'System Override'
+    *   'Asset Integrity'
+    *   'Driving Safety'
+    *   'Environment'
+    *   'Signage & Warning'
+    *   'Personal Protective Equipment (PPE)'
+    *   'Emergency Response Preparedness'
+    *   'Management of Change (MOC)'
+    *   'Incident Reporting & Investigation'
+    *   'Safety Communication'
+    *   'Excavation Management'
+    *   'Competence & Training'
+    *   'Supervision'
     Your choice MUST be one of these: ${OBSERVATION_CATEGORIES.join(', ')}.
 
-2.  **suggestedRiskLevel**: Based on the potential severity of the findings, classify the risk level. Choose ONE: 'Low', 'Medium', 'High', or 'Critical'.
-
-3.  **summary**: A very brief, one-sentence summary of the core finding.
+3.  **suggestedRiskLevel**: Based on the potential severity of the findings, classify the risk level. Choose ONE: 'Low', 'Medium', 'High', or 'Critical'.
 
 4.  **risks**: A bulleted list (using '-') of the main potential hazards and consequences if the issue is not addressed.
 
 5.  **suggestedActions**: A bulleted list (using '-') of clear, actionable steps to mitigate the risk. Base this on the user's recommendation if available, but improve it.
-
-6.  **relevantRegulations**: Identify 1-3 of the most relevant regulations (Indonesian laws like UU, PP, Permenaker, or international standards like ISO, OSHA, ANSI). For each, provide a bullet point (using '-') explaining its core relevance.
-
-7.  **rootCauseAnalysis**: A brief analysis of the likely root cause of the reported issue.
-
-8.  **observerAssessment**: An object containing:
-    *   "rating": A number (1 to 5) assessing the observer's HSSE awareness based on the quality of their report. (1: Very Basic, 3: Competent, 5: Expert).
-    *   "explanation": A brief, personalized assessment of the report, mentioning the observer's name and justifying the rating.
 
 Here is the observation data to analyze:
 {{{observationData}}}
@@ -139,27 +128,6 @@ const summarizeObservationDataFlow = ai.defineFlow(
     // Sanitize the output to prevent errors from minor AI deviations.
     output.suggestedCategory = findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'Supervision');
     output.suggestedRiskLevel = findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low');
-    
-    // Sanitize the observer rating
-    let rating = 3; // Default to a competent rating of 3.
-    if (output.observerAssessment?.rating) {
-        // Coerce potential string numbers to actual numbers.
-        const parsedRating = parseInt(String(output.observerAssessment.rating), 10);
-        if (!isNaN(parsedRating)) {
-            // Clamp the value between 1 and 5 to ensure it's always valid.
-            rating = Math.max(1, Math.min(5, parsedRating));
-        }
-    }
-
-    // Sanitize the explanation, providing a default if it's missing or empty.
-    const explanation = output.observerAssessment?.explanation?.trim() || 
-                        "Analisis laporan tidak dapat diselesaikan sepenuhnya oleh AI.";
-
-    // Reconstruct the entire observerAssessment object to guarantee schema compliance.
-    output.observerAssessment = {
-        rating: rating,
-        explanation: explanation,
-    };
     
     return output;
   }

@@ -76,7 +76,7 @@ export type Observation = {
   status: ObservationStatus;
   category: ObservationCategory;
   company: Company;
-  photoUrl?: string;
+  photoUrl?: string | null;
   scope: Scope;
   projectId: string | null;
   actionTakenDescription?: string;
@@ -87,11 +87,7 @@ export type Observation = {
   aiSummary?: string;
   aiRisks?: string;
   aiSuggestedActions?: string;
-  aiRelevantRegulations?: string;
   aiSuggestedRiskLevel?: RiskLevel;
-  aiRootCauseAnalysis?: string;
-  aiObserverSkillRating?: number;
-  aiObserverSkillExplanation?: string;
   isSharedPublicly?: boolean;
   sharedBy?: string;
   sharedByPosition?: string;
@@ -218,13 +214,7 @@ export const SummarizeObservationDataOutputSchema = z.object({
   suggestedCategory: z.enum(OBSERVATION_CATEGORIES).describe('Saran kategori berdasarkan analisis temuan.'),
   risks: z.string().describe('Analisis potensi bahaya dan risiko dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
   suggestedActions: z.string().describe('Saran tindakan perbaikan dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
-  relevantRegulations: z.string().describe('Poin-poin inti dari peraturan nasional & internasional yang relevan beserta penjelasan singkatnya (Bahasa Indonesia).'),
   suggestedRiskLevel: z.enum(RISK_LEVELS).describe('Saran tingkat risiko (Low, Medium, High, Critical) berdasarkan analisis temuan.'),
-  rootCauseAnalysis: z.string().describe('Analisis singkat mengenai kemungkinan akar penyebab masalah (Bahasa Indonesia).'),
-  observerAssessment: z.object({
-      rating: z.number().min(1).max(5).describe('Rating 1-5 tingkat pemahaman observer. 1: Sangat Dasar, 2: Dasar, 3: Cukup Paham, 4: Paham, 5: Sangat Paham/Ahli.'),
-      explanation: z.string().describe('Analisis personal tentang laporan observer, sebutkan namanya.'),
-  })
 });
 export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservationDataOutputSchema>;
 

@@ -293,21 +293,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                     )}
 
                     {observation.aiStatus === 'completed' && (
-                      <div className="space-y-4">
-                        {observation.aiObserverSkillRating && observation.aiObserverSkillExplanation && (
-                          <div className="space-y-2 p-4 bg-card rounded-md shadow-sm">
-                            <div className="flex items-center justify-between">
-                              <h5 className="font-semibold flex items-center gap-2 text-sm">
-                                <UserCheck className="h-4 w-4 text-muted-foreground" />
-                                Wawasan Observer
-                              </h5>
-                              <StarRating rating={observation.aiObserverSkillRating} />
-                            </div>
-                            <p className="text-sm text-muted-foreground italic pl-6">{observation.aiObserverSkillExplanation}</p>
-                          </div>
-                        )}
-
-                       <Accordion type="multiple" defaultValue={['summary']} className="w-full">
+                      <Accordion type="multiple" defaultValue={['summary']} className="w-full">
                         {observation.aiSummary && (
                           <AccordionItem value="summary">
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
@@ -336,19 +322,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                             </AccordionContent>
                           </AccordionItem>
                         )}
-                        {observation.aiRootCauseAnalysis && (
-                          <AccordionItem value="rootCause">
-                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                              <div className="flex items-center gap-2">
-                                <Target className="h-4 w-4 text-muted-foreground" />
-                                Analisis Akar Penyebab
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2">
-                              <p className="text-sm text-muted-foreground pl-8">{observation.aiRootCauseAnalysis}</p>
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
                         {observation.aiRisks && (
                           <AccordionItem value="risks">
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
@@ -363,7 +336,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                           </AccordionItem>
                         )}
                         {observation.aiSuggestedActions && (
-                          <AccordionItem value="actions">
+                          <AccordionItem value="actions" className="border-b-0">
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                                 <div className="flex items-center gap-2">
                                   <ListChecks className="h-4 w-4 text-green-600" />
@@ -375,21 +348,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                             </AccordionContent>
                           </AccordionItem>
                         )}
-                        {observation.aiRelevantRegulations && (
-                          <AccordionItem value="regulations" className="border-b-0">
-                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                               <div className="flex items-center gap-2">
-                                <Gavel className="h-4 w-4 text-muted-foreground" />
-                                Peraturan Terkait
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2">
-                              {renderBulletedList(observation.aiRelevantRegulations, Gavel, "text-muted-foreground")}
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
                       </Accordion>
-                      </div>
                     )}
                  </div>
               </div>

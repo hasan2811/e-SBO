@@ -107,7 +107,9 @@ export async function deleteItem(item: AllItems) {
     // Delete associated files from storage first
     if (item.itemType === 'observation' || item.itemType === 'inspection') {
       await deleteStorageFileFromUrl(item.photoUrl);
-      await deleteStorageFileFromUrl(item.actionTakenPhotoUrl);
+      if ('actionTakenPhotoUrl' in item) {
+        await deleteStorageFileFromUrl(item.actionTakenPhotoUrl);
+      }
     } else if (item.itemType === 'ptw') {
       await deleteStorageFileFromUrl(item.jsaPdfUrl);
     }
@@ -136,7 +138,9 @@ export async function deleteMultipleItems(items: AllItems[]) {
       batch.delete(docRef);
       if (item.itemType === 'observation' || item.itemType === 'inspection') {
         filesToDelete.push(item.photoUrl);
-        filesToDelete.push(item.actionTakenPhotoUrl);
+        if ('actionTakenPhotoUrl' in item) {
+          filesToDelete.push(item.actionTakenPhotoUrl);
+        }
       } else if (item.itemType === 'ptw') {
         filesToDelete.push(item.jsaPdfUrl);
       }
@@ -201,10 +205,6 @@ export async function triggerObservationAnalysis(observation: Observation) {
       aiSummary: analysis.summary,
       aiRisks: analysis.risks,
       aiSuggestedActions: analysis.suggestedActions,
-      aiRelevantRegulations: analysis.relevantRegulations,
-      aiRootCauseAnalysis: analysis.rootCauseAnalysis,
-      aiObserverSkillRating: analysis.observerAssessment.rating,
-      aiObserverSkillExplanation: analysis.observerAssessment.explanation,
       aiSuggestedRiskLevel: analysis.suggestedRiskLevel,
     };
     
