@@ -143,6 +143,28 @@ const summarizeObservationDataFlow = ai.defineFlow(
       suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
     };
     
+    // Sanitize the observer rating to make it more robust against LLM output variations.
+    let rating = 3; // Default to a competent rating of 3.
+    if (output.observerAssessment?.rating) {
+        // Coerce potential string numbers to actual numbers.
+        const parsedRating = parseInt(String(output.observerAssessment.rating), 10);
+        if (!isNaN(parsedRating)) {
+            // Clamp the value between 1 and 5 to ensure it's always valid.
+            rating = Math.max(1, Math.min(5, parsedRating));
+        }
+    }
+
+    // Ensure the assessment object exists and set the sanitized rating.
+    if (output.observerAssessment) {
+        output.observerAssessment.rating = rating;
+    } else {
+        // If the whole assessment object is missing, create a default one.
+        output.observerAssessment = {
+            rating: rating,
+            explanation: "Analisis laporan tidak dapat diselesaikan sepenuhnya oleh AI.",
+        };
+    }
+    
     return output;
   }
 );
