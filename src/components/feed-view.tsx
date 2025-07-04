@@ -342,6 +342,27 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
       return 'Feed';
   };
   
+  const handleDeleteConfirm = async () => {
+    const itemsToDelete = items.filter(item => selectedIds.has(item.id));
+    if (itemsToDelete.length > 0) {
+      try {
+        await removeMultipleItems(itemsToDelete);
+        toast({
+          title: 'Berhasil Dihapus',
+          description: `${itemsToDelete.length} item telah berhasil dihapus.`,
+        });
+        setIsSelectionMode(false);
+        setSelectedIds(new Set());
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Gagal Menghapus',
+          description: 'Terjadi kesalahan saat menghapus item yang dipilih.',
+        });
+      }
+    }
+  };
+  
   function EmptyState() {
     let Icon = Home;
     let titleText = 'Feed Kosong';
@@ -397,25 +418,15 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
 
                 <div className="flex items-center gap-2 flex-shrink-0 self-start">
                     {mode !== 'public' && (
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <Search className="h-5 w-5" />
-                                    <span className="sr-only">Cari Laporan</span>
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent align="end" className="p-2 w-80">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input placeholder="Cari di feed ini..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" autoFocus />
-                                    {searchTerm && (
-                                      <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
-                                        <X className="h-4 w-4"/>
-                                      </Button>
-                                    )}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+                        <div className="relative hidden sm:block">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="Cari di feed ini..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-48 lg:w-64" />
+                            {searchTerm && (
+                              <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
+                                <X className="h-4 w-4"/>
+                              </Button>
+                            )}
+                        </div>
                     )}
 
                     <DropdownMenu>
@@ -460,6 +471,18 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
             </>
           )}
         </div>
+        
+        {mode !== 'public' && (
+             <div className="relative sm:hidden">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Cari di feed ini..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-full" />
+                {searchTerm && (
+                  <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
+                    <X className="h-4 w-4"/>
+                  </Button>
+                )}
+            </div>
+        )}
 
       <main className="mt-6">
         {isLoading && filteredData.length === 0 ? (
@@ -509,11 +532,12 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
     <InspectionDetailSheet isOpen={!!selectedInspectionId} onOpenChange={(isOpen) => { if(!isOpen) setSelectedInspectionId(null); }} inspectionId={selectedInspectionId} />
     <PtwDetailSheet isOpen={!!selectedPtwId} onOpenChange={(isOpen) => { if(!isOpen) setSelectedPtwId(null); }} ptwId={selectedPtwId} />
     
-    <DeleteMultipleDialog isOpen={isDeleteMultiOpen} onOpenChange={setDeleteMultiOpen} itemsToDelete={items.filter(item => selectedIds.has(item.id))} onSuccess={() => {
-        removeMultipleItems(items.filter(item => selectedIds.has(item.id)));
-        setIsSelectionMode(false);
-        setSelectedIds(new Set());
-    }} />
+    <DeleteMultipleDialog 
+        isOpen={isDeleteMultiOpen} 
+        onOpenChange={setDeleteMultiOpen} 
+        itemCount={selectedIds.size}
+        onConfirm={handleDeleteConfirm}
+    />
    </>
   );
 }

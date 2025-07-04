@@ -12,43 +12,39 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Loader2, Trash2 } from 'lucide-react';
-import { deleteMultipleItems } from '@/lib/actions/item-actions';
-import { useToast } from '@/hooks/use-toast';
-import { AllItems } from '@/lib/types';
-
 
 interface DeleteMultipleDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  itemsToDelete: AllItems[];
-  onSuccess?: () => void;
+  itemCount: number;
+  onConfirm: () => Promise<void>;
 }
 
 export function DeleteMultipleDialog({
   isOpen,
   onOpenChange,
-  itemsToDelete,
-  onSuccess,
+  itemCount,
+  onConfirm,
 }: DeleteMultipleDialogProps) {
-  const { toast } = useToast();
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const handleConfirm = async () => {
-    if (itemsToDelete.length === 0) return;
+  const handleConfirmClick = async () => {
+    if (itemCount === 0) return;
+    
     setIsDeleting(true);
     try {
-        await deleteMultipleItems(itemsToDelete);
-        toast({ title: 'Berhasil Dihapus', description: `${itemsToDelete.length} item telah berhasil dihapus.` });
-        onSuccess?.();
-        onOpenChange(false);
+      await onConfirm(); // The parent component handles the logic and toast
+      onOpenChange(false); // Close dialog on success
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Gagal Menghapus', description: 'Terjadi kesalahan saat menghapus item.' });
+      // Error is caught and toasted by the parent component.
+      // We just need to stop the loading spinner.
+      console.error("Deletion failed:", error);
     } finally {
-        setIsDeleting(false);
+      setIsDeleting(false);
     }
   };
 
-  if (itemsToDelete.length === 0) return null;
+  if (itemCount === 0) return null;
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
@@ -57,13 +53,13 @@ export function DeleteMultipleDialog({
           <AlertDialogTitle>Anda yakin ingin menghapus item ini?</AlertDialogTitle>
           <AlertDialogDescription>
             Tindakan ini tidak dapat dibatalkan. Ini akan menghapus{' '}
-            <span className="font-bold">{itemsToDelete.length}</span> item yang dipilih secara permanen, termasuk semua data terkait seperti foto.
+            <span className="font-bold">{itemCount}</span> item yang dipilih secara permanen, termasuk semua data terkait seperti foto.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
           <AlertDialogAction
-            onClick={handleConfirm}
+            onClick={handleConfirmClick}
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
