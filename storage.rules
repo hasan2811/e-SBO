@@ -1,12 +1,13 @@
+
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    // This rule covers all upload paths used by the application,
-    // both private and within projects. It ensures that a logged-in
-    // user can only manage files inside their own user-ID-named folder.
-    // This provides the absolute right for users to manage their own files.
-    match /{allPaths=**}/{userId}/{fileName} {
-      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+    // WARNING: This rule is completely public and allows anyone to upload, read, or delete any file.
+    // This is NOT recommended for production environments.
+    // This is set based on the user's explicit request to remove all server-side security.
+    match /{allPaths=**} {
+      allow read, write: if true;
     }
   }
 }
