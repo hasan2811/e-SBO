@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -22,6 +23,7 @@ import { Input } from '@/components/ui/input';
 
 const formSchema = z.object({
   position: z.string().min(3, { message: 'Position must be at least 3 characters long.' }),
+  company: z.string().min(3, { message: 'Company must be at least 3 characters long.' }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -41,17 +43,24 @@ export function CompleteProfileDialog({ isOpen, onProfileComplete }: CompletePro
     resolver: zodResolver(formSchema),
     defaultValues: {
       position: '',
+      company: '',
     },
   });
+  
+  React.useEffect(() => {
+    if (userProfile?.company && userProfile.company !== 'Unassigned') {
+        form.setValue('company', userProfile.company);
+    }
+  }, [userProfile, form]);
 
   const onSubmit = async (values: FormValues) => {
     if (!user || !userProfile) return;
     setIsSaving(true);
     try {
-      await updateUserProfile(user.uid, { position: values.position });
+      await updateUserProfile(user.uid, { position: values.position, company: values.company });
       toast({
         title: 'Profile Completed!',
-        description: 'You can now start submitting observations.',
+        description: 'You can now start using the application.',
       });
       onProfileComplete();
     } catch (error) {
@@ -59,7 +68,7 @@ export function CompleteProfileDialog({ isOpen, onProfileComplete }: CompletePro
       toast({
         variant: 'destructive',
         title: 'Update Failed',
-        description: 'Could not save your position. Please try again.',
+        description: 'Could not save your details. Please try again.',
       });
     } finally {
       setIsSaving(false);
@@ -68,11 +77,11 @@ export function CompleteProfileDialog({ isOpen, onProfileComplete }: CompletePro
 
   return (
     <Dialog open={isOpen} modal={true}>
-      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()} hideCloseButton>
         <DialogHeader>
           <DialogTitle>Welcome to HSSE Tech!</DialogTitle>
           <DialogDescription>
-            Please complete your profile by adding your position. This will be displayed on all your observation reports.
+            Please complete your profile by adding your position and company. This information is required to continue.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -85,6 +94,19 @@ export function CompleteProfileDialog({ isOpen, onProfileComplete }: CompletePro
                   <FormLabel>Position / Jabatan</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Safety Officer" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="company"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company / Perusahaan</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., PT. Konstruksi Utama" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

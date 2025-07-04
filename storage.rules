@@ -1,8 +1,26 @@
+
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write; // Allows everyone to do everything
+
+    // This single rule covers all non-project specific uploads like
+    // private observations, inspections, PTWs, action photos, and profile photos.
+    // It verifies that the `userId` in the path matches the authenticated user's UID.
+    // Example path: observations/{userId}/{fileName}
+    // Example path: profile-photos/{userId}/{fileName}
+    match /{folder}/{userId}/{fileName} {
+      allow read; // Allow public read for fetching via URL
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // This rule covers all project-specific uploads.
+    // It also verifies that the `userId` in the path matches the authenticated user's UID.
+    // This is the critical fix for the security issue.
+    // Example path: projects/{projectId}/{folder}/{userId}/{fileName}
+    match /projects/{projectId}/{folder}/{userId}/{fileName} {
+      allow read; // Allow public read for fetching via URL
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

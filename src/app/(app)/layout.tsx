@@ -80,7 +80,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     exit: { opacity: 0, x: -20 },
   };
   
-  const showMultiActionButton = pathname.startsWith('/proyek/') || pathname === '/private';
+  const showMultiActionButton = pathname.startsWith('/proyek/') || pathname.startsWith('/private');
 
   return (
     <>
