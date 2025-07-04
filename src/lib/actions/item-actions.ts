@@ -77,10 +77,7 @@ async function deleteStorageFileFromUrl(fileUrl: string | undefined | null): Pro
         return;
     }
     try {
-        // Create a URL object for robust parsing
         const url = new URL(fileUrl);
-        // The pathname is like /v0/b/bucket-name.appspot.com/o/path%2Fto%2Ffile.jpg
-        // We need to extract the part after '/o/'
         const pathStartIndex = url.pathname.indexOf('/o/');
         if (pathStartIndex === -1) {
             console.warn(`[Admin Storage] Could not find '/o/' in the file URL path: ${fileUrl}`);
@@ -98,7 +95,6 @@ async function deleteStorageFileFromUrl(fileUrl: string | undefined | null): Pro
             console.warn(`[Admin Storage] File not found for deletion, probably already deleted: ${fileUrl}`);
         } else {
             console.error(`[Admin Storage] Failed to delete file. URL: ${fileUrl}, Error:`, error);
-            // Don't re-throw. We want to delete the Firestore doc even if the file is gone.
         }
     }
 }
@@ -107,19 +103,20 @@ export async function deleteItem(item: AllItems) {
   try {
     const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
     
-    // Attempt to delete files but don't let it block the main deletion
+    // Immediately delete the Firestore document
+    await docRef.delete();
+
+    // Trigger file deletions in the background (fire and forget) without waiting
     if (item.itemType === 'observation' || item.itemType === 'inspection') {
-      await deleteStorageFileFromUrl(item.photoUrl);
+      deleteStorageFileFromUrl(item.photoUrl);
       if ('actionTakenPhotoUrl' in item) {
-        await deleteStorageFileFromUrl(item.actionTakenPhotoUrl);
+        deleteStorageFileFromUrl(item.actionTakenPhotoUrl);
       }
     } else if (item.itemType === 'ptw') {
-      await deleteStorageFileFromUrl(item.jsaPdfUrl);
+      deleteStorageFileFromUrl(item.jsaPdfUrl);
     }
-
-    // Always attempt to delete the Firestore document
-    await docRef.delete();
     
+    // Revalidate paths to update the UI
     revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private', 'page');
     revalidatePath('/public', 'page');
     revalidatePath('/tasks', 'page');
@@ -132,26 +129,26 @@ export async function deleteItem(item: AllItems) {
 export async function deleteMultipleItems(items: AllItems[]) {
   try {
     const batch = adminDb.batch();
-    const filesToDelete: (string | undefined | null)[] = [];
 
     items.forEach(item => {
       const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
       batch.delete(docRef);
+
+      // Trigger file deletions in the background (fire and forget) for each item
       if (item.itemType === 'observation' || item.itemType === 'inspection') {
-        filesToDelete.push(item.photoUrl);
+        deleteStorageFileFromUrl(item.photoUrl);
         if ('actionTakenPhotoUrl' in item) {
-          filesToDelete.push(item.actionTakenPhotoUrl);
+          deleteStorageFileFromUrl(item.actionTakenPhotoUrl);
         }
       } else if (item.itemType === 'ptw') {
-        filesToDelete.push(item.jsaPdfUrl);
+        deleteStorageFileFromUrl(item.jsaPdfUrl);
       }
     });
 
-    await Promise.all([
-      ...filesToDelete.map(url => url ? deleteStorageFileFromUrl(url).catch(e => console.error(e)) : Promise.resolve()),
-      batch.commit()
-    ]);
+    // Commit the batch deletion of Firestore documents immediately
+    await batch.commit();
     
+    // Revalidate relevant paths
     revalidatePath('/private', 'page');
     revalidatePath('/public', 'page');
     const projectIds = new Set(items.map(i => i.projectId).filter(Boolean));
@@ -162,6 +159,7 @@ export async function deleteMultipleItems(items: AllItems[]) {
     throw new Error('Failed to delete the items on the server.');
   }
 }
+
 
 // ==================================
 // AI & OTHER ACTIONS
@@ -199,9 +197,9 @@ export async function triggerObservationAnalysis(observation: Observation) {
     const updatePayload: Partial<Observation> = {
       aiStatus: 'completed',
       category: analysis.suggestedCategory,
-      riskLevel: analysis.suggestedRiskLevel,
-      aiSummary: analysis.summary,
+      // Keep the user-defined risk level, but store the AI suggestion separately
       aiSuggestedRiskLevel: analysis.suggestedRiskLevel,
+      aiSummary: analysis.summary,
       aiObserverSkillRating: analysis.aiObserverSkillRating,
       aiObserverSkillExplanation: analysis.aiObserverSkillExplanation,
     };
@@ -227,7 +225,6 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
         }
         const observation = docSnap.data() as Observation;
 
-        // Optionally, update status to show processing in UI
         await docRef.update({ aiStatus: 'processing' });
         revalidatePath(observation.projectId ? `/proyek/${observation.projectId}` : '/private', 'page');
 
@@ -333,7 +330,6 @@ export async function shareObservationToPublic(observation: Observation, userPro
       viewCount: 0,
   };
 
-  // Explicitly delete properties that shouldn't be in the new public copy
   delete publicObservationData.id;
   delete publicObservationData.isSharedPublicly;
   delete publicObservationData.actionTakenDescription;
@@ -343,9 +339,8 @@ export async function shareObservationToPublic(observation: Observation, userPro
   
   const originalDocRef = adminDb.collection('observations').doc(observation.id);
 
-  // Use a batch to ensure atomicity
   const batch = adminDb.batch();
-  const newPublicDocRef = adminDb.collection('observations').doc(); // Create a new doc reference
+  const newPublicDocRef = adminDb.collection('observations').doc();
   batch.set(newPublicDocRef, publicObservationData);
   batch.update(originalDocRef, { isSharedPublicly: true });
   await batch.commit();
