@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationStatus, Scope } from '@/lib/types';
+import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationStatus } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
 import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Search, Globe, Building, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical } from 'lucide-react';
@@ -20,23 +20,12 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { collection, query, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Query, where, getDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/hooks/use-auth';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteMultipleDialog } from './delete-multiple-dialog';
-import { usePathname, useRouter } from 'next/navigation';
-import { toggleLike } from '@/lib/actions/interaction-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
-
-const PAGE_SIZE = 10;
-
-interface FeedViewProps {
-  mode: Scope;
-  projectId?: string;
-  observationIdToOpen?: string | null;
-}
+import { useObservations } from '@/hooks/use-observations';
+import { useAuth } from '@/hooks/use-auth';
 
 const viewTypeInfo = {
     observations: { label: 'Observasi', icon: Briefcase, collection: 'observations' },
@@ -44,8 +33,10 @@ const viewTypeInfo = {
     ptws: { label: 'PTW', icon: PtwIcon, collection: 'ptws' },
 };
 
-const ObservationListItem = ({ observation, onSelect, mode, isSelectionMode, isSelected, onToggleSelect, onLikeToggle }: { observation: Observation, onSelect: () => void, mode: FeedViewProps['mode'], isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void, onLikeToggle: (obs: Observation) => void }) => {
+const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelected, onToggleSelect, onLikeToggle }: { observation: Observation, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void, onLikeToggle: (obs: Observation) => void }) => {
     const { user } = useAuth();
+    const pathname = usePathname();
+    const mode = pathname.startsWith('/public') ? 'public' : 'project';
 
     const riskColorStyles: Record<RiskLevel, string> = {
         Low: 'border-l-chart-2',
@@ -257,103 +248,45 @@ const PtwListItem = ({ ptw, onSelect, isSelectionMode, isSelected, onToggleSelec
     )
 };
 
-export function FeedView({ mode, projectId, observationIdToOpen }: FeedViewProps) {
-  const { user } = useAuth();
+export function FeedView() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
-
-  const [items, setItems] = React.useState<AllItems[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [lastVisible, setLastVisible] = React.useState<QueryDocumentSnapshot | null>(null);
-  const [hasMore, setHasMore] = React.useState(true);
+  
+  const { items, isLoading, error, hasMore, fetchItems, viewType, setViewType, handleLikeToggle, getObservationById, removeMultipleItems } = useObservations();
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
   const [selectedPtwId, setSelectedPtwId] = React.useState<string | null>(null);
   
-  const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
   const [searchTerm, setSearchTerm] = React.useState('');
   
   const [isSelectionMode, setIsSelectionMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [isDeleteMultiOpen, setDeleteMultiOpen] = React.useState(false);
 
-  const fetchItems = React.useCallback(async (reset: boolean = false) => {
-    if (!user && (mode === 'private' || mode === 'project')) return;
-    setIsLoading(true);
-    setError(null);
-    const lastDoc = reset ? null : lastVisible;
-
-    try {
-        let q: Query;
-        const collectionName = viewTypeInfo[viewType].collection;
-        let baseQuery = query(collection(db, collectionName), orderBy('date', 'desc'), limit(PAGE_SIZE));
-
-        if (mode === 'public') {
-            q = query(baseQuery, where('scope', '==', 'public'));
-        } else if (mode === 'project' && projectId) {
-            q = query(baseQuery, where('scope', '==', 'project'), where('projectId', '==', projectId));
-        } else if (mode === 'private') {
-            q = query(baseQuery, where('scope', '==', 'private'), where('userId', '==', user?.uid));
-        } else {
-            // Should not happen, but as a safeguard
-            setItems([]);
-            setIsLoading(false);
-            return;
-        }
-
-        if (lastDoc) {
-            q = query(q, startAfter(lastDoc));
-        }
-
-        const docSnap = await getDocs(q);
-        const newItems: AllItems[] = docSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
-        
-        setHasMore(newItems.length === PAGE_SIZE);
-        setLastVisible(docSnap.docs[docSnap.docs.length - 1] || null);
-        setItems(prev => reset ? newItems : [...prev, ...newItems]);
-
-    } catch (e) {
-        console.error("Error fetching items:", e);
-        setError("Failed to load feed data.");
-    } finally {
-        setIsLoading(false);
-    }
-  }, [mode, projectId, user, viewType, lastVisible]);
+  const mode = pathname.startsWith('/public') ? 'public' : pathname.startsWith('/beranda') ? 'private' : 'project';
+  const observationIdToOpen = searchParams.get('openObservation');
   
-  // Initial fetch and reset on filter changes
-  React.useEffect(() => {
-    fetchItems(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, projectId, viewType, user]);
-
-
   const triggeredOpen = React.useRef(false);
   React.useEffect(() => {
     const openItemFromNotification = async () => {
         if (observationIdToOpen && !isLoading && !triggeredOpen.current) {
             triggeredOpen.current = true;
-            try {
-                const itemDoc = await getDoc(doc(db, 'observations', observationIdToOpen));
-                if (itemDoc.exists()) {
-                    const itemData = itemDoc.data();
-                    if (itemData.projectId === projectId) {
-                        setViewType('observations');
-                        setSelectedObservationId(observationIdToOpen);
-                    }
-                } else {
-                     toast({ variant: 'destructive', title: 'Laporan Tidak Ditemukan' });
-                }
-            } catch (e) {
-                toast({ variant: 'destructive', title: 'Gagal Membuka Laporan' });
+            
+            const item = getObservationById(observationIdToOpen);
+            if (item) {
+                if (viewType !== 'observations') setViewType('observations');
+                setSelectedObservationId(observationIdToOpen);
+            } else {
+                 toast({ variant: 'destructive', title: 'Laporan Tidak Ditemukan' });
             }
             router.replace(pathname, { scroll: false });
         }
     };
     openItemFromNotification();
-  }, [observationIdToOpen, isLoading, projectId, pathname, router, toast]);
+  }, [observationIdToOpen, isLoading, getObservationById, pathname, router, toast, setViewType, viewType]);
 
   const filteredData = React.useMemo(() => {
     if (!searchTerm) return items;
@@ -366,28 +299,13 @@ export function FeedView({ mode, projectId, observationIdToOpen }: FeedViewProps
     });
   }, [items, searchTerm]);
   
-  const displayObservation = React.useMemo(() => 
-    selectedObservationId ? items.find(o => o.id === selectedObservationId) as Observation : null,
-    [selectedObservationId, items]
-  );
-  
-  const displayInspection = React.useMemo(() =>
-    selectedInspectionId ? items.find(i => i.id === selectedInspectionId) as Inspection : null,
-    [selectedInspectionId, items]
-  );
-  
-  const displayPtw = React.useMemo(() =>
-    selectedPtwId ? items.find(p => p.id === selectedPtwId) as Ptw : null,
-    [selectedPtwId, items]
-  );
-
   const handleExport = () => {
     const dataToExport = filteredData.filter(item => item.itemType === 'observation') as Observation[];
     if (dataToExport.length === 0) {
       toast({ variant: 'destructive', title: 'Tidak Ada Data untuk Diekspor' });
       return;
     }
-    const fileName = `Export_${mode}_${projectId || ''}_${format(new Date(), 'yyyy-MM-dd')}`;
+    const fileName = `Export_${mode}_${new Date().toISOString()}`;
     exportToExcel(dataToExport, fileName);
   };
   
@@ -399,41 +317,15 @@ export function FeedView({ mode, projectId, observationIdToOpen }: FeedViewProps
         return newSet;
     });
   };
-
-  const handleLikeToggle = async (observation: Observation) => {
-      if (!user) {
-        toast({ variant: 'destructive', title: 'Anda harus masuk untuk menyukai.' });
-        return;
-      }
-
-      const originalLikes = observation.likes || [];
-      const hasLiked = originalLikes.includes(user.uid);
-      
-      const optimisticUpdate = (item: AllItems): AllItems => {
-        if (item.id === observation.id && item.itemType === 'observation') {
-            const newLikes = hasLiked
-                ? originalLikes.filter(uid => uid !== user.uid)
-                : [...originalLikes, user.uid];
-            return { ...item, likes: newLikes, likeCount: newLikes.length };
-        }
-        return item;
-      };
-      
-      setItems(currentItems => currentItems.map(optimisticUpdate));
-
-      try {
-          await toggleLike({ docId: observation.id, userId: user.uid, collectionName: 'observations' });
-      } catch (error) {
-          console.error('Failed to toggle like:', error);
-          toast({ variant: 'destructive', title: 'Gagal', description: 'Tidak dapat memproses suka.'});
-          // Revert UI on failure
-          setItems(currentItems => currentItems.map(item => item.id === observation.id ? observation : item));
-      }
-  };
-
+  
   const isExportDisabled = viewType !== 'observations';
   const canSelect = !isLoading && filteredData.length > 0 && mode !== 'public';
 
+  const getPageTitle = () => {
+      if (mode === 'public') return 'Feed Publik';
+      return 'Feed';
+  };
+  
   function EmptyState() {
     let Icon = Home;
     let title = 'Feed Kosong';
@@ -476,9 +368,7 @@ export function FeedView({ mode, projectId, observationIdToOpen }: FeedViewProps
             </>
           ) : (
             <>
-                <h2 className="text-2xl font-bold tracking-tight">
-                    {mode === 'public' ? 'Feed Publik' : 'Feed'}
-                </h2>
+                <h2 className="text-2xl font-bold tracking-tight">{getPageTitle()}</h2>
                 <div className="flex items-center gap-2">
                     {mode !== 'public' && (
                          <DropdownMenu>
@@ -548,15 +438,18 @@ export function FeedView({ mode, projectId, observationIdToOpen }: FeedViewProps
           </ul>
         ) : error ? (
             <Alert variant="destructive">
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
+                <AlertTitle>Gagal Memuat Data</AlertTitle>
+                <AlertDescription>
+                    {error} 
+                    <Button variant="link" className="p-0 h-auto ml-2 text-destructive-foreground" onClick={() => fetchItems(true)}>Coba lagi</Button>
+                </AlertDescription>
             </Alert>
         ) : filteredData.length > 0 ? (
           <ul className="space-y-3">
              {filteredData.map(item => {
                 switch(item.itemType) {
                   case 'observation':
-                    return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} mode={mode} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} onLikeToggle={handleLikeToggle} />;
+                    return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} onLikeToggle={handleLikeToggle} />;
                   case 'inspection':
                     return <InspectionListItem key={item.id} inspection={item} onSelect={() => setSelectedInspectionId(item.id)} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} />;
                   case 'ptw':
@@ -580,12 +473,13 @@ export function FeedView({ mode, projectId, observationIdToOpen }: FeedViewProps
       </main>
     </div>
 
-    {displayObservation && (<ObservationDetailSheet observation={displayObservation} isOpen={!!displayObservation} onOpenChange={(isOpen) => { if (!isOpen) setSelectedObservationId(null); }} mode={mode} onItemUpdate={(updatedItem) => setItems(items => items.map(i => i.id === updatedItem.id ? updatedItem : i))} />)}
-    {displayInspection && (<InspectionDetailSheet inspection={displayInspection} isOpen={!!displayInspection} onOpenChange={(isOpen) => { if (!isOpen) setSelectedInspectionId(null); }} onItemUpdate={(updatedItem) => setItems(items => items.map(i => i.id === updatedItem.id ? updatedItem : i))} />)}
-    {displayPtw && (<PtwDetailSheet ptw={displayPtw} isOpen={!!displayPtw} onOpenChange={(isOpen) => { if (!isOpen) setSelectedPtwId(null); }} onItemUpdate={(updatedItem) => setItems(items => items.map(i => i.id === updatedItem.id ? updatedItem : i))} />)}
+    <ObservationDetailSheet isOpen={!!selectedObservationId} onOpenChange={(isOpen) => { if (!isOpen) setSelectedObservationId(null); }} observationId={selectedObservationId} />
+    {selectedInspectionId && <InspectionDetailSheet inspection={items.find(i => i.id === selectedInspectionId) as Inspection} isOpen={!!selectedInspectionId} onOpenChange={(isOpen) => { if (!isOpen) setSelectedInspectionId(null); }} onItemUpdate={() => {}} />}
+    {selectedPtwId && <PtwDetailSheet ptw={items.find(p => p.id === selectedPtwId) as Ptw} isOpen={!!selectedPtwId} onOpenChange={(isOpen) => { if (!isOpen) setSelectedPtwId(null); }} onItemUpdate={() => {}} />}
+
     
     <DeleteMultipleDialog isOpen={isDeleteMultiOpen} onOpenChange={setDeleteMultiOpen} itemsToDelete={items.filter(item => selectedIds.has(item.id))} onSuccess={() => {
-        setItems(items.filter(item => !selectedIds.has(item.id)));
+        removeMultipleItems(items.filter(item => selectedIds.has(item.id)));
         setIsSelectionMode(false);
         setSelectedIds(new Set());
     }} />
