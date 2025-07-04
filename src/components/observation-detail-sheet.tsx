@@ -321,6 +321,17 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                         <AccordionContent className="pt-2"><p className="text-sm text-muted-foreground pl-8">{observation.aiSummary}</p></AccordionContent>
                       </AccordionItem>
                     )}
+                    {typeof observation.aiObserverSkillRating === 'number' && (
+                        <AccordionItem value="observerRating">
+                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                                <div className="flex items-center gap-2"><UserCheck className="h-4 w-4 text-muted-foreground" />Kualitas Laporan</div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2 pl-8 space-y-2">
+                                <StarRating rating={observation.aiObserverSkillRating} />
+                                {observation.aiObserverSkillExplanation && <p className="text-sm text-muted-foreground">{observation.aiObserverSkillExplanation}</p>}
+                            </AccordionContent>
+                        </AccordionItem>
+                    )}
                     {observation.aiSuggestedRiskLevel && (
                       <AccordionItem value="suggestedRisk" className="border-b-0">
                         <AccordionTrigger className="text-sm font-semibold hover:no-underline">

@@ -93,6 +93,8 @@ export type Observation = {
   aiSuggestedActions?: string;
   aiRelevantRegulations?: string;
   aiRootCauseAnalysis?: string;
+  aiObserverSkillRating?: number;
+  aiObserverSkillExplanation?: string;
 
   isSharedPublicly?: boolean;
   sharedBy?: string;
@@ -219,6 +221,8 @@ export const SummarizeObservationDataOutputSchema = z.object({
   summary: z.string().describe('Ringkasan singkat dari temuan inti dalam Bahasa Indonesia.'),
   suggestedCategory: z.enum(OBSERVATION_CATEGORIES).describe('Saran kategori berdasarkan analisis temuan.'),
   suggestedRiskLevel: z.enum(RISK_LEVELS).describe('Saran tingkat risiko (Low, Medium, High, Critical) berdasarkan analisis temuan.'),
+  aiObserverSkillRating: z.number().min(1).max(5).describe('Rating of the observer skill from 1 to 5 based on the quality of the report.'),
+  aiObserverSkillExplanation: z.string().describe('A brief explanation for the observer skill rating.'),
 });
 export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservationDataOutputSchema>;
 

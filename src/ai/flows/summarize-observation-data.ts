@@ -52,6 +52,22 @@ function findClosestMatch<T extends string>(value: string | undefined, options: 
 }
 
 
+/**
+ * Parses a rating value which might be a string or number, and ensures it's within the 1-5 range.
+ * @param value The value to parse.
+ * @returns A number between 1 and 5.
+ */
+function parseAndClampRating(value: string | number | undefined): number {
+    if (value === undefined || value === null) return 3; // Default to a neutral rating
+
+    let numericValue = typeof value === 'string' ? parseInt(value, 10) : value;
+    
+    if (isNaN(numericValue)) return 3;
+
+    return Math.max(1, Math.min(5, Math.round(numericValue))); // Clamp between 1 and 5
+}
+
+
 // =================================================================================
 // 1. FAST OBSERVATION ANALYSIS FLOW
 // =================================================================================
@@ -78,6 +94,8 @@ Then, generate the JSON object with the following FAST analysis points:
 1.  **summary**: A very brief, one-sentence summary of the core finding.
 2.  **suggestedCategory**: Classify the observation into ONE of the following Life-Saving Rules (LSR) categories. Choose the single most fitting one from this list: ${OBSERVATION_CATEGORIES.join(', ')}.
 3.  **suggestedRiskLevel**: Based on the potential severity of the findings, classify the risk level. Choose ONE from this list: ${RISK_LEVELS.join(', ')}.
+4.  **aiObserverSkillRating**: Rate the quality of the observer's report on a scale of 1 to 5, where 1 is poor (unclear, little detail) and 5 is excellent (clear, detailed, actionable). This must be a number.
+5.  **aiObserverSkillExplanation**: Provide a brief, one-sentence explanation for the rating given.
 
 Here is the observation data to analyze:
 {{{observationData}}}
@@ -98,10 +116,14 @@ const summarizeObservationDataFlow = ai.defineFlow(
       throw new Error('AI analysis returned no structured output for observation.');
     }
 
-    output.suggestedCategory = findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'Supervision');
-    output.suggestedRiskLevel = findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low');
-    
-    return output;
+    // Sanitize all outputs to prevent runtime errors
+    return {
+        summary: output.summary || 'Analisis tidak tersedia.',
+        suggestedCategory: findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'Supervision'),
+        suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
+        aiObserverSkillRating: parseAndClampRating(output.aiObserverSkillRating),
+        aiObserverSkillExplanation: output.aiObserverSkillExplanation || 'Penjelasan tidak tersedia.',
+    };
   }
 );
 

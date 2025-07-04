@@ -73,28 +73,41 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
 // ==================================
 
 async function deleteStorageFileFromUrl(fileUrl: string | undefined | null): Promise<void> {
-  if (!fileUrl || !fileUrl.startsWith('https://firebasestorage.googleapis.com')) {
-    return;
-  }
-  try {
-    const bucket = adminStorage.bucket();
-    const filePath = decodeURIComponent(fileUrl.split('/o/')[1].split('?')[0]);
-    const file = bucket.file(filePath);
-    await file.delete();
-  } catch (error: any) {
-    if (error.code === 404) {
-      console.warn(`[Admin Storage] File not found for deletion, probably already deleted: ${fileUrl}`);
-    } else {
-      console.error(`[Admin Storage] Failed to delete file. URL: ${fileUrl}, Error:`, error);
-      throw error; // Re-throw to be caught by the calling function
+    if (!fileUrl || !fileUrl.startsWith('https://firebasestorage.googleapis.com')) {
+        return;
     }
-  }
+    try {
+        // Create a URL object for robust parsing
+        const url = new URL(fileUrl);
+        // The pathname is like /v0/b/bucket-name.appspot.com/o/path%2Fto%2Ffile.jpg
+        // We need to extract the part after '/o/'
+        const pathStartIndex = url.pathname.indexOf('/o/');
+        if (pathStartIndex === -1) {
+            console.warn(`[Admin Storage] Could not find '/o/' in the file URL path: ${fileUrl}`);
+            return;
+        }
+
+        const encodedFilePath = url.pathname.substring(pathStartIndex + 3);
+        const filePath = decodeURIComponent(encodedFilePath);
+
+        const bucket = adminStorage.bucket();
+        const file = bucket.file(filePath);
+        await file.delete();
+    } catch (error: any) {
+        if (error.code === 404 || error.code === 'storage/object-not-found') {
+            console.warn(`[Admin Storage] File not found for deletion, probably already deleted: ${fileUrl}`);
+        } else {
+            console.error(`[Admin Storage] Failed to delete file. URL: ${fileUrl}, Error:`, error);
+            // Don't re-throw. We want to delete the Firestore doc even if the file is gone.
+        }
+    }
 }
 
 export async function deleteItem(item: AllItems) {
   try {
     const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
     
+    // Attempt to delete files but don't let it block the main deletion
     if (item.itemType === 'observation' || item.itemType === 'inspection') {
       await deleteStorageFileFromUrl(item.photoUrl);
       if ('actionTakenPhotoUrl' in item) {
@@ -104,6 +117,7 @@ export async function deleteItem(item: AllItems) {
       await deleteStorageFileFromUrl(item.jsaPdfUrl);
     }
 
+    // Always attempt to delete the Firestore document
     await docRef.delete();
     
     revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private', 'page');
@@ -188,6 +202,8 @@ export async function triggerObservationAnalysis(observation: Observation) {
       riskLevel: analysis.suggestedRiskLevel,
       aiSummary: analysis.summary,
       aiSuggestedRiskLevel: analysis.suggestedRiskLevel,
+      aiObserverSkillRating: analysis.aiObserverSkillRating,
+      aiObserverSkillExplanation: analysis.aiObserverSkillExplanation,
     };
     
     await docRef.update(updatePayload);
