@@ -34,7 +34,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { useObservations } from '@/hooks/use-observations';
 import { updateObservationStatus } from '@/lib/actions/item-actions';
 
 const formSchema = z.object({
@@ -61,7 +60,6 @@ export function TakeActionDialog({
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { updateItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -150,14 +148,12 @@ export function TakeActionDialog({
         actionTakenPhotoUrl: actionTakenPhotoUrl,
       };
       
-      const updatedObservation = await updateObservationStatus({
+      await updateObservationStatus({
           observationId: observation.id,
           actionData: actionData,
           userName: userProfile.displayName,
           userPosition: userProfile.position
       });
-
-      updateItem(updatedObservation);
       
       toast({ title: 'Success', description: 'Observation has been marked as completed.' });
       handleOpenChange(false);

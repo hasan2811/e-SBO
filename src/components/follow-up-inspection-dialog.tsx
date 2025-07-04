@@ -34,7 +34,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { useObservations } from '@/hooks/use-observations';
 import { updateInspectionStatus } from '@/lib/actions/item-actions';
 
 const formSchema = z.object({
@@ -61,7 +60,6 @@ export function FollowUpInspectionDialog({
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { updateItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -150,14 +148,12 @@ export function FollowUpInspectionDialog({
         actionTakenPhotoUrl: actionTakenPhotoUrl,
       };
       
-      const updatedInspection = await updateInspectionStatus({
+      await updateInspectionStatus({
           inspectionId: inspection.id,
           actionData,
           userName: userProfile.displayName,
           userPosition: userProfile.position,
       });
-      
-      updateItem(updatedInspection);
       
       toast({ title: 'Success', description: 'Inspection has been marked as completed.' });
       handleOpenChange(false);

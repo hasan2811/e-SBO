@@ -46,7 +46,7 @@ function revalidateRelevantPaths(item: { scope: Scope; projectId?: string | null
 // ==================================
 // UPDATE ACTIONS
 // ==================================
-export async function updateObservationStatus({ observationId, actionData, userName, userPosition }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, userName: string, userPosition: string }): Promise<Observation> {
+export async function updateObservationStatus({ observationId, actionData, userName, userPosition }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, userName: string, userPosition: string }): Promise<void> {
   const observationDocRef = adminDb.collection('observations').doc(observationId);
   const docSnap = await observationDocRef.get();
   if (!docSnap.exists) throw new Error('Laporan observasi tidak ditemukan.');
@@ -63,14 +63,10 @@ export async function updateObservationStatus({ observationId, actionData, userN
   if (actionData.actionTakenPhotoUrl) updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
   
   await observationDocRef.update(updatedData);
-  const updatedDocSnap = await observationDocRef.get();
-  const finalDocData = { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Observation;
-
   revalidateRelevantPaths(observation);
-  return finalDocData;
 }
 
-export async function updateInspectionStatus({ inspectionId, actionData, userName, userPosition }: { inspectionId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, userName: string, userPosition: string }): Promise<Inspection> {
+export async function updateInspectionStatus({ inspectionId, actionData, userName, userPosition }: { inspectionId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, userName: string, userPosition: string }): Promise<void> {
     const inspectionDocRef = adminDb.collection('inspections').doc(inspectionId);
     const docSnap = await inspectionDocRef.get();
     if (!docSnap.exists) throw new Error('Laporan inspeksi tidak ditemukan.');
@@ -86,11 +82,7 @@ export async function updateInspectionStatus({ inspectionId, actionData, userNam
     if (actionData.actionTakenPhotoUrl) updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
   
     await inspectionDocRef.update(updatedData);
-    const updatedDocSnap = await inspectionDocRef.get();
-    const finalDocData = { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Inspection;
-    
     revalidateRelevantPaths(inspection);
-    return finalDocData;
 }
 
 export async function approvePtw({ ptwId, signatureDataUrl, approverName, approverPosition }: { ptwId: string, signatureDataUrl: string, approverName: string, approverPosition: string }): Promise<Ptw> {
@@ -216,7 +208,8 @@ export async function triggerObservationAnalysis(observation: Observation) {
             category: classification.suggestedCategory,
             riskLevel: classification.suggestedRiskLevel,
             aiSuggestedRiskLevel: classification.suggestedRiskLevel,
-            aiStatus: 'completed',
+            // We keep the status as 'processing' to indicate that deep analysis can still be run.
+            // But we can consider this "fast" part complete.
         });
         revalidateRelevantPaths(observation);
     }
