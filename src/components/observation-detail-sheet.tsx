@@ -139,25 +139,32 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent hideCloseButton className="w-full sm:max-w-lg p-0 flex flex-col">
         <SheetHeader className="p-4 border-b">
-          <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                  <SheetClose asChild>
-                      <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2">
-                          <ArrowLeft className="h-5 w-5" />
-                      </Button>
-                  </SheetClose>
-                  <div className="flex flex-col">
-                      <SheetTitle>Detail Observasi</SheetTitle>
-                      <SheetDescription>{observation.referenceId || observation.id}</SheetDescription>
-                  </div>
-              </div>
-              
-              {canShare && (
-                  <Button variant="outline" size="icon" onClick={handleShare} disabled={isSharing} className="flex-shrink-0" aria-label="Bagikan ke Publik">
-                      {isSharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
-                  </Button>
-              )}
-          </div>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <SheetClose asChild>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2">
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                    </SheetClose>
+                    <div className="flex flex-col">
+                        <SheetTitle>Detail Observasi</SheetTitle>
+                        <SheetDescription>{observation.referenceId || observation.id}</SheetDescription>
+                    </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                    {canDelete && (
+                        <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Observasi">
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {canShare && (
+                        <Button variant="outline" size="icon" onClick={handleShare} disabled={isSharing} className="flex-shrink-0" aria-label="Bagikan ke Publik">
+                            {isSharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                        </Button>
+                    )}
+                </div>
+            </div>
         </SheetHeader>
         
         <ScrollArea className="flex-1">
@@ -435,20 +442,12 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
             )}
           </div>
         </ScrollArea>
-        {(canDelete || canTakeAction) && (
-          <SheetFooter className="p-4 border-t mt-auto flex flex-col sm:flex-row sm:justify-end gap-2">
-            {canDelete && (
-                <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                </Button>
-            )}
-            {canTakeAction && (
-                <Button type="button" onClick={handleTakeAction}>
-                    <Gavel className="mr-2 h-4 w-4" />
-                    Ambil Tindakan
-                </Button>
-            )}
+        {canTakeAction && (
+          <SheetFooter className="p-4 border-t mt-auto">
+            <Button type="button" onClick={handleTakeAction} className="w-full">
+              <Gavel className="mr-2 h-4 w-4" />
+              Ambil Tindakan
+            </Button>
           </SheetFooter>
         )}
       </SheetContent>
