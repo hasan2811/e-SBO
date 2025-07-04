@@ -204,7 +204,7 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
 export async function deleteItem(item: AllItems) {
   const docRef = doc(db, `${item.itemType}s`, item.id);
   if (item.itemType === 'observation' || item.itemType === 'inspection') {
-    if (item.photoUrl) await deleteFile(item.photoUrl);
+    if (item.photoUrl && !item.photoUrl.includes('placehold.co')) await deleteFile(item.photoUrl);
     if (item.actionTakenPhotoUrl) await deleteFile(item.actionTakenPhotoUrl);
   } else if (item.itemType === 'ptw') {
     if (item.jsaPdfUrl) await deleteFile(item.jsaPdfUrl);
@@ -223,7 +223,7 @@ export async function deleteMultipleItems(items: AllItems[]) {
       const docRef = doc(db, `${item.itemType}s`, item.id);
       batch.delete(docRef);
       if (item.itemType === 'observation' || item.itemType === 'inspection') {
-        if (item.photoUrl) filesToDelete.push(item.photoUrl);
+        if (item.photoUrl && !item.photoUrl.includes('placehold.co')) filesToDelete.push(item.photoUrl);
         if (item.actionTakenPhotoUrl) filesToDelete.push(item.actionTakenPhotoUrl);
       } else if (item.itemType === 'ptw') {
         if (item.jsaPdfUrl) filesToDelete.push(item.jsaPdfUrl);
