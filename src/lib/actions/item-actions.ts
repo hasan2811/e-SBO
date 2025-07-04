@@ -418,30 +418,27 @@ export async function retryAiAnalysis(item: Observation | Inspection) {
     return { ...updatedDoc.data(), id: updatedDoc.id } as AllItems;
 }
 
-export async function shareObservationToPublic(observation: Observation, userProfile: UserProfile): Promise<Observation> {
+export async function shareObservationToPublic(observation: Observation, userProfile: UserProfile): Promise<{ updatedOriginal: Observation; newPublicItem: Observation }> {
     if (observation.isSharedPublicly) {
         throw new Error("Laporan ini sudah dibagikan.");
     }
     
-    // Explicitly build the public document to avoid copying sensitive or irrelevant data.
     const publicObservationData: Omit<Observation, 'id'> = {
         itemType: 'observation',
         userId: observation.userId,
         referenceId: observation.referenceId,
         location: observation.location,
         submittedBy: observation.submittedBy,
-        date: new Date().toISOString(), // Use a new date for public sharing
+        date: new Date().toISOString(),
         findings: observation.findings,
         recommendation: observation.recommendation,
         riskLevel: observation.riskLevel,
-        status: 'Pending', // Reset status for public feed
+        status: 'Pending',
         category: observation.category,
         company: observation.company,
         photoUrl: observation.photoUrl,
-        scope: 'public', // Set scope to public
-        projectId: null, // Public items don't belong to a project
-
-        // AI-related fields to copy
+        scope: 'public',
+        projectId: null,
         aiStatus: observation.aiStatus,
         aiSummary: observation.aiSummary,
         aiSuggestedRiskLevel: observation.aiSuggestedRiskLevel,
@@ -451,9 +448,7 @@ export async function shareObservationToPublic(observation: Observation, userPro
         aiRootCauseAnalysis: observation.aiRootCauseAnalysis,
         aiObserverSkillRating: observation.aiObserverSkillRating,
         aiObserverSkillExplanation: observation.aiObserverSkillExplanation,
-
-        // Sharing and social-related fields
-        isSharedPublicly: false, // The new doc itself isn't shared again
+        isSharedPublicly: false,
         sharedBy: userProfile.displayName,
         sharedByPosition: userProfile.position,
         originalId: observation.id,
@@ -462,8 +457,6 @@ export async function shareObservationToPublic(observation: Observation, userPro
         likeCount: 0,
         commentCount: 0,
         viewCount: 0,
-
-        // Fields to explicitly exclude by not including them
         actionTakenDescription: undefined,
         actionTakenPhotoUrl: undefined,
         closedBy: undefined,
@@ -471,7 +464,7 @@ export async function shareObservationToPublic(observation: Observation, userPro
     };
     
     const originalDocRef = adminDb.collection('observations').doc(observation.id);
-    const newPublicDocRef = adminDb.collection('observations').doc(); // Let Firestore generate a new ID
+    const newPublicDocRef = adminDb.collection('observations').doc();
 
     const batch = adminDb.batch();
     batch.set(newPublicDocRef, publicObservationData);
@@ -480,15 +473,21 @@ export async function shareObservationToPublic(observation: Observation, userPro
     await batch.commit();
     
     revalidatePath('/public', 'page');
-    if (observation.projectId) {
-        revalidatePath(`/proyek/${observation.projectId}`, 'page');
-    } else {
-        revalidatePath('/private', 'page');
-    }
+    if (observation.projectId) revalidatePath(`/proyek/${observation.projectId}`, 'page');
+    else revalidatePath('/private', 'page');
     
-    const updatedDoc = await originalDocRef.get();
-    if (!updatedDoc.exists()) {
+    const updatedDocSnap = await originalDocRef.get();
+    if (!updatedDocSnap.exists()) {
         throw new Error("Dokumen asli tidak ditemukan setelah dibagikan.");
     }
-    return { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
+
+    const newPublicDocSnap = await newPublicDocRef.get();
+    if (!newPublicDocSnap.exists()) {
+        throw new Error("Dokumen publik yang baru dibuat tidak ditemukan.");
+    }
+    
+    return {
+        updatedOriginal: { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Observation,
+        newPublicItem: { ...newPublicDocSnap.data(), id: newPublicDocSnap.id } as Observation,
+    };
 }

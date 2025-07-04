@@ -146,7 +146,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     let scopeMatches = false;
     if (currentScope === 'public' && newItem.scope === 'public') {
       scopeMatches = true;
-    } else if (currentScope === 'private' && newItem.scope === 'private') {
+    } else if (currentScope === 'private' && newItem.scope === 'private' && newItem.userId === user?.uid) {
       scopeMatches = true;
     } else if (currentScope === 'project' && newItem.scope === 'project' && newItem.projectId === currentProjectId) {
       scopeMatches = true;
@@ -155,7 +155,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     if (viewTypeMatches && scopeMatches) {
       setItems(prevItems => [newItem, ...prevItems]);
     }
-  }, [viewType, mode, projectId]);
+  }, [viewType, mode, projectId, user?.uid]);
 
 
   const updateItem = React.useCallback((updatedItem: AllItems) => {
@@ -163,13 +163,24 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const deleteSingleItem = React.useCallback(async (itemToDelete: AllItems) => {
-    await deleteItemAction(itemToDelete);
-    // Let onSnapshot handle the UI update to ensure consistency
+    try {
+        await deleteItemAction(itemToDelete);
+        setItems(prev => prev.filter(item => item.id !== itemToDelete.id));
+    } catch (error) {
+        console.error(`[Context] Failed to delete item ${itemToDelete.id}:`, error);
+        throw error;
+    }
   }, []);
   
   const deleteMultipleItems = React.useCallback(async (itemsToDelete: AllItems[]) => {
-    await deleteMultipleItemsAction(itemsToDelete);
-    // Let onSnapshot handle the UI update
+    try {
+      await deleteMultipleItemsAction(itemsToDelete);
+      const idsToDelete = new Set(itemsToDelete.map(i => i.id));
+      setItems(prev => prev.filter(item => !idsToDelete.has(item.id)));
+    } catch(e) {
+      console.error(`[Context] Failed to delete multiple items:`, e);
+      throw e;
+    }
   }, []);
   
   const handleLikeToggle = React.useCallback(async (observationId: string) => {
@@ -219,17 +230,18 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         toast({ variant: 'destructive', title: 'User profile not loaded.' }); return;
     }
     try {
-        const updatedItem = await shareObservationToPublicAction(observation, userProfile);
-        if (updatedItem) {
-            updateItem(updatedItem);
-            toast({ title: 'Berhasil Dibagikan', description: 'Laporan Anda telah dibagikan ke feed publik.' });
-        }
+        const { updatedOriginal, newPublicItem } = await shareObservationToPublicAction(observation, userProfile);
+        
+        updateItem(updatedOriginal);
+        addItem(newPublicItem);
+
+        toast({ title: 'Berhasil Dibagikan', description: 'Laporan Anda telah dibagikan ke feed publik.' });
     } catch (error) {
         console.error("Failed to share to public:", error);
         const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
         toast({ variant: 'destructive', title: 'Gagal Membagikan', description: errorMessage });
     }
-  }, [userProfile, toast, updateItem]);
+  }, [userProfile, toast, updateItem, addItem]);
   
   const retryAnalysis = React.useCallback(async (item: Observation | Inspection) => {
       const updatedItem = await retryAiAnalysisAction(item);
