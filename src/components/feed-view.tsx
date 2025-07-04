@@ -94,11 +94,7 @@ const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelecte
                 ) : (
                     <Image src="/logo.svg" alt="Default observation image" width={40} height={40} className="opacity-50" />
                 )}
-                {observation.aiStatus === 'processing' && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <Loader2 className="h-5 w-5 animate-spin text-white" />
-                    </div>
-                )}
+                
                 {observation.aiStatus === 'completed' && (
                     <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
                         <Sparkles className="h-3 w-3 text-primary-foreground" />
@@ -201,11 +197,6 @@ const InspectionListItem = ({ inspection, onSelect, isSelectionMode, isSelected,
                 <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="80px" className="object-cover" data-ai-hint="equipment inspection" />
             ) : (
                 <Image src="/logo.svg" alt="Default inspection image" width={48} height={48} className="opacity-50" />
-            )}
-            {inspection.aiStatus === 'processing' && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <Loader2 className="h-5 w-5 animate-spin text-white" />
-                </div>
             )}
             {inspection.aiStatus === 'completed' && (
                 <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
