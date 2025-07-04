@@ -73,7 +73,8 @@ const nextConfig = {
     serverComponentsExternalPackages: [
       '@google-cloud/firestore',
       '@opentelemetry/sdk-node',
-      '@opentelemetry/exporter-jaeger'
+      '@opentelemetry/exporter-jaeger',
+      'firebase-admin'
     ],
   },
   images: {
