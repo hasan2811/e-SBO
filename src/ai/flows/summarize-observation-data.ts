@@ -72,11 +72,18 @@ function parseAndClampRating(value: string | number | undefined): number {
 // 1. FAST OBSERVATION ANALYSIS FLOW
 // =================================================================================
 
+// This schema is for the prompt's output, requesting only the fastest analysis points.
+const FastSummarizeOutputSchema = z.object({
+  suggestedCategory: z.enum(OBSERVATION_CATEGORIES).describe('Saran kategori berdasarkan analisis temuan.'),
+  aiObserverSkillRating: z.number().min(1).max(5).describe('Rating of the observer skill from 1 to 5 based on how impactful and clear the report is.'),
+  aiObserverSkillExplanation: z.string().describe('A brief explanation for the observer skill rating.'),
+});
+
 const summarizeObservationPrompt = ai.definePrompt({
     name: 'summarizeObservationPrompt',
     model: 'googleai/gemini-1.5-flash-latest',
     input: { schema: SummarizeObservationDataInputSchema },
-    output: { schema: SummarizeObservationDataOutputSchema },
+    output: { schema: FastSummarizeOutputSchema },
     config: {
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
@@ -85,17 +92,13 @@ const summarizeObservationPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `You are an expert HSSE analyst. Your task is to perform a very fast initial analysis of an observation report. Your response MUST be a raw JSON object only, in Indonesian. Prioritize speed.
+    prompt: `You are an extremely fast HSSE analyst. Your only task is to analyze an observation report and provide a category and a rating based on its clarity and impact. Your response MUST be a raw JSON object and nothing else. Prioritize speed above all else.
 
-Carefully analyze the user's observation data to understand the situation.
+Generate the JSON object with ONLY the following points:
 
-Then, generate the JSON object with the following FAST analysis points:
-
-1.  **summary**: A very brief, one-sentence summary of the core finding.
-2.  **suggestedCategory**: Classify the observation into ONE of the following Life-Saving Rules (LSR) categories. Choose the single most fitting one from this list: ${OBSERVATION_CATEGORIES.join(', ')}.
-3.  **suggestedRiskLevel**: Based on the potential severity of the findings, classify the risk level. Choose ONE from this list: ${RISK_LEVELS.join(', ')}.
-4.  **aiObserverSkillRating**: Rate the quality of the observer's report on a scale of 1 to 5, where 1 is poor (unclear, little detail) and 5 is excellent (clear, detailed, actionable). This must be a number.
-5.  **aiObserverSkillExplanation**: Provide a brief, one-sentence explanation for the rating given.
+1.  **suggestedCategory**: Classify the observation into ONE of the following Life-Saving Rules (LSR) categories. Choose the single most fitting one from this list: ${OBSERVATION_CATEGORIES.join(', ')}.
+2.  **aiObserverSkillRating**: Rate the quality and impact of the observer's report on a scale of 1 to 5, where 1 is low impact/unclear and 5 is high impact/excellent. This must be a number.
+3.  **aiObserverSkillExplanation**: Provide a very brief, one-sentence explanation for the rating given.
 
 Here is the observation data to analyze:
 {{{observationData}}}
@@ -106,6 +109,7 @@ const summarizeObservationDataFlow = ai.defineFlow(
   {
     name: 'summarizeObservationDataFlow',
     inputSchema: SummarizeObservationDataInputSchema,
+    // The flow's final output still matches the full schema to maintain type safety with the client.
     outputSchema: SummarizeObservationDataOutputSchema,
   },
   async (input) => {
@@ -116,11 +120,12 @@ const summarizeObservationDataFlow = ai.defineFlow(
       throw new Error('AI analysis returned no structured output for observation.');
     }
 
-    // Sanitize all outputs to prevent runtime errors
+    // Compose the full output object. We fill in the "slower" fields with default values,
+    // and use the AI's response for the "fast" fields.
     return {
-        summary: output.summary || 'Analisis tidak tersedia.',
+        summary: 'Analisis ringkas tersedia di fitur "Analisis Mendalam".',
+        suggestedRiskLevel: 'Low', // Default to 'Low'. The deep analysis can provide a better one.
         suggestedCategory: findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'Supervision'),
-        suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
         aiObserverSkillRating: parseAndClampRating(output.aiObserverSkillRating),
         aiObserverSkillExplanation: output.aiObserverSkillExplanation || 'Penjelasan tidak tersedia.',
     };
