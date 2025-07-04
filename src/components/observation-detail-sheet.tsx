@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -115,6 +114,11 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
         setIsAnalyzing(false);
     }
   }
+
+  const handleSuccessDelete = () => {
+    removeItem(observation.id);
+    onOpenChange(false);
+  };
 
   const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;
   const showBasicAiSection = observation.aiStatus;
@@ -441,10 +445,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
           isOpen={isDeleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           observation={observation}
-          onSuccess={() => {
-            onOpenChange(false);
-            removeItem(observation.id);
-          }}
+          onSuccess={handleSuccessDelete}
       />
     )}
 

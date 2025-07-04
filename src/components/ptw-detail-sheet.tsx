@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -15,6 +14,7 @@ import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { DeletePtwDialog } from './delete-ptw-dialog';
+import { useObservations } from '@/hooks/use-observations';
 
 interface PtwDetailSheetProps {
     ptw: Ptw | null;
@@ -28,6 +28,7 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const { projects } = useProjects();
   const { user } = useAuth();
+  const { removeItem } = useObservations();
   
   if (!ptw) return null;
 
@@ -55,6 +56,7 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
   );
   
   const handleSuccessDelete = () => {
+    removeItem(ptw.id);
     onOpenChange(false);
   }
 
