@@ -248,7 +248,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
                 location: formData.location as Location,
                 company: formData.company as Company,
-                category: 'General', // Default, AI will update
+                category: 'Supervision', // Default, AI will update
                 riskLevel: 'Low', // Default, AI will update
                 findings: formData.findings,
                 recommendation: formData.recommendation || '',
@@ -435,18 +435,46 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
 
         try {
-            const { id, aiStatus, ...restOfObservation } = observation;
-
-            const publicObservationData = {
-                ...restOfObservation,
+            // Create a clean public version, resetting status and action-related fields
+            const publicObservationData: Omit<Observation, 'id'> = {
                 itemType: 'observation',
-                scope: 'public' as const,
+                userId: observation.userId,
+                location: observation.location,
+                submittedBy: observation.submittedBy,
+                date: observation.date, // Keep original date for sorting
+                findings: observation.findings,
+                recommendation: observation.recommendation,
+                riskLevel: observation.riskLevel,
+                status: 'Pending', // Reset status for public feed
+                category: observation.category,
+                company: observation.company,
+                photoUrl: observation.photoUrl,
+                scope: 'public',
                 projectId: null,
-                isSharedPublicly: false, 
+                referenceId: observation.referenceId,
+                isSharedPublicly: false,
                 sharedBy: userProfile.displayName,
                 sharedByPosition: userProfile.position,
-                originalId: id,
+                originalId: observation.id,
                 originalScope: observation.scope,
+                aiStatus: 'processing', // Re-trigger AI analysis for the public context if needed, or copy it
+                aiSummary: observation.aiSummary, // Optionally copy existing analysis
+                aiRisks: observation.aiRisks,
+                aiSuggestedActions: observation.aiSuggestedActions,
+                aiRelevantRegulations: observation.aiRelevantRegulations,
+                aiSuggestedRiskLevel: observation.aiSuggestedRiskLevel,
+                aiRootCauseAnalysis: observation.aiRootCauseAnalysis,
+                aiObserverSkillRating: observation.aiObserverSkillRating,
+                aiObserverSkillExplanation: observation.aiObserverSkillExplanation,
+                likes: [],
+                likeCount: 0,
+                commentCount: 0,
+                viewCount: 0,
+                // Ensure action fields are not carried over
+                actionTakenDescription: undefined,
+                actionTakenPhotoUrl: undefined,
+                closedBy: undefined,
+                closedDate: undefined,
             };
             
             await addDoc(collection(db, 'observations'), publicObservationData);
