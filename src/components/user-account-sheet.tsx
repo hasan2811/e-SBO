@@ -16,13 +16,14 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { useAuth } from '@/hooks/use-auth';
-import { LogOut, UserCircle, Loader2, Edit, Folder } from 'lucide-react';
+import { LogOut, UserCircle, Loader2, Edit, Folder, Camera } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 import { useProjects } from '@/hooks/use-projects';
+import { uploadFile } from '@/lib/storage';
 
 export function UserAccountSheet() {
   const { user, userProfile, loading: authLoading, logout, updateUserProfile } = useAuth();
@@ -32,12 +33,13 @@ export function UserAccountSheet() {
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [displayName, setDisplayName] = React.useState('');
   const [position, setPosition] = React.useState('');
   const [company, setCompany] = React.useState('');
   
-  // Combine loading states for a single source of truth for the UI
   const isLoading = authLoading || (user && projectsLoading);
   const hasProject = projects.length > 0;
 
@@ -57,7 +59,6 @@ export function UserAccountSheet() {
       setIsEditing(true);
     }
   };
-
 
   const handleSave = async () => {
     if (!user) return;
@@ -84,6 +85,26 @@ export function UserAccountSheet() {
     }
   }
 
+  const handlePhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || !user) return;
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setIsUploadingPhoto(true);
+    try {
+      // Use a specific, non-project-related path for profile photos
+      const photoURL = await uploadFile(file, `profile-photos/${user.uid}`, user.uid, () => {});
+      await updateUserProfile(user.uid, { photoURL });
+      toast({ title: 'Photo Updated!', description: 'Your new profile photo has been saved.' });
+    } catch (error) {
+      console.error(error);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
+      toast({ variant: 'destructive', title: 'Upload Failed', description: errorMessage });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
   const getInitials = (name: string | null | undefined) => {
     if (!name?.trim()) {
       return 'U';
@@ -104,7 +125,6 @@ export function UserAccountSheet() {
   const handleOpenChange = (open: boolean) => {
     setIsSheetOpen(open);
     if (!open) {
-      // Reset editing state when sheet closes
       setIsEditing(false);
     }
   };
@@ -158,12 +178,33 @@ export function UserAccountSheet() {
           {isLoading ? renderSkeleton() : user && userProfile ? (
             <div className="p-6 space-y-6">
               <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={user.photoURL || undefined} alt={user.displayName ?? ''} data-ai-hint="user avatar" />
-                  <AvatarFallback className="text-2xl">
-                    {getInitials(userProfile.displayName)}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative group flex-shrink-0">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={user.photoURL || undefined} alt={userProfile.displayName ?? ''} data-ai-hint="user avatar" />
+                    <AvatarFallback className="text-2xl">
+                      {getInitials(userProfile.displayName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingPhoto}
+                    className="absolute inset-0 bg-black/50 flex items-center justify-center text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Change profile photo"
+                  >
+                    {isUploadingPhoto ? (
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    ) : (
+                      <Camera className="h-6 w-6" />
+                    )}
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handlePhotoChange}
+                    className="hidden"
+                    accept="image/png, image/jpeg"
+                  />
+                </div>
                 <div className="flex-1">
                   <p className="font-semibold text-lg">{userProfile.displayName}</p>
                   <p className="text-sm text-muted-foreground">{userProfile.position}</p>

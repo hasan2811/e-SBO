@@ -7,6 +7,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  updateProfile,
   type User,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, onSnapshot, Unsubscribe, updateDoc } from 'firebase/firestore';
@@ -113,6 +114,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
   
   const updateUserProfile_ = async (uid: string, data: Partial<UserProfile>) => {
+    if (!auth.currentUser || auth.currentUser.uid !== uid) {
+      throw new Error("Cannot update another user's profile.");
+    }
+    
+    // 1. Prepare data for Firebase Authentication update (displayName, photoURL)
+    const authUpdateData: { displayName?: string; photoURL?: string | null } = {};
+    if (data.displayName !== undefined) {
+      authUpdateData.displayName = data.displayName;
+    }
+    // Use `hasOwnProperty` to allow setting photoURL to null (removing photo)
+    if (data.hasOwnProperty('photoURL')) {
+      authUpdateData.photoURL = data.photoURL;
+    }
+
+    // 2. Update Firebase Authentication profile if there's anything to update
+    if (Object.keys(authUpdateData).length > 0) {
+      await updateProfile(auth.currentUser, authUpdateData);
+    }
+    
+    // 3. Update Firestore document with all provided data
     const userDocRef = doc(db, 'users', uid);
     await updateDoc(userDocRef, data);
   };
