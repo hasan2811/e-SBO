@@ -4,7 +4,8 @@
  * @fileOverview AI-powered analysis of HSSE observation and inspection data.
  *
  * This file defines Genkit flows for analyzing different types of HSSE reports.
- * - summarizeObservationData: Analyzes a standard observation report.
+ * - summarizeObservationData: A fast, initial analysis of a standard observation report.
+ * - analyzeDeeperObservation: A slower, more detailed analysis of an observation.
  * - analyzeInspectionData: Analyzes an equipment inspection report.
  */
 
@@ -17,6 +18,8 @@ import {
     SummarizeObservationDataInputSchema,
     SummarizeObservationDataOutput,
     SummarizeObservationDataOutputSchema,
+    DeeperAnalysisOutput,
+    DeeperAnalysisOutputSchema,
     AnalyzeInspectionInput,
     AnalyzeInspectionInputSchema,
     AnalyzeInspectionOutput,
@@ -36,15 +39,12 @@ function findClosestMatch<T extends string>(value: string | undefined, options: 
 
     const lowerValue = value.toLowerCase().trim();
     
-    // First, try for an exact match (case-insensitive)
     const exactMatch = options.find(opt => opt.toLowerCase() === lowerValue);
     if (exactMatch) return exactMatch;
 
-    // Next, try to see if the value contains one of the options
     const partialMatch = options.find(opt => lowerValue.includes(opt.toLowerCase()));
     if (partialMatch) return partialMatch;
     
-    // A slightly more fuzzy match
     const fuzzyMatch = options.find(opt => opt.toLowerCase().includes(lowerValue));
     if (fuzzyMatch) return fuzzyMatch;
 
@@ -53,7 +53,7 @@ function findClosestMatch<T extends string>(value: string | undefined, options: 
 
 
 // =================================================================================
-// 1. OBSERVATION ANALYSIS FLOW
+// 1. FAST OBSERVATION ANALYSIS FLOW
 // =================================================================================
 
 const summarizeObservationPrompt = ai.definePrompt({
@@ -98,7 +98,6 @@ const summarizeObservationDataFlow = ai.defineFlow(
       throw new Error('AI analysis returned no structured output for observation.');
     }
 
-    // Sanitize the output to prevent errors from minor AI deviations.
     output.suggestedCategory = findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'Supervision');
     output.suggestedRiskLevel = findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low');
     
@@ -112,7 +111,58 @@ export async function summarizeObservationData(input: SummarizeObservationDataIn
 
 
 // =================================================================================
-// 2. INSPECTION ANALYSIS FLOW
+// 2. DEEP OBSERVATION ANALYSIS FLOW (ON-DEMAND)
+// =================================================================================
+
+const deeperAnalysisPrompt = ai.definePrompt({
+    name: 'deeperAnalysisPrompt',
+    model: 'googleai/gemini-1.5-flash-latest',
+    input: { schema: SummarizeObservationDataInputSchema }, // Re-use the same input schema
+    output: { schema: DeeperAnalysisOutputSchema },
+    config: {
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+        ],
+    },
+    prompt: `You are a world-class HSSE (Health, Safety, Security, and Environment) expert analyst. Your task is to perform a detailed analysis of an observation report. Your response MUST be a raw JSON object only, in Bahasa Indonesia.
+
+Analyze the provided observation data and generate the following points:
+
+1.  "risks": A bulleted list of potential dangers and safety risks arising from the reported condition. Start each point with a hyphen (-).
+2.  "suggestedActions": A bulleted list of clear, actionable recommendations for improvement or mitigation. Start each point with a hyphen (-).
+3.  "rootCauseAnalysis": A brief analysis of the potential root cause of the problem (e.g., lack of procedure, inadequate training, equipment failure).
+4.  "relevantRegulations": A bulleted list of relevant safety regulations that might apply to this situation. Cite Indonesian standards (SNI) and international standards like OSHA, ISO 45001, ANSI, ILO, ASME where applicable. Start each point with a hyphen (-).
+
+Observation Data to Analyze:
+{{{observationData}}}
+`,
+});
+
+const analyzeDeeperObservationFlow = ai.defineFlow(
+  {
+    name: 'analyzeDeeperObservationFlow',
+    inputSchema: SummarizeObservationDataInputSchema,
+    outputSchema: DeeperAnalysisOutputSchema,
+  },
+  async (input) => {
+    const response = await deeperAnalysisPrompt(input);
+    const output = response.output;
+
+    if (!output) {
+      throw new Error('AI deep analysis returned no structured output.');
+    }
+    return output;
+  }
+);
+
+export async function analyzeDeeperObservation(input: SummarizeObservationDataInput): Promise<DeeperAnalysisOutput> {
+  return analyzeDeeperObservationFlow(input);
+}
+
+
+// =================================================================================
+// 3. INSPECTION ANALYSIS FLOW
 // =================================================================================
 
 const analyzeInspectionPrompt = ai.definePrompt({

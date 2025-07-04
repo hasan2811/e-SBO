@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder, ThumbsUp, MessageCircle, Eye, Info, Trash2 } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder, ThumbsUp, MessageCircle, Eye, Info, Trash2, SearchCheck } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose, SheetFooter } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { StarRating } from './star-rating';
@@ -22,6 +22,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DeleteObservationDialog } from './delete-observation-dialog';
 import { useObservations } from '@/hooks/use-observations';
 import { usePathname } from 'next/navigation';
+import { runDeeperAnalysis } from '@/lib/actions/item-actions';
+import { useToast } from '@/hooks/use-toast';
 
 const categoryDefinitions: Record<ObservationCategory, string> = {
   'Safe Zone Position': 'Berada di posisi yang aman terlindung dari bahaya seperti peralatan bergerak, benda jatuh, atau pelepasan energi.',
@@ -56,12 +58,14 @@ interface ObservationDetailSheetProps {
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
   const { user } = useAuth();
-  const { getObservationById, handleLikeToggle, handleViewCount, removeItem, shareToPublic, retryAnalysis } = useObservations();
+  const { getObservationById, handleLikeToggle, handleViewCount, removeItem, shareToPublic, retryAnalysis, updateItem } = useObservations();
   const pathname = usePathname();
+  const { toast } = useToast();
 
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isSharing, setIsSharing] = React.useState(false);
+  const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const viewCountedRef = React.useRef<string | null>(null);
 
   const observation = observationId ? getObservationById(observationId) : null;
@@ -98,9 +102,23 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     if (!observation) return;
     await retryAnalysis(observation);
   };
+  
+  const handleRunDeeperAnalysis = async () => {
+    if (!observation) return;
+    setIsAnalyzing(true);
+    try {
+      const updatedObservation = await runDeeperAnalysis(observation.id);
+      updateItem(updatedObservation); // Update context state
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.'})
+    } finally {
+        setIsAnalyzing(false);
+    }
+  }
 
   const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;
-  const showAiSection = observation.aiStatus || observation.aiSummary;
+  const showBasicAiSection = observation.aiStatus;
+  const hasDeepAnalysis = observation.aiRisks && observation.aiSuggestedActions;
   
   const riskStyles: Record<RiskLevel, string> = {
     Low: 'bg-chart-2 border-transparent text-primary-foreground',
@@ -108,6 +126,17 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     High: 'bg-chart-5 border-transparent text-secondary-foreground',
     Critical: 'bg-destructive border-transparent text-destructive-foreground',
   };
+
+  const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
+    <div className="pl-8 space-y-2">
+      {text.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((item, index) => (
+        <div key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+          <Icon className={`h-4 w-4 flex-shrink-0 mt-0.5 ${iconClassName}`} />
+          <span>{item.replace(/^- /, '')}</span>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <>
@@ -155,7 +184,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                     fill
                     sizes="(max-width: 640px) 100vw, 512px"
                     className="object-contain"
-                    data-ai-hint="construction site"
+                    data-ai-hint="site observation"
                 />
                 ) : (
                     <Image src="/logo.svg" alt="Default observation image" width={80} height={80} className="opacity-50" />
@@ -256,66 +285,95 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
               <p className="text-sm text-muted-foreground">{observation.recommendation}</p>
             </div>
 
-            {showAiSection && (
-              <div className="space-y-4 pt-4 mt-4 border-t">
-                 <div className="bg-primary/5 p-4 rounded-lg border-l-4 border-primary space-y-4">
-                    <h4 className="font-semibold text-base flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-primary" />
-                      Analisis HSSE Tech
-                    </h4>
+            {/* AI ANALYSIS SECTION */}
+            <div className="space-y-4 pt-4 mt-4 border-t">
+              <div className="bg-primary/5 p-4 rounded-lg border-l-4 border-primary space-y-4">
+                <h4 className="font-semibold text-base flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  Analisis Cepat HSSE Tech
+                </h4>
 
-                    {observation.aiStatus === 'processing' && (
-                      <div className="flex items-center gap-3 p-4 rounded-lg">
-                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                          <p className="text-sm text-muted-foreground">Analisis AI sedang diproses...</p>
-                      </div>
+                {observation.aiStatus === 'processing' && !hasDeepAnalysis && (
+                  <div className="flex items-center gap-3 p-4 rounded-lg">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      <p className="text-sm text-muted-foreground">Analisis awal sedang diproses...</p>
+                  </div>
+                )}
+                
+                {observation.aiStatus === 'failed' && (
+                  <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Analisis Gagal</AlertTitle>
+                      <AlertDescription>
+                          Analisis AI tidak dapat diselesaikan.
+                          <Button variant="link" size="sm" onClick={handleRetryAnalysis} className="p-0 h-auto ml-2 text-destructive">Coba lagi</Button>
+                      </AlertDescription>
+                  </Alert>
+                )}
+                
+                {observation.aiStatus === 'completed' && (
+                  <Accordion type="multiple" defaultValue={['summary']} className="w-full">
+                    {observation.aiSummary && (
+                      <AccordionItem value="summary">
+                        <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                          <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" />Ringkasan</div>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-2"><p className="text-sm text-muted-foreground pl-8">{observation.aiSummary}</p></AccordionContent>
+                      </AccordionItem>
                     )}
-
-                    {observation.aiStatus === 'failed' && (
-                      <div className="flex flex-col items-start gap-3 bg-destructive/10 p-4 rounded-lg border border-destructive/20">
-                          <p className="text-sm text-destructive font-medium">Analisis AI tidak dapat diselesaikan.</p>
-                          <Button variant="destructive" size="sm" onClick={handleRetryAnalysis}>
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Coba Lagi Analisis
-                          </Button>
-                      </div>
+                    {observation.aiSuggestedRiskLevel && (
+                      <AccordionItem value="suggestedRisk" className="border-b-0">
+                        <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                          <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-muted-foreground" />Saran Tingkat Risiko</div>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-2 pl-8">
+                            <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", riskStyles[observation.aiSuggestedRiskLevel])}>
+                                {observation.aiSuggestedRiskLevel}
+                            </div>
+                        </AccordionContent>
+                      </AccordionItem>
                     )}
-
-                    {observation.aiStatus === 'completed' && (
-                      <Accordion type="multiple" defaultValue={['summary']} className="w-full">
-                        {observation.aiSummary && (
-                          <AccordionItem value="summary">
-                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-muted-foreground" />
-                                Ringkasan
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2">
-                              <p className="text-sm text-muted-foreground pl-8">{observation.aiSummary}</p>
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                         {observation.aiSuggestedRiskLevel && (
-                          <AccordionItem value="suggestedRisk" className="border-b-0">
-                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                              <div className="flex items-center gap-2">
-                                <Activity className="h-4 w-4 text-muted-foreground" />
-                                Saran Tingkat Risiko
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2 pl-8">
-                                <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", riskStyles[observation.aiSuggestedRiskLevel])}>
-                                    {observation.aiSuggestedRiskLevel}
-                                </div>
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                      </Accordion>
-                    )}
-                 </div>
+                  </Accordion>
+                )}
               </div>
-            )}
+
+              {/* DEEP ANALYSIS SECTION */}
+              <div className="bg-accent/5 p-4 rounded-lg border-l-4 border-accent space-y-4">
+                <h4 className="font-semibold text-base flex items-center gap-2 text-accent">
+                    <SearchCheck className="h-5 w-5" />
+                    Analisis HSSE Mendalam
+                </h4>
+                {isAnalyzing ? (
+                  <div className="flex items-center gap-3 p-4 rounded-lg">
+                      <Loader2 className="h-5 w-5 animate-spin text-accent" />
+                      <p className="text-sm text-muted-foreground">Menganalisis lebih dalam, ini mungkin perlu waktu sejenak...</p>
+                  </div>
+                ) : hasDeepAnalysis ? (
+                  <Accordion type="multiple" className="w-full">
+                     {observation.aiRisks && (
+                        <AccordionItem value="risks"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-destructive" />Potensi Risiko</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiRisks, AlertTriangle, "text-destructive")}</AccordionContent></AccordionItem>
+                      )}
+                      {observation.aiSuggestedActions && (
+                          <AccordionItem value="actions"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-green-600" />Saran Tindakan</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiSuggestedActions, CheckCircle2, "text-green-600")}</AccordionContent></AccordionItem>
+                      )}
+                      {observation.aiRootCauseAnalysis && (
+                          <AccordionItem value="rootCause"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><Target className="h-4 w-4 text-muted-foreground" />Analisis Akar Masalah</div></AccordionTrigger><AccordionContent className="pt-2"><p className="text-sm text-muted-foreground pl-8">{observation.aiRootCauseAnalysis}</p></AccordionContent></AccordionItem>
+                      )}
+                      {observation.aiRelevantRegulations && (
+                           <AccordionItem value="regulations" className="border-b-0"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" />Referensi Regulasi</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiRelevantRegulations, FileText, "text-muted-foreground")}</AccordionContent></AccordionItem>
+                      )}
+                  </Accordion>
+                ) : (
+                   <div className="flex flex-col items-start gap-3 p-2">
+                       <p className="text-sm text-muted-foreground">Jalankan analisis mendalam untuk mengidentifikasi risiko, tindakan, dan peraturan yang relevan.</p>
+                       <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={observation.aiStatus === 'processing'}>
+                           <SearchCheck className="mr-2 h-4 w-4" />
+                           Jalankan Analisis Mendalam
+                       </Button>
+                   </div>
+                )}
+              </div>
+            </div>
 
             {observation.status === 'Completed' && (
               <div className="space-y-4 pt-4 border-t mt-4">

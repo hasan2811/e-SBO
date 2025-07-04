@@ -4,7 +4,7 @@
 import { adminDb, adminStorage } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
 import type { Observation, Inspection, Ptw, AllItems, UserProfile } from '@/lib/types';
-import { summarizeObservationData } from '@/ai/flows/summarize-observation-data';
+import { summarizeObservationData, analyzeDeeperObservation } from '@/ai/flows/summarize-observation-data';
 import { analyzeInspectionData } from '@/ai/flows/summarize-observation-data';
 import { triggerSmartNotify } from '@/ai/flows/smart-notify-flow';
 
@@ -72,31 +72,22 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
 // DELETE ACTIONS
 // ==================================
 
-/**
- * Deletes a file from Firebase Storage using the Admin SDK.
- * This is a server-side only function.
- * @param fileUrl The public download URL of the file to delete.
- */
 async function deleteStorageFileFromUrl(fileUrl: string | undefined | null): Promise<void> {
   if (!fileUrl || !fileUrl.startsWith('https://firebasestorage.googleapis.com')) {
     return;
   }
-  
   try {
     const bucket = adminStorage.bucket();
-    // More robust way to extract the file path from the URL
     const filePath = decodeURIComponent(fileUrl.split('/o/')[1].split('?')[0]);
-    
     const file = bucket.file(filePath);
-    const [exists] = await file.exists();
-    if (exists) {
-        await file.delete();
+    await file.delete();
+  } catch (error: any) {
+    if (error.code === 404) {
+      console.warn(`[Admin Storage] File not found for deletion, probably already deleted: ${fileUrl}`);
     } else {
-        console.warn(`[Admin Storage] File not found for deletion, probably already deleted: ${filePath}`);
+      console.error(`[Admin Storage] Failed to delete file. URL: ${fileUrl}, Error:`, error);
+      throw error; // Re-throw to be caught by the calling function
     }
-  } catch (error) {
-    console.error(`[Admin Storage] Failed to delete file. URL: ${fileUrl}, Error:`, error);
-    // Do not re-throw, to allow Firestore document deletion to proceed even if file deletion fails.
   }
 }
 
@@ -104,7 +95,6 @@ export async function deleteItem(item: AllItems) {
   try {
     const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
     
-    // Delete associated files from storage first
     if (item.itemType === 'observation' || item.itemType === 'inspection') {
       await deleteStorageFileFromUrl(item.photoUrl);
       if ('actionTakenPhotoUrl' in item) {
@@ -114,16 +104,13 @@ export async function deleteItem(item: AllItems) {
       await deleteStorageFileFromUrl(item.jsaPdfUrl);
     }
 
-    // Delete the Firestore document
     await docRef.delete();
     
-    // Revalidate relevant paths to reflect the change in the UI
     revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private', 'page');
     revalidatePath('/public', 'page');
     revalidatePath('/tasks', 'page');
   } catch (error) {
     console.error(`[deleteItem Action] Failed to delete item ${item.id}:`, error);
-    // Re-throw the error to be caught by the client-side component
     throw new Error('Failed to delete the item on the server.');
   }
 }
@@ -146,13 +133,11 @@ export async function deleteMultipleItems(items: AllItems[]) {
       }
     });
 
-    // Delete files and commit batch in parallel for efficiency
     await Promise.all([
-      ...filesToDelete.map(url => url ? deleteStorageFileFromUrl(url) : Promise.resolve()),
+      ...filesToDelete.map(url => url ? deleteStorageFileFromUrl(url).catch(e => console.error(e)) : Promise.resolve()),
       batch.commit()
     ]);
     
-    // Revalidate all potentially affected paths
     revalidatePath('/private', 'page');
     revalidatePath('/public', 'page');
     const projectIds = new Set(items.map(i => i.projectId).filter(Boolean));
@@ -182,7 +167,6 @@ export async function triggerObservationAnalysis(observation: Observation) {
       Pengamat: ${observation.submittedBy}
     `;
 
-    // Trigger smart notify in parallel with the main analysis
     if (observation.scope === 'project' && observation.projectId) {
       const submittedByName = observation.submittedBy.split(' (')[0];
       triggerSmartNotify({
@@ -198,15 +182,12 @@ export async function triggerObservationAnalysis(observation: Observation) {
 
     const analysis = await summarizeObservationData({ observationData });
 
-    const updatePayload = {
+    const updatePayload: Partial<Observation> = {
       aiStatus: 'completed',
       category: analysis.suggestedCategory,
       riskLevel: analysis.suggestedRiskLevel,
       aiSummary: analysis.summary,
       aiSuggestedRiskLevel: analysis.suggestedRiskLevel,
-      // The following are no longer generated to improve speed
-      // aiRisks: analysis.risks,
-      // aiSuggestedActions: analysis.suggestedActions,
     };
     
     await docRef.update(updatePayload);
@@ -219,6 +200,54 @@ export async function triggerObservationAnalysis(observation: Observation) {
       revalidatePath('/tasks', 'page');
   }
 }
+
+export async function runDeeperAnalysis(observationId: string): Promise<Observation> {
+    const docRef = adminDb.collection('observations').doc(observationId);
+    
+    try {
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) {
+            throw new Error("Observation not found.");
+        }
+        const observation = docSnap.data() as Observation;
+
+        // Optionally, update status to show processing in UI
+        await docRef.update({ aiStatus: 'processing' });
+        revalidatePath(observation.projectId ? `/proyek/${observation.projectId}` : '/private', 'page');
+
+        const observationData = `
+            Temuan: ${observation.findings}
+            Rekomendasi: ${observation.recommendation}
+            Lokasi: ${observation.location}
+            Perusahaan: ${observation.company}
+            Pengamat: ${observation.submittedBy}
+            Kategori Awal: ${observation.category}
+            Tingkat Risiko Awal: ${observation.riskLevel}
+        `;
+        
+        const deepAnalysis = await analyzeDeeperObservation({ observationData });
+        
+        const updatePayload: Partial<Observation> = {
+            aiStatus: 'completed',
+            aiRisks: deepAnalysis.risks,
+            aiSuggestedActions: deepAnalysis.suggestedActions,
+            aiRootCauseAnalysis: deepAnalysis.rootCauseAnalysis,
+            aiRelevantRegulations: deepAnalysis.relevantRegulations,
+        };
+        
+        await docRef.update(updatePayload);
+        const updatedDoc = await docRef.get();
+        revalidatePath(observation.projectId ? `/proyek/${observation.projectId}` : '/private', 'page');
+        
+        return { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
+
+    } catch (error) {
+        console.error(`Deeper AI analysis failed for observation ${observationId}:`, error);
+        await docRef.update({ aiStatus: 'failed' });
+        throw error;
+    }
+}
+
 
 export async function triggerInspectionAnalysis(inspection: Inspection) {
   const docRef = adminDb.collection('inspections').doc(inspection.id);

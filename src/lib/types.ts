@@ -83,11 +83,17 @@ export type Observation = {
   actionTakenPhotoUrl?: string;
   closedBy?: string;
   closedDate?: string;
+  
+  // AI Fields
   aiStatus?: 'processing' | 'completed' | 'failed' | 'n/a';
   aiSummary?: string;
+  aiSuggestedRiskLevel?: RiskLevel;
+  // Deep analysis fields
   aiRisks?: string;
   aiSuggestedActions?: string;
-  aiSuggestedRiskLevel?: RiskLevel;
+  aiRelevantRegulations?: string;
+  aiRootCauseAnalysis?: string;
+
   isSharedPublicly?: boolean;
   sharedBy?: string;
   sharedByPosition?: string;
@@ -215,6 +221,16 @@ export const SummarizeObservationDataOutputSchema = z.object({
   suggestedRiskLevel: z.enum(RISK_LEVELS).describe('Saran tingkat risiko (Low, Medium, High, Critical) berdasarkan analisis temuan.'),
 });
 export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservationDataOutputSchema>;
+
+// New schema for the deeper, on-demand analysis
+export const DeeperAnalysisOutputSchema = z.object({
+    risks: z.string().describe('Analisis potensi bahaya dan risiko dari temuan, dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
+    suggestedActions: z.string().describe('Saran tindakan perbaikan atau pengecekan lebih lanjut, dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
+    rootCauseAnalysis: z.string().describe('Analisis singkat mengenai kemungkinan akar penyebab masalah (Bahasa Indonesia).'),
+    relevantRegulations: z.string().describe('Daftar potensi peraturan/standar keselamatan yang relevan (SNI, ISO, OSHA, dll.) dalam bentuk poin-poin (Bahasa Indonesia).'),
+});
+export type DeeperAnalysisOutput = z.infer<typeof DeeperAnalysisOutputSchema>;
+
 
 export const AnalyzeInspectionInputSchema = z.object({
   inspectionData: z.string().describe('The raw text data of the equipment inspection report.'),
