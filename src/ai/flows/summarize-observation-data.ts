@@ -137,13 +137,10 @@ const summarizeObservationDataFlow = ai.defineFlow(
     }
 
     // Sanitize the output to prevent errors from minor AI deviations.
-    output = {
-      ...output,
-      suggestedCategory: findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'Supervision'),
-      suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
-    };
+    output.suggestedCategory = findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'Supervision');
+    output.suggestedRiskLevel = findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low');
     
-    // Sanitize the observer rating to make it more robust against LLM output variations.
+    // Sanitize the observer rating
     let rating = 3; // Default to a competent rating of 3.
     if (output.observerAssessment?.rating) {
         // Coerce potential string numbers to actual numbers.
@@ -154,16 +151,15 @@ const summarizeObservationDataFlow = ai.defineFlow(
         }
     }
 
-    // Ensure the assessment object exists and set the sanitized rating.
-    if (output.observerAssessment) {
-        output.observerAssessment.rating = rating;
-    } else {
-        // If the whole assessment object is missing, create a default one.
-        output.observerAssessment = {
-            rating: rating,
-            explanation: "Analisis laporan tidak dapat diselesaikan sepenuhnya oleh AI.",
-        };
-    }
+    // Sanitize the explanation, providing a default if it's missing or empty.
+    const explanation = output.observerAssessment?.explanation?.trim() || 
+                        "Analisis laporan tidak dapat diselesaikan sepenuhnya oleh AI.";
+
+    // Reconstruct the entire observerAssessment object to guarantee schema compliance.
+    output.observerAssessment = {
+        rating: rating,
+        explanation: explanation,
+    };
     
     return output;
   }
