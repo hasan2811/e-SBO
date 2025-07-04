@@ -66,7 +66,7 @@ export async function updateInspectionStatus({ inspectionId, actionData, user }:
   const projectId = finalDocData?.projectId;
   
   revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
-  revalidatePath('/tasks', 'page'); // Added for consistency
+  revalidatePath('/tasks', 'page');
   return { ...finalDocData, id: updatedDocSnap.id };
 }
 
@@ -92,98 +92,130 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
 }
 
 // ==================================
-// DELETE ACTIONS
+// DELETE ACTIONS - REWRITTEN FOR RELIABILITY
 // ==================================
 
-async function deleteStorageFileFromUrl(fileUrl: string | undefined | null): Promise<void> {
-    if (!fileUrl || !fileUrl.startsWith('https://firebasestorage.googleapis.com')) {
-        return;
-    }
-    try {
-        const url = new URL(fileUrl);
-        // Pathname looks like: /v0/b/bucket-name/o/path%2Fto%2Ffile.jpg
-        const pathStartIndex = url.pathname.indexOf('/o/');
-        if (pathStartIndex === -1) {
-            console.warn(`[Admin Storage] Could not find '/o/' in the file URL path: ${fileUrl}`);
-            return;
-        }
+/**
+ * Safely deletes a file from Firebase Storage from its public URL.
+ * This function will not throw an error if deletion fails, it will only log it.
+ * This ensures that a failed file deletion does not stop the primary action (e.g., deleting a Firestore document).
+ * @param fileUrl The full `https://firebasestorage.googleapis.com/...` URL of the file.
+ */
+async function safeDeleteStorageFile(fileUrl: string | undefined | null) {
+  if (!fileUrl || !fileUrl.startsWith('https://firebasestorage.googleapis.com')) {
+    // Not a valid storage URL, so nothing to do.
+    return;
+  }
 
-        // The actual path is after the /o/ and needs to be decoded.
-        const encodedFilePath = url.pathname.substring(pathStartIndex + 3);
-        const filePath = decodeURIComponent(encodedFilePath);
-
-        const bucket = adminStorage.bucket();
-        const file = bucket.file(filePath);
-        await file.delete();
-    } catch (error: any) {
-        // A 404 error is okay, it means the file was already gone.
-        if (error.code === 404 || error.code === 'storage/object-not-found') {
-            console.warn(`[Admin Storage] File not found for deletion, probably already deleted: ${fileUrl}`);
-        } else {
-            // Log other errors but don't re-throw, as we don't want to block the primary action.
-            console.error(`[Admin Storage] Failed to delete file. URL: ${fileUrl}, Error:`, error);
-        }
+  try {
+    const bucket = adminStorage.bucket();
+    
+    // Extract the file path from the URL. Example: /v0/b/bucket-name/o/path%2Fto%2Ffile.jpg -> path/to/file.jpg
+    const url = new URL(fileUrl);
+    const pathParts = url.pathname.split('/o/');
+    if (pathParts.length < 2) {
+      console.warn(`[safeDeleteStorageFile] Could not extract file path from URL: ${fileUrl}`);
+      return;
     }
+    const encodedFilePath = pathParts[1].split('?')[0];
+    
+    if (!encodedFilePath) {
+      console.warn(`[safeDeleteStorageFile] Found empty file path from URL: ${fileUrl}`);
+      return;
+    }
+
+    const filePath = decodeURIComponent(encodedFilePath);
+    const file = bucket.file(filePath);
+    
+    // Check if the file exists before trying to delete. This avoids benign "not found" errors.
+    const [exists] = await file.exists();
+    if (exists) {
+      await file.delete();
+    }
+  } catch (error) {
+    // Log any unexpected errors but do not re-throw them.
+    console.error(`[safeDeleteStorageFile] An unexpected error occurred while trying to delete file at ${fileUrl}. Error:`, error);
+  }
 }
 
+/**
+ * Deletes a single item. This action prioritizes deleting the database entry
+ * and providing immediate feedback to the user. File deletion happens in the background.
+ * @param item - The item (Observation, Inspection, or Ptw) to delete.
+ */
 export async function deleteItem(item: AllItems) {
   try {
     const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
     
-    // Immediately delete the Firestore document
+    // 1. Immediately delete the Firestore document. This is the critical part.
     await docRef.delete();
 
-    // Trigger file deletions in the background (fire and forget) without waiting
+    // 2. Schedule file deletions to run in the background. We don't `await` these.
+    //    This ensures the user gets an immediate success response.
     if (item.itemType === 'observation' || item.itemType === 'inspection') {
-      deleteStorageFileFromUrl(item.photoUrl);
+      safeDeleteStorageFile(item.photoUrl);
       if ('actionTakenPhotoUrl' in item) {
-        deleteStorageFileFromUrl(item.actionTakenPhotoUrl);
+        safeDeleteStorageFile(item.actionTakenPhotoUrl);
       }
     } else if (item.itemType === 'ptw') {
-      deleteStorageFileFromUrl(item.jsaPdfUrl);
+      safeDeleteStorageFile(item.jsaPdfUrl);
     }
     
-    // Revalidate paths to update the UI
-    revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private', 'page');
+    // 3. Revalidate paths to update the UI on the next navigation.
     revalidatePath('/public', 'page');
+    revalidatePath('/private', 'page');
     revalidatePath('/tasks', 'page');
+    if (item.projectId) {
+      revalidatePath(`/proyek/${item.projectId}`, 'page');
+    }
+
   } catch (error) {
     console.error(`[deleteItem Action] Failed to delete item ${item.id}:`, error);
-    throw new Error('Failed to delete the item on the server.');
+    // If the Firestore deletion fails, throw an error back to the client.
+    throw new Error('Failed to delete the report from the database.');
   }
 }
 
+/**
+ * Deletes multiple items using a batch operation. This is an atomic operation for Firestore.
+ * File deletions happen in the background.
+ * @param items - An array of items to delete.
+ */
 export async function deleteMultipleItems(items: AllItems[]) {
+  if (items.length === 0) return;
+
   try {
     const batch = adminDb.batch();
 
     items.forEach(item => {
+      // 1. Add document deletion to the batch.
       const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
       batch.delete(docRef);
 
-      // Trigger file deletions in the background (fire and forget) for each item
+      // 2. Schedule file deletions to run in the background.
       if (item.itemType === 'observation' || item.itemType === 'inspection') {
-        deleteStorageFileFromUrl(item.photoUrl);
+        safeDeleteStorageFile(item.photoUrl);
         if ('actionTakenPhotoUrl' in item) {
-          deleteStorageFileFromUrl(item.actionTakenPhotoUrl);
+          safeDeleteStorageFile(item.actionTakenPhotoUrl);
         }
       } else if (item.itemType === 'ptw') {
-        deleteStorageFileFromUrl(item.jsaPdfUrl);
+        safeDeleteStorageFile(item.jsaPdfUrl);
       }
     });
 
-    // Commit the batch deletion of Firestore documents immediately
+    // 3. Commit the atomic batch deletion for Firestore documents.
     await batch.commit();
-    
-    // Revalidate relevant paths
-    revalidatePath('/private', 'page');
+
+    // 4. Revalidate all potentially affected paths.
     revalidatePath('/public', 'page');
+    revalidatePath('/private', 'page');
+    revalidatePath('/tasks', 'page');
     const projectIds = new Set(items.map(i => i.projectId).filter(Boolean));
     projectIds.forEach(id => revalidatePath(`/proyek/${id}`, 'page'));
-    revalidatePath('/tasks', 'page');
+    
   } catch (error) {
     console.error(`[deleteMultipleItems Action] Failed to delete items:`, error);
-    throw new Error('Failed to delete the items on the server.');
+    throw new Error('Failed to delete the selected reports from the database.');
   }
 }
 
@@ -224,7 +256,6 @@ export async function triggerObservationAnalysis(observation: Observation) {
     const updatePayload: Partial<Observation> = {
       aiStatus: 'completed',
       category: analysis.suggestedCategory,
-      // Keep the user-defined risk level, but store the AI suggestion separately
       aiSuggestedRiskLevel: analysis.suggestedRiskLevel,
       aiSummary: analysis.summary,
       aiObserverSkillRating: analysis.aiObserverSkillRating,
