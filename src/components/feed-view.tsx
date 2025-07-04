@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Search, Globe, Building, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Search, Globe, Building, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -26,6 +26,8 @@ import { collection, query, orderBy, limit, startAfter, getDocs, QueryDocumentSn
 import { db } from '@/lib/firebase';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/use-auth';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DeleteMultipleDialog } from './delete-multiple-dialog';
 
 const PAGE_SIZE = 10;
 
@@ -34,7 +36,7 @@ interface FeedViewProps {
   projectId?: string;
 }
 
-const ObservationListItem = ({ observation, onSelect, mode }: { observation: Observation, onSelect: () => void, mode: FeedViewProps['mode'] }) => {
+const ObservationListItem = ({ observation, onSelect, mode, isSelectionMode, isSelected, onToggleSelect }: { observation: Observation, onSelect: () => void, mode: FeedViewProps['mode'], isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
     const { toggleLikeObservation } = useObservations();
     const { user } = useAuth();
     const { toast } = useToast();
@@ -52,7 +54,6 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
         'Completed': { icon: CheckCircle2, className: 'text-chart-2', label: 'Completed' },
     };
 
-    // Safeguard against invalid status values to prevent crashes
     const statusInfo = statusIcons[observation.status] || statusIcons['Pending'];
     const StatusIcon = statusInfo.icon;
     const statusClassName = statusInfo.className;
@@ -61,19 +62,40 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
     const hasLiked = user && observation.likes?.includes(user.uid);
 
     const handleLikeClick = (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent opening the detail sheet
+        e.stopPropagation();
         if (!user) {
             toast({ variant: 'destructive', title: 'Anda harus masuk untuk menyukai.' });
             return;
         }
         toggleLikeObservation(observation);
     };
+    
+    const handleItemClick = (e: React.MouseEvent<HTMLLIElement>) => {
+        const target = e.target as HTMLElement;
+        // Prevent event bubbling from interactive elements
+        if (target.closest('button, a')) return;
+
+        if (isSelectionMode) {
+            onToggleSelect();
+        } else {
+            onSelect();
+        }
+    };
 
     return (
-      <li>
-        <div onClick={onSelect} className={cn(
-            "bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden border-l-4",
-            riskColorStyles[observation.riskLevel] || 'border-l-muted'
+      <li onClick={handleItemClick} className={cn("flex items-center gap-3 bg-card p-3 rounded-lg shadow-sm transition-all cursor-pointer", isSelectionMode && 'pr-4')}>
+        {isSelectionMode && (
+             <Checkbox
+                checked={isSelected}
+                onCheckedChange={onToggleSelect}
+                aria-label={`Select observation ${observation.referenceId}`}
+                className="h-5 w-5 ml-1"
+              />
+        )}
+        <div className={cn(
+            "flex-1 p-3 -m-3 rounded-lg overflow-hidden border-l-4 transition-colors",
+            riskColorStyles[observation.riskLevel] || 'border-l-muted',
+            isSelected ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50'
         )}>
           <div className="flex items-start gap-3">
               <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
@@ -165,63 +187,74 @@ const ObservationListItem = ({ observation, onSelect, mode }: { observation: Obs
     );
   };
 
-const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, onSelect: () => void }) => {
+const InspectionListItem = ({ inspection, onSelect, isSelectionMode, isSelected, onToggleSelect }: { inspection: Inspection, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
+    const handleItemClick = (e: React.MouseEvent<HTMLLIElement>) => {
+        if (isSelectionMode) onToggleSelect(); else onSelect();
+    };
+
   return (
-    <li>
-      <div onClick={onSelect} className="flex items-start gap-3 bg-card p-3 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
-        <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
-          {inspection.photoUrl ? (
-            <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="80px" className="object-cover" data-ai-hint="equipment inspection" />
-          ) : (
-            <Wrench className="h-8 w-8 text-muted-foreground/50" />
-          )}
-          {inspection.aiStatus === 'processing' && (
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin text-white" />
-              </div>
-          )}
-          {inspection.aiStatus === 'completed' && (
-              <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
-                  <Sparkles className="h-3 w-3 text-primary-foreground" />
-              </div>
-          )}
+    <li onClick={handleItemClick} className={cn("flex items-center gap-3 bg-card p-3 rounded-lg shadow-sm transition-all cursor-pointer", isSelectionMode && 'pr-4')}>
+        {isSelectionMode && <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} className="h-5 w-5 ml-1"/>}
+        <div className={cn("flex-1 p-3 -m-3 flex items-start gap-3 rounded-lg overflow-hidden transition-colors", isSelected ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50')}>
+            <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
+            {inspection.photoUrl ? (
+                <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="80px" className="object-cover" data-ai-hint="equipment inspection" />
+            ) : (
+                <Wrench className="h-8 w-8 text-muted-foreground/50" />
+            )}
+            {inspection.aiStatus === 'processing' && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                </div>
+            )}
+            {inspection.aiStatus === 'completed' && (
+                <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
+                    <Sparkles className="h-3 w-3 text-primary-foreground" />
+                </div>
+            )}
+            </div>
+            
+            <div className="flex-1 space-y-1 self-start">
+            <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">{format(new Date(inspection.date), 'd MMM yyyy, HH:mm')}</span> - {inspection.equipmentType}
+            </p>
+            <p className="font-semibold leading-snug line-clamp-2">{inspection.equipmentName}</p>
+            <p className="text-sm text-muted-foreground line-clamp-1">{inspection.findings}</p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+                <InspectionStatusBadge status={inspection.status} />
+                <span className="text-xs text-muted-foreground">{inspection.location}</span>
+            </div>
+            </div>
         </div>
-        
-        <div className="flex-1 space-y-1 self-start">
-          <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{format(new Date(inspection.date), 'd MMM yyyy, HH:mm')}</span> - {inspection.equipmentType}
-          </p>
-          <p className="font-semibold leading-snug line-clamp-2">{inspection.equipmentName}</p>
-          <p className="text-sm text-muted-foreground line-clamp-1">{inspection.findings}</p>
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <InspectionStatusBadge status={inspection.status} />
-            <span className="text-xs text-muted-foreground">{inspection.location}</span>
-          </div>
-        </div>
-      </div>
     </li>
   );
 };
 
-const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => (
-  <li>
-    <div onClick={onSelect} className="relative flex items-center bg-card p-4 rounded-lg shadow-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
-      <div className="flex-1 space-y-2 pr-4">
-        <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">{format(new Date(ptw.date), 'd MMM yyyy, HH:mm')}</span> - {ptw.contractor}
-        </p>
-        <p className="font-semibold leading-snug line-clamp-2">{ptw.workDescription}</p>
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <PtwStatusBadge status={ptw.status} />
-          <span className="text-xs text-muted-foreground">{ptw.location}</span>
-        </div>
-      </div>
-      <div className="ml-auto flex items-center pl-2">
-        <ChevronRight className="h-6 w-6 text-muted-foreground" />
-      </div>
-    </div>
-  </li>
-);
+const PtwListItem = ({ ptw, onSelect, isSelectionMode, isSelected, onToggleSelect }: { ptw: Ptw, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
+    const handleItemClick = (e: React.MouseEvent<HTMLLIElement>) => {
+        if (isSelectionMode) onToggleSelect(); else onSelect();
+    };
+    return (
+        <li onClick={handleItemClick} className={cn("flex items-center gap-3 bg-card p-3 rounded-lg shadow-sm transition-all cursor-pointer", isSelectionMode && 'pr-4')}>
+            {isSelectionMode && <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} className="h-5 w-5 ml-1"/>}
+            <div className={cn("flex-1 p-3 -m-3 relative flex items-center rounded-lg overflow-hidden transition-colors", isSelected ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50')}>
+                <div className="flex-1 space-y-2 pr-4">
+                    <p className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">{format(new Date(ptw.date), 'd MMM yyyy, HH:mm')}</span> - {ptw.contractor}
+                    </p>
+                    <p className="font-semibold leading-snug line-clamp-2">{ptw.workDescription}</p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <PtwStatusBadge status={ptw.status} />
+                    <span className="text-xs text-muted-foreground">{ptw.location}</span>
+                    </div>
+                </div>
+                <div className="ml-auto flex items-center pl-2">
+                    <ChevronRight className="h-6 w-6 text-muted-foreground" />
+                </div>
+            </div>
+        </li>
+    )
+};
 
 const viewConfig = {
   observations: { label: 'Observasi', icon: Briefcase, itemType: 'observation' },
@@ -230,7 +263,7 @@ const viewConfig = {
 };
 
 export function FeedView({ mode, projectId }: FeedViewProps) {
-  const { privateItems, projectItems, loading: myItemsLoading } = useObservations();
+  const { privateItems, projectItems, loading: myItemsLoading, deleteMultipleItems } = useObservations();
   const { user } = useAuth();
   
   const [publicItems, setPublicItems] = React.useState<AllItems[]>([]);
@@ -248,6 +281,11 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   const [searchTerm, setSearchTerm] = React.useState('');
 
   const [displayedItemsCount, setDisplayedItemsCount] = React.useState(PAGE_SIZE);
+
+  const [isSelectionMode, setIsSelectionMode] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [isDeleteMultiOpen, setDeleteMultiOpen] = React.useState(false);
   
   const { toast } = useToast();
   
@@ -302,16 +340,15 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
     }
   }, [lastVisible]);
 
-
   React.useEffect(() => {
-    if (mode === 'public') {
-      fetchPublicItems(true);
-    }
+    if (mode === 'public') fetchPublicItems(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]); 
 
   React.useEffect(() => {
     setDisplayedItemsCount(PAGE_SIZE);
+    setIsSelectionMode(false);
+    setSelectedIds(new Set());
   }, [viewType, mode, projectId]);
   
   const data = React.useMemo(() => {
@@ -325,13 +362,13 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
 
   const filteredData = React.useMemo(() => {
     let baseData = [...data];
-    
-    // Logic for private and project feeds
-    let dataToFilter: AllItems[] = baseData;
+    let dataToFilter: AllItems[] = baseData.filter(item => item.userId === user?.uid);
     if (mode === 'project' && projectId) {
-        dataToFilter = dataToFilter.filter(item => item.projectId === projectId);
+        dataToFilter = baseData.filter(item => item.projectId === projectId);
     } else if (mode === 'private') {
-        dataToFilter = dataToFilter.filter(item => item.scope === 'private');
+        dataToFilter = baseData.filter(item => item.scope === 'private');
+    } else if (mode === 'public') {
+        dataToFilter = baseData;
     }
     
     dataToFilter = dataToFilter.filter(item => item.itemType === viewConfig[viewType].itemType);
@@ -339,21 +376,15 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
     if (searchTerm && mode !== 'public') {
         const lowercasedSearch = searchTerm.toLowerCase();
         dataToFilter = dataToFilter.filter(item => {
-            if (item.itemType === 'observation') {
-                return item.findings.toLowerCase().includes(lowercasedSearch) || item.recommendation.toLowerCase().includes(lowercasedSearch);
-            }
-            if (item.itemType === 'inspection') {
-                return item.findings.toLowerCase().includes(lowercasedSearch) || item.equipmentName.toLowerCase().includes(lowercasedSearch);
-            }
-            if (item.itemType === 'ptw') {
-                return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch);
-            }
+            if (item.itemType === 'observation') return item.findings.toLowerCase().includes(lowercasedSearch) || item.recommendation.toLowerCase().includes(lowercasedSearch);
+            if (item.itemType === 'inspection') return item.findings.toLowerCase().includes(lowercasedSearch) || item.equipmentName.toLowerCase().includes(lowercasedSearch);
+            if (item.itemType === 'ptw') return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch);
             return false;
         });
     }
 
     return dataToFilter;
-  }, [data, mode, projectId, viewType, searchTerm]);
+  }, [data, mode, projectId, viewType, searchTerm, user]);
 
   const itemsToDisplay = mode === 'public' ? filteredData : filteredData.slice(0, displayedItemsCount);
   
@@ -375,18 +406,41 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   const handleExport = () => {
     const dataToExport = filteredData as Observation[];
     if (dataToExport.length === 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Tidak Ada Data untuk Diekspor',
-        description: `Tidak ada data observasi untuk diekspor.`,
-      });
+      toast({ variant: 'destructive', title: 'Tidak Ada Data untuk Diekspor', description: `Tidak ada data observasi untuk diekspor.` });
       return;
     }
     const fileName = `Export_${mode}_${projectId || ''}_${format(new Date(), 'yyyy-MM-dd')}`;
     exportToExcel(dataToExport, fileName);
   };
   
+  const handleToggleSelection = (id: string) => {
+    setSelectedIds(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        return newSet;
+    });
+  };
+
+  const handleConfirmDeleteMultiple = async () => {
+    const itemsToDelete = filteredData.filter(item => selectedIds.has(item.id));
+    if (itemsToDelete.length === 0) return;
+    setIsDeleting(true);
+    try {
+        await deleteMultipleItems(itemsToDelete);
+        toast({ title: 'Success', description: `${itemsToDelete.length} items have been deleted.` });
+        setDeleteMultiOpen(false);
+        setIsSelectionMode(false);
+        setSelectedIds(new Set());
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete items.' });
+    } finally {
+        setIsDeleting(false);
+    }
+  };
+
   const isExportDisabled = viewType !== 'observations' || isLoading;
+  const canSelect = !isLoading && filteredData.length > 0 && mode !== 'public';
 
   function EmptyState() {
     if (mode === 'public') {
@@ -425,85 +479,79 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   return (
     <>
      <div className="space-y-4">
-        <div className="flex justify-between items-center gap-4">
-            <h2 className="text-2xl font-bold tracking-tight">
+        <div className="flex justify-between items-center gap-4 min-h-[40px]">
+          {isSelectionMode ? (
+            <>
+              <Button variant="ghost" onClick={() => { setIsSelectionMode(false); setSelectedIds(new Set()); }}>Batal</Button>
+              <p className="font-semibold">{selectedIds.size} dipilih</p>
+              <Button variant="destructive" size="icon" onClick={() => setDeleteMultiOpen(true)} disabled={selectedIds.size === 0}>
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold tracking-tight">
                 {mode === 'public' ? 'Feed Publik' : 'Laporan ' + viewConfig[viewType].label}
-            </h2>
-            <div className="flex items-center gap-2">
-                {mode !== 'public' && (
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                                <Search className="h-5 w-5" />
-                                <span className="sr-only">Cari</span>
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="end" className="p-2 w-80">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Cari di feed ini..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-9"
-                                    autoFocus
-                                />
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                )}
-
-                {mode !== 'public' && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-[140px] justify-between">
-                          {viewConfig[viewType].label}
-                          <ChevronDown className="h-4 w-4 opacity-50" />
+              </h2>
+              <div className="flex items-center gap-2">
+                  {canSelect && <Button variant="outline" onClick={() => setIsSelectionMode(true)}>Pilih</Button>}
+                  {mode !== 'public' && (
+                      <Popover>
+                          <PopoverTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                  <Search className="h-5 w-5" />
+                                  <span className="sr-only">Cari</span>
+                              </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="p-2 w-80">
+                              <div className="relative">
+                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                  <Input placeholder="Cari di feed ini..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" autoFocus />
+                              </div>
+                          </PopoverContent>
+                      </Popover>
+                  )}
+                  {mode !== 'public' && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="w-[140px] justify-between">
+                            {viewConfig[viewType].label}
+                            <ChevronDown className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => setViewType('observations')}>Observasi</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => setViewType('inspections')}>Inspeksi</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => setViewType('ptws')}>PTW</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                  )}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="icon" onClick={handleExport} disabled={isExportDisabled}>
+                          <Download className="h-4 w-4" /><span className="sr-only">Export</span>
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setViewType('observations')}>Observasi</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setViewType('inspections')}>Inspeksi</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setViewType('ptws')}>PTW</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                )}
-
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" onClick={handleExport} disabled={isExportDisabled}>
-                        <Download className="h-4 w-4" />
-                        <span className="sr-only">Export</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>{viewType === 'observations' ? "Export Observasi" : "Hanya tersedia untuk Observasi"}</p></TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-            </div>
+                      </TooltipTrigger>
+                      <TooltipContent><p>{viewType === 'observations' ? "Export Observasi" : "Hanya tersedia untuk Observasi"}</p></TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+              </div>
+            </>
+          )}
         </div>
 
       <main>
         {fetchError && mode === 'public' && (
           <Alert variant="destructive" className="mb-4">
             <AlertTitle>Gagal Memuat Data Publik</AlertTitle>
-            <AlertDescription>
-                <p>
-                {fetchError}
-                </p>
-                <p className="mt-2 text-xs">Setelah membuat indeks, mungkin perlu beberapa menit untuk aktif. Coba muat ulang halaman setelahnya.</p>
-            </AlertDescription>
+            <AlertDescription><p>{fetchError}</p><p className="mt-2 text-xs">Setelah membuat indeks, mungkin perlu beberapa menit untuk aktif. Coba muat ulang halaman setelahnya.</p></AlertDescription>
           </Alert>
         )}
         {isLoading ? (
           <ul className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <li key={i}>
-                <div className="flex items-start bg-card p-3 rounded-lg shadow-sm h-[124px]">
-                  <Skeleton className="h-16 w-16 rounded-md" />
-                  <div className="flex-1 space-y-2 ml-3"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-full" /><Skeleton className="h-4 w-2/3" /></div>
-                </div>
-              </li>
+              <li key={i}><div className="flex items-start bg-card p-3 rounded-lg shadow-sm h-[124px]"><Skeleton className="h-16 w-16 rounded-md" /><div className="flex-1 space-y-2 ml-3"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-full" /><Skeleton className="h-4 w-2/3" /></div></div></li>
             ))}
           </ul>
         ) : itemsToDisplay.length > 0 ? (
@@ -511,11 +559,11 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
              {itemsToDisplay.map(item => {
                 switch(item.itemType) {
                   case 'observation':
-                    return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} mode={mode} />;
+                    return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} mode={mode} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} />;
                   case 'inspection':
-                    return <InspectionListItem key={item.id} inspection={item} onSelect={() => setSelectedInspectionId(item.id)} />;
+                    return <InspectionListItem key={item.id} inspection={item} onSelect={() => setSelectedInspectionId(item.id)} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} />;
                   case 'ptw':
-                    return <PtwListItem key={item.id} ptw={item} onSelect={() => setSelectedPtwId(item.id)} />;
+                    return <PtwListItem key={item.id} ptw={item} onSelect={() => setSelectedPtwId(item.id)} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} />;
                   default:
                     return null;
                 }
@@ -526,56 +574,19 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
         )}
         
         {mode === 'public' && itemsToDisplay.length > 0 && (
-          <div className="mt-6 flex justify-center">
-            {hasMorePublic ? (
-              <Button
-                onClick={() => fetchPublicItems(false)}
-                disabled={loadingPublic}
-              >
-                {loadingPublic && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Tampilkan Lebih Banyak
-              </Button>
-            ) : (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                You have reached the end.
-              </p>
-            )}
-          </div>
+          <div className="mt-6 flex justify-center">{hasMorePublic ? (<Button onClick={() => fetchPublicItems(false)} disabled={loadingPublic}>{loadingPublic && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Tampilkan Lebih Banyak</Button>) : (<p className="py-4 text-center text-sm text-muted-foreground">You have reached the end.</p>)}</div>
         )}
-
         {mode !== 'public' && displayedItemsCount < filteredData.length && (
-            <div className="mt-6 flex justify-center">
-                <Button onClick={() => setDisplayedItemsCount(prev => prev + PAGE_SIZE)}>
-                    Tampilkan Lebih Banyak
-                </Button>
-            </div>
+            <div className="mt-6 flex justify-center"><Button onClick={() => setDisplayedItemsCount(prev => prev + PAGE_SIZE)}>Tampilkan Lebih Banyak</Button></div>
         )}
-
       </main>
     </div>
 
-    {displayObservation && (
-        <ObservationDetailSheet 
-            observation={displayObservation}
-            isOpen={!!displayObservation}
-            onOpenChange={(isOpen) => { if (!isOpen) setSelectedObservationId(null); }}
-            mode={mode}
-        />
-    )}
-    {displayInspection && (
-        <InspectionDetailSheet 
-            inspection={displayInspection}
-            isOpen={!!displayInspection}
-            onOpenChange={(isOpen) => { if (!isOpen) setSelectedInspectionId(null); }}
-        />
-    )}
-    {displayPtw && (
-        <PtwDetailSheet 
-            ptw={displayPtw}
-            isOpen={!!displayPtw}
-            onOpenChange={(isOpen) => { if (!isOpen) setSelectedPtwId(null); }}
-        />
-    )}
+    {displayObservation && (<ObservationDetailSheet observation={displayObservation} isOpen={!!displayObservation} onOpenChange={(isOpen) => { if (!isOpen) setSelectedObservationId(null); }} mode={mode}/>)}
+    {displayInspection && (<InspectionDetailSheet inspection={displayInspection} isOpen={!!displayInspection} onOpenChange={(isOpen) => { if (!isOpen) setSelectedInspectionId(null); }}/>)}
+    {displayPtw && (<PtwDetailSheet ptw={displayPtw} isOpen={!!displayPtw} onOpenChange={(isOpen) => { if (!isOpen) setSelectedPtwId(null); }}/>)}
+    
+    <DeleteMultipleDialog isOpen={isDeleteMultiOpen} onOpenChange={setDeleteMultiOpen} itemCount={selectedIds.size} onConfirm={handleConfirmDeleteMultiple} isDeleting={isDeleting} />
    </>
   );
 }

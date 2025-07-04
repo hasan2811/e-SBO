@@ -13,6 +13,7 @@ import {
   Unsubscribe,
   DocumentReference,
   deleteDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { deleteFile, uploadFile } from '@/lib/storage';
@@ -50,6 +51,7 @@ interface ObservationContextType {
   deleteObservation: (observation: Observation) => Promise<void>;
   deleteInspection: (inspection: Inspection) => Promise<void>;
   deletePtw: (ptw: Ptw) => Promise<void>;
+  deleteMultipleItems: (items: AllItems[]) => Promise<void>;
   approvePtw: (
     ptw: Ptw,
     signatureDataUrl: string,
@@ -460,6 +462,39 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         await deleteDoc(docRef);
     }, [user]);
 
+    const deleteMultipleItems = React.useCallback(async (items: AllItems[]) => {
+        if (!user) throw new Error('User is not authenticated.');
+    
+        const batch = writeBatch(db);
+        const filesToDelete: string[] = [];
+    
+        items.forEach(item => {
+          if (item.userId !== user.uid && item.scope !== 'project') {
+             // Basic security check, more robust checks should be in Firestore rules
+             console.warn(`Skipping deletion for item ${item.id} due to permission mismatch.`);
+             return;
+          }
+          
+          const docRef = getDocRef(item);
+          batch.delete(docRef);
+    
+          if (item.itemType === 'observation') {
+            if (item.photoUrl) filesToDelete.push(item.photoUrl);
+            if (item.actionTakenPhotoUrl) filesToDelete.push(item.actionTakenPhotoUrl);
+          } else if (item.itemType === 'inspection') {
+            if (item.photoUrl) filesToDelete.push(item.photoUrl);
+          } else if (item.itemType === 'ptw') {
+            if (item.jsaPdfUrl) filesToDelete.push(item.jsaPdfUrl);
+          }
+        });
+    
+        // Delete files from storage first
+        await Promise.all(filesToDelete.map(url => deleteFile(url)));
+    
+        // Then commit the Firestore batch delete
+        await batch.commit();
+    }, [user]);
+
 
     const approvePtw = React.useCallback(async (ptw: Ptw, signatureDataUrl: string, approver: string) => {
         const ptwDocRef = getDocRef(ptw);
@@ -583,6 +618,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         deleteObservation,
         deleteInspection,
         deletePtw,
+        deleteMultipleItems,
         approvePtw,
         retryAiAnalysis,
         shareObservationToPublic,
