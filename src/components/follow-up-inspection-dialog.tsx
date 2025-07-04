@@ -35,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { updateInspectionStatus } from '@/lib/actions/item-actions';
+import { useObservations } from '@/hooks/use-observations';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(1, 'Description cannot be empty.'),
@@ -63,6 +64,7 @@ export function FollowUpInspectionDialog({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { updateItem } = useObservations();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -148,13 +150,14 @@ export function FollowUpInspectionDialog({
         actionTakenPhotoUrl: actionTakenPhotoUrl,
       };
       
-      await updateInspectionStatus({
+      const updatedInspection = await updateInspectionStatus({
           inspectionId: inspection.id,
           actionData,
           userName: userProfile.displayName,
           userPosition: userProfile.position,
       });
       
+      updateItem(updatedInspection);
       toast({ title: 'Success', description: 'Inspection has been marked as completed.' });
       handleOpenChange(false);
     } catch(error) {

@@ -270,7 +270,7 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const { items, isLoading, error, hasMore, fetchItems, viewType, setViewType, handleLikeToggle, getObservationById, removeItems, removeItems: removeItemsFromContext } = useObservations();
+  const { items, isLoading, hasMore, fetchMoreItems, viewType, setViewType, handleLikeToggle, getObservationById, removeItem } = useObservations();
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -340,7 +340,7 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   }
   
   const handleDeleteSuccess = (deletedIds: string[]) => {
-    removeItemsFromContext(deletedIds);
+    deletedIds.forEach(id => removeItem(id));
     setIsSelectionMode(false);
     setSelectedIds(new Set());
     setItemsToDelete([]);
@@ -479,20 +479,12 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
         )}
 
       <main className="mt-6">
-        {isLoading && filteredData.length === 0 ? (
+        {isLoading && items.length === 0 ? (
           <ul className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <li key={i}><div className="flex items-start bg-card p-3 rounded-lg shadow-sm h-[124px]"><Skeleton className="h-16 w-16 rounded-md" /><div className="flex-1 space-y-2 ml-3"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-full" /><Skeleton className="h-4 w-2/3" /></div></div></li>
             ))}
           </ul>
-        ) : error ? (
-            <Alert variant="destructive">
-                <AlertTitle>Gagal Memuat Data</AlertTitle>
-                <AlertDescription>
-                    {error} 
-                    <Button variant="link" className="p-0 h-auto ml-2 text-destructive-foreground" onClick={() => fetchItems(true)}>Coba lagi</Button>
-                </AlertDescription>
-            </Alert>
         ) : filteredData.length > 0 ? (
           <ul className="space-y-3">
              {filteredData.map(item => {
@@ -514,7 +506,7 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
         
         {hasMore && !isLoading && (
           <div className="mt-6 flex justify-center">
-            <Button onClick={() => fetchItems(false)} disabled={isLoading}>
+            <Button onClick={() => fetchMoreItems()} disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Tampilkan Lebih Banyak
             </Button>
           </div>

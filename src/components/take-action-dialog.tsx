@@ -35,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { updateObservationStatus } from '@/lib/actions/item-actions';
+import { useObservations } from '@/hooks/use-observations';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(1, 'Description cannot be empty.'),
@@ -63,6 +64,7 @@ export function TakeActionDialog({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { updateItem } = useObservations();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -148,13 +150,14 @@ export function TakeActionDialog({
         actionTakenPhotoUrl: actionTakenPhotoUrl,
       };
       
-      await updateObservationStatus({
+      const updatedObservation = await updateObservationStatus({
           observationId: observation.id,
           actionData: actionData,
           userName: userProfile.displayName,
           userPosition: userProfile.position
       });
       
+      updateItem(updatedObservation); // Optimistically update the UI
       toast({ title: 'Success', description: 'Observation has been marked as completed.' });
       handleOpenChange(false);
     } catch(error) {

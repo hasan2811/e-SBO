@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -37,12 +38,12 @@ export function DeleteMultipleDialog({
     
     setIsDeleting(true);
     try {
-      await deleteMultipleItemsAction(itemsToDelete);
+      const { deletedIds } = await deleteMultipleItemsAction(itemsToDelete);
       toast({
         title: 'Berhasil Dihapus',
         description: `${itemsToDelete.length} item telah berhasil dihapus.`,
       });
-      onSuccess(itemsToDelete.map(item => item.id));
+      onSuccess(deletedIds);
       onOpenChange(false);
     } catch (error) {
       toast({

@@ -11,6 +11,8 @@ import {
   getDocs,
   QueryDocumentSnapshot,
   where,
+  onSnapshot,
+  Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -25,11 +27,10 @@ interface ObservationContextType {
   isLoading: boolean;
   hasMore: boolean;
   error: string | null;
-  fetchItems: (reset?: boolean) => void;
+  fetchMoreItems: () => void;
   addItem: (newItem: AllItems) => void;
   updateItem: (updatedItem: AllItems) => void;
-  removeItem: (itemId: string) => void; // For single item removal
-  removeItems: (itemIds: string[]) => void; // For multiple items removal
+  removeItem: (itemId: string) => void;
   handleLikeToggle: (observationId: string) => Promise<void>;
   handleViewCount: (observationId: string) => void;
   viewType: 'observations' | 'inspections' | 'ptws';
@@ -61,14 +62,16 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const mode: Scope = pathname.startsWith('/proyek') ? 'project' : pathname.startsWith('/public') ? 'public' : 'private';
   const projectId = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/)?.[1] || null;
 
-  const fetchItems = React.useCallback(async (reset: boolean = false) => {
-    if ((mode === 'private' || mode === 'project') && !user) return;
-
-    setIsLoading(true);
-    setError(null);
-    const lastDoc = reset ? null : lastVisible;
-    const collectionName = viewTypeInfo[viewType].collection;
+  // Realtime listener effect
+  React.useEffect(() => {
+    if ((mode === 'private' || mode === 'project') && !user) {
+        setItems([]);
+        setIsLoading(false);
+        return;
+    }
     
+    setIsLoading(true);
+    const collectionName = viewTypeInfo[viewType].collection;
     let baseQuery = query(collection(db, collectionName));
 
     if (mode === 'public') {
@@ -78,24 +81,25 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     } else if (mode === 'private' && user) {
       baseQuery = query(baseQuery, where('scope', '==', 'private'), where('userId', '==', user.uid));
     } else {
-      setItems([]); setIsLoading(false); return;
+      setItems([]); 
+      setIsLoading(false); 
+      return;
     }
     
     const finalQuery = query(
       baseQuery, 
       orderBy('date', 'desc'), 
-      ...(lastDoc ? [startAfter(lastDoc)] : []),
       limit(PAGE_SIZE)
     );
-
-    try {
-      const docSnap = await getDocs(finalQuery);
-      const newItems: AllItems[] = docSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
-      
-      setHasMore(newItems.length === PAGE_SIZE);
-      setLastVisible(docSnap.docs[docSnap.docs.length - 1] || null);
-      setItems(prev => reset ? newItems : [...prev, ...newItems]);
-    } catch (e: any) {
+    
+    const unsubscribe = onSnapshot(finalQuery, (snapshot) => {
+        const newItems: AllItems[] = snapshot.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
+        setItems(newItems);
+        setHasMore(newItems.length === PAGE_SIZE);
+        setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
+        setError(null);
+        setIsLoading(false);
+    }, (e) => {
         if (e.code === 'failed-precondition') {
             setError("Database query failed. Please ensure all required indexes are built in the Firebase Console.");
             console.error("Firestore index missing error. Please verify the required composite indexes.", e);
@@ -104,44 +108,52 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             setError("Failed to load data. Please check your connection.");
         }
         setItems([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [mode, projectId, user, viewType, lastVisible]);
+        setIsLoading(false);
+    });
 
-
-  const resetAndFetch = React.useCallback(() => {
-    setItems([]);
-    setLastVisible(null);
-    fetchItems(true);
-  }, [fetchItems]);
-
-  React.useEffect(() => {
-    resetAndFetch();
+    return () => unsubscribe();
   }, [mode, projectId, viewType, user]);
 
 
-  const addItem = React.useCallback((newItem: AllItems) => {
-    const currentViewItemType = viewType.slice(0, -1);
-    const currentScope = mode;
-    const currentProjectId = projectId;
-  
-    const viewTypeMatches = newItem.itemType === currentViewItemType;
-  
-    let scopeMatches = false;
-    if (currentScope === 'public' && newItem.scope === 'public') {
-      scopeMatches = true;
-    } else if (currentScope === 'private' && newItem.scope === 'private' && newItem.userId === user?.uid) {
-      scopeMatches = true;
-    } else if (currentScope === 'project' && newItem.scope === 'project' && newItem.projectId === currentProjectId) {
-      scopeMatches = true;
-    }
-  
-    if (viewTypeMatches && scopeMatches) {
-      setItems(prevItems => [newItem, ...prevItems]);
-    }
-  }, [viewType, mode, projectId, user?.uid]);
+  const fetchMoreItems = React.useCallback(async () => {
+    if (!hasMore || isLoading || !lastVisible) return;
+    if ((mode === 'private' || mode === 'project') && !user) return;
+    
+    setIsLoading(true);
+    const collectionName = viewTypeInfo[viewType].collection;
+    
+    let baseQuery = query(collection(db, collectionName));
+    if (mode === 'public') baseQuery = query(baseQuery, where('scope', '==', 'public'));
+    else if (mode === 'project' && projectId) baseQuery = query(baseQuery, where('projectId', '==', projectId));
+    else if (mode === 'private' && user) baseQuery = query(baseQuery, where('scope', '==', 'private'), where('userId', '==', user.uid));
+    else return;
 
+    const finalQuery = query(
+      baseQuery, 
+      orderBy('date', 'desc'), 
+      startAfter(lastVisible),
+      limit(PAGE_SIZE)
+    );
+
+    try {
+      const docSnap = await getDocs(finalQuery);
+      const newItems: AllItems[] = docSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
+      setHasMore(newItems.length === PAGE_SIZE);
+      setLastVisible(docSnap.docs[docSnap.docs.length - 1] || null);
+      setItems(prev => [...prev, ...newItems]);
+    } catch (e: any) {
+       console.error("Failed to fetch more items:", e);
+       setError("Failed to load more data.");
+    } finally {
+        setIsLoading(false);
+    }
+  }, [hasMore, isLoading, lastVisible, mode, user, projectId, viewType]);
+
+  // These functions now manipulate state that the realtime listener will eventually sync up.
+  // This provides a more optimistic UI update feel but relies on the listener for truth.
+  const addItem = React.useCallback((newItem: AllItems) => {
+    setItems(prevItems => [newItem, ...prevItems]);
+  }, []);
 
   const updateItem = React.useCallback((updatedItem: AllItems) => {
     setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
@@ -151,16 +163,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     setItems(prev => prev.filter(item => item.id !== itemId));
   }, []);
 
-  const removeItems = React.useCallback((itemIds: string[]) => {
-    const idSet = new Set(itemIds);
-    setItems(prev => prev.filter(item => !idSet.has(item.id)));
-  }, []);
-
   const handleLikeToggle = React.useCallback(async (observationId: string) => {
     if (!user) return;
     
-    // Optimistic UI update
-    const originalItems = items;
     const itemIndex = items.findIndex(item => item.id === observationId);
     if (itemIndex === -1 || items[itemIndex].itemType !== 'observation') return;
 
@@ -177,21 +182,18 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         await toggleLike({ docId: observationId, userId: user.uid, collectionName: 'observations' });
     } catch (error) {
         console.error("Failed to sync like with server:", error);
-        setItems(originalItems); // Revert on failure
+        updateItem(originalObservation); // Revert on failure
     }
   }, [user, items, updateItem]);
   
   const handleViewCount = React.useCallback((observationId: string) => {
-      // Optimistic update
       const item = items.find(i => i.id === observationId);
       if (item && item.itemType === 'observation') {
           updateItem({ ...item, viewCount: (item.viewCount || 0) + 1 });
       }
-      // Fire-and-forget server update
       incrementViewCount({ docId: observationId, collectionName: 'observations' }).catch(console.error);
   }, [items, updateItem]);
   
-
   const getObservationById = React.useCallback((id: string): Observation | undefined => {
     return items.find(item => item.id === id && item.itemType === 'observation') as Observation | undefined;
   }, [items]);
@@ -206,13 +208,13 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
   const value = React.useMemo(() => ({
     items, isLoading, hasMore, error,
-    fetchItems: resetAndFetch,
-    addItem, updateItem, removeItem, removeItems,
+    fetchMoreItems,
+    addItem, updateItem, removeItem,
     handleLikeToggle, handleViewCount,
     viewType, setViewType, getObservationById, getInspectionById, getPtwById
   }), [
       items, isLoading, hasMore, error,
-      resetAndFetch, addItem, updateItem, removeItem, removeItems,
+      fetchMoreItems, addItem, updateItem, removeItem,
       handleLikeToggle, handleViewCount,
       viewType, getObservationById, getInspectionById, getPtwById
   ]);

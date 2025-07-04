@@ -46,7 +46,7 @@ function revalidateRelevantPaths(item: { scope: Scope; projectId?: string | null
 // ==================================
 // UPDATE ACTIONS
 // ==================================
-export async function updateObservationStatus({ observationId, actionData, userName, userPosition }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, userName: string, userPosition: string }): Promise<void> {
+export async function updateObservationStatus({ observationId, actionData, userName, userPosition }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, userName: string, userPosition: string }): Promise<Observation> {
   const observationDocRef = adminDb.collection('observations').doc(observationId);
   const docSnap = await observationDocRef.get();
   if (!docSnap.exists) throw new Error('Laporan observasi tidak ditemukan.');
@@ -63,10 +63,13 @@ export async function updateObservationStatus({ observationId, actionData, userN
   if (actionData.actionTakenPhotoUrl) updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
   
   await observationDocRef.update(updatedData);
-  revalidateRelevantPaths(observation);
+  const updatedDocSnap = await observationDocRef.get();
+  const finalData = { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Observation;
+  revalidateRelevantPaths(finalData);
+  return finalData;
 }
 
-export async function updateInspectionStatus({ inspectionId, actionData, userName, userPosition }: { inspectionId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, userName: string, userPosition: string }): Promise<void> {
+export async function updateInspectionStatus({ inspectionId, actionData, userName, userPosition }: { inspectionId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, userName: string, userPosition: string }): Promise<Inspection> {
     const inspectionDocRef = adminDb.collection('inspections').doc(inspectionId);
     const docSnap = await inspectionDocRef.get();
     if (!docSnap.exists) throw new Error('Laporan inspeksi tidak ditemukan.');
@@ -82,7 +85,10 @@ export async function updateInspectionStatus({ inspectionId, actionData, userNam
     if (actionData.actionTakenPhotoUrl) updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
   
     await inspectionDocRef.update(updatedData);
-    revalidateRelevantPaths(inspection);
+    const updatedDocSnap = await inspectionDocRef.get();
+    const finalData = { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Inspection;
+    revalidateRelevantPaths(finalData);
+    return finalData;
 }
 
 export async function approvePtw({ ptwId, signatureDataUrl, approverName, approverPosition }: { ptwId: string, signatureDataUrl: string, approverName: string, approverPosition: string }): Promise<Ptw> {
@@ -109,11 +115,10 @@ async function safeDeleteStorageFile(fileUrl: string | undefined | null) {
   if (!fileUrl || !fileUrl.startsWith('https://firebasestorage.googleapis.com')) return;
   try {
     const bucket = adminStorage.bucket();
-    const decodedUrl = decodeURIComponent(fileUrl);
-    const pathStartIndex = decodedUrl.indexOf('/o/') + 3;
-    const pathEndIndex = decodedUrl.indexOf('?');
-    if (pathStartIndex === -1 || pathEndIndex === -1) return;
-    const filePath = decodedUrl.substring(pathStartIndex, pathEndIndex);
+    // A more robust way to get the file path from the URL
+    const fileHttpRef = new URL(fileUrl);
+    const filePath = decodeURIComponent(fileHttpRef.pathname.split('/o/')[1]);
+    
     if (!filePath) return;
     
     const file = bucket.file(filePath);
@@ -127,7 +132,6 @@ async function safeDeleteStorageFile(fileUrl: string | undefined | null) {
 export async function deleteItem(item: AllItems): Promise<{id: string}> {
   const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
   
-  // Check if document exists before trying to delete
   const docSnap = await docRef.get();
   if (!docSnap.exists) {
       console.warn(`[deleteItem] Document with id ${item.id} in ${item.itemType}s not found. Skipping deletion.`);
@@ -138,8 +142,10 @@ export async function deleteItem(item: AllItems): Promise<{id: string}> {
 
   if (item.itemType === 'observation' || item.itemType === 'inspection') {
     await safeDeleteStorageFile(item.photoUrl);
-    if ('actionTakenPhotoUrl' in item) await safeDeleteStorageFile(item.actionTakenPhotoUrl);
-  } else if (item.itemType === 'ptw') {
+    if ('actionTakenPhotoUrl' in item && item.actionTakenPhotoUrl) {
+        await safeDeleteStorageFile(item.actionTakenPhotoUrl);
+    }
+  } else if (item.itemType === 'ptw' && item.jsaPdfUrl) {
     await safeDeleteStorageFile(item.jsaPdfUrl);
   }
   
@@ -163,13 +169,14 @@ export async function deleteMultipleItems(items: AllItems[]): Promise<{deletedId
 
     if (item.itemType === 'observation' || item.itemType === 'inspection') {
       storageDeletePromises.push(safeDeleteStorageFile(item.photoUrl));
-      if ('actionTakenPhotoUrl' in item) storageDeletePromises.push(safeDeleteStorageFile(item.actionTakenPhotoUrl));
-    } else if (item.itemType === 'ptw') {
+      if ('actionTakenPhotoUrl' in item && item.actionTakenPhotoUrl) {
+        storageDeletePromises.push(safeDeleteStorageFile(item.actionTakenPhotoUrl));
+      }
+    } else if (item.itemType === 'ptw' && item.jsaPdfUrl) {
       storageDeletePromises.push(safeDeleteStorageFile(item.jsaPdfUrl));
     }
   }
   
-  // Await storage deletions first, as they are not part of the batch
   await Promise.all(storageDeletePromises);
   await batch.commit();
 
@@ -203,13 +210,10 @@ export async function triggerObservationAnalysis(observation: Observation) {
     const classification = await runFastClassification({ observationData }, userProfile);
     const docExists = (await docRef.get()).exists;
     if (docExists) {
-        // AI's automatic work is done. Set status to completed.
         await docRef.update({
             category: classification.suggestedCategory,
             riskLevel: classification.suggestedRiskLevel,
             aiSuggestedRiskLevel: classification.suggestedRiskLevel,
-            // We keep the status as 'processing' to indicate that deep analysis can still be run.
-            // But we can consider this "fast" part complete.
         });
         revalidateRelevantPaths(observation);
     }
@@ -220,10 +224,9 @@ export async function triggerObservationAnalysis(observation: Observation) {
         await docRef.update({ aiStatus: 'failed' });
         revalidateRelevantPaths(observation);
     }
-    return; // Stop on failure.
+    return;
   }
   
-  // Trigger smart notify as a separate background task.
   if (observation.scope === 'project' && observation.projectId) {
     triggerSmartNotify({
       observationId: observation.id,
@@ -237,7 +240,7 @@ export async function triggerObservationAnalysis(observation: Observation) {
 
 export async function runDeeperAnalysis(observationId: string): Promise<Observation> {
     const docRef = adminDb.collection('observations').doc(observationId);
-    const docSnap = await docRef.get();
+    let docSnap = await docRef.get();
     if (!docSnap.exists) throw new Error("Observasi tidak ditemukan.");
     const observation = docSnap.data() as Observation;
 
@@ -251,11 +254,10 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
         const observationData = `Temuan: ${observation.findings}\nRekomendasi: ${observation.recommendation}\nKategori Awal: ${observation.category}`;
         const deepAnalysis = await analyzeDeeperObservation({ observationData }, userProfile);
         
-        // Before writing, check if the doc still exists. User might have deleted it.
-        const finalDocSnap = await docRef.get();
-        if (!finalDocSnap.exists) {
+        docSnap = await docRef.get();
+        if (!docSnap.exists) {
           console.log(`[runDeeperAnalysis] Observation ${observationId} deleted during analysis. Aborting update.`);
-          return observation; // Return original data, do not throw error.
+          return observation; 
         }
         
         await docRef.update({
@@ -275,8 +277,8 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
         return finalData;
     } catch (error) {
         console.error(`Deeper AI analysis failed for observation ${observationId}:`, error);
-        const finalDocSnap = await docRef.get();
-        if (finalDocSnap.exists) {
+        docSnap = await docRef.get();
+        if (docSnap.exists) {
             await docRef.update({ aiStatus: 'failed' });
             revalidateRelevantPaths(observation);
         }
@@ -318,7 +320,7 @@ export async function triggerInspectionAnalysis(inspection: Inspection) {
 
 export async function runDeeperInspectionAnalysis(inspectionId: string): Promise<Inspection> {
     const docRef = adminDb.collection('inspections').doc(inspectionId);
-    const docSnap = await docRef.get();
+    let docSnap = await docRef.get();
     if (!docSnap.exists) throw new Error("Inspeksi tidak ditemukan.");
     const inspection = docSnap.data() as Inspection;
 
@@ -332,11 +334,10 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
         const inspectionData = `Nama Peralatan: ${inspection.equipmentName}\nJenis: ${inspection.equipmentType}\nTemuan: ${inspection.findings}\nRekomendasi: ${inspection.recommendation || 'N/A'}`;
         const deepAnalysis = await analyzeDeeperInspection({ inspectionData }, userProfile);
         
-        // Before writing, check if the doc still exists. User might have deleted it.
-        const finalDocSnap = await docRef.get();
-        if (!finalDocSnap.exists) {
+        docSnap = await docRef.get();
+        if (!docSnap.exists) {
             console.log(`[runDeeperInspectionAnalysis] Inspection ${inspectionId} deleted during analysis. Aborting update.`);
-            return inspection; // Return original data, do not throw error.
+            return inspection;
         }
 
         await docRef.update({
@@ -352,8 +353,8 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
         return finalData;
     } catch (error) {
         console.error(`Deeper AI analysis failed for inspection ${inspectionId}:`, error);
-        const finalDocSnap = await docRef.get();
-        if (finalDocSnap.exists) {
+        docSnap = await docRef.get();
+        if (docSnap.exists) {
             await docRef.update({ aiStatus: 'failed' });
             revalidateRelevantPaths(inspection);
         }
@@ -366,15 +367,15 @@ export async function retryAiAnalysis(item: Observation | Inspection): Promise<A
     const docSnap = await docRef.get();
     if (!docSnap.exists) throw new Error("Item not found for AI retry.");
     
-    // We don't reset the status here, we just re-trigger the analysis.
-    // The analysis function itself will set the status to 'processing'.
     if (item.itemType === 'observation') {
       await triggerObservationAnalysis(item as Observation);
     } else if (item.itemType === 'inspection') {
       await triggerInspectionAnalysis(item as Inspection);
     }
     const updatedDoc = await docRef.get();
-    return { ...updatedDoc.data(), id: updatedDoc.id } as AllItems;
+    const finalData = { ...updatedDoc.data(), id: updatedDoc.id } as AllItems;
+    revalidateRelevantPaths(finalData);
+    return finalData;
 }
 
 export async function shareObservationToPublic(observation: Observation, userProfile: UserProfile): Promise<{ updatedOriginal: Observation; newPublicItem: Observation }> {
@@ -382,27 +383,25 @@ export async function shareObservationToPublic(observation: Observation, userPro
     
     const originalDocRef = adminDb.collection('observations').doc(observation.id);
     
-    // Ensure the original document hasn't been deleted.
     const originalSnap = await originalDocRef.get();
     if (!originalSnap.exists) throw new Error("Laporan asli tidak dapat ditemukan untuk dibagikan.");
 
-    // Create a clean public copy, only including necessary and safe fields.
     const publicObservationData: Omit<Observation, 'id'|'actionTakenDescription'|'actionTakenPhotoUrl'|'closedBy'|'closedDate'> = {
         itemType: 'observation',
         userId: observation.userId,
         referenceId: observation.referenceId,
         location: observation.location,
         submittedBy: observation.submittedBy,
-        date: new Date().toISOString(), // Use current date for public post
+        date: new Date().toISOString(), 
         findings: observation.findings,
         recommendation: observation.recommendation,
         riskLevel: observation.riskLevel,
-        status: 'Pending', // Public posts are always 'Pending'
+        status: 'Pending',
         category: observation.category,
         company: observation.company,
         photoUrl: observation.photoUrl,
-        scope: 'public', // Set scope to public
-        projectId: null, // No project ID for public posts
+        scope: 'public',
+        projectId: null,
         aiStatus: observation.aiStatus,
         aiSummary: observation.aiSummary,
         aiSuggestedRiskLevel: observation.aiSuggestedRiskLevel,
@@ -412,8 +411,8 @@ export async function shareObservationToPublic(observation: Observation, userPro
         aiRootCauseAnalysis: observation.aiRootCauseAnalysis,
         aiObserverSkillRating: observation.aiObserverSkillRating,
         aiObserverSkillExplanation: observation.aiObserverSkillExplanation,
-        isSharedPublicly: false, // The public copy itself isn't "shared"
-        sharedBy: userProfile.displayName, // The user who shared it
+        isSharedPublicly: false,
+        sharedBy: userProfile.displayName,
         sharedByPosition: userProfile.position,
         originalId: observation.id,
         originalScope: observation.scope,

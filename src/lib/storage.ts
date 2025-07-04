@@ -43,16 +43,11 @@ export function uploadFile(
       (error) => {
         console.error('Firebase Storage upload error:', error);
         let errorMessage = 'Gagal mengunggah file. Silakan periksa koneksi Anda.';
-        switch (error.code) {
-          case 'storage/unauthorized':
-            errorMessage = 'Upload Gagal: Izin ditolak. Konfigurasi CORS di Firebase Storage mungkin belum diatur dengan benar. Lihat README.md untuk detail.';
-            break;
-          case 'storage/canceled':
+        // This is a critical error message to guide the user on the most likely unfixable-by-code issue.
+        if (error.code === 'storage/unauthorized' || error.code === 'storage/unknown') {
+            errorMessage = `UPLOAD GAGAL: MASALAH KONFIGURASI SERVER. Aplikasi web ini tidak diizinkan untuk mengunggah file. Ini BUKAN masalah koneksi. Untuk memperbaiki, jalankan perintah berikut di terminal Anda: gsutil cors set cors.json gs://hssetech-e1710.firebasestorage.app`;
+        } else if (error.code === 'storage/canceled') {
             errorMessage = 'Upload telah dibatalkan.';
-            break;
-          case 'storage/unknown':
-            errorMessage = 'Terjadi kesalahan yang tidak diketahui di server penyimpanan. Coba lagi nanti.';
-            break;
         }
         reject(new Error(errorMessage));
       },
