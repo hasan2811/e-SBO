@@ -76,7 +76,7 @@ function parseAndClampRating(value: string | number | undefined): number {
 const FastSummarizeOutputSchema = z.object({
   suggestedCategory: z.enum(OBSERVATION_CATEGORIES).describe('Saran kategori berdasarkan analisis temuan.'),
   aiObserverSkillRating: z.number().min(1).max(5).describe('Rating of the observer skill from 1 to 5 based on how impactful and clear the report is.'),
-  aiObserverSkillExplanation: z.string().describe('A brief explanation for the observer skill rating.'),
+  aiObserverSkillExplanation: z.string().describe('A brief, one-sentence explanation for the observer skill rating.'),
 });
 
 const summarizeObservationPrompt = ai.definePrompt({
