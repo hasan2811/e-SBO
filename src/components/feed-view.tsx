@@ -6,7 +6,7 @@ import Image from 'next/image';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationStatus } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { ChevronRight, Download, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Search, Globe, Building, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical, UserCheck, X } from 'lucide-react';
+import { ChevronRight, Download, FileSignature as PtwIcon, Sparkles, Loader2, Filter, Search, Globe, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical, UserCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -15,7 +15,16 @@ import { PtwDetailSheet } from '@/components/ptw-detail-sheet';
 import { StarRating } from '@/components/star-rating';
 import { exportToExcel } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { 
+    DropdownMenu, 
+    DropdownMenuContent, 
+    DropdownMenuItem, 
+    DropdownMenuTrigger, 
+    DropdownMenuSub, 
+    DropdownMenuSubTrigger, 
+    DropdownMenuSubContent, 
+    DropdownMenuPortal 
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -370,25 +379,6 @@ export function FeedView() {
                 <h2 className="text-2xl font-bold tracking-tight">{getPageTitle()}</h2>
                 <div className="flex items-center gap-2">
                     {mode !== 'public' && (
-                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="w-[140px] justify-between">
-                                    <span>{viewTypeInfo[viewType].label}</span>
-                                    <ChevronDown className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[140px]">
-                                {Object.entries(viewTypeInfo).map(([key, { label, icon: Icon }]) => (
-                                    <DropdownMenuItem key={key} onSelect={() => setViewType(key as 'observations' | 'inspections' | 'ptws')}>
-                                        <Icon className="mr-2 h-4 w-4" />
-                                        <span>{label}</span>
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
-                    
-                    {mode !== 'public' && (
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button variant="ghost" size="icon">
@@ -418,15 +408,33 @@ export function FeedView() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                            {mode !== 'public' && (
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>
+                                        <Filter className="mr-2 h-4 w-4" />
+                                        <span>Filter Jenis Laporan</span>
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuPortal>
+                                        <DropdownMenuSubContent>
+                                            {Object.entries(viewTypeInfo).map(([key, { label, icon: Icon }]) => (
+                                                <DropdownMenuItem key={key} onSelect={() => setViewType(key as 'observations' | 'inspections' | 'ptws')}>
+                                                    <Icon className="mr-2 h-4 w-4" />
+                                                    <span>{label}</span>
+                                                </DropdownMenuItem>
+                                            ))}
+                                        </DropdownMenuSubContent>
+                                    </DropdownMenuPortal>
+                                </DropdownMenuSub>
+                            )}
                             {canSelect && (
                                 <DropdownMenuItem onSelect={() => setIsSelectionMode(true)}>
                                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                                    <span>Pilih</span>
+                                    <span>Pilih Item</span>
                                 </DropdownMenuItem>
                             )}
                             <DropdownMenuItem onSelect={handleExport} disabled={isExportDisabled}>
                                 <Download className="mr-2 h-4 w-4" />
-                                <span>Export</span>
+                                <span>Export ke Excel</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
