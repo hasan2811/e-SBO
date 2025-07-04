@@ -170,6 +170,15 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                 />
               </div>
             )}
+            {observation.scope !== 'public' && observation.isSharedPublicly && (
+              <Alert className="bg-primary/10 border-primary/20 text-primary-foreground">
+                <Globe className="h-4 w-4 text-primary" />
+                <AlertTitle className="text-primary font-semibold">Laporan ini bersifat Publik</AlertTitle>
+                <AlertDescription className="text-primary/90">
+                  Laporan ini telah dibagikan ke feed publik dan dapat dilihat oleh semua pengguna.
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-center">
               <div className="font-semibold text-muted-foreground">Dikirim Pada</div>
               <div>{format(new Date(observation.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>

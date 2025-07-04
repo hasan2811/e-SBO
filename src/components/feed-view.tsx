@@ -33,10 +33,8 @@ const viewTypeInfo = {
     ptws: { label: 'PTW', icon: PtwIcon, collection: 'ptws' },
 };
 
-const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelected, onToggleSelect, onLikeToggle }: { observation: Observation, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void, onLikeToggle: (observationId: string) => void }) => {
+const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelected, onToggleSelect, onLikeToggle, mode }: { observation: Observation, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void, onLikeToggle: (observationId: string) => void, mode: 'public' | 'private' | 'project' }) => {
     const { user } = useAuth();
-    const pathname = usePathname();
-    const mode = pathname.startsWith('/public') ? 'public' : 'project';
 
     const riskColorStyles: Record<RiskLevel, string> = {
         Low: 'border-l-chart-2',
@@ -119,6 +117,16 @@ const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelecte
                                         <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
                                     </TooltipTrigger>
                                     <TooltipContent><p>Observer Rating: {observation.aiObserverSkillRating}/5</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                        {mode !== 'public' && observation.isSharedPublicly && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger>
+                                        <Globe className="h-4 w-4 text-primary" />
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Dibagikan ke Publik</p></TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         )}
@@ -459,7 +467,7 @@ export function FeedView() {
              {filteredData.map(item => {
                 switch(item.itemType) {
                   case 'observation':
-                    return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} onLikeToggle={handleLikeToggle} />;
+                    return <ObservationListItem key={item.id} observation={item} mode={mode} onSelect={() => setSelectedObservationId(item.id)} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} onLikeToggle={handleLikeToggle} />;
                   case 'inspection':
                     return <InspectionListItem key={item.id} inspection={item} onSelect={() => setSelectedInspectionId(item.id)} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} />;
                   case 'ptw':
