@@ -31,6 +31,7 @@ interface ObservationContextType {
   hasMore: boolean;
   error: string | null;
   fetchItems: (reset?: boolean) => void;
+  addItem: (newItem: AllItems) => void;
   updateItem: (updatedItem: AllItems) => void;
   removeItem: (itemId: string) => void;
   removeMultipleItems: (itemsToRemove: AllItems[]) => Promise<void>;
@@ -126,6 +127,28 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   React.useEffect(() => {
     resetAndFetch();
   }, [mode, projectId, viewType, user]);
+
+
+  const addItem = React.useCallback((newItem: AllItems) => {
+    const currentViewItemType = viewType.slice(0, -1);
+    const currentScope = mode;
+    const currentProjectId = projectId;
+  
+    const viewTypeMatches = newItem.itemType === currentViewItemType;
+  
+    let scopeMatches = false;
+    if (currentScope === 'public' && newItem.scope === 'public') {
+      scopeMatches = true;
+    } else if (currentScope === 'private' && newItem.scope === 'private') {
+      scopeMatches = true;
+    } else if (currentScope === 'project' && newItem.scope === 'project' && newItem.projectId === currentProjectId) {
+      scopeMatches = true;
+    }
+  
+    if (viewTypeMatches && scopeMatches) {
+      setItems(prevItems => [newItem, ...prevItems]);
+    }
+  }, [viewType, mode, projectId]);
 
 
   const updateItem = React.useCallback((updatedItem: AllItems) => {
@@ -236,14 +259,14 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const value = React.useMemo(() => ({
     items, isLoading, hasMore, error,
     fetchItems: resetAndFetch,
-    updateItem, removeItem, removeMultipleItems,
+    addItem, updateItem, removeItem, removeMultipleItems,
     handleLikeToggle, handleViewCount, shareToPublic: shareToPublicHandler, retryAnalysis, 
     updateObservationStatus: updateObservationStatusHandler,
     updateInspectionStatus: updateInspectionStatusHandler,
     viewType, setViewType, getObservationById
   }), [
       items, isLoading, hasMore, error,
-      resetAndFetch, updateItem, removeItem, removeMultipleItems,
+      resetAndFetch, addItem, updateItem, removeItem, removeMultipleItems,
       handleLikeToggle, handleViewCount, shareToPublicHandler, retryAnalysis, 
       updateObservationStatusHandler, updateInspectionStatusHandler,
       viewType, getObservationById

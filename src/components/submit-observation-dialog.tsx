@@ -9,8 +9,9 @@ import Image from 'next/image';
 import { Loader2, Upload, Sparkles, Wand2 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
 import { format } from 'date-fns';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useObservations } from '@/hooks/use-observations';
+import { createObservation } from '@/lib/actions/item-actions';
+
 
 import type { Project, AssistObservationOutput, Scope, Location, Company, RiskLevel, ObservationCategory, Observation } from '@/lib/types';
 import { OBSERVATION_CATEGORIES, RISK_LEVELS } from '@/lib/types';
@@ -105,6 +106,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { addItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -234,14 +236,15 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             referenceId,
             scope,
             projectId,
-            aiStatus: 'processing', // AI analysis will be triggered separately now.
+            aiStatus: 'processing', // AI analysis will be triggered by the server action.
             likes: [],
             likeCount: 0,
             commentCount: 0,
             viewCount: 0,
         };
-
-        await addDoc(collection(db, 'observations'), newObservationData);
+        
+        const newObservation = await createObservation(newObservationData);
+        addItem(newObservation);
 
         toast({ title: 'Laporan Terkirim', description: 'Observasi Anda telah berhasil disimpan.' });
         onOpenChange(false);

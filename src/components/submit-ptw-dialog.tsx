@@ -7,8 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Upload, FileSignature, FileText } from 'lucide-react';
 import { format } from 'date-fns';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useObservations } from '@/hooks/use-observations';
+import { createPtw } from '@/lib/actions/item-actions';
 
 import type { Ptw, Location, Project, Scope, Ptw as PtwType } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -47,6 +47,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   const [fileName, setFileName] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { addItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -120,7 +121,8 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
             projectId,
         };
 
-        await addDoc(collection(db, 'ptws'), newPtwData);
+        const newPtw = await createPtw(newPtwData);
+        addItem(newPtw);
         
         toast({ title: 'PTW Diajukan', description: `Izin kerja Anda telah berhasil disimpan.` });
         onOpenChange(false);

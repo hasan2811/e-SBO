@@ -77,8 +77,50 @@ const _runInspectionAiAnalysis = async (inspection: Inspection) => {
 
 
 // ==================================
-// CREATE ACTIONS (Handled client-side now)
+// CREATE ACTIONS
 // ==================================
+export async function createObservation(observationData: Omit<Observation, 'id'>): Promise<Observation> {
+    const docRef = await addDoc(collection(db, 'observations'), observationData);
+    const newObservation = { ...observationData, id: docRef.id };
+
+    // Trigger AI analysis and notifications in the background. Don't block the UI response.
+    _runObservationAiAnalysis(newObservation).catch(console.error);
+    if (newObservation.projectId) {
+        triggerSmartNotify({
+            observationId: newObservation.id,
+            projectId: newObservation.projectId,
+            company: newObservation.company,
+            findings: newObservation.findings,
+            submittedBy: newObservation.submittedBy,
+        }).catch(console.error);
+    }
+    
+    // Revalidate the path to ensure new data is shown on server components and future navigations.
+    revalidatePath(newObservation.projectId ? `/proyek/${newObservation.projectId}` : '/private');
+    revalidatePath('/tasks');
+
+    return newObservation;
+}
+
+export async function createInspection(inspectionData: Omit<Inspection, 'id'>): Promise<Inspection> {
+    const docRef = await addDoc(collection(db, 'inspections'), inspectionData);
+    const newInspection = { ...inspectionData, id: docRef.id };
+
+    _runInspectionAiAnalysis(newInspection).catch(console.error);
+    
+    revalidatePath(newInspection.projectId ? `/proyek/${newInspection.projectId}` : '/private');
+    
+    return newInspection;
+}
+
+export async function createPtw(ptwData: Omit<Ptw, 'id'>): Promise<Ptw> {
+    const docRef = await addDoc(collection(db, 'ptws'), ptwData);
+    const newPtw = { ...ptwData, id: docRef.id };
+    
+    revalidatePath(newPtw.projectId ? `/proyek/${newPtw.projectId}` : '/private');
+    
+    return newPtw;
+}
 
 
 // ==================================
@@ -103,6 +145,7 @@ export async function updateObservationStatus({ observationId, actionData, user 
   const updatedDoc = await getDoc(observationDocRef);
   
   revalidatePath(updatedDoc.data()?.projectId ? `/proyek/${updatedDoc.data()?.projectId}` : '/private');
+  revalidatePath('/tasks');
   return { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
 }
 
@@ -153,6 +196,7 @@ export async function deleteItem(item: AllItems) {
   }
   await deleteDoc(docRef);
   revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private');
+  revalidatePath('/tasks');
 }
 
 export async function deleteMultipleItems(items: AllItems[]) {
@@ -177,6 +221,7 @@ export async function deleteMultipleItems(items: AllItems[]) {
     revalidatePath('/private');
     const projectIds = new Set(items.map(i => i.projectId).filter(Boolean));
     projectIds.forEach(id => revalidatePath(`/proyek/${id}`));
+    revalidatePath('/tasks');
 }
 
 // ==================================

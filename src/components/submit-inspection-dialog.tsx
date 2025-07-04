@@ -8,8 +8,8 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Wrench } from 'lucide-react';
 import { format } from 'date-fns';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useObservations } from '@/hooks/use-observations';
+import { createInspection } from '@/lib/actions/item-actions';
 
 import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope, Inspection as InspectionType } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -52,6 +52,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { addItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -136,7 +137,8 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
             aiStatus: 'processing',
         };
 
-        await addDoc(collection(db, 'inspections'), newInspectionData);
+        const newInspection = await createInspection(newInspectionData);
+        addItem(newInspection);
 
         toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda telah berhasil disimpan.` });
         onOpenChange(false);
