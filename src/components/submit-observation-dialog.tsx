@@ -12,7 +12,6 @@ import { useObservations } from '@/hooks/use-observations';
 import { createObservation } from '@/lib/actions/item-actions';
 
 import type { Project, AssistObservationOutput, Scope, Location, Company, RiskLevel, ObservationCategory, Observation } from '@/lib/types';
-import { OBSERVATION_CATEGORIES, RISK_LEVELS } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { getAIAssistance } from '@/lib/actions/ai-actions';
@@ -39,8 +38,6 @@ const formSchema = z.object({
   company: z.string({ required_error: "Company is required." }).min(1, "Company is required."),
   findings: z.string().min(10, { message: 'Temuan harus diisi minimal 10 karakter.' }),
   recommendation: z.string().optional(),
-  category: z.enum(OBSERVATION_CATEGORIES),
-  riskLevel: z.enum(RISK_LEVELS),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -125,8 +122,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
       photo: undefined,
       findings: '',
       recommendation: '',
-      category: 'Supervision',
-      riskLevel: 'Low',
     },
     mode: 'onChange',
   });
@@ -162,8 +157,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             company: companyOptions[0],
             findings: '',
             recommendation: '',
-            category: 'Supervision',
-            riskLevel: 'Low',
         });
         setPhotoPreview(null);
         setAiSuggestions(null);
@@ -205,7 +198,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
         const projectId = match ? match[1] : null;
         
-        // 1. Upload file first
         let photoUrl: string;
         if (values.photo) {
           photoUrl = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, projectId);
@@ -213,7 +205,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           photoUrl = 'https://placehold.co/600x400.png';
         }
 
-        // 2. Prepare plain object for server action
         const scope: Scope = projectId ? 'project' : 'private';
         const payload = {
             userId: userProfile.uid,
@@ -221,19 +212,15 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
             location: values.location as Location,
             company: values.company as Company,
-            category: values.category as ObservationCategory,
-            riskLevel: values.riskLevel as RiskLevel,
             findings: values.findings,
             recommendation: values.recommendation || '',
-            photoUrl: photoUrl, // Pass the URL string
+            photoUrl: photoUrl,
             scope,
             projectId,
         };
         
-        // 3. Call server action
         const newObservation = await createObservation(payload);
         
-        // 4. Update UI
         addItem(newObservation);
 
         toast({ title: 'Laporan Terkirim', description: 'Observasi Anda telah berhasil disimpan.' });
@@ -361,53 +348,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   </FormItem>
                 )}
               />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Kategori (LSR)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
-                        <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                        <SelectContent>{renderSelectItems(OBSERVATION_CATEGORIES as any)}</SelectContent>
-                      </Select>
-                      <FormMessage />
-                       <AnimatePresence>
-                         <AiSuggestion
-                            title="Saran Kategori"
-                            suggestion={aiSuggestions?.suggestedCategory}
-                            isLoading={isAiLoading && !aiSuggestions}
-                            onApply={() => form.setValue('category', aiSuggestions!.suggestedCategory as any, { shouldValidate: true })}
-                          />
-                       </AnimatePresence>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="riskLevel"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tingkat Risiko</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
-                         <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                        <SelectContent>{renderSelectItems(RISK_LEVELS)}</SelectContent>
-                      </Select>
-                      <FormMessage />
-                       <AnimatePresence>
-                        <AiSuggestion
-                          title="Saran Tingkat Risiko"
-                          suggestion={aiSuggestions?.suggestedRiskLevel}
-                          isLoading={isAiLoading && !aiSuggestions}
-                          onApply={() => form.setValue('riskLevel', aiSuggestions!.suggestedRiskLevel as any, { shouldValidate: true })}
-                        />
-                      </AnimatePresence>
-                    </FormItem>
-                  )}
-                />
-              </div>
               
               <FormField
                 control={form.control}

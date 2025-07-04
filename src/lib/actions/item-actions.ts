@@ -33,7 +33,7 @@ const _runObservationAiAnalysis = async (observation: Observation) => {
   try {
     const summary = await summarizeObservationData({ observationData });
     const aiData: Partial<Observation> = {
-      riskLevel: summary.suggestedRiskLevel,
+      // Don't update risk level directly from summary, let it be suggested
       category: summary.suggestedCategory,
       aiSummary: summary.summary,
       aiRisks: summary.risks,
@@ -45,6 +45,10 @@ const _runObservationAiAnalysis = async (observation: Observation) => {
       aiObserverSkillExplanation: summary.observerAssessment.explanation,
       aiStatus: 'completed' as const,
     };
+    // Let's also update the main riskLevel field based on AI suggestion
+    if (summary.suggestedRiskLevel) {
+        aiData.riskLevel = summary.suggestedRiskLevel;
+    }
     await updateDoc(observationDocRef, aiData);
     // Don't return here, this is a background task. The UI is already updated.
   } catch (error) {
@@ -77,7 +81,7 @@ const _runInspectionAiAnalysis = async (inspection: Inspection) => {
 // ==================================
 // CREATE ACTIONS
 // ==================================
-type CreateObservationPayload = Omit<Observation, 'id' | 'itemType' | 'referenceId' | 'status' | 'aiStatus' | 'likes' | 'likeCount' | 'commentCount' | 'viewCount' | 'isSharedPublicly' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate'>;
+type CreateObservationPayload = Omit<Observation, 'id' | 'itemType' | 'referenceId' | 'status' | 'aiStatus' | 'likes' | 'likeCount' | 'commentCount' | 'viewCount' | 'isSharedPublicly' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate' | 'category' | 'riskLevel'>;
 export async function createObservation(payload: CreateObservationPayload): Promise<Observation> {
     const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const observationData: Omit<Observation, 'id'> = {
@@ -85,28 +89,28 @@ export async function createObservation(payload: CreateObservationPayload): Prom
         ...payload,
         referenceId,
         status: 'Pending',
-        // Set aiStatus to undefined instead of 'processing' since we are disabling it
-        aiStatus: undefined, 
+        category: 'Supervision', // Default value, will be updated by AI
+        riskLevel: 'Low', // Default value, will be updated by AI
+        aiStatus: 'processing',
         likes: [], likeCount: 0, commentCount: 0, viewCount: 0,
     };
     const docRef = await addDoc(collection(db, 'observations'), observationData);
     const newObservation = { ...observationData, id: docRef.id };
 
-    // Temporarily disable AI and notification triggers to diagnose the permission error
-    // _runObservationAiAnalysis(newObservation).catch(console.error);
-    // if (newObservation.projectId) {
-    //     triggerSmartNotify({
-    //         observationId: newObservation.id,
-    //         projectId: newObservation.projectId,
-    //         company: newObservation.company,
-    //         findings: newObservation.findings,
-    //         submittedBy: newObservation.submittedBy,
-    //     }).catch(console.error);
-    // }
+    _runObservationAiAnalysis(newObservation).catch(console.error);
+    if (newObservation.projectId) {
+        triggerSmartNotify({
+            observationId: newObservation.id,
+            projectId: newObservation.projectId,
+            company: newObservation.company,
+            findings: newObservation.findings,
+            submittedBy: newObservation.submittedBy,
+        }).catch(console.error);
+    }
     
     revalidatePath(newObservation.projectId ? `/proyek/${newObservation.projectId}` : '/private');
     revalidatePath('/tasks');
-    return newObservation; // Return immediately
+    return newObservation;
 }
 
 
@@ -117,14 +121,12 @@ export async function createInspection(payload: CreateInspectionPayload): Promis
         itemType: 'inspection',
         ...payload,
         referenceId,
-        // Set aiStatus to undefined instead of 'processing'
-        aiStatus: undefined,
+        aiStatus: 'processing',
     };
     const docRef = await addDoc(collection(db, 'inspections'), inspectionData);
     const newInspection = { ...inspectionData, id: docRef.id };
 
-    // Temporarily disable AI analysis to diagnose the permission error
-    // _runInspectionAiAnalysis(newInspection).catch(console.error);
+    _runInspectionAiAnalysis(newInspection).catch(console.error);
     
     revalidatePath(newInspection.projectId ? `/proyek/${newInspection.projectId}` : '/private');
     return newInspection;
