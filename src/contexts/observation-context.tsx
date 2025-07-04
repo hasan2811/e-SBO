@@ -30,7 +30,6 @@ interface ObservationContextType {
   isLoading: boolean;
   hasMore: boolean;
   error: string | null;
-  warning: string | null;
   fetchItems: (reset?: boolean) => void;
   updateItem: (updatedItem: AllItems) => void;
   removeItem: (itemId: string) => void;
@@ -62,7 +61,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const [isLoading, setIsLoading] = React.useState(true);
   const [hasMore, setHasMore] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [warning, setWarning] = React.useState<string | null>(null);
   const [lastVisible, setLastVisible] = React.useState<QueryDocumentSnapshot | null>(null);
   const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
   
@@ -74,7 +72,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
     setIsLoading(true);
     setError(null);
-    setWarning(null);
     const lastDoc = reset ? null : lastVisible;
     const collectionName = viewTypeInfo[viewType].collection;
     
@@ -91,7 +88,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       setItems([]); setIsLoading(false); return;
     }
     
-    // This is the primary query that now relies on the composite indexes you are creating.
+    // This is the primary query that now relies on the composite indexes.
     const finalQuery = query(
       baseQuery, 
       orderBy('date', 'desc'), 
@@ -108,8 +105,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       setItems(prev => reset ? newItems : [...prev, ...newItems]);
     } catch (e: any) {
         if (e.code === 'failed-precondition') {
-            setError("Database memerlukan indeks untuk kueri ini. Pastikan Anda telah membuat indeks komposit yang diperlukan di Firebase Console.");
-            console.error("Firestore index missing error. Please create the required composite index in your Firebase console.", e);
+            setError("Terjadi kesalahan konfigurasi database. Pastikan semua indeks yang diperlukan telah dibuat dengan benar di Firebase Console.");
+            console.error("Firestore index missing error. Please verify the required composite indexes.", e);
         } else {
             console.error("Failed to fetch items:", e);
             setError("Gagal memuat data. Silakan periksa koneksi Anda.");
@@ -152,6 +149,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         return;
     }
     
+    // Optimistic UI update
     setItems(prevItems => {
         const itemIndex = prevItems.findIndex(item => item.id === observationId);
         if (itemIndex === -1 || prevItems[itemIndex].itemType !== 'observation') {
@@ -180,8 +178,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     try {
         await toggleLike({ docId: observationId, userId: user.uid, collectionName: 'observations' });
     } catch (error) {
-        // The optimistic UI update is not reverted. The user sees a successful like.
-        // A toast notification informs them of the sync failure.
         toast({
           variant: 'destructive',
           title: 'Gagal Memproses Suka',
@@ -240,13 +236,13 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, [items]);
 
   const value = React.useMemo(() => ({
-    items, isLoading, hasMore, error, warning,
+    items, isLoading, hasMore, error,
     fetchItems: resetAndFetch,
     updateItem, removeItem, removeMultipleItems,
     handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateStatus,
     viewType, setViewType, getObservationById
   }), [
-      items, isLoading, hasMore, error, warning,
+      items, isLoading, hasMore, error,
       resetAndFetch, updateItem, removeItem, removeMultipleItems,
       handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateStatus,
       viewType, getObservationById
