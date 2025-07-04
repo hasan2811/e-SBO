@@ -92,15 +92,23 @@ const summarizeObservationPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `You are an extremely fast HSSE analyst. Your only task is to analyze an observation report and provide a category and a rating based on its clarity and impact. Your response MUST be a raw JSON object and nothing else. Prioritize speed above all else.
+    prompt: `You are an ultra-fast HSSE (Health, Safety, Security, Environment) AI Analyst.
+Your ONLY job is to analyze the following observation report and provide a rating, a category, and a very short explanation.
+Your response MUST be a raw JSON object and nothing else.
+You MUST respond with a JSON object containing 'aiObserverSkillRating', 'aiObserverSkillExplanation', and 'suggestedCategory'.
 
-Generate the JSON object with ONLY the following points:
+1.  **aiObserverSkillRating**: First, rate the observer's report from 1 (unclear, low impact) to 5 (clear, high impact). This MUST be a number.
+2.  **aiObserverSkillExplanation**: Second, write a single, very brief sentence in Bahasa Indonesia explaining your rating.
+3.  **suggestedCategory**: Third, classify the report into ONE category from this list: ${OBSERVATION_CATEGORIES.join(', ')}.
 
-1.  **suggestedCategory**: Classify the observation into ONE of the following Life-Saving Rules (LSR) categories. Choose the single most fitting one from this list: ${OBSERVATION_CATEGORIES.join(', ')}.
-2.  **aiObserverSkillRating**: Rate the quality and impact of the observer's report on a scale of 1 to 5, where 1 is low impact/unclear and 5 is high impact/excellent. This must be a number.
-3.  **aiObserverSkillExplanation**: Provide a very brief, one-sentence explanation for the rating given.
+Example response format:
+{
+  "aiObserverSkillRating": 4,
+  "aiObserverSkillExplanation": "Laporan ini jelas dan menyajikan risiko yang signifikan dengan baik.",
+  "suggestedCategory": "Working at Height"
+}
 
-Here is the observation data to analyze:
+Now, analyze this report:
 {{{observationData}}}
 `,
 });
