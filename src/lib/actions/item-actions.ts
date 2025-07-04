@@ -186,7 +186,7 @@ export async function addPtw(formData: any, userProfile: UserProfile, projectId:
 // ==================================
 // UPDATE ACTIONS
 // ==================================
-export async function updateObservationStatus({ observationId, actionData, user }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhoto?: File }, user: { uid: string, displayName: string, position: string }}) {
+export async function updateObservationStatus({ observationId, actionData, user }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhoto?: File }, user: UserProfile }) {
   const closerName = `${user.displayName} (${user.position || 'N/A'})`;
   const updatedData: Partial<Observation> = {
       status: 'Completed',
@@ -229,7 +229,9 @@ export async function deleteItem(item: AllItems) {
   const docRef = doc(db, `${item.itemType}s`, item.id);
   if (item.itemType === 'observation') {
     await deleteFile(item.photoUrl);
-    await deleteFile(item.actionTakenPhotoUrl);
+    if (item.actionTakenPhotoUrl) {
+      await deleteFile(item.actionTakenPhotoUrl);
+    }
   } else if (item.itemType === 'inspection') {
     await deleteFile(item.photoUrl);
   } else if (item.itemType === 'ptw') {
@@ -282,31 +284,35 @@ export async function retryAiAnalysis(item: Observation | Inspection) {
     return updatedItem;
 }
 
-export async function shareObservationToPublic(observation: Observation) {
+export async function shareObservationToPublic(observation: Observation, userProfile: UserProfile) {
   if (observation.isSharedPublicly) {
       throw new Error("This observation has already been shared.");
   }
-
-  const { sharedBy, sharedByPosition } = observation;
-
-  const publicObservationData: Omit<Observation, 'id'> = {
+  
+  // Create a clean copy for the public feed, removing sensitive/irrelevant data
+  const publicObservationData: Partial<Observation> = {
       ...observation,
       date: new Date().toISOString(),
       status: 'Pending',
       scope: 'public',
       projectId: null,
-      isSharedPublicly: false,
       originalId: observation.id,
       originalScope: observation.scope,
+      sharedBy: userProfile.displayName,
+      sharedByPosition: userProfile.position,
       likes: [],
       likeCount: 0,
       commentCount: 0,
       viewCount: 0,
-      actionTakenDescription: undefined,
-      actionTakenPhotoUrl: undefined,
-      closedBy: undefined,
-      closedDate: undefined,
   };
+
+  // Remove fields that should not be carried over to the public copy
+  delete publicObservationData.id;
+  delete publicObservationData.isSharedPublicly;
+  delete publicObservationData.actionTakenDescription;
+  delete publicObservationData.actionTakenPhotoUrl;
+  delete publicObservationData.closedBy;
+  delete publicObservationData.closedDate;
 
   await addDoc(collection(db, 'observations'), publicObservationData);
   const originalDocRef = doc(db, 'observations', observation.id);

@@ -41,7 +41,12 @@ export async function toggleLike({ docId, userId, collectionName }: ToggleLikePa
         likes: newLikes,
         likeCount: newLikes.length,
       });
-      return { scope: currentObservation.scope, projectId: currentObservation.projectId };
+
+      // Safely access scope and projectId for revalidation
+      return { 
+        scope: currentObservation.scope || null,
+        projectId: currentObservation.projectId || null 
+      };
     });
 
     // Revalidate the correct path based on the observation's scope to ensure data consistency.

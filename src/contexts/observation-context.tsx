@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
-import type { AllItems, Scope, Observation } from '@/lib/types';
+import type { AllItems, Scope, Observation, UserProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { usePathname } from 'next/navigation';
 import { toggleLike, incrementViewCount } from '@/lib/actions/interaction-actions';
@@ -31,6 +31,7 @@ interface ObservationContextType {
   isLoading: boolean;
   hasMore: boolean;
   error: string | null;
+  warning: string | null;
   fetchItems: (reset?: boolean) => void;
   updateItem: (updatedItem: AllItems) => void;
   removeItem: (itemId: string) => void;
@@ -54,7 +55,7 @@ const viewTypeInfo = {
 };
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const pathname = usePathname();
 
@@ -62,6 +63,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const [isLoading, setIsLoading] = React.useState(true);
   const [hasMore, setHasMore] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [warning, setWarning] = React.useState<string | null>(null);
   const [lastVisible, setLastVisible] = React.useState<QueryDocumentSnapshot | null>(null);
   const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
   
@@ -73,56 +75,63 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
     setIsLoading(true);
     setError(null);
+    setWarning(null);
     const lastDoc = reset ? null : lastVisible;
 
     const collectionName = viewTypeInfo[viewType].collection;
     
+    const runQuery = async (q: any, isPaginated: boolean) => {
+        const docSnap = await getDocs(q);
+        let newItems: AllItems[] = docSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
+        
+        if (!isPaginated) {
+            newItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        }
+
+        setHasMore(isPaginated ? newItems.length === PAGE_SIZE : false);
+        setLastVisible(isPaginated ? docSnap.docs[docSnap.docs.length - 1] || null : null);
+        setItems(prev => reset ? newItems : [...prev, ...newItems]);
+    }
+    
     try {
-      let finalQuery;
       const isPaginated = mode === 'public';
+      let baseQuery = query(collection(db, collectionName));
 
-      // Base query builder
-      let queryBuilder = query(collection(db, collectionName));
-
-      // Apply filters
+      // Apply filters based on mode
       if (mode === 'public') {
-        queryBuilder = query(queryBuilder, where('scope', '==', 'public'));
+        baseQuery = query(baseQuery, where('scope', '==', 'public'));
       } else if (mode === 'project' && projectId) {
-        queryBuilder = query(queryBuilder, where('projectId', '==', projectId));
+        baseQuery = query(baseQuery, where('projectId', '==', projectId));
       } else if (mode === 'private' && user) {
-        queryBuilder = query(queryBuilder, where('scope', '==', 'private'), where('userId', '==', user.uid));
+        baseQuery = query(baseQuery, where('scope', '==', 'private'), where('userId', '==', user.uid));
       } else {
         setItems([]); setIsLoading(false); return;
       }
-      
-      // Apply ordering and pagination for public feed (which has the correct index)
-      if (isPaginated) {
-        queryBuilder = query(queryBuilder, orderBy('date', 'desc'), limit(PAGE_SIZE));
-        if (lastDoc && !reset) {
-          queryBuilder = query(queryBuilder, startAfter(lastDoc));
+
+      // Main query with server-side ordering (for public feed or properly indexed feeds)
+      const mainQuery = isPaginated 
+        ? query(baseQuery, orderBy('date', 'desc'), limit(PAGE_SIZE), lastDoc ? startAfter(lastDoc) : limit(PAGE_SIZE))
+        : query(baseQuery, orderBy('date', 'desc'), limit(NON_PAGINATED_LIMIT));
+
+      // Fallback query without server-side ordering (to prevent index errors)
+      const fallbackQuery = isPaginated 
+        ? query(baseQuery, limit(PAGE_SIZE), lastDoc ? startAfter(lastDoc) : limit(PAGE_SIZE))
+        : query(baseQuery, limit(NON_PAGINATED_LIMIT));
+
+      try {
+        await runQuery(mainQuery, isPaginated);
+      } catch (e: any) {
+        if (e.code === 'failed-precondition') {
+          setWarning('Data mungkin tidak terurut dengan benar. Hubungi administrator untuk mengkonfigurasi indeks database yang diperlukan untuk pengurutan yang optimal.');
+          await runQuery(fallbackQuery, isPaginated);
+        } else {
+          throw e; // Re-throw other errors
         }
-      } else {
-        // For project/private, fetch all (up to a limit) without server ordering to avoid index errors.
-        queryBuilder = query(queryBuilder, limit(NON_PAGINATED_LIMIT));
       }
-
-      finalQuery = queryBuilder;
-      
-      const docSnap = await getDocs(finalQuery);
-      let newItems: AllItems[] = docSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
-
-      // Client-side sort for non-paginated queries
-      if (!isPaginated) {
-        newItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      }
-
-      setHasMore(isPaginated ? newItems.length === PAGE_SIZE : false);
-      setLastVisible(isPaginated ? docSnap.docs[docSnap.docs.length - 1] || null : null);
-      setItems(prev => reset ? newItems : [...prev, ...newItems]);
 
     } catch (e) {
       console.error("Failed to fetch items:", e);
-      setError("Gagal memuat data. Silakan periksa koneksi Anda dan coba lagi.");
+      setError("Gagal memuat data. Silakan periksa koneksi Anda.");
       setItems([]);
     } finally {
       setIsLoading(false);
@@ -132,7 +141,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
   React.useEffect(() => {
     fetchItems(true);
-  }, [mode, projectId, viewType, user]);
+  }, [mode, projectId, viewType, user, fetchItems]);
 
   const updateItem = (updatedItem: AllItems) => {
     setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
@@ -171,7 +180,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   };
   
   const shareToPublic = async (observation: Observation) => {
-      const updatedItem = await shareObservationToPublic(observation);
+      if (!userProfile) {
+          toast({ variant: 'destructive', title: 'User profile not loaded.' });
+          return;
+      }
+      const updatedItem = await shareObservationToPublic(observation, userProfile);
       if (updatedItem) updateItem(updatedItem);
   };
   
@@ -181,13 +194,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   };
   
   const updateStatus = async (observation: Observation, actionData: any) => {
-    if (!user) return;
-    const userProfile = { uid: user.uid, displayName: user.displayName || 'User', position: '' };
-    const docSnap = await getDoc(doc(db, 'users', user.uid));
-    if (docSnap.exists()) {
-        userProfile.displayName = docSnap.data().displayName;
-        userProfile.position = docSnap.data().position;
-    }
+    if (!user || !userProfile) return;
     const updatedItem = await updateObservationStatus({ observationId: observation.id, actionData, user: userProfile });
     if(updatedItem) updateItem(updatedItem);
   };
@@ -197,7 +204,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   };
 
   const value = {
-    items, isLoading, hasMore, error,
+    items, isLoading, hasMore, error, warning,
     fetchItems, updateItem, removeItem, removeMultipleItems,
     handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateStatus,
     viewType, setViewType, getObservationById
