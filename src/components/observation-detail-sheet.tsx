@@ -23,6 +23,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DeleteObservationDialog } from './delete-observation-dialog';
 import { useObservations } from '@/hooks/use-observations';
 import { usePathname } from 'next/navigation';
+import { shareObservationToPublic, retryAiAnalysis as retryAiAnalysisAction } from '@/lib/actions/item-actions';
+
 
 const categoryDefinitions: Record<ObservationCategory, string> = {
   'Safe Zone Position': 'Berada di posisi yang aman terlindung dari bahaya seperti peralatan bergerak, benda jatuh, atau pelepasan energi.',
@@ -57,8 +59,9 @@ interface ObservationDetailSheetProps {
 
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
-  const { user } = useAuth();
-  const { getObservationById, handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateStatus, removeItem } = useObservations();
+  const { user, userProfile } = useAuth();
+  const { getObservationById, handleLikeToggle, handleViewCount, updateObservationStatus, removeItem, updateItem } = useObservations();
+  const { toast } = useToast();
   const pathname = usePathname();
 
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
@@ -70,12 +73,9 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const mode = observation?.scope || (pathname.startsWith('/public') ? 'public' : 'private');
   
   React.useEffect(() => {
-    // Only run if the sheet is open for a specific observation in public mode.
     if (isOpen && observationId && mode === 'public') {
-        // Check if we've already counted the view for this observation ID in this session.
         if (viewCountedRef.current !== observationId) {
             handleViewCount(observationId);
-            // Mark this observation as viewed for this session.
             viewCountedRef.current = observationId;
         }
     }
@@ -91,17 +91,32 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const categoryDefinition = categoryDefinitions[observation.category];
 
   const handleUpdateAction = (data: { actionTakenDescription: string; actionTakenPhotoUrl?: string }) => {
-    updateStatus(observation, data);
+    if (!userProfile) return;
+    updateObservationStatus(observation, data, userProfile);
     setActionDialogOpen(false);
   };
   
   const handleTakeAction = () => setActionDialogOpen(true);
+
   const handleShare = async () => {
+    if (!userProfile) {
+      toast({ variant: 'destructive', title: 'User profile not loaded.' });
+      return;
+    }
     setIsSharing(true);
-    await shareToPublic(observation);
+    const updatedItem = await shareObservationToPublic(observation, userProfile);
+    if(updatedItem) updateItem(updatedItem);
     setIsSharing(false);
   };
   
+  const handleRetryAnalysis = async () => {
+    if (!observation) return;
+    const updatedItem = await retryAiAnalysisAction(observation);
+    if (updatedItem) {
+      updateItem(updatedItem as Observation);
+    }
+  };
+
   const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;
   const showAiSection = observation.aiStatus || observation.aiSummary;
   
@@ -283,7 +298,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                     {observation.aiStatus === 'failed' && (
                       <div className="flex flex-col items-start gap-3 bg-destructive/10 p-4 rounded-lg border border-destructive/20">
                           <p className="text-sm text-destructive font-medium">Analisis AI tidak dapat diselesaikan.</p>
-                          <Button variant="destructive" size="sm" onClick={() => retryAnalysis(observation)}>
+                          <Button variant="destructive" size="sm" onClick={handleRetryAnalysis}>
                               <RefreshCw className="mr-2 h-4 w-4" />
                               Coba Lagi Analisis
                           </Button>

@@ -8,14 +8,16 @@ import { InspectionStatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft, Folder, Trash2 } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
+import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft, Folder, Trash2, Gavel } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose, SheetFooter } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { DeleteInspectionDialog } from './delete-inspection-dialog';
-import { retryAiAnalysis } from '@/lib/actions/item-actions';
+import { retryAiAnalysis as retryAiAnalysisAction } from '@/lib/actions/item-actions';
+import { useObservations } from '@/hooks/use-observations';
+import { FollowUpInspectionDialog } from './follow-up-inspection-dialog';
 
 
 interface InspectionDetailSheetProps {
@@ -27,21 +29,30 @@ interface InspectionDetailSheetProps {
 
 export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItemUpdate }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
+  const { removeItem, updateInspectionStatus } = useObservations();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
 
   if (!inspection) return null;
 
   const projectName = inspection.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
   const isOwner = user && inspection.userId === user.uid;
   const canDelete = isOwner;
+  const canFollowUp = inspection.status === 'Fail' || inspection.status === 'Needs Repair';
 
   const handleRetry = async () => {
     if (!inspection) return;
-    const updatedItem = await retryAiAnalysis(inspection);
+    const updatedItem = await retryAiAnalysisAction(inspection);
     if (updatedItem) {
       onItemUpdate(updatedItem as Inspection);
     }
+  };
+
+  const handleUpdateAction = (data: { actionTakenDescription: string; actionTakenPhotoUrl?: string }) => {
+    if (!userProfile) return;
+    updateInspectionStatus(inspection, data, userProfile);
+    setFollowUpOpen(false);
   };
 
   const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
@@ -56,6 +67,7 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItem
   );
   
   const handleSuccessDelete = () => {
+    removeItem(inspection.id);
     onOpenChange(false);
   }
 
@@ -205,8 +217,59 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItem
                    </div>
                 </div>
               )}
+
+              {inspection.status === 'Pass' && inspection.actionTakenDescription && (
+                  <div className="space-y-4 pt-4 border-t mt-4">
+                    <h4 className="font-semibold text-base">Tindakan yang Diambil</h4>
+                     <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-start">
+                        <div className="font-semibold text-muted-foreground self-start">Deskripsi</div>
+                        <div className="text-muted-foreground">
+                            <div className="space-y-1">
+                              {inspection.actionTakenDescription.split('\n').map((line, index) => (
+                                <div key={index} className="flex items-start gap-2">
+                                  <CheckCircle2 className="h-4 w-4 flex-shrink-0 mt-0.5 text-green-600" />
+                                  <span className="break-words">{line.replace(/^- /, '')}</span>
+                                </div>
+                              ))}
+                            </div>
+                        </div>
+                       
+                       {inspection.closedDate && (
+                        <>
+                          <div className="font-semibold text-muted-foreground">Diselesaikan Pada</div>
+                          <div className="text-muted-foreground">{format(new Date(inspection.closedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
+                        </>
+                       )}
+
+                       <div className="font-semibold text-muted-foreground">Diselesaikan Oleh</div>
+                       <div className="text-muted-foreground">{inspection.closedBy || '-'}</div>
+                     </div>
+                    
+                    {inspection.actionTakenPhotoUrl && (
+                      <div className="relative w-full aspect-video rounded-md overflow-hidden border mt-2">
+                        <Image
+                          src={inspection.actionTakenPhotoUrl}
+                          alt="Action taken photo"
+                          fill
+                          sizes="(max-width: 640px) 100vw, 512px"
+                          className="object-contain"
+                          data-ai-hint="fixed equipment"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
             </div>
           </ScrollArea>
+           {canFollowUp && (
+              <SheetFooter className="p-4 border-t mt-auto">
+                <Button type="button" onClick={() => setFollowUpOpen(true)} className="w-full">
+                  <Gavel className="mr-2 h-4 w-4" />
+                  Tindak Lanjut & Selesaikan
+                </Button>
+              </SheetFooter>
+            )}
         </SheetContent>
       </Sheet>
       {canDelete && inspection && (
@@ -215,6 +278,14 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItem
           onOpenChange={setDeleteDialogOpen}
           inspection={inspection}
           onSuccess={handleSuccessDelete}
+        />
+      )}
+      {inspection && (
+        <FollowUpInspectionDialog
+          isOpen={isFollowUpOpen}
+          onOpenChange={setFollowUpOpen}
+          inspection={inspection}
+          onUpdate={handleUpdateAction}
         />
       )}
     </>

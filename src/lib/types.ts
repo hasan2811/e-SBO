@@ -128,6 +128,11 @@ export type Inspection = {
   aiSummary?: string;
   aiRisks?: string;
   aiSuggestedActions?: string;
+  // Fields for follow-up actions
+  actionTakenDescription?: string;
+  actionTakenPhotoUrl?: string;
+  closedBy?: string;
+  closedDate?: string;
 };
 
 export type PtwStatus = 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed';

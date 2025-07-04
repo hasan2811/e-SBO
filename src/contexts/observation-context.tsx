@@ -21,7 +21,7 @@ import type { AllItems, Scope, Observation, UserProfile, Inspection } from '@/li
 import { useToast } from '@/hooks/use-toast';
 import { usePathname } from 'next/navigation';
 import { toggleLike, incrementViewCount } from '@/lib/actions/interaction-actions';
-import { updateObservationStatus, retryAiAnalysis, shareObservationToPublic, deleteItem, deleteMultipleItems } from '@/lib/actions/item-actions';
+import { updateObservationStatus, updateInspectionStatus, retryAiAnalysis as retryAiAnalysisAction, shareObservationToPublic, deleteItem, deleteMultipleItems } from '@/lib/actions/item-actions';
 
 const PAGE_SIZE = 10;
 
@@ -38,7 +38,8 @@ interface ObservationContextType {
   handleViewCount: (observationId: string) => void;
   shareToPublic: (observation: Observation) => Promise<void>;
   retryAnalysis: (item: Observation | Inspection) => Promise<void>;
-  updateStatus: (observation: Observation, actionData: any) => Promise<void>;
+  updateObservationStatus: (observation: Observation, actionData: any, user: UserProfile) => Promise<void>;
+  updateInspectionStatus: (inspection: Inspection, actionData: any, user: UserProfile) => Promise<void>;
   viewType: 'observations' | 'inspections' | 'ptws';
   setViewType: (viewType: 'observations' | 'inspections' | 'ptws') => void;
   getObservationById: (id: string) => Observation | undefined;
@@ -77,9 +78,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     
     let baseQuery = query(collection(db, collectionName));
 
-    // Apply filters based on mode
     if (mode === 'public') {
-      baseQuery = query(baseQuery, where('scope', '==', 'public'));
+      baseQuery = query(baseQuery, where('isSharedPublicly', '==', true));
     } else if (mode === 'project' && projectId) {
       baseQuery = query(baseQuery, where('projectId', '==', projectId));
     } else if (mode === 'private' && user) {
@@ -88,7 +88,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       setItems([]); setIsLoading(false); return;
     }
     
-    // This is the primary query that now relies on the composite indexes.
     const finalQuery = query(
       baseQuery, 
       orderBy('date', 'desc'), 
@@ -105,11 +104,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       setItems(prev => reset ? newItems : [...prev, ...newItems]);
     } catch (e: any) {
         if (e.code === 'failed-precondition') {
-            setError("Terjadi kesalahan konfigurasi database. Pastikan semua indeks yang diperlukan telah dibuat dengan benar di Firebase Console.");
+            setError("Database query failed. Please ensure all required indexes are built in the Firebase Console.");
             console.error("Firestore index missing error. Please verify the required composite indexes.", e);
         } else {
             console.error("Failed to fetch items:", e);
-            setError("Gagal memuat data. Silakan periksa koneksi Anda.");
+            setError("Failed to load data. Please check your connection.");
         }
         setItems([]);
     } finally {
@@ -149,7 +148,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         return;
     }
     
-    // Optimistic UI update
     setItems(prevItems => {
         const itemIndex = prevItems.findIndex(item => item.id === observationId);
         if (itemIndex === -1 || prevItems[itemIndex].itemType !== 'observation') {
@@ -205,7 +203,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     incrementViewCount({ docId: observationId, collectionName: 'observations' });
   }, []);
   
-  const shareToPublic = React.useCallback(async (observation: Observation) => {
+  const shareToPublicHandler = React.useCallback(async (observation: Observation) => {
       if (!userProfile) {
           toast({ variant: 'destructive', title: 'User profile not loaded.' });
           return;
@@ -215,21 +213,21 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, [userProfile, toast, updateItem]);
   
   const retryAnalysis = React.useCallback(async (item: Observation | Inspection) => {
-      const updatedItem = await retryAiAnalysis(item);
+      const updatedItem = await retryAiAnalysisAction(item);
       if (updatedItem) {
-        if (item.itemType === 'observation') {
-          updateItem(updatedItem as Observation);
-        } else {
-          updateItem(updatedItem as Inspection);
-        }
+          updateItem(updatedItem as AllItems);
       }
   }, [updateItem]);
   
-  const updateStatus = React.useCallback(async (observation: Observation, actionData: any) => {
-    if (!user || !userProfile) return;
-    const updatedItem = await updateObservationStatus({ observationId: observation.id, actionData, user: userProfile });
+  const updateObservationStatusHandler = React.useCallback(async (observation: Observation, actionData: any, user: UserProfile) => {
+    const updatedItem = await updateObservationStatus({ observationId: observation.id, actionData, user });
     if(updatedItem) updateItem(updatedItem);
-  }, [user, userProfile, updateItem]);
+  }, [updateItem]);
+
+  const updateInspectionStatusHandler = React.useCallback(async (inspection: Inspection, actionData: any, user: UserProfile) => {
+    const updatedItem = await updateInspectionStatus({ inspectionId: inspection.id, actionData, user });
+    if(updatedItem) updateItem(updatedItem);
+  }, [updateItem]);
 
   const getObservationById = React.useCallback((id: string): Observation | undefined => {
     return items.find(item => item.id === id && item.itemType === 'observation') as Observation | undefined;
@@ -239,12 +237,15 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     items, isLoading, hasMore, error,
     fetchItems: resetAndFetch,
     updateItem, removeItem, removeMultipleItems,
-    handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateStatus,
+    handleLikeToggle, handleViewCount, shareToPublic: shareToPublicHandler, retryAnalysis, 
+    updateObservationStatus: updateObservationStatusHandler,
+    updateInspectionStatus: updateInspectionStatusHandler,
     viewType, setViewType, getObservationById
   }), [
       items, isLoading, hasMore, error,
       resetAndFetch, updateItem, removeItem, removeMultipleItems,
-      handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateStatus,
+      handleLikeToggle, handleViewCount, shareToPublicHandler, retryAnalysis, 
+      updateObservationStatusHandler, updateInspectionStatusHandler,
       viewType, getObservationById
   ]);
 

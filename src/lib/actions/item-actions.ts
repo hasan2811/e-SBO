@@ -77,109 +77,8 @@ const _runInspectionAiAnalysis = async (inspection: Inspection) => {
 
 
 // ==================================
-// CREATE ACTIONS
+// CREATE ACTIONS (Handled client-side now)
 // ==================================
-export async function addObservation(formData: any, userProfile: UserProfile, projectId: string | null) {
-  const scope: Scope = projectId ? 'project' : 'private';
-  const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-  
-  const newObservationData: Omit<Observation, 'id'> = {
-      itemType: 'observation',
-      userId: userProfile.uid,
-      date: new Date().toISOString(),
-      status: 'Pending',
-      submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-      location: formData.location as Location,
-      company: formData.company as Company,
-      category: formData.category as ObservationCategory,
-      riskLevel: formData.riskLevel as RiskLevel,
-      findings: formData.findings,
-      recommendation: formData.recommendation || '',
-      photoUrl: formData.photoUrl,
-      referenceId,
-      scope,
-      projectId,
-      // Temporarily set AI status to completed to avoid processing
-      aiStatus: 'completed', // DIAGNOSTIC STEP
-      likes: [],
-      likeCount: 0,
-      commentCount: 0,
-      viewCount: 0,
-  };
-
-  const docRef = await addDoc(collection(db, 'observations'), newObservationData);
-  
-  // DIAGNOSTIC STEP: Temporarily disabled AI and notification triggers
-  // const fullItemData = { ...newObservationData, id: docRef.id };
-  // _runObservationAiAnalysis(fullItemData);
-
-  // if (scope === 'project' && projectId) {
-  //     triggerSmartNotify({
-  //         observationId: docRef.id,
-  //         projectId: projectId,
-  //         company: formData.company,
-  //         findings: formData.findings,
-  //         submittedBy: userProfile.displayName,
-  //     });
-  // }
-
-  revalidatePath(projectId ? `/proyek/${projectId}` : '/private');
-}
-
-export async function addInspection(formData: any, userProfile: UserProfile, projectId: string | null) {
-  const scope: Scope = projectId ? 'project' : 'private';
-  const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
-  const newInspectionData: Omit<Inspection, 'id'> = {
-      itemType: 'inspection',
-      userId: userProfile.uid,
-      date: new Date().toISOString(),
-      submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-      location: formData.location,
-      equipmentName: formData.equipmentName,
-      equipmentType: formData.equipmentType,
-      status: formData.status,
-      findings: formData.findings,
-      recommendation: formData.recommendation,
-      photoUrl: formData.photoUrl,
-      referenceId,
-      scope,
-      projectId,
-      // Temporarily set AI status to completed to avoid processing
-      aiStatus: 'completed', // DIAGNOSTIC STEP
-  };
-
-  const docRef = await addDoc(collection(db, 'inspections'), newInspectionData);
-  
-  // DIAGNOSTIC STEP: Temporarily disabled AI trigger
-  // const fullItemData = { ...newInspectionData, id: docRef.id };
-  // _runInspectionAiAnalysis(fullItemData);
-
-  revalidatePath(projectId ? `/proyek/${projectId}` : '/private');
-}
-
-export async function addPtw(formData: any, userProfile: UserProfile, projectId: string | null) {
-  const scope: Scope = projectId ? 'project' : 'private';
-  const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
-  const newPtwData: Omit<Ptw, 'id'> = {
-      itemType: 'ptw',
-      userId: userProfile.uid,
-      date: new Date().toISOString(),
-      submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-      location: formData.location,
-      workDescription: formData.workDescription,
-      contractor: formData.contractor,
-      jsaPdfUrl: formData.jsaPdfUrl,
-      status: 'Pending Approval',
-      referenceId,
-      scope,
-      projectId,
-  };
-
-  await addDoc(collection(db, 'ptws'), newPtwData);
-  revalidatePath(projectId ? `/proyek/${projectId}` : '/private');
-}
 
 
 // ==================================
@@ -207,6 +106,28 @@ export async function updateObservationStatus({ observationId, actionData, user 
   return { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
 }
 
+export async function updateInspectionStatus({ inspectionId, actionData, user }: { inspectionId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, user: UserProfile }) {
+  const closerName = `${user.displayName} (${user.position || 'N/A'})`;
+  const updatedData: Partial<Inspection> = {
+      status: 'Pass', // Completing a follow-up means the equipment now passes inspection
+      actionTakenDescription: actionData.actionTakenDescription,
+      closedBy: closerName,
+      closedDate: new Date().toISOString(),
+  };
+
+  const inspectionDocRef = doc(db, 'inspections', inspectionId);
+
+  if (actionData.actionTakenPhotoUrl) {
+      updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
+  }
+  
+  await updateDoc(inspectionDocRef, updatedData);
+  const updatedDoc = await getDoc(inspectionDocRef);
+  
+  revalidatePath(updatedDoc.data()?.projectId ? `/proyek/${updatedDoc.data()?.projectId}` : '/private');
+  return { ...updatedDoc.data(), id: updatedDoc.id } as Inspection;
+}
+
 export async function approvePtw({ ptwId, signatureDataUrl, approverName, approverPosition }: { ptwId: string, signatureDataUrl: string, approverName: string, approverPosition: string }): Promise<Ptw> {
     const ptwDocRef = doc(db, 'ptws', ptwId);
     const approver = `${approverName} (${approverPosition || 'N/A'})`;
@@ -224,15 +145,11 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
 // ==================================
 export async function deleteItem(item: AllItems) {
   const docRef = doc(db, `${item.itemType}s`, item.id);
-  if (item.itemType === 'observation') {
-    await deleteFile(item.photoUrl);
-    if (item.actionTakenPhotoUrl) {
-      await deleteFile(item.actionTakenPhotoUrl);
-    }
-  } else if (item.itemType === 'inspection') {
-    await deleteFile(item.photoUrl);
+  if (item.itemType === 'observation' || item.itemType === 'inspection') {
+    if (item.photoUrl) await deleteFile(item.photoUrl);
+    if (item.actionTakenPhotoUrl) await deleteFile(item.actionTakenPhotoUrl);
   } else if (item.itemType === 'ptw') {
-    await deleteFile(item.jsaPdfUrl);
+    if (item.jsaPdfUrl) await deleteFile(item.jsaPdfUrl);
   }
   await deleteDoc(docRef);
   revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private');
@@ -246,11 +163,9 @@ export async function deleteMultipleItems(items: AllItems[]) {
       const docRef = doc(db, `${item.itemType}s`, item.id);
       batch.delete(docRef);
 
-      if (item.itemType === 'observation') {
+      if (item.itemType === 'observation' || item.itemType === 'inspection') {
         if (item.photoUrl) filesToDelete.push(item.photoUrl);
         if (item.actionTakenPhotoUrl) filesToDelete.push(item.actionTakenPhotoUrl);
-      } else if (item.itemType === 'inspection') {
-        if (item.photoUrl) filesToDelete.push(item.photoUrl);
       } else if (item.itemType === 'ptw') {
         if (item.jsaPdfUrl) filesToDelete.push(item.jsaPdfUrl);
       }
@@ -259,7 +174,6 @@ export async function deleteMultipleItems(items: AllItems[]) {
     await Promise.all(filesToDelete.map(url => deleteFile(url)));
     await batch.commit();
     
-    // Revalidate all relevant paths. A bit broad, but safer.
     revalidatePath('/private');
     const projectIds = new Set(items.map(i => i.projectId).filter(Boolean));
     projectIds.forEach(id => revalidatePath(`/proyek/${id}`));
@@ -286,7 +200,6 @@ export async function shareObservationToPublic(observation: Observation, userPro
       throw new Error("This observation has already been shared.");
   }
   
-  // Create a clean copy for the public feed, removing sensitive/irrelevant data
   const publicObservationData: Partial<Observation> = {
       ...observation,
       date: new Date().toISOString(),
@@ -303,7 +216,6 @@ export async function shareObservationToPublic(observation: Observation, userPro
       viewCount: 0,
   };
 
-  // Remove fields that should not be carried over to the public copy
   delete publicObservationData.id;
   delete publicObservationData.isSharedPublicly;
   delete publicObservationData.actionTakenDescription;
