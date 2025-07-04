@@ -438,7 +438,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
         {(canDelete || canTakeAction) && (
           <SheetFooter className="p-4 border-t mt-auto flex flex-col sm:flex-row sm:justify-end gap-2">
             {canDelete && (
-                <Button variant="destructive" className="sm:mr-auto" onClick={() => setDeleteDialogOpen(true)}>
+                <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
                 </Button>
