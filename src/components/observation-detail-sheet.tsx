@@ -102,17 +102,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;
   const showAiSection = observation.aiStatus || observation.aiSummary;
   
-  const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
-    <div className="pl-8 space-y-2">
-      {text.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((item, index) => (
-        <div key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-          <Icon className={`h-4 w-4 flex-shrink-0 mt-0.5 ${iconClassName}`} />
-          <span>{item.replace(/^- /, '')}</span>
-        </div>
-      ))}
-    </div>
-  );
-  
   const riskStyles: Record<RiskLevel, string> = {
     Low: 'bg-chart-2 border-transparent text-primary-foreground',
     Medium: 'bg-chart-4 border-transparent text-secondary-foreground',
@@ -308,7 +297,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                           </AccordionItem>
                         )}
                          {observation.aiSuggestedRiskLevel && (
-                          <AccordionItem value="suggestedRisk">
+                          <AccordionItem value="suggestedRisk" className="border-b-0">
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                               <div className="flex items-center gap-2">
                                 <Activity className="h-4 w-4 text-muted-foreground" />
@@ -319,32 +308,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                                 <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", riskStyles[observation.aiSuggestedRiskLevel])}>
                                     {observation.aiSuggestedRiskLevel}
                                 </div>
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                        {observation.aiRisks && (
-                          <AccordionItem value="risks">
-                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                              <div className="flex items-center gap-2">
-                                <ShieldAlert className="h-4 w-4 text-destructive" />
-                                Potensi Risiko
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2">
-                               {renderBulletedList(observation.aiRisks, AlertTriangle, "text-destructive")}
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                        {observation.aiSuggestedActions && (
-                          <AccordionItem value="actions" className="border-b-0">
-                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                                <div className="flex items-center gap-2">
-                                  <ListChecks className="h-4 w-4 text-green-600" />
-                                  Saran Tindakan
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2">
-                              {renderBulletedList(observation.aiSuggestedActions, CheckCircle2, "text-green-600")}
                             </AccordionContent>
                           </AccordionItem>
                         )}

@@ -203,9 +203,10 @@ export async function triggerObservationAnalysis(observation: Observation) {
       category: analysis.suggestedCategory,
       riskLevel: analysis.suggestedRiskLevel,
       aiSummary: analysis.summary,
-      aiRisks: analysis.risks,
-      aiSuggestedActions: analysis.suggestedActions,
       aiSuggestedRiskLevel: analysis.suggestedRiskLevel,
+      // The following are no longer generated to improve speed
+      // aiRisks: analysis.risks,
+      // aiSuggestedActions: analysis.suggestedActions,
     };
     
     await docRef.update(updatePayload);

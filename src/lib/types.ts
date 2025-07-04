@@ -212,8 +212,6 @@ export type SummarizeObservationDataInput = z.infer<typeof SummarizeObservationD
 export const SummarizeObservationDataOutputSchema = z.object({
   summary: z.string().describe('Ringkasan singkat dari temuan inti dalam Bahasa Indonesia.'),
   suggestedCategory: z.enum(OBSERVATION_CATEGORIES).describe('Saran kategori berdasarkan analisis temuan.'),
-  risks: z.string().describe('Analisis potensi bahaya dan risiko dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
-  suggestedActions: z.string().describe('Saran tindakan perbaikan dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
   suggestedRiskLevel: z.enum(RISK_LEVELS).describe('Saran tingkat risiko (Low, Medium, High, Critical) berdasarkan analisis temuan.'),
 });
 export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservationDataOutputSchema>;

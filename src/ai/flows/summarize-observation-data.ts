@@ -69,42 +69,15 @@ const summarizeObservationPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `You are an expert HSSE (Health, Safety, Security, and Environment) analyst. Your task is to analyze an observation report and provide a structured, core analysis in a JSON object. Your response MUST be a raw JSON object only, in Indonesian.
+    prompt: `You are an expert HSSE (Health, Safety, Security, and Environment) analyst. Your task is to perform a quick, core analysis of an observation report and provide a structured JSON object. Your response MUST be a raw JSON object only, in Indonesian.
 
-First, carefully analyze the user's observation data to understand the situation.
+Carefully analyze the user's observation data to understand the situation.
 
-Then, perform the following core analysis and generate the JSON object:
+Then, generate the JSON object with the following FAST analysis points:
 
 1.  **summary**: A very brief, one-sentence summary of the core finding.
-2.  **suggestedCategory**: Classify the observation into ONE of the following Life-Saving Rules (LSR) categories. Choose the single most fitting one.
-    *   'Safe Zone Position'
-    *   'Permit to Work'
-    *   'Isolation'
-    *   'Confined Space Entry'
-    *   'Lifting Operations'
-    *   'Fit to Work'
-    *   'Working at Height'
-    *   'Personal Flotation Device'
-    *   'System Override'
-    *   'Asset Integrity'
-    *   'Driving Safety'
-    *   'Environment'
-    *   'Signage & Warning'
-    *   'Personal Protective Equipment (PPE)'
-    *   'Emergency Response Preparedness'
-    *   'Management of Change (MOC)'
-    *   'Incident Reporting & Investigation'
-    *   'Safety Communication'
-    *   'Excavation Management'
-    *   'Competence & Training'
-    *   'Supervision'
-    Your choice MUST be one of these: ${OBSERVATION_CATEGORIES.join(', ')}.
-
-3.  **suggestedRiskLevel**: Based on the potential severity of the findings, classify the risk level. Choose ONE: 'Low', 'Medium', 'High', or 'Critical'.
-
-4.  **risks**: A bulleted list (using '-') of the main potential hazards and consequences if the issue is not addressed.
-
-5.  **suggestedActions**: A bulleted list (using '-') of clear, actionable steps to mitigate the risk. Base this on the user's recommendation if available, but improve it.
+2.  **suggestedCategory**: Classify the observation into ONE of the following Life-Saving Rules (LSR) categories. Choose the single most fitting one from this list: ${OBSERVATION_CATEGORIES.join(', ')}.
+3.  **suggestedRiskLevel**: Based on the potential severity of the findings, classify the risk level. Choose ONE from this list: ${RISK_LEVELS.join(', ')}.
 
 Here is the observation data to analyze:
 {{{observationData}}}
