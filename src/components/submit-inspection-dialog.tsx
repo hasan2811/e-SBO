@@ -11,6 +11,7 @@ import { useObservations } from '@/hooks/use-observations';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
+import { triggerInspectionAnalysis } from '@/lib/actions/item-actions';
 
 import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -135,12 +136,16 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
             scope,
             projectId,
             referenceId,
-            aiStatus: 'n/a', // AI processing is disabled for now
+            aiStatus: 'processing',
         };
 
         const docRef = await addDoc(collection(db, "inspections"), newInspectionData);
         const newInspection = { ...newInspectionData, id: docRef.id };
         addItem(newInspection);
+
+        triggerInspectionAnalysis(newInspection).catch(error => {
+          console.error("Failed to trigger AI analysis for inspection:", error);
+        });
 
         toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda telah berhasil disimpan.` });
         onOpenChange(false);

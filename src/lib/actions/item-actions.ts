@@ -5,15 +5,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { deleteFile } from '@/lib/storage';
 import { revalidatePath } from 'next/cache';
 import type { Observation, Inspection, Ptw, AllItems, UserProfile } from '@/lib/types';
-import { format } from 'date-fns';
-
-
-// ==================================
-// CREATE ACTIONS
-// NOTE: These have been removed and moved to client-side components (e.g., submit-observation-dialog)
-// to bypass server-side authentication issues that were causing 500 errors.
-// All creations (addDoc) now happen directly from the client.
-// ==================================
+import { summarizeObservationData } from '@/ai/flows/summarize-observation-data';
+import { analyzeInspectionData } from '@/ai/flows/summarize-observation-data';
 
 
 // ==================================
@@ -128,14 +121,94 @@ export async function deleteMultipleItems(items: AllItems[]) {
 }
 
 // ==================================
-// OTHER ACTIONS
+// AI & OTHER ACTIONS
 // ==================================
-export async function retryAiAnalysis(item: Observation | Inspection) {
-    const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
-    await docRef.update({ aiStatus: 'failed' });
-    const updatedDoc = await docRef.get();
+export async function triggerObservationAnalysis(observation: Observation) {
+  const docRef = adminDb.collection('observations').doc(observation.id);
+
+  try {
+    await docRef.update({ aiStatus: 'processing' });
+    revalidatePath(observation.projectId ? `/proyek/${observation.projectId}` : '/private', 'page');
+
+    const observationData = `
+      Temuan: ${observation.findings}
+      Rekomendasi: ${observation.recommendation}
+      Lokasi: ${observation.location}
+      Perusahaan: ${observation.company}
+      Pengamat: ${observation.submittedBy}
+    `;
+
+    const analysis = await summarizeObservationData({ observationData });
+
+    const updatePayload = {
+      aiStatus: 'completed',
+      category: analysis.suggestedCategory,
+      riskLevel: analysis.suggestedRiskLevel,
+      aiSummary: analysis.summary,
+      aiRisks: analysis.risks,
+      aiSuggestedActions: analysis.suggestedActions,
+      aiRelevantRegulations: analysis.relevantRegulations,
+      aiRootCauseAnalysis: analysis.rootCauseAnalysis,
+      aiObserverSkillRating: analysis.observerAssessment.rating,
+      aiObserverSkillExplanation: analysis.observerAssessment.explanation,
+      aiSuggestedRiskLevel: analysis.suggestedRiskLevel,
+    };
     
-    revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private', 'page');
+    await docRef.update(updatePayload);
+
+  } catch (error) {
+    console.error(`AI analysis failed for observation ${observation.id}:`, error);
+    await docRef.update({ aiStatus: 'failed' });
+  } finally {
+      revalidatePath(observation.projectId ? `/proyek/${observation.projectId}` : '/private', 'page');
+      revalidatePath('/tasks', 'page');
+  }
+}
+
+export async function triggerInspectionAnalysis(inspection: Inspection) {
+  const docRef = adminDb.collection('inspections').doc(inspection.id);
+
+  try {
+    await docRef.update({ aiStatus: 'processing' });
+    revalidatePath(inspection.projectId ? `/proyek/${inspection.projectId}` : '/private', 'page');
+
+    const inspectionData = `
+      Nama Peralatan: ${inspection.equipmentName}
+      Jenis Peralatan: ${inspection.equipmentType}
+      Temuan: ${inspection.findings}
+      Rekomendasi: ${inspection.recommendation || 'Tidak ada'}
+      Lokasi: ${inspection.location}
+      Status Laporan: ${inspection.status}
+      Penginspeksi: ${inspection.submittedBy}
+    `;
+
+    const analysis = await analyzeInspectionData({ inspectionData });
+
+    const updatePayload = {
+      aiStatus: 'completed',
+      aiSummary: analysis.summary,
+      aiRisks: analysis.risks,
+      aiSuggestedActions: analysis.suggestedActions,
+    };
+
+    await docRef.update(updatePayload);
+
+  } catch (error) {
+    console.error(`AI analysis failed for inspection ${inspection.id}:`, error);
+    await docRef.update({ aiStatus: 'failed' });
+  } finally {
+    revalidatePath(inspection.projectId ? `/proyek/${inspection.projectId}` : '/private', 'page');
+  }
+}
+
+
+export async function retryAiAnalysis(item: Observation | Inspection) {
+    if (item.itemType === 'observation') {
+      await triggerObservationAnalysis(item);
+    } else if (item.itemType === 'inspection') {
+      await triggerInspectionAnalysis(item);
+    }
+    const updatedDoc = await adminDb.collection(`${item.itemType}s`).doc(item.id).get();
     return { ...updatedDoc.data(), id: updatedDoc.id } as AllItems;
 }
 

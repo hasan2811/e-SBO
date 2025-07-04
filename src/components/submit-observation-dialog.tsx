@@ -11,6 +11,7 @@ import { useObservations } from '@/hooks/use-observations';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
+import { triggerObservationAnalysis } from '@/lib/actions/item-actions';
 
 import type { Project, Scope, Location, Company, Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -123,7 +124,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
         const projectId = match ? match[1] : null;
         
-        let photoUrl: string | undefined;
+        let photoUrl: string | null = null;
         if (values.photo) {
           photoUrl = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, projectId);
         }
@@ -140,14 +141,14 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             company: values.company as Company,
             findings: values.findings,
             recommendation: values.recommendation || '',
-            photoUrl: photoUrl || null,
+            photoUrl: photoUrl,
             scope,
             projectId,
             referenceId,
             category: 'Supervision', // Default category
             riskLevel: 'Low', // Default risk level
             status: 'Pending',
-            aiStatus: 'n/a', // AI processing is disabled for now to ensure stability
+            aiStatus: 'processing', // Set to processing immediately
             likes: [], likeCount: 0, commentCount: 0, viewCount: 0,
         };
         
@@ -156,7 +157,14 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         const finalObservation = { ...newObservationData, id: docRef.id };
         addItem(finalObservation);
 
-        toast({ title: 'Laporan Terkirim', description: 'Observasi Anda telah berhasil disimpan.' });
+        // Trigger AI analysis in the background without waiting for it
+        triggerObservationAnalysis(finalObservation).catch(error => {
+            console.error("Failed to trigger AI analysis:", error);
+            // We don't need to show a toast here as the primary submission was successful.
+            // The error is logged for debugging. The UI will show a failed status.
+        });
+
+        toast({ title: 'Laporan Terkirim', description: 'Observasi Anda berhasil disimpan. AI akan menganalisisnya.' });
         onOpenChange(false);
     } catch (error) {
         console.error("Submission failed:", error);
