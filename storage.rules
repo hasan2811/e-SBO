@@ -1,22 +1,31 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // This rule allows a logged-in user to write to their own designated folders.
-    // It covers paths for private observations, inspections, PTWs, action photos, and profile photos.
-    // Example: /observations/{userId}/file.jpg
-    match /(observations|inspections|ptw-jsa|actions|profile-photos)/{userId}/{allPaths=**} {
-      allow read; // Allow public read for all files, as URLs are shared.
-      allow write: if request.auth != null && request.auth.uid == userId;
+    // PUBLIC READ ACCESS:
+    // Any user, authenticated or not, can view files. This is necessary
+    // for displaying images in the public feed and across the app without
+    // complex token management.
+    match /{allPaths=**} {
+      allow read;
     }
 
-    // This rule allows a logged-in user to write to project-specific folders,
-    // but still only within their own user-specific subfolder.
-    // Example: /projects/{projectId}/observations/{userId}/file.jpg
-    match /projects/{projectId}/{folder=**}/{userId}/{allPaths=**} {
-        allow read; // Allow public read for all files.
-        allow write: if request.auth != null && request.auth.uid == userId;
+    // WRITE RULE FOR PROJECT-SPECIFIC FILES:
+    // This is the most specific rule and will be evaluated for any file inside a 'projects' folder.
+    // It ensures that only the authenticated user can write (upload, update, delete)
+    // to their own subfolder within a project.
+    // e.g., matches projects/{projectId}/observations/{userId}/file.jpg
+    match /projects/{projectId}/{path}/{userId}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // WRITE RULE FOR PRIVATE, NON-PROJECT FILES:
+    // This rule handles all other uploads like private observations or profile photos.
+    // It verifies that the user is authenticated and is writing to their own folder.
+    // e.g., matches observations/{userId}/file.jpg
+    match /{path}/{userId}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
