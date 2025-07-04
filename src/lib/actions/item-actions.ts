@@ -31,7 +31,7 @@ export async function updateObservationStatus({ observationId, actionData, user 
     const updatedDocSnap = await observationDocRef.get();
     
     if (!updatedDocSnap.exists()) {
-      throw new Error('Observation document not found after update. It may have been deleted simultaneously.');
+      throw new Error('Laporan observasi tidak ditemukan setelah pembaruan. Laporan ini mungkin telah dihapus secara bersamaan.');
     }
   
     const finalDocData = updatedDocSnap.data() as Omit<Observation, 'id'>;
@@ -42,7 +42,7 @@ export async function updateObservationStatus({ observationId, actionData, user 
     return { ...finalDocData, id: updatedDocSnap.id };
   } catch (error) {
     console.error(`[Server Action - updateObservationStatus] Failed for observation ${observationId}:`, error);
-    throw new Error('Failed to update observation status on the server.');
+    throw new Error('Gagal memperbarui status observasi di server.');
   }
 }
 
@@ -65,7 +65,7 @@ export async function updateInspectionStatus({ inspectionId, actionData, user }:
     const updatedDocSnap = await inspectionDocRef.get();
     
     if (!updatedDocSnap.exists()) {
-      throw new Error('Inspection document not found after update. It may have been deleted simultaneously.');
+      throw new Error('Laporan inspeksi tidak ditemukan setelah pembaruan. Laporan ini mungkin telah dihapus secara bersamaan.');
     }
   
     const finalDocData = updatedDocSnap.data() as Omit<Inspection, 'id'>;
@@ -76,7 +76,7 @@ export async function updateInspectionStatus({ inspectionId, actionData, user }:
     return { ...finalDocData, id: updatedDocSnap.id };
   } catch (error) {
     console.error(`[Server Action - updateInspectionStatus] Failed for inspection ${inspectionId}:`, error);
-    throw new Error('Failed to update inspection status on the server.');
+    throw new Error('Gagal memperbarui status inspeksi di server.');
   }
 }
 
@@ -92,7 +92,7 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
       const updatedDocSnap = await ptwDocRef.get();
   
       if (!updatedDocSnap.exists()) {
-        throw new Error('PTW document not found after update. It may have been deleted simultaneously.');
+        throw new Error('Dokumen PTW tidak ditemukan setelah pembaruan. Mungkin telah dihapus secara bersamaan.');
       }
     
       const finalDocData = updatedDocSnap.data() as Omit<Ptw, 'id'>;
@@ -102,126 +102,76 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
       return { ...finalDocData, id: updatedDocSnap.id };
     } catch (error) {
       console.error(`[Server Action - approvePtw] Failed for PTW ${ptwId}:`, error);
-      throw new Error('Failed to approve PTW on the server.');
+      throw new Error('Gagal menyetujui PTW di server.');
     }
 }
 
 // ==================================
-// DELETE ACTIONS - REWRITTEN FOR RELIABILITY
+// DELETE ACTIONS
 // ==================================
 
-/**
- * Safely deletes a file from Firebase Storage from its public URL.
- * This function will not throw an error if deletion fails, it will only log it.
- * This ensures that a failed file deletion does not stop the primary action (e.g., deleting a Firestore document).
- * @param fileUrl The full `https://firebasestorage.googleapis.com/...` URL of the file.
- */
 async function safeDeleteStorageFile(fileUrl: string | undefined | null) {
   if (!fileUrl || !fileUrl.startsWith('https://firebasestorage.googleapis.com')) {
-    // Not a valid storage URL, so nothing to do.
     return;
   }
-
   try {
     const bucket = adminStorage.bucket();
-    
-    // Extract the file path from the URL. Example: /v0/b/bucket-name/o/path%2Fto%2Ffile.jpg -> path/to/file.jpg
     const url = new URL(fileUrl);
     const pathParts = url.pathname.split('/o/');
-    if (pathParts.length < 2) {
-      console.warn(`[safeDeleteStorageFile] Could not extract file path from URL: ${fileUrl}`);
-      return;
-    }
+    if (pathParts.length < 2) return;
     const encodedFilePath = pathParts[1].split('?')[0];
-    
-    if (!encodedFilePath) {
-      console.warn(`[safeDeleteStorageFile] Found empty file path from URL: ${fileUrl}`);
-      return;
-    }
+    if (!encodedFilePath) return;
 
     const filePath = decodeURIComponent(encodedFilePath);
     const file = bucket.file(filePath);
-    
-    // Check if the file exists before trying to delete. This avoids benign "not found" errors.
     const [exists] = await file.exists();
-    if (exists) {
-      await file.delete();
-    }
+    if (exists) await file.delete();
   } catch (error) {
-    // Log any unexpected errors but do not re-throw them.
     console.error(`[safeDeleteStorageFile] An unexpected error occurred while trying to delete file at ${fileUrl}. Error:`, error);
   }
 }
 
-/**
- * Deletes a single item. This action prioritizes deleting the database entry
- * and providing immediate feedback to the user. File deletion happens in the background.
- * @param item - The item (Observation, Inspection, or Ptw) to delete.
- */
 export async function deleteItem(item: AllItems) {
   try {
     const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
-    
-    // 1. Immediately delete the Firestore document. This is the critical part.
     await docRef.delete();
 
-    // 2. Schedule file deletions to run in the background. We don't `await` these.
-    //    This ensures the user gets an immediate success response.
     if (item.itemType === 'observation' || item.itemType === 'inspection') {
       safeDeleteStorageFile(item.photoUrl);
-      if ('actionTakenPhotoUrl' in item) {
-        safeDeleteStorageFile(item.actionTakenPhotoUrl);
-      }
+      if ('actionTakenPhotoUrl' in item) safeDeleteStorageFile(item.actionTakenPhotoUrl);
     } else if (item.itemType === 'ptw') {
       safeDeleteStorageFile(item.jsaPdfUrl);
     }
     
-    // 3. Revalidate paths to update the UI on the next navigation.
     revalidatePath('/public', 'page');
     revalidatePath('/private', 'page');
     revalidatePath('/tasks', 'page');
-    if (item.projectId) {
-      revalidatePath(`/proyek/${item.projectId}`, 'page');
-    }
+    if (item.projectId) revalidatePath(`/proyek/${item.projectId}`, 'page');
 
   } catch (error) {
     console.error(`[deleteItem Action] Failed to delete item ${item.id}:`, error);
-    // If the Firestore deletion fails, throw an error back to the client.
-    throw new Error('Failed to delete the report from the database.');
+    throw new Error('Gagal menghapus laporan dari database.');
   }
 }
 
-/**
- * Deletes multiple items using a batch operation. This is an atomic operation for Firestore.
- * File deletions happen in the background.
- * @param items - An array of items to delete.
- */
 export async function deleteMultipleItems(items: AllItems[]) {
   if (items.length === 0) return;
 
   try {
     const batch = adminDb.batch();
-
     items.forEach(item => {
-      // 1. Add document deletion to the batch.
       const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
       batch.delete(docRef);
-
-      // 2. Schedule file deletions to run in the background.
       if (item.itemType === 'observation' || item.itemType === 'inspection') {
         safeDeleteStorageFile(item.photoUrl);
-        if ('actionTakenPhotoUrl' in item) {
-          safeDeleteStorageFile(item.actionTakenPhotoUrl);
-        }
+        if ('actionTakenPhotoUrl' in item) safeDeleteStorageFile(item.actionTakenPhotoUrl);
       } else if (item.itemType === 'ptw') {
         safeDeleteStorageFile(item.jsaPdfUrl);
       }
     });
 
-    // 3. Commit the atomic batch deletion for Firestore documents.
     await batch.commit();
 
-    // 4. Revalidate all potentially affected paths.
     revalidatePath('/public', 'page');
     revalidatePath('/private', 'page');
     revalidatePath('/tasks', 'page');
@@ -230,7 +180,7 @@ export async function deleteMultipleItems(items: AllItems[]) {
     
   } catch (error) {
     console.error(`[deleteMultipleItems Action] Failed to delete items:`, error);
-    throw new Error('Failed to delete the selected reports from the database.');
+    throw new Error('Gagal menghapus laporan yang dipilih dari database.');
   }
 }
 
@@ -242,6 +192,17 @@ export async function triggerObservationAnalysis(observation: Observation) {
   const docRef = adminDb.collection('observations').doc(observation.id);
 
   try {
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) {
+      console.error(`[AI Trigger] Observation ${observation.id} does not exist.`);
+      return;
+    }
+    const currentData = docSnap.data() as Observation;
+    if (currentData.aiStatus === 'completed' || currentData.aiStatus === 'processing') {
+      console.log(`[AI Trigger] Analysis for observation ${observation.id} already done. Skipping.`);
+      return;
+    }
+
     await docRef.update({ aiStatus: 'processing' });
     revalidatePath(observation.projectId ? `/proyek/${observation.projectId}` : '/private', 'page');
 
@@ -293,9 +254,7 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
     
     try {
         const docSnap = await docRef.get();
-        if (!docSnap.exists) {
-            throw new Error("Observation not found.");
-        }
+        if (!docSnap.exists) throw new Error("Observasi tidak ditemukan.");
         const observation = docSnap.data() as Observation;
 
         await docRef.update({ aiStatus: 'processing' });
@@ -339,6 +298,17 @@ export async function triggerInspectionAnalysis(inspection: Inspection) {
   const docRef = adminDb.collection('inspections').doc(inspection.id);
 
   try {
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) {
+        console.error(`[AI Trigger] Inspection ${inspection.id} does not exist.`);
+        return;
+    }
+    const currentData = docSnap.data() as Inspection;
+    if (currentData.aiStatus === 'completed' || currentData.aiStatus === 'processing') {
+        console.log(`[AI Trigger] Analysis for inspection ${inspection.id} already done. Skipping.`);
+        return;
+    }
+    
     await docRef.update({ aiStatus: 'processing' });
     revalidatePath(inspection.projectId ? `/proyek/${inspection.projectId}` : '/private', 'page');
 
@@ -374,9 +344,7 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
     
     try {
         const docSnap = await docRef.get();
-        if (!docSnap.exists) {
-            throw new Error("Inspection not found.");
-        }
+        if (!docSnap.exists) throw new Error("Inspeksi tidak ditemukan.");
         const inspection = docSnap.data() as Inspection;
 
         await docRef.update({ aiStatus: 'processing' });
