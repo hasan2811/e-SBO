@@ -211,9 +211,7 @@ export async function triggerObservationAnalysis(observation: Observation) {
       return;
     }
     const currentData = docSnap.data() as Observation;
-    // This is the gatekeeper logic: if analysis is done or in progress, stop immediately.
     if (currentData.aiStatus === 'completed' || currentData.aiStatus === 'processing') {
-      console.log(`[AI Trigger] Analysis for observation ${observation.id} already processed. Skipping.`);
       return;
     }
 
@@ -252,11 +250,19 @@ export async function triggerObservationAnalysis(observation: Observation) {
       aiObserverSkillExplanation: analysis.aiObserverSkillExplanation,
     };
     
+    const finalDocSnap = await docRef.get();
+    if (!finalDocSnap.exists()) {
+        console.log(`[AI Analysis] Observation ${observation.id} was deleted during analysis. Aborting final update.`);
+        return;
+    }
     await docRef.update(updatePayload);
 
   } catch (error) {
     console.error(`AI analysis failed for observation ${observation.id}:`, error);
-    await docRef.update({ aiStatus: 'failed' });
+    const finalDocSnap = await docRef.get();
+    if (finalDocSnap.exists()) {
+      await docRef.update({ aiStatus: 'failed' });
+    }
   } finally {
       if (observation.projectId) revalidatePath(`/proyek/${observation.projectId}`, 'page');
       else revalidatePath('/private', 'page');
@@ -296,7 +302,13 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
             aiRelevantRegulations: deepAnalysis.relevantRegulations,
         };
         
+        const finalDocSnap = await docRef.get();
+        if (!finalDocSnap.exists()) {
+            console.log(`[AI Deeper Analysis] Observation ${observationId} was deleted during analysis. Aborting update.`);
+            return observation; // Return original data as there's nothing to update
+        }
         await docRef.update(updatePayload);
+
         const updatedDoc = await docRef.get();
         if (observation.projectId) revalidatePath(`/proyek/${observation.projectId}`, 'page');
         else revalidatePath('/private', 'page');
@@ -305,7 +317,10 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
 
     } catch (error) {
         console.error(`Deeper AI analysis failed for observation ${observationId}:`, error);
-        await docRef.update({ aiStatus: 'failed' });
+        const finalDocSnap = await docRef.get();
+        if (finalDocSnap.exists()) {
+            await docRef.update({ aiStatus: 'failed' });
+        }
         throw error;
     }
 }
@@ -321,9 +336,7 @@ export async function triggerInspectionAnalysis(inspection: Inspection) {
         return;
     }
     const currentData = docSnap.data() as Inspection;
-    // Gatekeeper logic for inspections
     if (currentData.aiStatus === 'completed' || currentData.aiStatus === 'processing') {
-        console.log(`[AI Trigger] Analysis for inspection ${inspection.id} already processed. Skipping.`);
         return;
     }
     
@@ -347,12 +360,20 @@ export async function triggerInspectionAnalysis(inspection: Inspection) {
       aiStatus: 'completed',
       aiSummary: analysis.summary,
     };
-
+    
+    const finalDocSnap = await docRef.get();
+    if (!finalDocSnap.exists()) {
+        console.log(`[AI Analysis] Inspection ${inspection.id} was deleted during analysis. Aborting final update.`);
+        return;
+    }
     await docRef.update(updatePayload);
 
   } catch (error) {
     console.error(`AI analysis failed for inspection ${inspection.id}:`, error);
-    await docRef.update({ aiStatus: 'failed' });
+    const finalDocSnap = await docRef.get();
+    if (finalDocSnap.exists()) {
+        await docRef.update({ aiStatus: 'failed' });
+    }
   } finally {
     if (inspection.projectId) revalidatePath(`/proyek/${inspection.projectId}`, 'page');
     else revalidatePath('/private', 'page');
@@ -390,7 +411,13 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
             aiSuggestedActions: deepAnalysis.suggestedActions,
         };
         
+        const finalDocSnap = await docRef.get();
+        if (!finalDocSnap.exists()) {
+            console.log(`[AI Deeper Analysis] Inspection ${inspectionId} was deleted during analysis. Aborting update.`);
+            return inspection;
+        }
         await docRef.update(updatePayload);
+
         const updatedDoc = await docRef.get();
         if (inspection.projectId) revalidatePath(`/proyek/${inspection.projectId}`, 'page');
         else revalidatePath('/private', 'page');
@@ -399,7 +426,10 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
 
     } catch (error) {
         console.error(`Deeper AI analysis failed for inspection ${inspectionId}:`, error);
-        await docRef.update({ aiStatus: 'failed' });
+        const finalDocSnap = await docRef.get();
+        if (finalDocSnap.exists()) {
+            await docRef.update({ aiStatus: 'failed' });
+        }
         throw error;
     }
 }
@@ -423,22 +453,23 @@ export async function shareObservationToPublic(observation: Observation, userPro
         throw new Error("Laporan ini sudah dibagikan.");
     }
     
-    const publicObservationData: Omit<Observation, 'id'> = {
+    // Create a 'clean' public object, only copying fields that are safe and relevant for public view.
+    const publicObservationData: Omit<Observation, 'id' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate' > = {
         itemType: 'observation',
         userId: observation.userId,
         referenceId: observation.referenceId,
         location: observation.location,
         submittedBy: observation.submittedBy,
-        date: new Date().toISOString(),
+        date: new Date().toISOString(), // Use current date for sharing
         findings: observation.findings,
         recommendation: observation.recommendation,
         riskLevel: observation.riskLevel,
-        status: 'Pending',
+        status: 'Pending', // Public observations have their own lifecycle
         category: observation.category,
         company: observation.company,
         photoUrl: observation.photoUrl,
         scope: 'public',
-        projectId: null,
+        projectId: null, // Public items don't belong to a project
         aiStatus: observation.aiStatus,
         aiSummary: observation.aiSummary,
         aiSuggestedRiskLevel: observation.aiSuggestedRiskLevel,
@@ -448,7 +479,7 @@ export async function shareObservationToPublic(observation: Observation, userPro
         aiRootCauseAnalysis: observation.aiRootCauseAnalysis,
         aiObserverSkillRating: observation.aiObserverSkillRating,
         aiObserverSkillExplanation: observation.aiObserverSkillExplanation,
-        isSharedPublicly: false,
+        isSharedPublicly: false, // The public copy itself is not 'shared'
         sharedBy: userProfile.displayName,
         sharedByPosition: userProfile.position,
         originalId: observation.id,
@@ -457,10 +488,6 @@ export async function shareObservationToPublic(observation: Observation, userPro
         likeCount: 0,
         commentCount: 0,
         viewCount: 0,
-        actionTakenDescription: undefined,
-        actionTakenPhotoUrl: undefined,
-        closedBy: undefined,
-        closedDate: undefined,
     };
     
     const originalDocRef = adminDb.collection('observations').doc(observation.id);
