@@ -58,7 +58,7 @@ interface ObservationDetailSheetProps {
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
   const { user } = useAuth();
-  const { getObservationById, handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateItem, removeItem } = useObservations();
+  const { getObservationById, handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateItem, fetchItems } = useObservations();
   const pathname = usePathname();
   const { toast } = useToast();
 
@@ -119,10 +119,8 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   }
 
   const handleSuccessDelete = () => {
-    if (!observation) return;
-    // Optimistically remove from UI then close the sheet.
-    removeItem(observation.id);
     handleCloseSheet();
+    fetchItems(true);
   };
 
   const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;

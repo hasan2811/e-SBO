@@ -166,7 +166,10 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, []);
   
   const removeMultipleItems = React.useCallback(async (itemsToRemove: AllItems[]) => {
+      const idsToRemove = new Set(itemsToRemove.map(item => item.id));
       await deleteMultipleItemsAction(itemsToRemove);
+      // Update local state AFTER successful server deletion
+      setItems(prevItems => prevItems.filter(item => !idsToRemove.has(item.id)));
   }, []);
 
   const handleLikeToggle = React.useCallback(async (observationId: string) => {
