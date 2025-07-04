@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -14,7 +15,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { Observation } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { useObservations } from '@/contexts/observation-context';
+import { deleteItem } from '@/lib/actions/item-actions';
+
 
 interface DeleteObservationDialogProps {
   isOpen: boolean;
@@ -29,14 +31,13 @@ export function DeleteObservationDialog({
   observation,
   onSuccess,
 }: DeleteObservationDialogProps) {
-  const { deleteObservation } = useObservations();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteObservation(observation);
+      await deleteItem(observation);
       toast({
         title: 'Observation Deleted',
         description: `The observation has been permanently deleted.`,

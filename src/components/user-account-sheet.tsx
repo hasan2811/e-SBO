@@ -37,26 +37,36 @@ export function UserAccountSheet() {
   const [position, setPosition] = React.useState('');
   const [company, setCompany] = React.useState('');
   
-  const isLoading = authLoading || projectsLoading;
+  // Combine loading states for a single source of truth for the UI
+  const isLoading = authLoading || (user && projectsLoading);
   const hasProject = projects.length > 0;
 
   React.useEffect(() => {
-    if (userProfile && !isEditing) {
-      setDisplayName(userProfile.displayName);
-      setPosition(userProfile.position);
+    if (userProfile) {
+      setDisplayName(userProfile.displayName || '');
+      setPosition(userProfile.position || 'Not Set');
       setCompany(userProfile.company || '');
     }
-  }, [userProfile, isEditing]);
+  }, [userProfile]);
+  
+  const handleEditClick = () => {
+    if (userProfile) {
+      setDisplayName(userProfile.displayName || '');
+      setPosition(userProfile.position || 'Not Set');
+      setCompany(userProfile.company || '');
+      setIsEditing(true);
+    }
+  };
 
 
   const handleSave = async () => {
     if (!user) return;
     
-    if (!displayName.trim()) {
+    if (!displayName.trim() || !position.trim()) {
       toast({
         variant: 'destructive',
         title: 'Validation Error',
-        description: 'Display name cannot be empty.',
+        description: 'Display name and position cannot be empty.',
       });
       return;
     }
@@ -94,18 +104,19 @@ export function UserAccountSheet() {
   const handleOpenChange = (open: boolean) => {
     setIsSheetOpen(open);
     if (!open) {
+      // Reset editing state when sheet closes
       setIsEditing(false);
     }
   };
 
   const renderSkeleton = () => (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 animate-pulse">
         <div className="flex items-center space-x-4">
-        <Skeleton className="h-16 w-16 rounded-full" />
-        <div className="space-y-2">
-            <Skeleton className="h-5 w-[200px]" />
-            <Skeleton className="h-4 w-[150px]" />
-        </div>
+          <Skeleton className="h-16 w-16 rounded-full" />
+          <div className="space-y-2">
+              <Skeleton className="h-5 w-[200px]" />
+              <Skeleton className="h-4 w-[150px]" />
+          </div>
         </div>
         <Skeleton className="h-10 w-full" />
         <Separator/>
@@ -130,7 +141,7 @@ export function UserAccountSheet() {
                 data-ai-hint="user avatar"
               />
               <AvatarFallback>
-                {authLoading ? <Loader2 className="animate-spin" /> : <UserCircle />}
+                {authLoading ? <Loader2 className="animate-spin" /> : getInitials(userProfile?.displayName)}
               </AvatarFallback>
             </Avatar>
         </Button>
@@ -183,7 +194,7 @@ export function UserAccountSheet() {
                   </div>
                 </div>
               ) : (
-                <Button variant="outline" className="w-full" onClick={() => setIsEditing(true)}>
+                <Button variant="outline" className="w-full" onClick={handleEditClick}>
                   <Edit className="mr-2" />
                   Edit Profile
                 </Button>
@@ -192,7 +203,7 @@ export function UserAccountSheet() {
               <Separator />
 
               <div className="space-y-4">
-                <h3 className="font-semibold flex items-center gap-2"><Folder className="h-5 w-5 text-muted-foreground"/>My Project</h3>
+                <h3 className="font-semibold flex items-center gap-2"><Folder className="h-5 w-5 text-muted-foreground"/>My Projects</h3>
                 {hasProject ? (
                   <ul className="space-y-2">
                     {projects.map(project => (
@@ -201,7 +212,7 @@ export function UserAccountSheet() {
                   </ul>
                 ) : (
                     <>
-                        <p className="text-sm text-muted-foreground pl-3">You are not in any project yet. Go to the <Link href="/beranda" onClick={() => setIsSheetOpen(false)} className="text-primary hover:underline">Project Hub</Link> to create or join one.</p>
+                        <p className="text-sm text-muted-foreground pl-3">You are not in any projects yet. Go to the <Link href="/beranda" onClick={() => setIsSheetOpen(false)} className="text-primary hover:underline">Project Hub</Link> to create or join one.</p>
                     </>
                 )}
               </div>

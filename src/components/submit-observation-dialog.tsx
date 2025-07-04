@@ -9,11 +9,12 @@ import Image from 'next/image';
 import { Loader2, Upload, Sparkles, Wand2 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
 
-import type { Observation, ObservationCategory, Company, Location, RiskLevel, Project, AssistObservationOutput } from '@/lib/types';
+import type { Project, AssistObservationOutput } from '@/lib/types';
 import { OBSERVATION_CATEGORIES, RISK_LEVELS } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { getAIAssistance } from '@/lib/actions/ai-actions';
+import { addObservation } from '@/lib/actions/item-actions';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AnimatePresence, motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 
 
 const DEFAULT_LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
@@ -94,16 +95,17 @@ const AiSuggestion = ({
 interface SubmitObservationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddObservation: (observation: FormValues) => void;
   project: Project | null;
 }
 
-export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation, project }: SubmitObservationDialogProps) {
+export function SubmitObservationDialog({ isOpen, onOpenChange, project }: SubmitObservationDialogProps) {
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
+  const pathname = usePathname();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const [aiSuggestions, setAiSuggestions] = React.useState<AssistObservationOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
@@ -120,8 +122,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     resolver: zodResolver(formSchema),
     defaultValues: {
       photo: undefined,
-      location: '',
-      company: '',
       findings: '',
       recommendation: '',
       category: 'Supervision',
@@ -195,14 +195,24 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     }
   };
 
-  const onSubmit = (values: FormValues) => {
+  const onSubmit = async (values: FormValues) => {
     if (!user || !userProfile) {
-      toast({ variant: 'destructive', title: 'Belum Terautentikasi', description: 'Anda harus login untuk mengirim.' });
+      toast({ variant: 'destructive', title: 'Belum Terautentikasi' });
       return;
     }
+    setIsSubmitting(true);
+    try {
+        const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
+        const submissionProjectId = match ? match[1] : null;
 
-    onAddObservation(values);
-    onOpenChange(false);
+        await addObservation(values, userProfile, submissionProjectId);
+        toast({ title: 'Laporan Terkirim', description: 'Observasi Anda sedang diproses.' });
+        onOpenChange(false);
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Submission Failed', description: error instanceof Error ? error.message : "An unexpected error occurred." });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
   
   const renderSelectItems = (items: readonly string[]) => {
@@ -393,10 +403,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
 
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Batal
             </Button>
-            <Button type="submit" form={formId} disabled={!form.formState.isValid}>
+            <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Kirim Laporan
             </Button>
           </div>

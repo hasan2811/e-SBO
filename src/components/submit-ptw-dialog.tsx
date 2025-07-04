@@ -7,9 +7,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Upload, FileSignature, FileText } from 'lucide-react';
 
-import type { Ptw, Location } from '@/lib/types';
+import type { Ptw, Location, Project } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { addPtw } from '@/lib/actions/item-actions';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -17,11 +18,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { usePathname } from 'next/navigation';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 
 const formSchema = z.object({
-  location: z.enum(LOCATIONS),
+  location: z.string().min(1),
   workDescription: z.string().min(10, { message: 'Deskripsi pekerjaan minimal 10 karakter.' }),
   contractor: z.string().min(3, { message: 'Nama kontraktor minimal 3 karakter.' }),
   jsaPdf: z
@@ -35,20 +37,25 @@ type FormValues = z.infer<typeof formSchema>;
 interface SubmitPtwDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddPtw: (ptw: FormValues) => void;
+  project: Project | null;
 }
 
-export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDialogProps) {
+export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDialogProps) {
   const [fileName, setFileName] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
+  const pathname = usePathname();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  
+  const locationOptions = React.useMemo(() => 
+    (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : LOCATIONS,
+  [project]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      location: LOCATIONS[0],
       workDescription: '',
       contractor: '',
     },
@@ -58,14 +65,14 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
   React.useEffect(() => {
     if (isOpen) {
         form.reset({
-            location: LOCATIONS[0],
+            location: locationOptions[0],
             workDescription: '',
             contractor: '',
         });
         setFileName(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [isOpen, form]);
+  }, [isOpen, form, locationOptions]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -82,16 +89,22 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
     }
   };
 
-  const onSubmit = (values: FormValues) => {
+  const onSubmit = async (values: FormValues) => {
     if (!user || !userProfile) return;
-    if (!values.jsaPdf) {
-      toast({ variant: 'destructive', title: 'PDF Wajib', description: 'Silakan unggah file JSA.' });
-      return;
-    }
+    setIsSubmitting(true);
+    
+    try {
+        const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
+        const submissionProjectId = match ? match[1] : null;
 
-    onAddPtw(values);
-    toast({ title: 'PTW Diajukan', description: `Izin kerja Anda sedang diproses.` });
-    onOpenChange(false);
+        await addPtw(values, userProfile, submissionProjectId);
+        toast({ title: 'PTW Diajukan', description: `Izin kerja Anda sedang diproses.` });
+        onOpenChange(false);
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Submission Failed', description: error instanceof Error ? error.message : "An unexpected error occurred." });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   return (
@@ -106,7 +119,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
             <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField name="location" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Lokasi</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{LOCATIONS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Lokasi</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih lokasi"/></SelectTrigger></FormControl><SelectContent>{locationOptions.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
                 )} />
                 <FormField name="contractor" control={form.control} render={({ field }) => (
                   <FormItem><FormLabel>Kontraktor</FormLabel><FormControl><Input placeholder="e.g., PT. Maju Jaya" {...field} /></FormControl><FormMessage /></FormItem>
@@ -132,8 +145,9 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, onAddPtw }: SubmitPtwDia
         </div>
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Batal</Button>
-            <Button type="submit" form={formId} disabled={!form.formState.isValid}>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Batal</Button>
+            <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Ajukan PTW
             </Button>
           </div>

@@ -4,7 +4,6 @@
 import * as React from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { useAuth } from '@/hooks/use-auth';
-import { useObservations } from '@/contexts/observation-context';
 import { useToast } from '@/hooks/use-toast';
 import type { Ptw } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -18,19 +17,20 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, PenSquare, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { approvePtw as approvePtwAction } from '@/lib/actions/item-actions';
 
 interface ApprovePtwDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   ptw: Ptw;
+  onSuccess?: () => void;
 }
 
-export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialogProps) {
+export function ApprovePtwDialog({ isOpen, onOpenChange, ptw, onSuccess }: ApprovePtwDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const sigCanvasRef = React.useRef<SignatureCanvas>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { approvePtw } = useObservations();
 
   const clearSignature = () => {
     sigCanvasRef.current?.clear();
@@ -49,14 +49,19 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialog
     setIsSubmitting(true);
     try {
       const signatureDataUrl = sigCanvasRef.current?.getTrimmedCanvas().toDataURL('image/png') || '';
-      const approverName = `${userProfile.displayName} (${userProfile.position})`;
       
-      await approvePtw(ptw, signatureDataUrl, approverName);
+      await approvePtwAction({
+          ptwId: ptw.id, 
+          signatureDataUrl, 
+          approverName: userProfile.displayName, 
+          approverPosition: userProfile.position
+      });
 
       toast({
         title: 'PTW Approved!',
         description: `Permit ${ptw.referenceId} has been successfully approved.`,
       });
+      onSuccess?.();
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to approve PTW:', error);

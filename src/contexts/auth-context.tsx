@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (authUser) {
-        setLoading(true);
+        // Keep loading true until profile is fetched
         const userDocRef = doc(db, 'users', authUser.uid);
         unsubscribe = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -65,15 +65,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // The super admin UID from your requests
             setIsAdmin(profile.uid === 'GzR8FeByeKhJ0vZoeo5Zj4M0Ftl2');
           } else {
+            // This can happen briefly during sign up before profile is created
             setUserProfile(null);
             setIsAdmin(false);
           }
-          setLoading(false);
+          setLoading(false); // Set loading to false only after profile is fetched or confirmed not to exist
         }, (error) => {
           console.error("Error fetching user profile:", error);
+          setUserProfile(null);
+          setIsAdmin(false);
           setLoading(false);
         });
       } else {
+        // No user, so no profile to fetch. Stop loading.
         setUserProfile(null);
         setIsAdmin(false);
         setLoading(false);
@@ -103,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: newUser.email,
       photoURL: newUser.photoURL,
       position: 'Not Set',
+      company: 'Unassigned',
       projectIds: [],
     });
   };

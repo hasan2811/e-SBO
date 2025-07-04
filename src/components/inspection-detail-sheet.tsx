@@ -12,20 +12,20 @@ import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, Ref
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
-import { useObservations } from '@/contexts/observation-context';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { DeleteInspectionDialog } from './delete-inspection-dialog';
+import { retryAiAnalysis } from '@/lib/actions/item-actions';
 
 
 interface InspectionDetailSheetProps {
     inspection: Inspection | null;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
+    onItemUpdate: (updatedItem: Inspection) => void;
 }
 
-export function InspectionDetailSheet({ inspection, isOpen, onOpenChange }: InspectionDetailSheetProps) {
-  const { retryAiAnalysis } = useObservations();
+export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItemUpdate }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
   const { user } = useAuth();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
@@ -36,8 +36,11 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange }: Insp
   const isOwner = user && inspection.userId === user.uid;
   const canDelete = isOwner;
 
-  const handleRetry = () => {
-    retryAiAnalysis(inspection);
+  const handleRetry = async () => {
+    const updatedItem = await retryAiAnalysis(inspection);
+    if (updatedItem) {
+      onItemUpdate(updatedItem as Inspection);
+    }
   };
 
   const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
@@ -50,6 +53,10 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange }: Insp
       ))}
     </div>
   );
+  
+  const handleSuccessDelete = () => {
+    onOpenChange(false);
+  }
 
   return (
     <>
@@ -206,7 +213,7 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange }: Insp
           isOpen={isDeleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           inspection={inspection}
-          onSuccess={() => onOpenChange(false)}
+          onSuccess={handleSuccessDelete}
         />
       )}
     </>

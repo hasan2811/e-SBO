@@ -11,6 +11,7 @@ import { Loader2, Upload, ListChecks } from 'lucide-react';
 import type { Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { updateObservationStatus } from '@/lib/actions/item-actions';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -59,9 +60,10 @@ export function TakeActionDialog({
 }: TakeActionDialogProps) {
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -72,8 +74,6 @@ export function TakeActionDialog({
   });
   
   const [checkedActions, setCheckedActions] = React.useState<string[]>([]);
-  
-  // Ref to prevent checkbox updates from overwriting user's manual input.
   const userHasTyped = React.useRef(false);
 
   const suggestedActions = React.useMemo(() => {
@@ -83,7 +83,6 @@ export function TakeActionDialog({
       .filter(line => line.length > 0);
   }, [observation?.aiSuggestedActions]);
 
-  // Effect to update the textarea based on checkboxes, but only if the user hasn't typed manually.
   React.useEffect(() => {
     if (!userHasTyped.current) {
       const combinedDescription = checkedActions.length > 0
@@ -133,18 +132,15 @@ export function TakeActionDialog({
   }
 
   const onSubmit = (values: FormValues) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to update an observation.' });
+    if (!user || !userProfile) {
+        toast({ variant: 'destructive', title: 'Not Authenticated' });
         return;
     }
     
+    setIsSubmitting(true);
     onUpdate(values);
-        
-    toast({
-        title: 'Tindakan Disimpan',
-        description: `Status laporan ${observation.referenceId || observation.id} sedang diperbarui.`,
-    });
     handleOpenChange(false);
+    setIsSubmitting(false);
   };
 
   return (
@@ -253,10 +249,11 @@ export function TakeActionDialog({
 
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2 flex-shrink-0">
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
+            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" form={formId} disabled={!form.formState.isValid || form.getValues('actionTakenDescription').length === 0}>
+            <Button type="submit" form={formId} disabled={!form.formState.isValid || form.getValues('actionTakenDescription').length === 0 || isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Mark as Completed
             </Button>
           </div>

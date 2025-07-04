@@ -3,7 +3,6 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import { useObservations } from '@/contexts/observation-context';
 import type { Observation, RiskLevel, Scope, ObservationCategory } from '@/lib/types';
 import { TakeActionDialog } from '@/components/take-action-dialog';
 import { StatusBadge } from '@/components/status-badges';
@@ -22,6 +21,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DeleteObservationDialog } from './delete-observation-dialog';
+import { updateObservationStatus, retryAiAnalysis, shareObservationToPublic } from '@/lib/actions/item-actions';
+import { toggleLike, incrementViewCount } from '@/lib/actions/interaction-actions';
 
 
 const categoryDefinitions: Record<ObservationCategory, string> = {
@@ -54,67 +55,112 @@ interface ObservationDetailSheetProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     mode: Scope;
+    onItemUpdate: (updatedItem: Observation) => void;
 }
 
-export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode }: ObservationDetailSheetProps) {
-  const { updateObservation, retryAiAnalysis, shareObservationToPublic, toggleLikeObservation, incrementViewCount } = useObservations();
+export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode, onItemUpdate }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isSharing, setIsSharing] = React.useState(false);
   const { toast } = useToast();
   
-  if (!observation) return null;
+  // Use a local state for the observation to reflect optimistic updates
+  const [currentObservation, setCurrentObservation] = React.useState(observation);
   
-  const hasLiked = user && observation.likes?.includes(user.uid);
-  const isOwner = user && observation.userId === user.uid;
-  const canDelete = isOwner && mode !== 'public';
-  const canTakeAction = observation.status !== 'Completed' && mode !== 'public';
-
-  const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
-  const categoryDefinition = categoryDefinitions[observation.category];
+  React.useEffect(() => {
+    setCurrentObservation(observation);
+  }, [observation]);
 
   React.useEffect(() => {
-      if (isOpen && observation && mode === 'public') {
-          incrementViewCount(observation.id);
+      if (isOpen && currentObservation && mode === 'public') {
+          // Optimistically update UI
+          setCurrentObservation(obs => obs ? {...obs, viewCount: (obs.viewCount || 0) + 1} : null);
+          incrementViewCount({ docId: currentObservation.id, collectionName: 'observations' });
       }
-  }, [isOpen, observation, mode, incrementViewCount]);
+  }, [isOpen, currentObservation, mode]);
 
-  const handleUpdate = (data: Partial<Observation>) => {
-    if (!observation) return;
-    updateObservation(observation, data);
+  if (!currentObservation) return null;
+  
+  const isOwner = user && currentObservation.userId === user.uid;
+  const canDelete = isOwner && mode !== 'public';
+  const canTakeAction = currentObservation.status !== 'Completed' && mode !== 'public';
+
+  const projectName = currentObservation.projectId ? projects.find(p => p.id === currentObservation.projectId)?.name : null;
+  const categoryDefinition = categoryDefinitions[currentObservation.category];
+
+  const handleUpdate = async (data: { actionTakenDescription: string; actionTakenPhoto?: File }) => {
+    if (!user || !userProfile) return;
+    
+    const updatedItem = await updateObservationStatus({
+      observationId: currentObservation.id,
+      actionData: data,
+      user: {
+        uid: user.uid,
+        displayName: userProfile.displayName,
+        position: userProfile.position
+      }
+    });
+    
+    if (updatedItem) {
+        onItemUpdate(updatedItem);
+        setCurrentObservation(updatedItem); // Update local state as well
+    }
     setActionDialogOpen(false);
   };
   
-  const handleTakeAction = () => {
-    setActionDialogOpen(true);
+  const handleTakeAction = () => setActionDialogOpen(true);
+  
+  const handleRetry = async () => {
+    const updatedItem = await retryAiAnalysis(currentObservation);
+    if(updatedItem) onItemUpdate(updatedItem);
   };
   
-  const handleRetry = () => {
-    retryAiAnalysis(observation);
-  };
-  
-  const handleLikeClick = () => {
+  const handleLikeClick = async () => {
     if (!user) {
         toast({ variant: 'destructive', title: 'Anda harus masuk untuk menyukai.' });
         return;
     }
-    toggleLikeObservation(observation);
+    
+    const originalLikes = currentObservation.likes || [];
+    const hasLiked = originalLikes.includes(user.uid);
+    const newLikes = hasLiked
+        ? originalLikes.filter(uid => uid !== user.uid)
+        : [...originalLikes, user.uid];
+
+    // Optimistic update
+    setCurrentObservation({
+        ...currentObservation,
+        likes: newLikes,
+        likeCount: newLikes.length
+    });
+
+    try {
+        await toggleLike({ docId: currentObservation.id, userId: user.uid, collectionName: 'observations' });
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal menyimpan suka.'});
+        // Revert on error
+        setCurrentObservation({
+            ...currentObservation,
+            likes: originalLikes,
+            likeCount: originalLikes.length
+        });
+    }
   };
 
   const handleShare = async () => {
-    if (!observation) return;
     setIsSharing(true);
     try {
-        await shareObservationToPublic(observation);
+        const updatedItem = await shareObservationToPublic(currentObservation);
+        if (updatedItem) onItemUpdate(updatedItem);
     } finally {
         setIsSharing(false);
     }
   };
 
-  const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;
-  const showAiSection = observation.aiStatus || observation.aiSummary;
+  const canShare = currentObservation.scope !== 'public' && !currentObservation.isSharedPublicly;
+  const showAiSection = currentObservation.aiStatus || currentObservation.aiSummary;
   
   const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
     <div className="pl-8 space-y-2">
@@ -148,7 +194,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                     </SheetClose>
                     <div className="flex flex-col">
                         <SheetTitle>Detail Observasi</SheetTitle>
-                        <SheetDescription>{observation.referenceId || observation.id}</SheetDescription>
+                        <SheetDescription>{currentObservation.referenceId || currentObservation.id}</SheetDescription>
                     </div>
                 </div>
                 
@@ -169,11 +215,11 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
         
         <ScrollArea className="flex-1">
           <div className="space-y-6 p-6">
-            {observation.photoUrl && (
+            {currentObservation.photoUrl && (
               <div className="relative w-full aspect-video rounded-md overflow-hidden border">
                 <Image
-                  src={observation.photoUrl}
-                  alt={`Observation at ${observation.location}`}
+                  src={currentObservation.photoUrl}
+                  alt={`Observation at ${currentObservation.location}`}
                   fill
                   sizes="(max-width: 640px) 100vw, 512px"
                   className="object-contain"
@@ -183,18 +229,18 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
             )}
             <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-center">
               <div className="font-semibold text-muted-foreground">Dikirim Pada</div>
-              <div>{format(new Date(observation.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
+              <div>{format(new Date(currentObservation.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
 
               <div className="font-semibold text-muted-foreground">Dikirim Oleh</div>
-              <div>{observation.submittedBy}</div>
+              <div>{currentObservation.submittedBy}</div>
               
               {mode !== 'public' && (
                 <>
                   <div className="font-semibold text-muted-foreground">Perusahaan</div>
-                  <div>{observation.company}</div>
+                  <div>{currentObservation.company}</div>
 
                   <div className="font-semibold text-muted-foreground">Lokasi</div>
-                  <div>{observation.location}</div>
+                  <div>{currentObservation.location}</div>
                 </>
               )}
 
@@ -206,15 +252,15 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
               )}
 
               <div className="font-semibold text-muted-foreground">Kategori</div>
-              <div>{observation.category}</div>
+              <div>{currentObservation.category}</div>
 
               <div className="font-semibold text-muted-foreground">Status</div>
-              <div><StatusBadge status={observation.status} /></div>
+              <div><StatusBadge status={currentObservation.status} /></div>
 
               <div className="font-semibold text-muted-foreground">Tingkat Risiko</div>
               <div>
-                 <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", riskStyles[observation.riskLevel])}>
-                    {observation.riskLevel}
+                 <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", riskStyles[currentObservation.riskLevel])}>
+                    {currentObservation.riskLevel}
                 </div>
               </div>
             </div>
@@ -228,19 +274,19 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                         onClick={handleLikeClick}
                         className={cn(
                             "flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors",
-                            hasLiked && "text-primary font-semibold"
+                            (currentObservation.likes || []).includes(user?.uid || '') && "text-primary font-semibold"
                         )}
                     >
-                        <ThumbsUp className={cn("h-5 w-5", hasLiked && "fill-current")} />
-                        <span>{observation.likeCount || 0} Suka</span>
+                        <ThumbsUp className={cn("h-5 w-5", (currentObservation.likes || []).includes(user?.uid || '') && "fill-current")} />
+                        <span>{currentObservation.likeCount || 0} Suka</span>
                     </button>
                     <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
                         <MessageCircle className="h-5 w-5" />
-                        <span>{observation.commentCount || 0} Komentar</span>
+                        <span>{currentObservation.commentCount || 0} Komentar</span>
                     </div>
                      <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
                         <Eye className="h-5 w-5" />
-                        <span>{observation.viewCount || 0} Dilihat</span>
+                        <span>{currentObservation.viewCount || 0} Dilihat</span>
                     </div>
                 </div>
                 <Separator />
@@ -250,7 +296,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
             {categoryDefinition && (
               <Alert className="border-primary/50 bg-primary/5 text-primary">
                 <Info className="h-4 w-4 text-primary" />
-                <AlertTitle className="font-semibold">{observation.category}</AlertTitle>
+                <AlertTitle className="font-semibold">{currentObservation.category}</AlertTitle>
                 <AlertDescription className="text-primary/90">
                   {categoryDefinition}
                 </AlertDescription>
@@ -259,12 +305,12 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
 
             <div className="space-y-1">
               <h4 className="font-semibold">Temuan</h4>
-              <p className="text-sm text-muted-foreground">{observation.findings}</p>
+              <p className="text-sm text-muted-foreground">{currentObservation.findings}</p>
             </div>
 
             <div className="space-y-1">
               <h4 className="font-semibold">Rekomendasi</h4>
-              <p className="text-sm text-muted-foreground">{observation.recommendation}</p>
+              <p className="text-sm text-muted-foreground">{currentObservation.recommendation}</p>
             </div>
 
             {showAiSection && (
@@ -275,14 +321,14 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                       Analisis HSSE Tech
                     </h4>
 
-                    {observation.aiStatus === 'processing' && (
+                    {currentObservation.aiStatus === 'processing' && (
                       <div className="flex items-center gap-3 p-4 rounded-lg">
                           <Loader2 className="h-5 w-5 animate-spin text-primary" />
                           <p className="text-sm text-muted-foreground">Analisis AI sedang diproses...</p>
                       </div>
                     )}
 
-                    {observation.aiStatus === 'failed' && (
+                    {currentObservation.aiStatus === 'failed' && (
                       <div className="flex flex-col items-start gap-3 bg-destructive/10 p-4 rounded-lg border border-destructive/20">
                           <p className="text-sm text-destructive font-medium">Analisis AI tidak dapat diselesaikan.</p>
                           <Button variant="destructive" size="sm" onClick={handleRetry}>
@@ -292,23 +338,23 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                       </div>
                     )}
 
-                    {observation.aiStatus === 'completed' && (
+                    {currentObservation.aiStatus === 'completed' && (
                       <div className="space-y-4">
-                        {observation.aiObserverSkillRating && observation.aiObserverSkillExplanation && (
+                        {currentObservation.aiObserverSkillRating && currentObservation.aiObserverSkillExplanation && (
                           <div className="space-y-2 p-4 bg-card rounded-md shadow-sm">
                             <div className="flex items-center justify-between">
                               <h5 className="font-semibold flex items-center gap-2 text-sm">
                                 <UserCheck className="h-4 w-4 text-muted-foreground" />
                                 Wawasan Observer
                               </h5>
-                              <StarRating rating={observation.aiObserverSkillRating} />
+                              <StarRating rating={currentObservation.aiObserverSkillRating} />
                             </div>
-                            <p className="text-sm text-muted-foreground italic pl-6">{observation.aiObserverSkillExplanation}</p>
+                            <p className="text-sm text-muted-foreground italic pl-6">{currentObservation.aiObserverSkillExplanation}</p>
                           </div>
                         )}
 
                        <Accordion type="multiple" defaultValue={['summary']} className="w-full">
-                        {observation.aiSummary && (
+                        {currentObservation.aiSummary && (
                           <AccordionItem value="summary">
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                               <div className="flex items-center gap-2">
@@ -317,11 +363,11 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
-                              <p className="text-sm text-muted-foreground pl-8">{observation.aiSummary}</p>
+                              <p className="text-sm text-muted-foreground pl-8">{currentObservation.aiSummary}</p>
                             </AccordionContent>
                           </AccordionItem>
                         )}
-                         {observation.aiSuggestedRiskLevel && (
+                         {currentObservation.aiSuggestedRiskLevel && (
                           <AccordionItem value="suggestedRisk">
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                               <div className="flex items-center gap-2">
@@ -330,13 +376,13 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2 pl-8">
-                                <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", riskStyles[observation.aiSuggestedRiskLevel])}>
-                                    {observation.aiSuggestedRiskLevel}
+                                <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", riskStyles[currentObservation.aiSuggestedRiskLevel])}>
+                                    {currentObservation.aiSuggestedRiskLevel}
                                 </div>
                             </AccordionContent>
                           </AccordionItem>
                         )}
-                        {observation.aiRootCauseAnalysis && (
+                        {currentObservation.aiRootCauseAnalysis && (
                           <AccordionItem value="rootCause">
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                               <div className="flex items-center gap-2">
@@ -345,11 +391,11 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
-                              <p className="text-sm text-muted-foreground pl-8">{observation.aiRootCauseAnalysis}</p>
+                              <p className="text-sm text-muted-foreground pl-8">{currentObservation.aiRootCauseAnalysis}</p>
                             </AccordionContent>
                           </AccordionItem>
                         )}
-                        {observation.aiRisks && (
+                        {currentObservation.aiRisks && (
                           <AccordionItem value="risks">
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                               <div className="flex items-center gap-2">
@@ -358,11 +404,11 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
-                               {renderBulletedList(observation.aiRisks, AlertTriangle, "text-destructive")}
+                               {renderBulletedList(currentObservation.aiRisks, AlertTriangle, "text-destructive")}
                             </AccordionContent>
                           </AccordionItem>
                         )}
-                        {observation.aiSuggestedActions && (
+                        {currentObservation.aiSuggestedActions && (
                           <AccordionItem value="actions">
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                                 <div className="flex items-center gap-2">
@@ -371,11 +417,11 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
-                              {renderBulletedList(observation.aiSuggestedActions, CheckCircle2, "text-green-600")}
+                              {renderBulletedList(currentObservation.aiSuggestedActions, CheckCircle2, "text-green-600")}
                             </AccordionContent>
                           </AccordionItem>
                         )}
-                        {observation.aiRelevantRegulations && (
+                        {currentObservation.aiRelevantRegulations && (
                           <AccordionItem value="regulations" className="border-b-0">
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                                <div className="flex items-center gap-2">
@@ -384,7 +430,7 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
-                              {renderBulletedList(observation.aiRelevantRegulations, Gavel, "text-muted-foreground")}
+                              {renderBulletedList(currentObservation.aiRelevantRegulations, Gavel, "text-muted-foreground")}
                             </AccordionContent>
                           </AccordionItem>
                         )}
@@ -395,15 +441,15 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
               </div>
             )}
 
-            {observation.status === 'Completed' && (
+            {currentObservation.status === 'Completed' && (
               <div className="space-y-4 pt-4 border-t mt-4">
                 <h4 className="font-semibold text-base">Tindakan yang Diambil</h4>
                  <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-start">
                     <div className="font-semibold text-muted-foreground self-start">Deskripsi</div>
                     <div className="text-muted-foreground">
-                      {observation.actionTakenDescription ? (
+                      {currentObservation.actionTakenDescription ? (
                         <div className="space-y-1">
-                          {observation.actionTakenDescription.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((line, index) => (
+                          {currentObservation.actionTakenDescription.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((line, index) => (
                             <div key={index} className="flex items-start gap-2">
                               <CheckCircle2 className="h-4 w-4 flex-shrink-0 mt-0.5 text-green-600" />
                               <span className="break-words">{line.replace(/^- /, '')}</span>
@@ -415,21 +461,21 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                       )}
                     </div>
                    
-                   {observation.closedDate && (
+                   {currentObservation.closedDate && (
                     <>
                       <div className="font-semibold text-muted-foreground">Ditutup Pada</div>
-                      <div className="text-muted-foreground">{format(new Date(observation.closedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
+                      <div className="text-muted-foreground">{format(new Date(currentObservation.closedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
                     </>
                    )}
 
                    <div className="font-semibold text-muted-foreground">Ditutup Oleh</div>
-                   <div className="text-muted-foreground">{observation.closedBy || '-'}</div>
+                   <div className="text-muted-foreground">{currentObservation.closedBy || '-'}</div>
                  </div>
                 
-                {observation.actionTakenPhotoUrl && (
+                {currentObservation.actionTakenPhotoUrl && (
                   <div className="relative w-full aspect-video rounded-md overflow-hidden border mt-2">
                     <Image
-                      src={observation.actionTakenPhotoUrl}
+                      src={currentObservation.actionTakenPhotoUrl}
                       alt="Action taken photo"
                       fill
                       sizes="(max-width: 640px) 100vw, 512px"
@@ -453,20 +499,20 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
       </SheetContent>
     </Sheet>
     
-    {canDelete && observation && (
+    {canDelete && currentObservation && (
       <DeleteObservationDialog
           isOpen={isDeleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
-          observation={observation}
+          observation={currentObservation}
           onSuccess={() => onOpenChange(false)}
       />
     )}
 
-    {mode !== 'public' && observation && (
+    {mode !== 'public' && currentObservation && (
       <TakeActionDialog
           isOpen={isActionDialogOpen}
           onOpenChange={setActionDialogOpen}
-          observation={observation}
+          observation={currentObservation}
           onUpdate={handleUpdate}
       />
     )}

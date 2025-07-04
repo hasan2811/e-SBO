@@ -15,7 +15,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { Ptw } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { useObservations } from '@/contexts/observation-context';
+import { deleteItem } from '@/lib/actions/item-actions';
+
 
 interface DeletePtwDialogProps {
   isOpen: boolean;
@@ -30,14 +31,13 @@ export function DeletePtwDialog({
   ptw,
   onSuccess,
 }: DeletePtwDialogProps) {
-  const { deletePtw } = useObservations();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deletePtw(ptw);
+      await deleteItem(ptw);
       toast({
         title: 'PTW Deleted',
         description: `The Permit to Work has been permanently deleted.`,

@@ -22,29 +22,35 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     let unsubscribe: Unsubscribe = () => {};
 
-    if (authLoading || !user) {
+    // Don't do anything until auth state is resolved.
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+    
+    // If no user, there are no projects to fetch.
+    if (!user) {
       setProjects([]);
       setLoading(false);
       return;
     }
 
+    // At this point, we have a user. Start loading projects.
     setLoading(true);
 
     const projectsCollection = collection(db, 'projects');
-    // If the user is not an admin, we filter projects where they are a member.
     const q = isAdmin 
         ? query(projectsCollection)
         : query(projectsCollection, where('memberUids', 'array-contains', user.uid));
 
-
-    unsubscribe = onSnapshot(q, async (snapshot) => {
+    unsubscribe = onSnapshot(q, (snapshot) => {
       const userProjects = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Project[];
       
       setProjects(userProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      setLoading(false);
+      setLoading(false); // Stop loading once projects are fetched
     }, (error) => {
       console.error("Error fetching projects:", error);
       setProjects([]);

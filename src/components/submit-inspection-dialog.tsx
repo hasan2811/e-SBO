@@ -8,9 +8,10 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Wrench } from 'lucide-react';
 
-import type { Inspection, InspectionStatus, EquipmentType, Location } from '@/lib/types';
+import type { Inspection, InspectionStatus, EquipmentType, Location, Project } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { addInspection } from '@/lib/actions/item-actions';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -18,14 +19,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
+import { usePathname } from 'next/navigation';
 
 const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const EQUIPMENT_TYPES = ['Heavy Machinery', 'Hand Tool', 'Vehicle', 'Electrical', 'Other'] as const;
 const INSPECTION_STATUSES = ['Pass', 'Fail', 'Needs Repair'] as const;
 
 const formSchema = z.object({
-  location: z.enum(LOCATIONS),
+  location: z.string().min(1),
   equipmentName: z.string().min(3, { message: 'Nama peralatan minimal 3 karakter.' }),
   equipmentType: z.enum(EQUIPMENT_TYPES),
   status: z.enum(INSPECTION_STATUSES),
@@ -41,20 +42,21 @@ type FormValues = z.infer<typeof formSchema>;
 interface SubmitInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddInspection: (inspection: FormValues) => void;
+  project: Project | null;
 }
 
-export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }: SubmitInspectionDialogProps) {
+export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: SubmitInspectionDialogProps) {
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
+  const pathname = usePathname();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      location: LOCATIONS[0],
       equipmentName: '',
       equipmentType: EQUIPMENT_TYPES[0],
       status: INSPECTION_STATUSES[0],
@@ -63,11 +65,15 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
     },
     mode: 'onChange',
   });
+  
+  const locationOptions = React.useMemo(() => 
+    (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : LOCATIONS,
+  [project]);
 
   React.useEffect(() => {
     if (isOpen) {
         form.reset({
-            location: LOCATIONS[0],
+            location: locationOptions[0],
             equipmentName: '',
             equipmentType: EQUIPMENT_TYPES[0],
             status: INSPECTION_STATUSES[0],
@@ -77,7 +83,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
         setPhotoPreview(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [isOpen, form]);
+  }, [isOpen, form, locationOptions]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -96,17 +102,22 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
     }
   };
 
-  const onSubmit = (values: FormValues) => {
+  const onSubmit = async (values: FormValues) => {
     if (!user || !userProfile) return;
-    if (!values.photo) {
-      toast({ variant: 'destructive', title: 'Foto Wajib', description: 'Silakan unggah foto temuan.' });
-      return;
+    setIsSubmitting(true);
+    
+    try {
+        const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
+        const submissionProjectId = match ? match[1] : null;
+
+        await addInspection(values, userProfile, submissionProjectId);
+        toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda sedang diproses.` });
+        onOpenChange(false);
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Submission Failed', description: error instanceof Error ? error.message : "An unexpected error occurred." });
+    } finally {
+        setIsSubmitting(false);
     }
-
-    onAddInspection(values);
-
-    toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda sedang diproses.` });
-    onOpenChange(false);
   };
   
   const renderSelectItems = (items: readonly string[]) => items.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>);
@@ -125,8 +136,8 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
                 <FormItem><FormLabel>Nama Peralatan</FormLabel><FormControl><Input placeholder="e.g., Excavator EX-01" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField name="location" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Lokasi</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(LOCATIONS)}</SelectContent></Select><FormMessage /></FormItem>
+                 <FormField name="location" control={form.control} render={({ field }) => (
+                  <FormItem><FormLabel>Lokasi</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(locationOptions)}</SelectContent></Select><FormMessage /></FormItem>
                 )} />
                 <FormField name="equipmentType" control={form.control} render={({ field }) => (
                   <FormItem><FormLabel>Jenis Peralatan</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(EQUIPMENT_TYPES)}</SelectContent></Select><FormMessage /></FormItem>
@@ -158,8 +169,9 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, onAddInspection }
         </div>
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Batal</Button>
-            <Button type="submit" form={formId} disabled={!form.formState.isValid}>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Batal</Button>
+            <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Kirim Laporan
             </Button>
           </div>

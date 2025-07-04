@@ -1,10 +1,9 @@
+
 'use client';
 
 import * as React from 'react';
 import Image from 'next/image';
-import { useObservations } from '@/contexts/observation-context';
-import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCategory, ObservationStatus, Scope } from '@/lib/types';
-import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
+import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationStatus, Scope } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
 import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Search, Globe, Building, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical } from 'lucide-react';
@@ -18,16 +17,18 @@ import { exportToExcel } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { collection, query, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Query, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Query, where, getDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/use-auth';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteMultipleDialog } from './delete-multiple-dialog';
 import { usePathname, useRouter } from 'next/navigation';
+import { toggleLike } from '@/lib/actions/interaction-actions';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 const PAGE_SIZE = 10;
 
@@ -38,15 +39,13 @@ interface FeedViewProps {
 }
 
 const viewTypeInfo = {
-    observations: { label: 'Observasi', icon: Briefcase },
-    inspections: { label: 'Inspeksi', icon: Wrench },
-    ptws: { label: 'PTW', icon: PtwIcon },
+    observations: { label: 'Observasi', icon: Briefcase, collection: 'observations' },
+    inspections: { label: 'Inspeksi', icon: Wrench, collection: 'inspections' },
+    ptws: { label: 'PTW', icon: PtwIcon, collection: 'ptws' },
 };
 
-const ObservationListItem = ({ observation, onSelect, mode, isSelectionMode, isSelected, onToggleSelect }: { observation: Observation, onSelect: () => void, mode: FeedViewProps['mode'], isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
-    const { toggleLikeObservation } = useObservations();
+const ObservationListItem = ({ observation, onSelect, mode, isSelectionMode, isSelected, onToggleSelect, onLikeToggle }: { observation: Observation, onSelect: () => void, mode: FeedViewProps['mode'], isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void, onLikeToggle: (obs: Observation) => void }) => {
     const { user } = useAuth();
-    const { toast } = useToast();
 
     const riskColorStyles: Record<RiskLevel, string> = {
         Low: 'border-l-chart-2',
@@ -70,16 +69,11 @@ const ObservationListItem = ({ observation, onSelect, mode, isSelectionMode, isS
 
     const handleLikeClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!user) {
-            toast({ variant: 'destructive', title: 'Anda harus masuk untuk menyukai.' });
-            return;
-        }
-        toggleLikeObservation(observation);
+        onLikeToggle(observation);
     };
     
     const handleItemClick = (e: React.MouseEvent<HTMLLIElement>) => {
         const target = e.target as HTMLElement;
-        // Prevent event bubbling from interactive elements
         if (target.closest('button, a')) return;
 
         if (isSelectionMode) {
@@ -264,138 +258,133 @@ const PtwListItem = ({ ptw, onSelect, isSelectionMode, isSelected, onToggleSelec
 };
 
 export function FeedView({ mode, projectId, observationIdToOpen }: FeedViewProps) {
-  const { 
-      privateItems, 
-      projectItems, 
-      loading: myItemsLoading, 
-      deleteMultipleItems,
-      publicItems,
-      publicItemsLoading,
-      hasMorePublic,
-      fetchPublicItems,
-  } = useObservations();
   const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const { toast } = useToast();
+
+  const [items, setItems] = React.useState<AllItems[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [lastVisible, setLastVisible] = React.useState<QueryDocumentSnapshot | null>(null);
+  const [hasMore, setHasMore] = React.useState(true);
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
   const [selectedPtwId, setSelectedPtwId] = React.useState<string | null>(null);
   
   const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
-  
   const [searchTerm, setSearchTerm] = React.useState('');
-
-  const [displayedItemsCount, setDisplayedItemsCount] = React.useState(PAGE_SIZE);
-
+  
   const [isSelectionMode, setIsSelectionMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
-  const [isDeleting, setIsDeleting] = React.useState(false);
   const [isDeleteMultiOpen, setDeleteMultiOpen] = React.useState(false);
-  
-  const { toast } = useToast();
-  
-  React.useEffect(() => {
-    if (mode === 'public') {
-      if (publicItems.length === 0) {
-        fetchPublicItems(true);
-      }
+
+  const fetchItems = React.useCallback(async (reset: boolean = false) => {
+    if (!user && (mode === 'private' || mode === 'project')) return;
+    setIsLoading(true);
+    setError(null);
+    const lastDoc = reset ? null : lastVisible;
+
+    try {
+        let q: Query;
+        const collectionName = viewTypeInfo[viewType].collection;
+        let baseQuery = query(collection(db, collectionName), orderBy('date', 'desc'), limit(PAGE_SIZE));
+
+        if (mode === 'public') {
+            q = query(baseQuery, where('scope', '==', 'public'));
+        } else if (mode === 'project' && projectId) {
+            q = query(baseQuery, where('scope', '==', 'project'), where('projectId', '==', projectId));
+        } else if (mode === 'private') {
+            q = query(baseQuery, where('scope', '==', 'private'), where('userId', '==', user?.uid));
+        } else {
+            // Should not happen, but as a safeguard
+            setItems([]);
+            setIsLoading(false);
+            return;
+        }
+
+        if (lastDoc) {
+            q = query(q, startAfter(lastDoc));
+        }
+
+        const docSnap = await getDocs(q);
+        const newItems: AllItems[] = docSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
+        
+        setHasMore(newItems.length === PAGE_SIZE);
+        setLastVisible(docSnap.docs[docSnap.docs.length - 1] || null);
+        setItems(prev => reset ? newItems : [...prev, ...newItems]);
+
+    } catch (e) {
+        console.error("Error fetching items:", e);
+        setError("Failed to load feed data.");
+    } finally {
+        setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, fetchPublicItems]);
-
-  React.useEffect(() => {
-    setDisplayedItemsCount(PAGE_SIZE);
-    setIsSelectionMode(false);
-    setSelectedIds(new Set());
-  }, [viewType, mode, projectId]);
+  }, [mode, projectId, user, viewType, lastVisible]);
   
-  const data = React.useMemo(() => {
-      if (mode === 'public') return publicItems;
-      if (mode === 'private') return privateItems;
-      if (mode === 'project') return projectItems;
-      return [];
-  }, [mode, publicItems, privateItems, projectItems]);
+  // Initial fetch and reset on filter changes
+  React.useEffect(() => {
+    fetchItems(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, projectId, viewType, user]);
 
-  const isLoading = mode === 'public' ? publicItemsLoading && data.length === 0 : myItemsLoading;
 
   const triggeredOpen = React.useRef(false);
-
   React.useEffect(() => {
-    if (observationIdToOpen && !myItemsLoading && !triggeredOpen.current && data.length > 0) {
-        triggeredOpen.current = true;
-        const observationExists = data.some(
-            (item) => item.id === observationIdToOpen && item.itemType === 'observation'
-        );
-
-        if (observationExists) {
-            setViewType('observations');
-            setSelectedObservationId(observationIdToOpen);
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Laporan Tidak Ditemukan',
-                description: 'Observasi yang Anda cari mungkin telah dihapus atau tidak dapat diakses.',
-            });
+    const openItemFromNotification = async () => {
+        if (observationIdToOpen && !isLoading && !triggeredOpen.current) {
+            triggeredOpen.current = true;
+            try {
+                const itemDoc = await getDoc(doc(db, 'observations', observationIdToOpen));
+                if (itemDoc.exists()) {
+                    const itemData = itemDoc.data();
+                    if (itemData.projectId === projectId) {
+                        setViewType('observations');
+                        setSelectedObservationId(observationIdToOpen);
+                    }
+                } else {
+                     toast({ variant: 'destructive', title: 'Laporan Tidak Ditemukan' });
+                }
+            } catch (e) {
+                toast({ variant: 'destructive', title: 'Gagal Membuka Laporan' });
+            }
+            router.replace(pathname, { scroll: false });
         }
-        router.replace(pathname, { scroll: false });
-    }
-  }, [observationIdToOpen, myItemsLoading, data, pathname, router, toast]);
-
+    };
+    openItemFromNotification();
+  }, [observationIdToOpen, isLoading, projectId, pathname, router, toast]);
 
   const filteredData = React.useMemo(() => {
-    let baseData = [...data];
-    let dataToFilter: AllItems[] = [];
-
-    if (mode === 'project' && projectId) {
-        dataToFilter = baseData.filter(item => item.projectId === projectId);
-    } else if (mode === 'private') {
-        dataToFilter = baseData.filter(item => item.scope === 'private');
-    } else if (mode === 'public') {
-        dataToFilter = baseData;
-    }
-    
-    dataToFilter = dataToFilter.filter(item => {
-        if (viewType === 'observations') return item.itemType === 'observation';
-        if (viewType === 'inspections') return item.itemType === 'inspection';
-        if (viewType === 'ptws') return item.itemType === 'ptw';
+    if (!searchTerm) return items;
+    const lowercasedSearch = searchTerm.toLowerCase();
+    return items.filter(item => {
+        if (item.itemType === 'observation') return item.findings.toLowerCase().includes(lowercasedSearch) || item.recommendation.toLowerCase().includes(lowercasedSearch);
+        if (item.itemType === 'inspection') return item.findings.toLowerCase().includes(lowercasedSearch) || item.equipmentName.toLowerCase().includes(lowercasedSearch);
+        if (item.itemType === 'ptw') return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch);
         return false;
     });
-    
-    if (searchTerm && mode !== 'public') {
-        const lowercasedSearch = searchTerm.toLowerCase();
-        dataToFilter = dataToFilter.filter(item => {
-            if (item.itemType === 'observation') return item.findings.toLowerCase().includes(lowercasedSearch) || item.recommendation.toLowerCase().includes(lowercasedSearch);
-            if (item.itemType === 'inspection') return item.findings.toLowerCase().includes(lowercasedSearch) || item.equipmentName.toLowerCase().includes(lowercasedSearch);
-            if (item.itemType === 'ptw') return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch);
-            return false;
-        });
-    }
-
-    return dataToFilter;
-  }, [data, mode, projectId, viewType, searchTerm]);
-
-  const itemsToDisplay = mode === 'public' ? filteredData : filteredData.slice(0, displayedItemsCount);
+  }, [items, searchTerm]);
   
   const displayObservation = React.useMemo(() => 
-    selectedObservationId ? data.find(o => o.id === selectedObservationId) as Observation : null,
-    [selectedObservationId, data]
+    selectedObservationId ? items.find(o => o.id === selectedObservationId) as Observation : null,
+    [selectedObservationId, items]
   );
   
   const displayInspection = React.useMemo(() =>
-    selectedInspectionId ? data.find(i => i.id === selectedInspectionId) as Inspection : null,
-    [selectedInspectionId, data]
+    selectedInspectionId ? items.find(i => i.id === selectedInspectionId) as Inspection : null,
+    [selectedInspectionId, items]
   );
   
   const displayPtw = React.useMemo(() =>
-    selectedPtwId ? data.find(p => p.id === selectedPtwId) as Ptw : null,
-    [selectedPtwId, data]
+    selectedPtwId ? items.find(p => p.id === selectedPtwId) as Ptw : null,
+    [selectedPtwId, items]
   );
 
   const handleExport = () => {
     const dataToExport = filteredData.filter(item => item.itemType === 'observation') as Observation[];
     if (dataToExport.length === 0) {
-      toast({ variant: 'destructive', title: 'Tidak Ada Data untuk Diekspor', description: `Tidak ada data observasi untuk diekspor.` });
+      toast({ variant: 'destructive', title: 'Tidak Ada Data untuk Diekspor' });
       return;
     }
     const fileName = `Export_${mode}_${projectId || ''}_${format(new Date(), 'yyyy-MM-dd')}`;
@@ -411,56 +400,64 @@ export function FeedView({ mode, projectId, observationIdToOpen }: FeedViewProps
     });
   };
 
-  const handleConfirmDeleteMultiple = async () => {
-    const itemsToDelete = filteredData.filter(item => selectedIds.has(item.id));
-    if (itemsToDelete.length === 0) return;
-    setIsDeleting(true);
-    try {
-        await deleteMultipleItems(itemsToDelete);
-        toast({ title: 'Success', description: `${itemsToDelete.length} items have been deleted.` });
-        setDeleteMultiOpen(false);
-        setIsSelectionMode(false);
-        setSelectedIds(new Set());
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete items.' });
-    } finally {
-        setIsDeleting(false);
-    }
+  const handleLikeToggle = async (observation: Observation) => {
+      if (!user) {
+        toast({ variant: 'destructive', title: 'Anda harus masuk untuk menyukai.' });
+        return;
+      }
+
+      const originalLikes = observation.likes || [];
+      const hasLiked = originalLikes.includes(user.uid);
+      
+      const optimisticUpdate = (item: AllItems): AllItems => {
+        if (item.id === observation.id && item.itemType === 'observation') {
+            const newLikes = hasLiked
+                ? originalLikes.filter(uid => uid !== user.uid)
+                : [...originalLikes, user.uid];
+            return { ...item, likes: newLikes, likeCount: newLikes.length };
+        }
+        return item;
+      };
+      
+      setItems(currentItems => currentItems.map(optimisticUpdate));
+
+      try {
+          await toggleLike({ docId: observation.id, userId: user.uid, collectionName: 'observations' });
+      } catch (error) {
+          console.error('Failed to toggle like:', error);
+          toast({ variant: 'destructive', title: 'Gagal', description: 'Tidak dapat memproses suka.'});
+          // Revert UI on failure
+          setItems(currentItems => currentItems.map(item => item.id === observation.id ? observation : item));
+      }
   };
 
-  const isExportDisabled = viewType !== 'observations' || isLoading;
+  const isExportDisabled = viewType !== 'observations';
   const canSelect = !isLoading && filteredData.length > 0 && mode !== 'public';
 
   function EmptyState() {
-    if (mode === 'public') {
-        const publicEmptyText = "Feed publik masih kosong. Bagikan observasi dari feed pribadi atau proyek Anda agar muncul di sini.";
-        const publicSearchEmptyText = "Tidak ada hasil yang cocok dengan pencarian Anda.";
-        return (
-            <div className="text-center py-16 text-muted-foreground bg-card rounded-lg">
-                {searchTerm ? <FilterX className="mx-auto h-12 w-12" /> : <Globe className="mx-auto h-12 w-12" />}
-                <h3 className="mt-4 text-xl font-semibold">{searchTerm ? 'Tidak Ada Hasil' : 'Feed Publik Kosong'}</h3>
-                <p className="mt-2 text-sm max-w-xs mx-auto">{searchTerm ? publicSearchEmptyText : publicEmptyText}</p>
-            </div>
-        );
-    }
-    
-    const currentConfig = viewTypeInfo[viewType];
-    let emptyText = `Tidak ada ${currentConfig.label.toLowerCase()} yang tersedia.`;
     let Icon = Home;
-
-    if(mode === 'project') {
-        emptyText = `Belum ada ${currentConfig.label.toLowerCase()} untuk proyek ini.`;
-        Icon = Briefcase;
+    let title = 'Feed Kosong';
+    let text = 'Tidak ada laporan yang tersedia.';
+  
+    if (mode === 'public') {
+      Icon = Globe;
+      title = searchTerm ? 'Tidak Ada Hasil' : 'Feed Publik Kosong';
+      text = searchTerm ? 'Tidak ada hasil yang cocok dengan pencarian Anda.' : 'Bagikan observasi dari feed pribadi atau proyek Anda agar muncul di sini.';
+    } else if (mode === 'project') {
+      Icon = Briefcase;
+      title = 'Proyek Kosong';
+      text = `Belum ada ${viewTypeInfo[viewType].label.toLowerCase()} untuk proyek ini.`;
     } else if (mode === 'private') {
-        emptyText = `Anda belum membuat ${currentConfig.label.toLowerCase()} pribadi.`;
-        Icon = User;
+      Icon = User;
+      title = 'Feed Pribadi Kosong';
+      text = `Anda belum membuat ${viewTypeInfo[viewType].label.toLowerCase()} pribadi.`;
     }
-
+  
     return (
       <div className="text-center py-16 text-muted-foreground bg-card rounded-lg">
         <Icon className="mx-auto h-12 w-12" />
-        <h3 className="mt-4 text-xl font-semibold">Tidak Ada Data</h3>
-        <p className="mt-2 text-sm max-w-xs mx-auto">{emptyText}</p>
+        <h3 className="mt-4 text-xl font-semibold">{title}</h3>
+        <p className="mt-2 text-sm max-w-xs mx-auto">{text}</p>
       </div>
     );
   }
@@ -543,18 +540,23 @@ export function FeedView({ mode, projectId, observationIdToOpen }: FeedViewProps
         </div>
 
       <main>
-        {isLoading ? (
+        {isLoading && filteredData.length === 0 ? (
           <ul className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <li key={i}><div className="flex items-start bg-card p-3 rounded-lg shadow-sm h-[124px]"><Skeleton className="h-16 w-16 rounded-md" /><div className="flex-1 space-y-2 ml-3"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-full" /><Skeleton className="h-4 w-2/3" /></div></div></li>
             ))}
           </ul>
-        ) : itemsToDisplay.length > 0 ? (
+        ) : error ? (
+            <Alert variant="destructive">
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+        ) : filteredData.length > 0 ? (
           <ul className="space-y-3">
-             {itemsToDisplay.map(item => {
+             {filteredData.map(item => {
                 switch(item.itemType) {
                   case 'observation':
-                    return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} mode={mode} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} />;
+                    return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} mode={mode} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} onLikeToggle={handleLikeToggle} />;
                   case 'inspection':
                     return <InspectionListItem key={item.id} inspection={item} onSelect={() => setSelectedInspectionId(item.id)} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} />;
                   case 'ptw':
@@ -568,20 +570,25 @@ export function FeedView({ mode, projectId, observationIdToOpen }: FeedViewProps
           <EmptyState />
         )}
         
-        {mode === 'public' && itemsToDisplay.length > 0 && (
-          <div className="mt-6 flex justify-center">{hasMorePublic ? (<Button onClick={() => fetchPublicItems(false)} disabled={publicItemsLoading}>{publicItemsLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Tampilkan Lebih Banyak</Button>) : (<p className="py-4 text-center text-sm text-muted-foreground">You have reached the end.</p>)}</div>
-        )}
-        {mode !== 'public' && displayedItemsCount < filteredData.length && (
-            <div className="mt-6 flex justify-center"><Button onClick={() => setDisplayedItemsCount(prev => prev + PAGE_SIZE)}>Tampilkan Lebih Banyak</Button></div>
+        {hasMore && !isLoading && (
+          <div className="mt-6 flex justify-center">
+            <Button onClick={() => fetchItems(false)} disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Tampilkan Lebih Banyak
+            </Button>
+          </div>
         )}
       </main>
     </div>
 
-    {displayObservation && (<ObservationDetailSheet observation={displayObservation} isOpen={!!displayObservation} onOpenChange={(isOpen) => { if (!isOpen) setSelectedObservationId(null); }} mode={mode}/>)}
-    {displayInspection && (<InspectionDetailSheet inspection={displayInspection} isOpen={!!displayInspection} onOpenChange={(isOpen) => { if (!isOpen) setSelectedInspectionId(null); }}/>)}
-    {displayPtw && (<PtwDetailSheet ptw={displayPtw} isOpen={!!displayPtw} onOpenChange={(isOpen) => { if (!isOpen) setSelectedPtwId(null); }}/>)}
+    {displayObservation && (<ObservationDetailSheet observation={displayObservation} isOpen={!!displayObservation} onOpenChange={(isOpen) => { if (!isOpen) setSelectedObservationId(null); }} mode={mode} onItemUpdate={(updatedItem) => setItems(items => items.map(i => i.id === updatedItem.id ? updatedItem : i))} />)}
+    {displayInspection && (<InspectionDetailSheet inspection={displayInspection} isOpen={!!displayInspection} onOpenChange={(isOpen) => { if (!isOpen) setSelectedInspectionId(null); }} onItemUpdate={(updatedItem) => setItems(items => items.map(i => i.id === updatedItem.id ? updatedItem : i))} />)}
+    {displayPtw && (<PtwDetailSheet ptw={displayPtw} isOpen={!!displayPtw} onOpenChange={(isOpen) => { if (!isOpen) setSelectedPtwId(null); }} onItemUpdate={(updatedItem) => setItems(items => items.map(i => i.id === updatedItem.id ? updatedItem : i))} />)}
     
-    <DeleteMultipleDialog isOpen={isDeleteMultiOpen} onOpenChange={setDeleteMultiOpen} itemCount={selectedIds.size} onConfirm={handleConfirmDeleteMultiple} isDeleting={isDeleting} />
+    <DeleteMultipleDialog isOpen={isDeleteMultiOpen} onOpenChange={setDeleteMultiOpen} itemsToDelete={items.filter(item => selectedIds.has(item.id))} onSuccess={() => {
+        setItems(items.filter(item => !selectedIds.has(item.id)));
+        setIsSelectionMode(false);
+        setSelectedIds(new Set());
+    }} />
    </>
   );
 }

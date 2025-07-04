@@ -5,24 +5,21 @@ import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { useObservations } from '@/contexts/observation-context';
 import { DashboardHeader } from '@/components/dashboard-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { Sidebar } from '@/components/sidebar';
 import { SubmitObservationDialog } from '@/components/submit-observation-dialog';
 import { CompleteProfileDialog } from '@/components/complete-profile-dialog';
-import type { Observation, Inspection, Ptw, Scope, Project } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MultiActionButton } from '@/components/multi-action-button';
 import { SubmitInspectionDialog } from '@/components/submit-inspection-dialog';
 import { SubmitPtwDialog } from '@/components/submit-ptw-dialog';
-import { useCurrentProject } from '@/hooks/use-current-project';
 import { useProjects } from '@/hooks/use-projects';
+import type { Project } from '@/lib/types';
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, userProfile, loading: authLoading } = useAuth();
-  const { addObservation, addInspection, addPtw } = useObservations();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -31,23 +28,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isPtwDialogOpen, setPtwDialogOpen] = React.useState(false);
   const [isProfileDialogOpen, setProfileDialogOpen] = React.useState(false);
 
-  const { projectId, setProjectId } = useCurrentProject();
   const { projects, loading: projectsLoading } = useProjects();
+  
+  const getProjectIdFromPath = () => {
+    const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
+    return match ? match[1] : null;
+  }
 
   const currentProject = React.useMemo(() => {
+    const projectId = getProjectIdFromPath();
     if (!projectId || projectsLoading) return null;
     return projects.find(p => p.id === projectId) ?? null;
-  }, [projectId, projects, projectsLoading]);
+  }, [pathname, projects, projectsLoading]);
 
-  React.useEffect(() => {
-    // This effect ensures the global project context is aware of the current project ID
-    // by looking at the URL path. This is still useful for other components like the dashboard.
-    const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
-    const currentId = match ? match[1] : null;
-    if (currentId !== projectId) { // Only update if it changes
-      setProjectId(currentId);
-    }
-  }, [pathname, projectId, setProjectId]);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -56,6 +49,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, authLoading, router]);
 
   React.useEffect(() => {
+    // Open the profile dialog only if the user profile is loaded and the position is not set.
     if (userProfile && (userProfile.position === 'Not Set' || !userProfile.position)) {
       setProfileDialogOpen(true);
     } else {
@@ -63,12 +57,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [userProfile]);
 
-  if (authLoading || !user) {
+  // Combine loading states: show spinner if auth is loading, or if we have a user but their projects are still loading.
+  const isAppLoading = authLoading || (!!user && projectsLoading);
+
+  if (isAppLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
+  }
+
+  // If loading is finished but there's no user, the redirect effect will handle it.
+  // Render nothing in the meantime to avoid a flash of content.
+  if (!user) {
+    return null;
   }
 
   const variants = {
@@ -78,29 +81,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
   
   const showMultiActionButton = pathname.startsWith('/proyek/') || pathname === '/private';
-  
-  // These handlers now parse the projectId directly from the pathname to avoid race conditions
-  const handleAddObservation = (formData: any) => {
-    const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
-    const submissionProjectId = match ? match[1] : null;
-    const scope: Scope = submissionProjectId ? 'project' : 'private';
-    addObservation(formData, scope, submissionProjectId);
-  };
-
-  const handleAddInspection = (formData: any) => {
-    const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
-    const submissionProjectId = match ? match[1] : null;
-    const scope: Scope = submissionProjectId ? 'project' : 'private';
-    addInspection(formData, scope, submissionProjectId);
-  };
-
-  const handleAddPtw = (formData: any) => {
-    const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
-    const submissionProjectId = match ? match[1] : null;
-    const scope: Scope = submissionProjectId ? 'project' : 'private';
-    addPtw(formData, scope, submissionProjectId);
-  };
-
 
   return (
     <>
@@ -128,6 +108,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   variants={variants}
                   transition={{ duration: 0.3, ease: 'easeInOut' }}
                 >
+                  {/* Don't render children if profile dialog is forced open */}
                   {!isProfileDialogOpen && children}
                 </motion.div>
               </AnimatePresence>
@@ -148,18 +129,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SubmitObservationDialog
         isOpen={isObservationDialogOpen}
         onOpenChange={setObservationDialogOpen}
-        onAddObservation={handleAddObservation}
         project={currentProject}
       />
       <SubmitInspectionDialog
         isOpen={isInspectionDialogOpen}
         onOpenChange={setInspectionDialogOpen}
-        onAddInspection={handleAddInspection}
+        project={currentProject}
       />
       <SubmitPtwDialog
         isOpen={isPtwDialogOpen}
         onOpenChange={setPtwDialogOpen}
-        onAddPtw={handleAddPtw}
+        project={currentProject}
       />
     </>
   );

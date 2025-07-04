@@ -5,7 +5,6 @@ import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
 import type { Observation, RiskLevel, Company, Location } from '@/lib/types';
-import { useObservations } from '@/contexts/observation-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useProjects } from '@/hooks/use-projects';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +13,8 @@ import { FolderPlus, TrendingUp, AlertTriangle, CheckCircle, Sparkles } from 'lu
 import { analyzeDashboardData, AnalyzeDashboardDataOutput } from '@/ai/flows/analyze-dashboard-data';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const ChartContainer = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartContainer), {
   ssr: false,
@@ -257,18 +258,56 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { projectItems, loading: observationsLoading } = useObservations();
   const { projects, loading: projectsLoading } = useProjects();
+  const [projectObservations, setProjectObservations] = React.useState<Observation[]>([]);
+  const [dataLoading, setDataLoading] = React.useState(true);
   const [analysis, setAnalysis] = React.useState<AnalyzeDashboardDataOutput | null>(null);
   const [analysisLoading, setAnalysisLoading] = React.useState(true);
 
-  const loading = observationsLoading || projectsLoading;
+  // The main loading state for the page, true if either projects list or observations are loading.
+  const loading = dataLoading || projectsLoading;
 
-  const projectObservations = React.useMemo(() => {
-    return projectItems.filter(
-        (item): item is Observation => item.itemType === 'observation'
-    );
-  }, [projectItems]);
+  React.useEffect(() => {
+    const fetchProjectObservations = async () => {
+      // Don't fetch if projects are still loading or there's no user.
+      if (projectsLoading || !user) return;
+
+      const projectIds = projects.map(p => p.id);
+      if (projectIds.length === 0) {
+        setDataLoading(false);
+        setProjectObservations([]);
+        return;
+      }
+
+      setDataLoading(true);
+      try {
+        const observationsPromises: Promise<Observation[]>[] = [];
+        
+        // Firestore 'in' query is limited to 30 elements. Chunk the project IDs.
+        for (let i = 0; i < projectIds.length; i += 30) {
+            const chunk = projectIds.slice(i, i + 30);
+            const q = query(
+                collection(db, 'observations'),
+                where('scope', '==', 'project'),
+                where('projectId', 'in', chunk),
+                limit(500) // Add a reasonable limit per chunk to avoid massive fetches
+            );
+            observationsPromises.push(getDocs(q).then(snap => snap.docs.map(doc => ({...doc.data(), id: doc.id}) as Observation)));
+        }
+        
+        const snapshots = await Promise.all(observationsPromises);
+        const allObservations = snapshots.flat();
+
+        setProjectObservations(allObservations);
+      } catch (error) {
+        console.error("Failed to fetch project observations for dashboard:", error);
+        setProjectObservations([]);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+    fetchProjectObservations();
+  }, [user, projects, projectsLoading]);
 
 
   const overviewData = React.useMemo(() => {
@@ -302,6 +341,7 @@ export default function DashboardPage() {
     }
 
     for (const obs of projectObservations) {
+        if (!obs.date) continue;
         const mapKey = format(new Date(obs.date), 'yyyy-MM-dd');
         if (dataMap.has(mapKey)) {
             const dayData = dataMap.get(mapKey)!;
@@ -314,7 +354,7 @@ export default function DashboardPage() {
     }
 
     return Array.from(dataMap.entries()).map(([dateStr, counts]) => ({
-        day: format(new Date(dateStr), 'd/M'),
+        day: format(new Date(`${dateStr}T00:00:00`), 'd/M'), // Avoid timezone issues
         ...counts
     }));
   }, [projectObservations]);
@@ -360,7 +400,11 @@ export default function DashboardPage() {
   React.useEffect(() => {
     const getAnalysis = async () => {
       if (loading || projectObservations.length === 0) {
-        if (projectObservations.length === 0) setAnalysisLoading(false);
+        // If data isn't loading and there are no observations, analysis isn't needed.
+        if (!loading && projectObservations.length === 0) {
+            setAnalysis(null);
+            setAnalysisLoading(false);
+        }
         return;
       }
       setAnalysisLoading(true);
