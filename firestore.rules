@@ -2,8 +2,9 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // This rule is intentionally permissive for the prototyping phase.
-    // It allows any authenticated user to read or write any document.
+    // Aturan yang disederhanakan secara radikal untuk mengizinkan semua akses baca/tulis
+    // bagi pengguna yang sudah terautentikasi (login).
+    // Ini menghilangkan semua potensi error yang disebabkan oleh izin.
     match /{document=**} {
       allow read, write: if request.auth != null;
     }

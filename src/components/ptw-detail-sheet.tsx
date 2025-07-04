@@ -28,7 +28,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getPtwById, updateItem, removeItem } = useObservations();
+  const { getPtwById } = useObservations();
   
   const ptw = ptwId ? getPtwById(ptwId) : null;
 
@@ -40,16 +40,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
 
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
   const canApprove = ptw.status === 'Pending Approval' && user?.uid !== ptw.userId;
-
-  const handleApproveClick = () => {
-    setApproveDialogOpen(true);
-  };
   
-  const handleApprovalSuccess = (updatedPtw: Ptw) => {
-    updateItem(updatedPtw);
-    setApproveDialogOpen(false); // Close the dialog after success
-  };
-
   const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) => (
     <div className="flex items-start gap-4">
         <Icon className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
@@ -60,12 +51,6 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
     </div>
   );
   
-  const handleSuccessDelete = () => {
-    if (!ptwId) return;
-    removeItem(ptwId);
-    handleCloseSheet();
-  }
-
   return (
     <>
       <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -142,7 +127,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
               
               {canApprove && (
                 <div className="pt-6 mt-6 border-t">
-                  <Button type="button" onClick={handleApproveClick} className="w-full">
+                  <Button type="button" onClick={() => setApproveDialogOpen(true)} className="w-full">
                     <PenSquare className="mr-2 h-4 w-4" />
                     Review & Setujui PTW
                   </Button>
@@ -157,14 +142,13 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
               isOpen={isApproveDialogOpen}
               onOpenChange={setApproveDialogOpen}
               ptw={ptw}
-              onSuccess={handleApprovalSuccess}
           />
       )}
       <DeletePtwDialog
         isOpen={isDeleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         ptw={ptw}
-        onSuccess={handleSuccessDelete}
+        onSuccess={() => onOpenChange(false)}
       />
     </>
   );

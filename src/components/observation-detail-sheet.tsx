@@ -21,7 +21,6 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DeleteObservationDialog } from './delete-observation-dialog';
 import { useObservations } from '@/hooks/use-observations';
-import { usePathname } from 'next/navigation';
 import { runDeeperAnalysis, shareObservationToPublic, retryAiAnalysis } from '@/lib/actions/item-actions';
 import { useToast } from '@/hooks/use-toast';
 
@@ -58,7 +57,7 @@ interface ObservationDetailSheetProps {
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getObservationById, handleLikeToggle, handleViewCount, updateItem, addItem, removeItem } = useObservations();
+  const { getObservationById, handleLikeToggle, handleViewCount } = useObservations();
   const { toast } = useToast();
 
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
@@ -90,15 +89,12 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
   const categoryDefinition = categoryDefinitions[observation.category];
 
-  const handleTakeAction = () => setActionDialogOpen(true);
-
   const handleShare = async () => {
     if (!observation || !userProfile) return;
     setIsSharing(true);
     try {
-        const { updatedOriginal, newPublicItem } = await shareObservationToPublic(observation, userProfile);
-        updateItem(updatedOriginal);
-        addItem(newPublicItem);
+        await shareObservationToPublic(observation, userProfile);
+        // No optimistic update needed. The onSnapshot listener will add the new public item.
         toast({ title: 'Berhasil Dibagikan', description: 'Laporan Anda telah dibagikan ke feed publik.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Gagal Membagikan', description: 'Terjadi kesalahan saat mencoba membagikan.' });
@@ -110,8 +106,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const handleRetryAnalysis = async () => {
     if (!observation) return;
     try {
-      const updatedItem = await retryAiAnalysis(observation);
-      if (updatedItem) updateItem(updatedItem);
+      await retryAiAnalysis(observation);
       toast({ title: 'Analisis diulang', description: 'Analisis AI telah dimulai ulang untuk laporan ini.' });
     } catch (error) {
        toast({ variant: 'destructive', title: 'Gagal Mencoba Ulang Analisis' });
@@ -122,8 +117,8 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     if (!observation || !userProfile) return;
     setIsAnalyzing(true);
     try {
-      const updatedObservation = await runDeeperAnalysis(observation.id);
-      updateItem(updatedObservation);
+      await runDeeperAnalysis(observation.id);
+      // No optimistic update needed. onSnapshot will update the UI.
       toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.'})
@@ -131,12 +126,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
         setIsAnalyzing(false);
     }
   }
-
-  const handleSuccessDelete = () => {
-    if (!observationId) return;
-    removeItem(observationId);
-    handleCloseSheet();
-  };
 
   const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;
   const hasDeepAnalysis = observation.aiRisks && observation.aiObserverSkillRating;
@@ -443,7 +432,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
         </ScrollArea>
         {canTakeAction && (
           <SheetFooter className="p-4 border-t mt-auto">
-            <Button type="button" onClick={handleTakeAction} className="w-full">
+            <Button type="button" onClick={() => setActionDialogOpen(true)} className="w-full">
               <Gavel className="mr-2 h-4 w-4" />
               Ambil Tindakan & Selesaikan
             </Button>
@@ -456,7 +445,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
         isOpen={isDeleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         observation={observation}
-        onSuccess={handleSuccessDelete}
+        onSuccess={handleCloseSheet}
     />
 
     {mode !== 'public' && observation && (

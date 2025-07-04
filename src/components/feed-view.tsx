@@ -270,7 +270,7 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const { items, isLoading, hasMore, fetchMoreItems, viewType, setViewType, handleLikeToggle, getObservationById, removeItem } = useObservations();
+  const { items, isLoading, hasMore, fetchMoreItems, viewType, setViewType, handleLikeToggle, getObservationById } = useObservations();
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -339,8 +339,9 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
     setDeleteMultiOpen(true);
   }
   
-  const handleDeleteSuccess = (deletedIds: string[]) => {
-    deletedIds.forEach(id => removeItem(id));
+  const handleDeleteSuccess = () => {
+    // The onSnapshot listener will handle UI updates.
+    // We just need to exit selection mode.
     setIsSelectionMode(false);
     setSelectedIds(new Set());
     setItemsToDelete([]);

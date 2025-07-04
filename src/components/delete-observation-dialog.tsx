@@ -42,6 +42,7 @@ export function DeleteObservationDialog({
         title: 'Berhasil Dihapus',
         description: `Laporan observasi telah berhasil dihapus.`,
       });
+      // The onSnapshot listener will handle UI updates.
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {

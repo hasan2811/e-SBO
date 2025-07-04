@@ -53,7 +53,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { addItem } = useObservations();
+  // We no longer need addItem from useObservations
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -192,7 +192,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         const docRef = await addDoc(collection(db, "observations"), newObservationData);
         
         const finalObservation = { ...newObservationData, id: docRef.id };
-        addItem(finalObservation);
+        
+        // No longer call addItem here. The onSnapshot listener will handle it.
         
         if (userProfile.aiEnabled ?? true) {
             triggerObservationAnalysis(finalObservation).catch(error => {
@@ -201,7 +202,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         } else {
             const observationDocRef = doc(db, 'observations', finalObservation.id);
             await updateDoc(observationDocRef, { aiStatus: 'n/a' });
-            addItem({ ...finalObservation, aiStatus: 'n/a' });
         }
 
 

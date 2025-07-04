@@ -21,7 +21,7 @@ interface DeleteMultipleDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   itemsToDelete: AllItems[];
-  onSuccess: (deletedIds: string[]) => void;
+  onSuccess: () => void;
 }
 
 export function DeleteMultipleDialog({
@@ -38,12 +38,13 @@ export function DeleteMultipleDialog({
     
     setIsDeleting(true);
     try {
-      const { deletedIds } = await deleteMultipleItemsAction(itemsToDelete);
+      await deleteMultipleItemsAction(itemsToDelete);
       toast({
         title: 'Berhasil Dihapus',
         description: `${itemsToDelete.length} item telah berhasil dihapus.`,
       });
-      onSuccess(deletedIds);
+      // The onSnapshot listener will handle UI updates.
+      onSuccess();
       onOpenChange(false);
     } catch (error) {
       toast({

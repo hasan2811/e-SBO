@@ -7,14 +7,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Wrench, Sparkles, Wand2 } from 'lucide-react';
-import { useObservations } from '@/hooks/use-observations';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { triggerInspectionAnalysis } from '@/lib/actions/item-actions';
 import { useDebounce } from 'use-debounce';
 import { assistInspection } from '@/ai/flows/assist-inspection-flow';
-import { cn } from '@/lib/utils';
 
 import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope, AssistInspectionOutput } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -56,7 +54,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { addItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -179,7 +176,8 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
 
         const docRef = await addDoc(collection(db, "inspections"), newInspectionData);
         const newInspection = { ...newInspectionData, id: docRef.id };
-        addItem(newInspection);
+        
+        // No longer call addItem here. The onSnapshot listener will handle it.
 
         if (userProfile.aiEnabled ?? true) {
             triggerInspectionAnalysis(newInspection).catch(error => {
@@ -188,7 +186,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         } else {
             const inspectionDocRef = doc(db, 'inspections', newInspection.id);
             await updateDoc(inspectionDocRef, { aiStatus: 'n/a' });
-            addItem({ ...newInspection, aiStatus: 'n/a' });
         }
 
         toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda telah berhasil disimpan.` });

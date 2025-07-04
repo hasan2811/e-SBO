@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -41,6 +42,7 @@ export function DeleteInspectionDialog({
         title: 'Berhasil Dihapus',
         description: `Laporan inspeksi telah berhasil dihapus.`,
       });
+      // The onSnapshot listener will handle UI updates.
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {

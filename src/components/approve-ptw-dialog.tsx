@@ -16,17 +16,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, PenSquare, Trash2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { approvePtw as approvePtwAction } from '@/lib/actions/item-actions';
 
 interface ApprovePtwDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   ptw: Ptw;
-  onSuccess?: (updatedPtw: Ptw) => void;
 }
 
-export function ApprovePtwDialog({ isOpen, onOpenChange, ptw, onSuccess }: ApprovePtwDialogProps) {
+export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const sigCanvasRef = React.useRef<SignatureCanvas>(null);
   const { toast } = useToast();
@@ -50,7 +48,7 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw, onSuccess }: Appro
     try {
       const signatureDataUrl = sigCanvasRef.current?.getTrimmedCanvas().toDataURL('image/png') || '';
       
-      const updatedPtw = await approvePtwAction({
+      await approvePtwAction({
           ptwId: ptw.id, 
           signatureDataUrl, 
           approverName: userProfile.displayName, 
@@ -61,7 +59,7 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw, onSuccess }: Appro
         title: 'PTW Approved!',
         description: `Permit ${ptw.referenceId} has been successfully approved.`,
       });
-      onSuccess?.(updatedPtw);
+      // No longer call onSuccess. The onSnapshot listener will handle the UI update.
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to approve PTW:', error);

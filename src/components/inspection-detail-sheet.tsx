@@ -31,7 +31,7 @@ interface InspectionDetailSheetProps {
 export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getInspectionById, updateItem, removeItem } = useObservations();
+  const { getInspectionById } = useObservations();
   const { toast } = useToast();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
@@ -52,8 +52,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   const handleRetry = async () => {
     if (!inspection) return;
     try {
-        const updatedItem = await retryAiAnalysis(inspection);
-        if (updatedItem) updateItem(updatedItem);
+        await retryAiAnalysis(inspection);
         toast({ title: 'Analisis diulang', description: 'Analisis AI telah dimulai ulang untuk laporan ini.' });
     } catch(error) {
         toast({ variant: 'destructive', title: 'Gagal Mencoba Ulang Analisis' });
@@ -64,8 +63,8 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
     if (!inspection || !userProfile) return;
     setIsAnalyzing(true);
     try {
-        const updatedInspection = await runDeeperInspectionAnalysis(inspection.id);
-        updateItem(updatedInspection);
+        await runDeeperInspectionAnalysis(inspection.id);
+        // No optimistic update needed. onSnapshot will update the UI.
         toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.' });
@@ -84,12 +83,6 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
       ))}
     </div>
   );
-  
-  const handleSuccessDelete = () => {
-    if (!inspectionId) return;
-    removeItem(inspectionId);
-    handleCloseSheet();
-  }
 
   return (
     <>
@@ -298,7 +291,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
         isOpen={isDeleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         inspection={inspection}
-        onSuccess={handleSuccessDelete}
+        onSuccess={handleCloseSheet}
       />
       {inspection && (
         <FollowUpInspectionDialog

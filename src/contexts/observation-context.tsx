@@ -12,7 +12,6 @@ import {
   QueryDocumentSnapshot,
   where,
   onSnapshot,
-  Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -28,9 +27,8 @@ interface ObservationContextType {
   hasMore: boolean;
   error: string | null;
   fetchMoreItems: () => void;
-  addItem: (newItem: AllItems) => void;
-  updateItem: (updatedItem: AllItems) => void;
-  removeItem: (itemId: string) => void;
+  // addItem, updateItem, removeItem are removed to prevent race conditions.
+  // The onSnapshot listener is now the single source of truth for UI updates.
   handleLikeToggle: (observationId: string) => Promise<void>;
   handleViewCount: (observationId: string) => void;
   viewType: 'observations' | 'inspections' | 'ptws';
@@ -62,7 +60,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const mode: Scope = pathname.startsWith('/proyek') ? 'project' : pathname.startsWith('/public') ? 'public' : 'private';
   const projectId = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/)?.[1] || null;
 
-  // Realtime listener effect
+  // Realtime listener effect. This is now the ONLY mechanism that updates the item list.
   React.useEffect(() => {
     if ((mode === 'private' || mode === 'project') && !user) {
         setItems([]);
@@ -149,50 +147,26 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }
   }, [hasMore, isLoading, lastVisible, mode, user, projectId, viewType]);
 
-  // These functions now manipulate state that the realtime listener will eventually sync up.
-  // This provides a more optimistic UI update feel but relies on the listener for truth.
-  const addItem = React.useCallback((newItem: AllItems) => {
-    setItems(prevItems => [newItem, ...prevItems]);
-  }, []);
-
-  const updateItem = React.useCallback((updatedItem: AllItems) => {
-    setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
-  }, []);
-  
-  const removeItem = React.useCallback((itemId: string) => {
-    setItems(prev => prev.filter(item => item.id !== itemId));
-  }, []);
+  // Removed addItem, updateItem, removeItem to prevent race conditions.
+  // The onSnapshot listener is now the single source of truth for UI updates.
 
   const handleLikeToggle = React.useCallback(async (observationId: string) => {
     if (!user) return;
-    
-    const itemIndex = items.findIndex(item => item.id === observationId);
-    if (itemIndex === -1 || items[itemIndex].itemType !== 'observation') return;
-
-    const originalObservation = items[itemIndex] as Observation;
-    const hasLiked = (originalObservation.likes || []).includes(user.uid);
-    const newLikes = hasLiked
-      ? (originalObservation.likes || []).filter(uid => uid !== user.uid)
-      : [...(originalObservation.likes || []), user.uid];
-    
-    const updatedObservation = { ...originalObservation, likes: newLikes, likeCount: newLikes.length };
-    updateItem(updatedObservation);
-
+    // We no longer optimistically update the UI here.
+    // The server action will update the DB, and the onSnapshot listener will catch the change.
     try {
         await toggleLike({ docId: observationId, userId: user.uid, collectionName: 'observations' });
     } catch (error) {
         console.error("Failed to sync like with server:", error);
-        updateItem(originalObservation); // Revert on failure
+        // No need to revert, as the UI was not changed.
     }
-  }, [user, items, updateItem]);
+  }, [user]);
   
   const handleViewCount = React.useCallback((observationId: string) => {
-      const item = items.find(i => i.id === observationId);
-      if (item && item.itemType === 'observation') {
-          updateItem({ ...item, viewCount: (item.viewCount || 0) + 1 });
-      }
+      // No optimistic update. Just fire-and-forget the server action.
+      // The onSnapshot listener will eventually sync the view count.
       incrementViewCount({ docId: observationId, collectionName: 'observations' }).catch(console.error);
-  }, [items, updateItem]);
+  }, []);
   
   const getObservationById = React.useCallback((id: string): Observation | undefined => {
     return items.find(item => item.id === id && item.itemType === 'observation') as Observation | undefined;
@@ -209,12 +183,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const value = React.useMemo(() => ({
     items, isLoading, hasMore, error,
     fetchMoreItems,
-    addItem, updateItem, removeItem,
     handleLikeToggle, handleViewCount,
     viewType, setViewType, getObservationById, getInspectionById, getPtwById
   }), [
       items, isLoading, hasMore, error,
-      fetchMoreItems, addItem, updateItem, removeItem,
+      fetchMoreItems,
       handleLikeToggle, handleViewCount,
       viewType, getObservationById, getInspectionById, getPtwById
   ]);

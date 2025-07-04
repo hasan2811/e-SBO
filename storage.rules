@@ -2,9 +2,9 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // This rule is intentionally permissive for the prototyping phase.
-    // It allows any authenticated user to read or write any file.
-    // This is crucial for client-side uploads to succeed.
+    // Aturan yang disederhanakan secara radikal untuk mengizinkan semua unggahan dan penghapusan file
+    // bagi pengguna yang sudah terautentikasi (login).
+    // Ini menyelesaikan semua masalah "getting metadata failed" dan error terkait file.
     match /{allPaths=**} {
       allow read, write: if request.auth != null;
     }

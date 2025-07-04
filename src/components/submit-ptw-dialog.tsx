@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Upload, FileSignature, FileText } from 'lucide-react';
-import { useObservations } from '@/hooks/use-observations';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
@@ -48,7 +47,6 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   const [fileName, setFileName] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { addItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -122,9 +120,8 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
             status: 'Pending Approval',
         };
 
-        const docRef = await addDoc(collection(db, 'ptws'), newPtwData);
-        const newPtw = { ...newPtwData, id: docRef.id };
-        addItem(newPtw);
+        await addDoc(collection(db, 'ptws'), newPtwData);
+        // No longer call addItem here. The onSnapshot listener will handle it.
         
         toast({ title: 'PTW Diajukan', description: `Izin kerja Anda telah berhasil disimpan.` });
         onOpenChange(false);
