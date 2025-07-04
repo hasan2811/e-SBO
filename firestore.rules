@@ -1,10 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow any authenticated user to read and write to any document.
-    // This trusts the front-end application to handle authorization logic.
+    // WARNING: This rule allows any client to read and write to the entire database.
+    // This is set to the absolute minimum as requested to resolve permission issues,
+    // trusting all security logic to the front-end.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
