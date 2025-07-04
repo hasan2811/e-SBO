@@ -248,21 +248,22 @@ export const SummarizeObservationDataInputSchema = z.object({
 });
 export type SummarizeObservationDataInput = z.infer<typeof SummarizeObservationDataInputSchema>;
 
-export const SummarizeObservationDataOutputSchema = z.object({
-  summary: z.string().describe('Ringkasan singkat dari temuan inti dalam Bahasa Indonesia.'),
-  suggestedCategory: z.enum(OBSERVATION_CATEGORIES).describe('Saran kategori berdasarkan analisis temuan.'),
-  suggestedRiskLevel: z.enum(RISK_LEVELS).describe('Saran tingkat risiko (Low, Medium, High, Critical) berdasarkan analisis temuan.'),
-  aiObserverSkillRating: z.number().min(1).max(5).describe('Rating of the observer skill from 1 to 5 based on the quality of the report.'),
-  aiObserverSkillExplanation: z.string().describe('A brief explanation for the observer skill rating.'),
+// This is now only for the FAST classification phase.
+export const FastClassificationOutputSchema = z.object({
+  suggestedCategory: z.enum(OBSERVATION_CATEGORIES),
+  suggestedRiskLevel: z.enum(RISK_LEVELS),
 });
-export type SummarizeObservationDataOutput = z.infer<typeof SummarizeObservationDataOutputSchema>;
+export type FastClassificationOutput = z.infer<typeof FastClassificationOutputSchema>;
 
-// New schema for the deeper, on-demand analysis
+// This now includes all fields from the background/deeper analysis.
 export const DeeperAnalysisOutputSchema = z.object({
-    risks: z.string().describe('Analisis potensi bahaya dan risiko dari temuan, dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
-    suggestedActions: z.string().describe('Saran tindakan perbaikan atau pengecekan lebih lanjut, dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
-    rootCauseAnalysis: z.string().describe('Analisis singkat mengenai kemungkinan akar penyebab masalah (Bahasa Indonesia).'),
-    relevantRegulations: z.string().describe('Daftar potensi peraturan/standar keselamatan yang relevan (SNI, ISO, OSHA, dll.) dalam bentuk poin-poin (Bahasa Indonesia).'),
+    summary: z.string().describe('A very brief, one-sentence summary of the observation in Bahasa Indonesia.'),
+    aiObserverSkillRating: z.number().min(1).max(5).describe('Rating of the observer skill from 1 to 5.'),
+    aiObserverSkillExplanation: z.string().describe('A brief explanation for the observer skill rating in Bahasa Indonesia.'),
+    risks: z.string().describe('Bulleted list of potential dangers and safety risks (Bahasa Indonesia).'),
+    suggestedActions: z.string().describe('Bulleted list of clear, actionable recommendations (Bahasa Indonesia).'),
+    rootCauseAnalysis: z.string().describe('Brief, one-sentence analysis of the most likely root cause (Bahasa Indonesia).'),
+    relevantRegulations: z.string().describe('Bulleted list of *types* of applicable safety standards (Bahasa Indonesia).'),
 });
 export type DeeperAnalysisOutput = z.infer<typeof DeeperAnalysisOutputSchema>;
 
