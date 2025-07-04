@@ -143,21 +143,21 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     fetchItems(true);
   }, [mode, projectId, viewType, user, fetchItems]);
 
-  const updateItem = (updatedItem: AllItems) => {
+  const updateItem = React.useCallback((updatedItem: AllItems) => {
     setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
-  };
+  }, []);
   
-  const removeItem = (itemId: string) => {
+  const removeItem = React.useCallback((itemId: string) => {
     setItems(prevItems => prevItems.filter(item => item.id !== itemId));
-  };
+  }, []);
   
-  const removeMultipleItems = async (itemsToRemove: AllItems[]) => {
+  const removeMultipleItems = React.useCallback(async (itemsToRemove: AllItems[]) => {
       await deleteMultipleItems(itemsToRemove);
       const idsToRemove = new Set(itemsToRemove.map(i => i.id));
       setItems(prev => prev.filter(item => !idsToRemove.has(item.id)));
-  };
+  }, []);
 
-  const handleLikeToggle = async (observation: Observation) => {
+  const handleLikeToggle = React.useCallback(async (observation: Observation) => {
       if (!user) { toast({ variant: 'destructive', title: 'You must be logged in to like.' }); return; }
       
       const originalLikes = observation.likes || [];
@@ -172,43 +172,48 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
           toast({ variant: 'destructive', title: 'Failed to process like.' });
           updateItem(observation);
       }
-  };
+  }, [user, toast, updateItem]);
   
-  const handleViewCount = (observation: Observation) => {
+  const handleViewCount = React.useCallback((observation: Observation) => {
       updateItem({ ...observation, viewCount: (observation.viewCount || 0) + 1 });
       incrementViewCount({ docId: observation.id, collectionName: 'observations' });
-  };
+  }, [updateItem]);
   
-  const shareToPublic = async (observation: Observation) => {
+  const shareToPublic = React.useCallback(async (observation: Observation) => {
       if (!userProfile) {
           toast({ variant: 'destructive', title: 'User profile not loaded.' });
           return;
       }
       const updatedItem = await shareObservationToPublic(observation, userProfile);
       if (updatedItem) updateItem(updatedItem);
-  };
+  }, [userProfile, toast, updateItem]);
   
-  const retryAnalysis = async (item: Observation) => {
+  const retryAnalysis = React.useCallback(async (item: Observation) => {
       const updatedItem = await retryAiAnalysis(item);
       if (updatedItem) updateItem(updatedItem as Observation);
-  };
+  }, [updateItem]);
   
-  const updateStatus = async (observation: Observation, actionData: any) => {
+  const updateStatus = React.useCallback(async (observation: Observation, actionData: any) => {
     if (!user || !userProfile) return;
     const updatedItem = await updateObservationStatus({ observationId: observation.id, actionData, user: userProfile });
     if(updatedItem) updateItem(updatedItem);
-  };
+  }, [user, userProfile, updateItem]);
 
-  const getObservationById = (id: string): Observation | undefined => {
+  const getObservationById = React.useCallback((id: string): Observation | undefined => {
     return items.find(item => item.id === id && item.itemType === 'observation') as Observation | undefined;
-  };
+  }, [items]);
 
-  const value = {
+  const value = React.useMemo(() => ({
     items, isLoading, hasMore, error, warning,
     fetchItems, updateItem, removeItem, removeMultipleItems,
     handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateStatus,
     viewType, setViewType, getObservationById
-  };
+  }), [
+      items, isLoading, hasMore, error, warning,
+      fetchItems, updateItem, removeItem, removeMultipleItems,
+      handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateStatus,
+      viewType, getObservationById
+  ]);
 
   return <ObservationContext.Provider value={value}>{children}</ObservationContext.Provider>;
 }
