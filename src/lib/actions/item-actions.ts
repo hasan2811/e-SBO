@@ -21,8 +21,9 @@ import {
 import { triggerSmartNotify } from '@/ai/flows/smart-notify-flow';
 import { format } from 'date-fns';
 
+
 // ==================================
-// AI ANALYSIS HELPERS
+// AI ANALYSIS HELPERS (BACKGROUND TASKS)
 // ==================================
 const _runObservationAiAnalysis = async (observation: Observation) => {
   const observationDocRef = doc(db, 'observations', observation.id);
@@ -45,11 +46,10 @@ const _runObservationAiAnalysis = async (observation: Observation) => {
       aiStatus: 'completed' as const,
     };
     await updateDoc(observationDocRef, aiData);
-    return { ...observation, ...aiData };
+    // Don't return here, this is a background task. The UI is already updated.
   } catch (error) {
-    console.error("Failed to generate AI summary for observation:", error);
+    console.error(`AI analysis failed for observation ${observation.id}:`, error);
     await updateDoc(observationDocRef, { aiStatus: 'failed' });
-    return { ...observation, aiStatus: 'failed' as const };
   }
 };
 
@@ -67,11 +67,9 @@ const _runInspectionAiAnalysis = async (inspection: Inspection) => {
         aiStatus: 'completed' as const,
     };
     await updateDoc(inspectionDocRef, aiData);
-    return { ...inspection, ...aiData };
   } catch (error) {
-    console.error("Failed to generate AI analysis for inspection:", error);
+    console.error(`AI analysis failed for inspection ${inspection.id}:`, error);
     await updateDoc(inspectionDocRef, { aiStatus: 'failed' });
-    return { ...inspection, aiStatus: 'failed' as const };
   }
 };
 
@@ -79,11 +77,21 @@ const _runInspectionAiAnalysis = async (inspection: Inspection) => {
 // ==================================
 // CREATE ACTIONS
 // ==================================
-export async function createObservation(observationData: Omit<Observation, 'id'>): Promise<Observation> {
+type CreateObservationPayload = Omit<Observation, 'id' | 'itemType' | 'referenceId' | 'status' | 'aiStatus' | 'likes' | 'likeCount' | 'commentCount' | 'viewCount' | 'isSharedPublicly' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate'>;
+export async function createObservation(payload: CreateObservationPayload): Promise<Observation> {
+    const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const observationData: Omit<Observation, 'id'> = {
+        itemType: 'observation',
+        ...payload,
+        referenceId,
+        status: 'Pending',
+        aiStatus: 'processing',
+        likes: [], likeCount: 0, commentCount: 0, viewCount: 0,
+    };
     const docRef = await addDoc(collection(db, 'observations'), observationData);
     const newObservation = { ...observationData, id: docRef.id };
 
-    // Trigger AI analysis and notifications in the background. Don't block the UI response.
+    // Trigger AI tasks in the background without blocking the response.
     _runObservationAiAnalysis(newObservation).catch(console.error);
     if (newObservation.projectId) {
         triggerSmartNotify({
@@ -95,30 +103,41 @@ export async function createObservation(observationData: Omit<Observation, 'id'>
         }).catch(console.error);
     }
     
-    // Revalidate the path to ensure new data is shown on server components and future navigations.
     revalidatePath(newObservation.projectId ? `/proyek/${newObservation.projectId}` : '/private');
     revalidatePath('/tasks');
-
-    return newObservation;
+    return newObservation; // Return immediately
 }
 
-export async function createInspection(inspectionData: Omit<Inspection, 'id'>): Promise<Inspection> {
+
+type CreateInspectionPayload = Omit<Inspection, 'id' | 'itemType' | 'referenceId' | 'aiStatus' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate'>;
+export async function createInspection(payload: CreateInspectionPayload): Promise<Inspection> {
+    const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const inspectionData: Omit<Inspection, 'id'> = {
+        itemType: 'inspection',
+        ...payload,
+        referenceId,
+        aiStatus: 'processing',
+    };
     const docRef = await addDoc(collection(db, 'inspections'), inspectionData);
     const newInspection = { ...inspectionData, id: docRef.id };
 
     _runInspectionAiAnalysis(newInspection).catch(console.error);
-    
     revalidatePath(newInspection.projectId ? `/proyek/${newInspection.projectId}` : '/private');
-    
     return newInspection;
 }
 
-export async function createPtw(ptwData: Omit<Ptw, 'id'>): Promise<Ptw> {
+type CreatePtwPayload = Omit<Ptw, 'id' | 'itemType' | 'referenceId' | 'status' | 'approver' | 'approvedDate' | 'rejectionReason' | 'signatureDataUrl'>;
+export async function createPtw(payload: CreatePtwPayload): Promise<Ptw> {
+    const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const ptwData: Omit<Ptw, 'id'> = {
+        itemType: 'ptw',
+        ...payload,
+        referenceId,
+        status: 'Pending Approval',
+    };
     const docRef = await addDoc(collection(db, 'ptws'), ptwData);
     const newPtw = { ...ptwData, id: docRef.id };
-    
     revalidatePath(newPtw.projectId ? `/proyek/${newPtw.projectId}` : '/private');
-    
     return newPtw;
 }
 
@@ -136,11 +155,9 @@ export async function updateObservationStatus({ observationId, actionData, user 
   };
   
   const observationDocRef = doc(db, 'observations', observationId);
-
   if (actionData.actionTakenPhotoUrl) {
       updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
   }
-
   await updateDoc(observationDocRef, updatedData);
   const updatedDoc = await getDoc(observationDocRef);
   
@@ -152,18 +169,16 @@ export async function updateObservationStatus({ observationId, actionData, user 
 export async function updateInspectionStatus({ inspectionId, actionData, user }: { inspectionId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, user: UserProfile }) {
   const closerName = `${user.displayName} (${user.position || 'N/A'})`;
   const updatedData: Partial<Inspection> = {
-      status: 'Pass', // Completing a follow-up means the equipment now passes inspection
+      status: 'Pass',
       actionTakenDescription: actionData.actionTakenDescription,
       closedBy: closerName,
       closedDate: new Date().toISOString(),
   };
 
   const inspectionDocRef = doc(db, 'inspections', inspectionId);
-
   if (actionData.actionTakenPhotoUrl) {
       updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
   }
-  
   await updateDoc(inspectionDocRef, updatedData);
   const updatedDoc = await getDoc(inspectionDocRef);
   
@@ -196,6 +211,7 @@ export async function deleteItem(item: AllItems) {
   }
   await deleteDoc(docRef);
   revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private');
+  revalidatePath('/public');
   revalidatePath('/tasks');
 }
 
@@ -206,7 +222,6 @@ export async function deleteMultipleItems(items: AllItems[]) {
     items.forEach(item => {
       const docRef = doc(db, `${item.itemType}s`, item.id);
       batch.delete(docRef);
-
       if (item.itemType === 'observation' || item.itemType === 'inspection') {
         if (item.photoUrl) filesToDelete.push(item.photoUrl);
         if (item.actionTakenPhotoUrl) filesToDelete.push(item.actionTakenPhotoUrl);
@@ -215,10 +230,11 @@ export async function deleteMultipleItems(items: AllItems[]) {
       }
     });
 
-    await Promise.all(filesToDelete.map(url => deleteFile(url)));
+    await Promise.all(filesToDelete.map(url => url ? deleteFile(url) : Promise.resolve()));
     await batch.commit();
     
     revalidatePath('/private');
+    revalidatePath('/public');
     const projectIds = new Set(items.map(i => i.projectId).filter(Boolean));
     projectIds.forEach(id => revalidatePath(`/proyek/${id}`));
     revalidatePath('/tasks');
@@ -230,11 +246,14 @@ export async function deleteMultipleItems(items: AllItems[]) {
 export async function retryAiAnalysis(item: Observation | Inspection) {
     const docRef = doc(db, `${item.itemType}s`, item.id);
     await updateDoc(docRef, { aiStatus: 'processing' });
-    let updatedItem;
+    let updatedItem: Observation | Inspection;
     if (item.itemType === 'observation') {
-        updatedItem = await _runObservationAiAnalysis(item as Observation);
+        // We don't await this, but we can refetch the document to return the 'processing' state
+        _runObservationAiAnalysis(item as Observation);
+        updatedItem = { ...item, aiStatus: 'processing' };
     } else {
-        updatedItem = await _runInspectionAiAnalysis(item as Inspection);
+        _runInspectionAiAnalysis(item as Inspection);
+        updatedItem = { ...item, aiStatus: 'processing' };
     }
     revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private');
     return updatedItem;
@@ -245,11 +264,11 @@ export async function shareObservationToPublic(observation: Observation, userPro
       throw new Error("This observation has already been shared.");
   }
   
-  const publicObservationData: Partial<Observation> = {
+  const publicObservationData = {
       ...observation,
       date: new Date().toISOString(),
-      status: 'Pending',
-      scope: 'public',
+      status: 'Pending' as const,
+      scope: 'public' as const,
       projectId: null,
       originalId: observation.id,
       originalScope: observation.scope,
@@ -259,8 +278,15 @@ export async function shareObservationToPublic(observation: Observation, userPro
       likeCount: 0,
       commentCount: 0,
       viewCount: 0,
+      id: undefined, // Remove id for new doc
+      isSharedPublicly: undefined,
+      actionTakenDescription: undefined,
+      actionTakenPhotoUrl: undefined,
+      closedBy: undefined,
+      closedDate: undefined,
   };
 
+  // Explicitly delete properties that shouldn't be in the new public copy
   delete publicObservationData.id;
   delete publicObservationData.isSharedPublicly;
   delete publicObservationData.actionTakenDescription;

@@ -3,9 +3,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // WARNING: This rule is completely public and allows anyone to read or write to any document.
-    // This is NOT recommended for production environments.
-    // This is set based on the user's explicit request to remove all server-side security.
+    // Aturan ini mengizinkan akses baca dan tulis penuh ke seluruh database.
+    // Ini menghilangkan semua batasan keamanan dari sisi server.
     match /{document=**} {
       allow read, write: if true;
     }

@@ -6,11 +6,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Upload, FileSignature, FileText } from 'lucide-react';
-import { format } from 'date-fns';
 import { useObservations } from '@/hooks/use-observations';
 import { createPtw } from '@/lib/actions/item-actions';
 
-import type { Ptw, Location, Project, Scope, Ptw as PtwType } from '@/lib/types';
+import type { Ptw, Location, Project, Scope } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
@@ -94,7 +93,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   };
 
   const onSubmit = async (values: FormValues) => {
-    if (!user || !userProfile) return;
+    if (!user || !userProfile || !values.jsaPdf) return;
     setIsSubmitting(true);
     
     try {
@@ -104,24 +103,20 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
         const jsaPdfUrl = await uploadFile(values.jsaPdf, 'ptw-jsa', userProfile.uid, () => {}, projectId);
 
         const scope: Scope = projectId ? 'project' : 'private';
-        const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
-        const newPtwData: Omit<PtwType, 'id'> = {
-            itemType: 'ptw',
+        
+        const payload = {
             userId: userProfile.uid,
             date: new Date().toISOString(),
             submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-            location: values.location,
+            location: values.location as Location,
             workDescription: values.workDescription,
             contractor: values.contractor,
             jsaPdfUrl: jsaPdfUrl,
-            status: 'Pending Approval',
-            referenceId,
             scope,
             projectId,
         };
 
-        const newPtw = await createPtw(newPtwData);
+        const newPtw = await createPtw(payload);
         addItem(newPtw);
         
         toast({ title: 'PTW Diajukan', description: `Izin kerja Anda telah berhasil disimpan.` });

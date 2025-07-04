@@ -7,11 +7,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Wrench } from 'lucide-react';
-import { format } from 'date-fns';
 import { useObservations } from '@/hooks/use-observations';
 import { createInspection } from '@/lib/actions/item-actions';
 
-import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope, Inspection as InspectionType } from '@/lib/types';
+import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
@@ -107,7 +106,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   };
 
   const onSubmit = async (values: FormValues) => {
-    if (!user || !userProfile) return;
+    if (!user || !userProfile || !values.photo) return;
     setIsSubmitting(true);
     
     try {
@@ -117,27 +116,23 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         const photoUrl = await uploadFile(values.photo, 'inspections', userProfile.uid, () => {}, projectId);
         
         const scope: Scope = projectId ? 'project' : 'private';
-        const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-        const newInspectionData: Omit<InspectionType, 'id'> = {
-            itemType: 'inspection',
+        const payload = {
             userId: userProfile.uid,
             date: new Date().toISOString(),
             submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-            location: values.location,
+            location: values.location as Location,
             equipmentName: values.equipmentName,
             equipmentType: values.equipmentType,
             status: values.status,
             findings: values.findings,
             recommendation: values.recommendation,
             photoUrl: photoUrl,
-            referenceId,
             scope,
             projectId,
-            aiStatus: 'processing',
         };
 
-        const newInspection = await createInspection(newInspectionData);
+        const newInspection = await createInspection(payload);
         addItem(newInspection);
 
         toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda telah berhasil disimpan.` });

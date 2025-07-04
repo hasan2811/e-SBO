@@ -34,6 +34,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import { useObservations } from '@/hooks/use-observations';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(1, 'Description cannot be empty.'),
@@ -49,18 +50,17 @@ interface TakeActionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   observation?: Observation;
-  onUpdate: (data: { actionTakenDescription: string; actionTakenPhotoUrl?: string }) => void;
 }
 
 export function TakeActionDialog({
   isOpen,
   onOpenChange,
   observation,
-  onUpdate,
 }: TakeActionDialogProps) {
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { updateObservationStatus } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -149,7 +149,9 @@ export function TakeActionDialog({
         actionTakenPhotoUrl: actionTakenPhotoUrl,
       };
       
-      onUpdate(updatePayload);
+      await updateObservationStatus(observation, updatePayload, userProfile);
+      
+      toast({ title: 'Success', description: 'Observation has been marked as completed.' });
       handleOpenChange(false);
     } catch(error) {
       toast({ variant: 'destructive', title: 'Update Failed', description: error instanceof Error ? error.message : "An unexpected error occurred." });

@@ -12,7 +12,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder, ThumbsUp, MessageCircle, Eye, Info, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose, SheetFooter } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
 import { StarRating } from './star-rating';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
@@ -23,8 +22,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DeleteObservationDialog } from './delete-observation-dialog';
 import { useObservations } from '@/hooks/use-observations';
 import { usePathname } from 'next/navigation';
-import { shareObservationToPublic, retryAiAnalysis as retryAiAnalysisAction } from '@/lib/actions/item-actions';
-
 
 const categoryDefinitions: Record<ObservationCategory, string> = {
   'Safe Zone Position': 'Berada di posisi yang aman terlindung dari bahaya seperti peralatan bergerak, benda jatuh, atau pelepasan energi.',
@@ -50,7 +47,6 @@ const categoryDefinitions: Record<ObservationCategory, string> = {
   'Supervision': 'Memberikan pengawasan yang memadai di lapangan untuk memastikan pekerjaan dilakukan dengan aman sesuai prosedur.',
 };
 
-
 interface ObservationDetailSheetProps {
     observationId: string | null;
     isOpen: boolean;
@@ -59,9 +55,8 @@ interface ObservationDetailSheetProps {
 
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
-  const { user, userProfile } = useAuth();
-  const { getObservationById, handleLikeToggle, handleViewCount, updateObservationStatus, removeItem, updateItem } = useObservations();
-  const { toast } = useToast();
+  const { user } = useAuth();
+  const { getObservationById, handleLikeToggle, handleViewCount, removeItem, shareToPublic, retryAnalysis } = useObservations();
   const pathname = usePathname();
 
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
@@ -90,31 +85,18 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
   const categoryDefinition = categoryDefinitions[observation.category];
 
-  const handleUpdateAction = (data: { actionTakenDescription: string; actionTakenPhotoUrl?: string }) => {
-    if (!userProfile) return;
-    updateObservationStatus(observation, data, userProfile);
-    setActionDialogOpen(false);
-  };
-  
   const handleTakeAction = () => setActionDialogOpen(true);
 
   const handleShare = async () => {
-    if (!userProfile) {
-      toast({ variant: 'destructive', title: 'User profile not loaded.' });
-      return;
-    }
+    if (!observation) return;
     setIsSharing(true);
-    const updatedItem = await shareObservationToPublic(observation, userProfile);
-    if(updatedItem) updateItem(updatedItem);
+    await shareToPublic(observation);
     setIsSharing(false);
   };
   
   const handleRetryAnalysis = async () => {
     if (!observation) return;
-    const updatedItem = await retryAiAnalysisAction(observation);
-    if (updatedItem) {
-      updateItem(updatedItem as Observation);
-    }
+    await retryAnalysis(observation);
   };
 
   const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;
@@ -483,7 +465,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
           isOpen={isActionDialogOpen}
           onOpenChange={setActionDialogOpen}
           observation={observation}
-          onUpdate={handleUpdateAction}
       />
     )}
     </>

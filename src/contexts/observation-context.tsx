@@ -11,9 +11,6 @@ import {
   getDocs,
   QueryDocumentSnapshot,
   where,
-  onSnapshot,
-  Unsubscribe,
-  doc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -21,7 +18,14 @@ import type { AllItems, Scope, Observation, UserProfile, Inspection } from '@/li
 import { useToast } from '@/hooks/use-toast';
 import { usePathname } from 'next/navigation';
 import { toggleLike, incrementViewCount } from '@/lib/actions/interaction-actions';
-import { updateObservationStatus, updateInspectionStatus, retryAiAnalysis as retryAiAnalysisAction, shareObservationToPublic, deleteItem, deleteMultipleItems } from '@/lib/actions/item-actions';
+import { 
+  updateObservationStatus as updateObservationStatusAction, 
+  updateInspectionStatus as updateInspectionStatusAction,
+  retryAiAnalysis as retryAiAnalysisAction, 
+  shareObservationToPublic as shareObservationToPublicAction, 
+  deleteMultipleItems as deleteMultipleItemsAction
+} from '@/lib/actions/item-actions';
+
 
 const PAGE_SIZE = 10;
 
@@ -39,8 +43,8 @@ interface ObservationContextType {
   handleViewCount: (observationId: string) => void;
   shareToPublic: (observation: Observation) => Promise<void>;
   retryAnalysis: (item: Observation | Inspection) => Promise<void>;
-  updateObservationStatus: (observation: Observation, actionData: any, user: UserProfile) => Promise<void>;
-  updateInspectionStatus: (inspection: Inspection, actionData: any, user: UserProfile) => Promise<void>;
+  updateObservationStatus: (observation: Observation, actionData: { actionTakenDescription: string; actionTakenPhotoUrl?: string }, user: UserProfile) => Promise<void>;
+  updateInspectionStatus: (inspection: Inspection, actionData: { actionTakenDescription: string; actionTakenPhotoUrl?: string }, user: UserProfile) => Promise<void>;
   viewType: 'observations' | 'inspections' | 'ptws';
   setViewType: (viewType: 'observations' | 'inspections' | 'ptws') => void;
   getObservationById: (id: string) => Observation | undefined;
@@ -80,7 +84,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     let baseQuery = query(collection(db, collectionName));
 
     if (mode === 'public') {
-      baseQuery = query(baseQuery, where('isSharedPublicly', '==', true));
+      baseQuery = query(baseQuery, where('scope', '==', 'public'));
     } else if (mode === 'project' && projectId) {
       baseQuery = query(baseQuery, where('projectId', '==', projectId));
     } else if (mode === 'private' && user) {
@@ -92,7 +96,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const finalQuery = query(
       baseQuery, 
       orderBy('date', 'desc'), 
-      lastDoc ? startAfter(lastDoc) : limit(PAGE_SIZE), 
+      ...(lastDoc ? [startAfter(lastDoc)] : []),
       limit(PAGE_SIZE)
     );
 
@@ -160,7 +164,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, []);
   
   const removeMultipleItems = React.useCallback(async (itemsToRemove: AllItems[]) => {
-      await deleteMultipleItems(itemsToRemove);
+      await deleteMultipleItemsAction(itemsToRemove);
       const idsToRemove = new Set(itemsToRemove.map(i => i.id));
       setItems(prev => prev.filter(item => !idsToRemove.has(item.id)));
   }, []);
@@ -176,21 +180,11 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         if (itemIndex === -1 || prevItems[itemIndex].itemType !== 'observation') {
             return prevItems;
         }
-
         const originalObservation = prevItems[itemIndex] as Observation;
         const originalLikes = Array.isArray(originalObservation.likes) ? originalObservation.likes : [];
         const hasLiked = originalLikes.includes(user.uid);
-        
-        const newLikes = hasLiked
-            ? originalLikes.filter(uid => uid !== user.uid)
-            : [...originalLikes, user.uid];
-
-        const updatedObservation: Observation = {
-            ...originalObservation,
-            likes: newLikes,
-            likeCount: newLikes.length,
-        };
-        
+        const newLikes = hasLiked ? originalLikes.filter(uid => uid !== user.uid) : [...originalLikes, user.uid];
+        const updatedObservation: Observation = { ...originalObservation, likes: newLikes, likeCount: newLikes.length };
         const newItems = [...prevItems];
         newItems[itemIndex] = updatedObservation;
         return newItems;
@@ -199,11 +193,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     try {
         await toggleLike({ docId: observationId, userId: user.uid, collectionName: 'observations' });
     } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Gagal Memproses Suka',
-          description: 'Gagal menyinkronkan dengan server. Aksi Anda mungkin tidak tersimpan.',
-        });
+        toast({ variant: 'destructive', title: 'Gagal Memproses Suka', description: 'Gagal menyinkronkan dengan server.' });
         console.error("Failed to process like on server:", error);
     }
   }, [user, toast]);
@@ -212,13 +202,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       setItems(prevItems => {
         const itemIndex = prevItems.findIndex(item => item.id === observationId);
         if (itemIndex === -1 || prevItems[itemIndex].itemType !== 'observation') return prevItems;
-        
         const currentObservation = prevItems[itemIndex] as Observation;
-        const updatedObservation: Observation = {
-            ...currentObservation,
-            viewCount: (typeof currentObservation.viewCount === 'number' ? currentObservation.viewCount : 0) + 1,
-        };
-        
+        const updatedObservation: Observation = { ...currentObservation, viewCount: (currentObservation.viewCount || 0) + 1 };
         const newItems = [...prevItems];
         newItems[itemIndex] = updatedObservation;
         return newItems;
@@ -228,27 +213,24 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   
   const shareToPublicHandler = React.useCallback(async (observation: Observation) => {
       if (!userProfile) {
-          toast({ variant: 'destructive', title: 'User profile not loaded.' });
-          return;
+          toast({ variant: 'destructive', title: 'User profile not loaded.' }); return;
       }
-      const updatedItem = await shareObservationToPublic(observation, userProfile);
+      const updatedItem = await shareObservationToPublicAction(observation, userProfile);
       if (updatedItem) updateItem(updatedItem);
   }, [userProfile, toast, updateItem]);
   
   const retryAnalysis = React.useCallback(async (item: Observation | Inspection) => {
       const updatedItem = await retryAiAnalysisAction(item);
-      if (updatedItem) {
-          updateItem(updatedItem as AllItems);
-      }
+      if (updatedItem) updateItem(updatedItem as AllItems);
   }, [updateItem]);
   
   const updateObservationStatusHandler = React.useCallback(async (observation: Observation, actionData: any, user: UserProfile) => {
-    const updatedItem = await updateObservationStatus({ observationId: observation.id, actionData, user });
+    const updatedItem = await updateObservationStatusAction({ observationId: observation.id, actionData, user });
     if(updatedItem) updateItem(updatedItem);
   }, [updateItem]);
 
   const updateInspectionStatusHandler = React.useCallback(async (inspection: Inspection, actionData: any, user: UserProfile) => {
-    const updatedItem = await updateInspectionStatus({ inspectionId: inspection.id, actionData, user });
+    const updatedItem = await updateInspectionStatusAction({ inspectionId: inspection.id, actionData, user });
     if(updatedItem) updateItem(updatedItem);
   }, [updateItem]);
 

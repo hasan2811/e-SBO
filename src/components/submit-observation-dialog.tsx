@@ -8,10 +8,8 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Sparkles, Wand2 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
-import { format } from 'date-fns';
 import { useObservations } from '@/hooks/use-observations';
 import { createObservation } from '@/lib/actions/item-actions';
-
 
 import type { Project, AssistObservationOutput, Scope, Location, Company, RiskLevel, ObservationCategory, Observation } from '@/lib/types';
 import { OBSERVATION_CATEGORIES, RISK_LEVELS } from '@/lib/types';
@@ -28,7 +26,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
-
 
 const DEFAULT_LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const DEFAULT_COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
@@ -95,7 +92,6 @@ const AiSuggestion = ({
   );
 };
 
-
 interface SubmitObservationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -158,7 +154,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     fetchAiSuggestions();
   }, [debouncedFindings]);
 
-
   React.useEffect(() => {
     if (isOpen) {
         form.reset({
@@ -210,6 +205,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
         const projectId = match ? match[1] : null;
         
+        // 1. Upload file first
         let photoUrl: string;
         if (values.photo) {
           photoUrl = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, projectId);
@@ -217,14 +213,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           photoUrl = 'https://placehold.co/600x400.png';
         }
 
+        // 2. Prepare plain object for server action
         const scope: Scope = projectId ? 'project' : 'private';
-        const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-        
-        const newObservationData: Omit<Observation, 'id'> = {
-            itemType: 'observation',
+        const payload = {
             userId: userProfile.uid,
             date: new Date().toISOString(),
-            status: 'Pending',
             submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
             location: values.location as Location,
             company: values.company as Company,
@@ -232,18 +225,15 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             riskLevel: values.riskLevel as RiskLevel,
             findings: values.findings,
             recommendation: values.recommendation || '',
-            photoUrl: photoUrl,
-            referenceId,
+            photoUrl: photoUrl, // Pass the URL string
             scope,
             projectId,
-            aiStatus: 'processing', // AI analysis will be triggered by the server action.
-            likes: [],
-            likeCount: 0,
-            commentCount: 0,
-            viewCount: 0,
         };
         
-        const newObservation = await createObservation(newObservationData);
+        // 3. Call server action
+        const newObservation = await createObservation(payload);
+        
+        // 4. Update UI
         addItem(newObservation);
 
         toast({ title: 'Laporan Terkirim', description: 'Observasi Anda telah berhasil disimpan.' });
@@ -301,6 +291,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                       variant="outline"
                       className="w-full"
                       onClick={() => fileInputRef.current?.click()}
+                      disabled={isSubmitting}
                     >
                       <Upload className="mr-2 h-4 w-4" />
                       {photoPreview ? 'Ganti Foto' : 'Pilih Foto'}
@@ -321,7 +312,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Lokasi</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                         <FormControl>
                           <SelectTrigger><SelectValue placeholder="Pilih lokasi" /></SelectTrigger>
                         </FormControl>
@@ -337,7 +328,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Perusahaan</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                         <FormControl>
                           <SelectTrigger><SelectValue placeholder="Pilih perusahaan" /></SelectTrigger>
                         </FormControl>
@@ -356,7 +347,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   <FormItem>
                     <FormLabel>Temuan</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Jelaskan detail temuan observasi sejelas mungkin." rows={5} {...field} />
+                      <Textarea placeholder="Jelaskan detail temuan observasi sejelas mungkin." rows={5} {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                      <AnimatePresence>
@@ -378,7 +369,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Kategori (LSR)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                         <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
                         <SelectContent>{renderSelectItems(OBSERVATION_CATEGORIES as any)}</SelectContent>
                       </Select>
@@ -400,7 +391,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tingkat Risiko</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                          <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
                         <SelectContent>{renderSelectItems(RISK_LEVELS)}</SelectContent>
                       </Select>
@@ -425,7 +416,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   <FormItem>
                     <FormLabel>Rekomendasi (Opsional)</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Tulis rekomendasi Anda di sini, atau biarkan AI yang membuatkannya." rows={3} {...field} />
+                      <Textarea placeholder="Tulis rekomendasi Anda di sini, atau biarkan AI yang membuatkannya." rows={3} {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                     <AnimatePresence>

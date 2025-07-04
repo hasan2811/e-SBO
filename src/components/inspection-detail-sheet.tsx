@@ -15,22 +15,20 @@ import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { DeleteInspectionDialog } from './delete-inspection-dialog';
-import { retryAiAnalysis as retryAiAnalysisAction } from '@/lib/actions/item-actions';
 import { useObservations } from '@/hooks/use-observations';
 import { FollowUpInspectionDialog } from './follow-up-inspection-dialog';
-
 
 interface InspectionDetailSheetProps {
     inspection: Inspection | null;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
-    onItemUpdate: (updatedItem: Inspection) => void;
+    onItemUpdate: (updatedItem: Inspection) => void; // Kept for consistency, but context handles updates
 }
 
 export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItemUpdate }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
-  const { user, userProfile } = useAuth();
-  const { removeItem, updateInspectionStatus } = useObservations();
+  const { user } = useAuth();
+  const { removeItem, retryAnalysis } = useObservations();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
 
@@ -43,16 +41,7 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItem
 
   const handleRetry = async () => {
     if (!inspection) return;
-    const updatedItem = await retryAiAnalysisAction(inspection);
-    if (updatedItem) {
-      onItemUpdate(updatedItem as Inspection);
-    }
-  };
-
-  const handleUpdateAction = (data: { actionTakenDescription: string; actionTakenPhotoUrl?: string }) => {
-    if (!userProfile) return;
-    updateInspectionStatus(inspection, data, userProfile);
-    setFollowUpOpen(false);
+    await retryAnalysis(inspection);
   };
 
   const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
@@ -285,7 +274,6 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItem
           isOpen={isFollowUpOpen}
           onOpenChange={setFollowUpOpen}
           inspection={inspection}
-          onUpdate={handleUpdateAction}
         />
       )}
     </>
