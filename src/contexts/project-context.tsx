@@ -2,10 +2,10 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, onSnapshot, Unsubscribe, doc, getDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, Unsubscribe, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
-import type { Project, UserProfile } from '@/lib/types';
+import type { Project } from '@/lib/types';
 
 interface ProjectContextType {
   projects: Project[];
@@ -31,41 +31,19 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
 
     const projectsCollection = collection(db, 'projects');
-    const q = query(projectsCollection);
+    // If the user is not an admin, we filter projects where they are a member.
+    const q = isAdmin 
+        ? query(projectsCollection)
+        : query(projectsCollection, where('memberUids', 'array-contains', user.uid));
+
 
     unsubscribe = onSnapshot(q, async (snapshot) => {
-      const allProjects = snapshot.docs.map(doc => ({
+      const userProjects = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Project[];
-
-      const userProjects = isAdmin
-        ? allProjects
-        : allProjects.filter(p => p.memberUids && p.memberUids.includes(user.uid));
-
-      // Enrich projects with full member and owner profiles
-      const enrichedProjects = await Promise.all(
-        userProjects.map(async (project) => {
-          const memberProfiles: UserProfile[] = [];
-          if (project.memberUids && project.memberUids.length > 0) {
-            const memberDocs = await Promise.all(
-              project.memberUids.map(uid => getDoc(doc(db, 'users', uid)))
-            );
-            memberDocs.forEach(docSnap => {
-              if (docSnap.exists()) {
-                memberProfiles.push(docSnap.data() as UserProfile);
-              }
-            });
-          }
-          
-          const ownerProfile = memberProfiles.find(m => m.uid === project.ownerUid);
-          
-          return { ...project, members: memberProfiles, owner: ownerProfile };
-        })
-      );
-
-
-      setProjects(enrichedProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      
+      setProjects(userProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       setLoading(false);
     }, (error) => {
       console.error("Error fetching projects:", error);

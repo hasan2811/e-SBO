@@ -11,11 +11,13 @@ import { Crown, User, UserX, Loader2, X } from 'lucide-react';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 const getInitials = (name: string | null | undefined): string => {
     if (!name?.trim()) return 'U';
@@ -144,6 +146,120 @@ const ProjectSettings = ({ project }: { project: Project }) => {
   );
 };
 
+
+const MemberList = ({ project }: { project: Project }) => {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [members, setMembers] = React.useState<UserProfile[]>([]);
+    const [isLoadingMembers, setIsLoadingMembers] = React.useState(true);
+    const [memberToRemove, setMemberToRemove] = React.useState<UserProfile | null>(null);
+
+    const isOwner = user && project && project.ownerUid === user.uid;
+
+    React.useEffect(() => {
+        if (!project?.memberUids) {
+            setIsLoadingMembers(false);
+            return;
+        }
+
+        const fetchMembers = async () => {
+            setIsLoadingMembers(true);
+            try {
+                const memberDocs = await Promise.all(
+                    project.memberUids.map(uid => getDoc(doc(db, 'users', uid)))
+                );
+                const memberProfiles: UserProfile[] = [];
+                memberDocs.forEach(docSnap => {
+                    if (docSnap.exists()) {
+                        memberProfiles.push(docSnap.data() as UserProfile);
+                    }
+                });
+                setMembers(memberProfiles);
+            } catch (error) {
+                console.error("Failed to fetch project members:", error);
+                toast({ variant: 'destructive', title: 'Could not load members.' });
+            } finally {
+                setIsLoadingMembers(false);
+            }
+        };
+
+        fetchMembers();
+    }, [project?.memberUids, toast]);
+
+    const renderSkeleton = () => (
+      Array.from({ length: 2 }).map((_, index) => (
+        <Card key={index} className="flex flex-col">
+          <CardHeader className="flex flex-row items-center gap-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          </CardHeader>
+          <CardContent className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
+            <Skeleton className="h-5 w-1/3" />
+          </CardContent>
+        </Card>
+      ))
+    );
+
+    return (
+        <>
+            <div className="grid gap-4 md:grid-cols-2">
+                {isLoadingMembers ? renderSkeleton() : members.sort((a,b) => (a.uid === project.ownerUid ? -1 : 1)).map(member => (
+                    <Card key={member.uid} className="flex flex-col">
+                    <CardHeader className="flex flex-row items-center gap-4">
+                        <Avatar className="h-12 w-12">
+                        <AvatarImage src={member.photoURL ?? undefined} data-ai-hint="person face" />
+                        <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                        <CardTitle className="truncate">{member.displayName || 'Unknown User'}</CardTitle>
+                        <CardDescription className="truncate">{member.position || 'No Position'}</CardDescription>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
+                        <div className="flex items-center gap-2 text-sm font-semibold">
+                        {member.uid === project.ownerUid ? (
+                            <>
+                            <Crown className="h-4 w-4 text-amber-500" />
+                            <span className="text-amber-600">Owner</span>
+                            </>
+                        ) : (
+                            <>
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">Member</span>
+                            </>
+                        )}
+                        </div>
+                        {isOwner && member.uid !== user?.uid && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => setMemberToRemove(member)}
+                        >
+                            <UserX className="mr-2 h-4 w-4" />
+                            Remove
+                        </Button>
+                        )}
+                    </CardContent>
+                    </Card>
+                ))}
+            </div>
+             {memberToRemove && project && (
+                <RemoveMemberDialog
+                isOpen={!!memberToRemove}
+                onOpenChange={(open) => !open && setMemberToRemove(null)}
+                project={project}
+                member={memberToRemove}
+                />
+            )}
+        </>
+    );
+};
+
+
 interface ManageProjectDialogProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
@@ -153,90 +269,36 @@ interface ManageProjectDialogProps {
 
 export function ManageProjectDialog({ isOpen, onOpenChange, project, defaultTab }: ManageProjectDialogProps) {
     const { user } = useAuth();
-    const [memberToRemove, setMemberToRemove] = React.useState<UserProfile | null>(null);
-
     const isOwner = user && project && project.ownerUid === user.uid;
 
     return (
-        <>
-            <Dialog open={isOpen} onOpenChange={onOpenChange}>
-                <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
-                    <DialogHeader>
-                        <DialogTitle>Manage "{project.name}"</DialogTitle>
-                        <DialogDescription>
-                            View members or manage project settings.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="flex-1 overflow-hidden">
-                        <Tabs defaultValue={defaultTab} key={defaultTab} className="flex flex-col h-full">
-                            <TabsList className="grid w-full grid-cols-2">
-                                <TabsTrigger value="members">Members ({project.members?.length || 0})</TabsTrigger>
-                                {isOwner && <TabsTrigger value="settings">Settings</TabsTrigger>}
-                            </TabsList>
-                            <ScrollArea className="flex-1 mt-4 pr-4">
-                                <TabsContent value="members">
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                    {project.members?.sort((a,b) => (a.uid === project.ownerUid ? -1 : 1)).map(member => (
-                                        <Card key={member.uid} className="flex flex-col">
-                                        <CardHeader className="flex flex-row items-center gap-4">
-                                            <Avatar className="h-12 w-12">
-                                            <AvatarImage src={member.photoURL ?? undefined} data-ai-hint="person face" />
-                                            <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1">
-                                            <CardTitle className="truncate">{member.displayName || 'Unknown User'}</CardTitle>
-                                            <CardDescription className="truncate">{member.position || 'No Position'}</CardDescription>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
-                                            <div className="flex items-center gap-2 text-sm font-semibold">
-                                            {member.uid === project.ownerUid ? (
-                                                <>
-                                                <Crown className="h-4 w-4 text-amber-500" />
-                                                <span className="text-amber-600">Owner</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                <User className="h-4 w-4 text-muted-foreground" />
-                                                <span className="text-muted-foreground">Member</span>
-                                                </>
-                                            )}
-                                            </div>
-                                            {isOwner && member.uid !== user?.uid && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                                onClick={() => setMemberToRemove(member)}
-                                            >
-                                                <UserX className="mr-2 h-4 w-4" />
-                                                Remove
-                                            </Button>
-                                            )}
-                                        </CardContent>
-                                        </Card>
-                                    ))}
-                                    </div>
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Manage "{project.name}"</DialogTitle>
+                    <DialogDescription>
+                        View members or manage project settings.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="flex-1 overflow-hidden">
+                    <Tabs defaultValue={defaultTab} key={`${project.id}-${defaultTab}`} className="flex flex-col h-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="members">Members ({project.memberUids?.length || 0})</TabsTrigger>
+                            {isOwner && <TabsTrigger value="settings">Settings</TabsTrigger>}
+                        </TabsList>
+                        <ScrollArea className="flex-1 mt-4 pr-4">
+                            <TabsContent value="members" className="mt-0">
+                                <MemberList project={project} />
+                            </TabsContent>
+                            {isOwner && (
+                                <TabsContent value="settings" className="mt-0">
+                                  <ProjectSettings project={project} />
                                 </TabsContent>
-                                {isOwner && (
-                                    <TabsContent value="settings">
-                                    <ProjectSettings project={project} />
-                                    </TabsContent>
-                                )}
-                            </ScrollArea>
-                        </Tabs>
-                    </div>
-                </DialogContent>
-            </Dialog>
-            
-            {memberToRemove && project && (
-                <RemoveMemberDialog
-                isOpen={!!memberToRemove}
-                onOpenChange={(open) => !open && setMemberToRemove(null)}
-                project={project}
-                member={memberToRemove}
-                />
-            )}
-        </>
+                            )}
+                        </ScrollArea>
+                    </Tabs>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }

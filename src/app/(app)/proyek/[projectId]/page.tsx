@@ -50,6 +50,8 @@ export default function ProjectDetailsPage() {
   const isLoading = projectsLoading;
   
   const handleSuccess = () => {
+    setDeleteOpen(false);
+    setLeaveOpen(false);
     router.push('/beranda');
   };
 
@@ -129,7 +131,7 @@ export default function ProjectDetailsPage() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem onSelect={() => openManageDialog('members')}>
                   <Users className="mr-2 h-4 w-4" />
-                  <span>View Members ({project.members?.length || 0})</span>
+                  <span>View Members ({project.memberUids?.length || 0})</span>
                 </DropdownMenuItem>
 
                 {isOwner && (
