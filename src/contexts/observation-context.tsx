@@ -24,13 +24,13 @@ import { toggleLike, incrementViewCount } from '@/lib/actions/interaction-action
 import { updateObservationStatus, retryAiAnalysis, shareObservationToPublic, deleteItem, deleteMultipleItems } from '@/lib/actions/item-actions';
 
 const PAGE_SIZE = 10;
+const NON_PAGINATED_LIMIT = 500; // A reasonable limit for non-paginated queries
 
 interface ObservationContextType {
   items: AllItems[];
   isLoading: boolean;
   hasMore: boolean;
   error: string | null;
-  warning: string | null;
   fetchItems: (reset?: boolean) => void;
   updateItem: (updatedItem: AllItems) => void;
   removeItem: (itemId: string) => void;
@@ -62,7 +62,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const [isLoading, setIsLoading] = React.useState(true);
   const [hasMore, setHasMore] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [warning, setWarning] = React.useState<string | null>(null);
   const [lastVisible, setLastVisible] = React.useState<QueryDocumentSnapshot | null>(null);
   const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
   
@@ -70,68 +69,66 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const projectId = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/)?.[1] || null;
 
   const fetchItems = React.useCallback(async (reset: boolean = false) => {
-    if (!user && (mode === 'private' || mode === 'project')) return;
+    if ((mode === 'private' || mode === 'project') && !user) return;
 
     setIsLoading(true);
     setError(null);
-    if (reset) {
-        setWarning(null);
-    }
     const lastDoc = reset ? null : lastVisible;
 
     const collectionName = viewTypeInfo[viewType].collection;
-    let baseQuery = query(collection(db, collectionName), limit(PAGE_SIZE));
-
-    if (mode === 'public') baseQuery = query(baseQuery, where('scope', '==', 'public'));
-    else if (mode === 'project' && projectId) baseQuery = query(baseQuery, where('scope', '==', 'project'), where('projectId', '==', projectId));
-    else if (mode === 'private' && user) baseQuery = query(baseQuery, where('scope', '==', 'private'), where('userId', '==', user.uid));
-    else {
-        setItems([]); setIsLoading(false); return;
-    }
-
-    let q = query(baseQuery, orderBy('date', 'desc'));
-    if (lastDoc && !reset) {
-        q = query(q, startAfter(lastDoc));
-    }
-
+    
     try {
-        const docSnap = await getDocs(q);
-        const newItems: AllItems[] = docSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
-        
-        setHasMore(newItems.length === PAGE_SIZE);
-        setLastVisible(docSnap.docs[docSnap.docs.length - 1] || null);
-        setItems(prev => reset ? newItems : [...prev, ...newItems]);
-        if (reset) setWarning(null);
+      let finalQuery;
+      const isPaginated = mode === 'public';
+
+      // Base query builder
+      let queryBuilder = query(collection(db, collectionName));
+
+      // Apply filters
+      if (mode === 'public') {
+        queryBuilder = query(queryBuilder, where('scope', '==', 'public'));
+      } else if (mode === 'project' && projectId) {
+        queryBuilder = query(queryBuilder, where('projectId', '==', projectId));
+      } else if (mode === 'private' && user) {
+        queryBuilder = query(queryBuilder, where('scope', '==', 'private'), where('userId', '==', user.uid));
+      } else {
+        setItems([]); setIsLoading(false); return;
+      }
+      
+      // Apply ordering and pagination for public feed (which has the correct index)
+      if (isPaginated) {
+        queryBuilder = query(queryBuilder, orderBy('date', 'desc'), limit(PAGE_SIZE));
+        if (lastDoc && !reset) {
+          queryBuilder = query(queryBuilder, startAfter(lastDoc));
+        }
+      } else {
+        // For project/private, fetch all (up to a limit) without server ordering to avoid index errors.
+        queryBuilder = query(queryBuilder, limit(NON_PAGINATED_LIMIT));
+      }
+
+      finalQuery = queryBuilder;
+      
+      const docSnap = await getDocs(finalQuery);
+      let newItems: AllItems[] = docSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
+
+      // Client-side sort for non-paginated queries
+      if (!isPaginated) {
+        newItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      }
+
+      setHasMore(isPaginated ? newItems.length === PAGE_SIZE : false);
+      setLastVisible(isPaginated ? docSnap.docs[docSnap.docs.length - 1] || null : null);
+      setItems(prev => reset ? newItems : [...prev, ...newItems]);
+
     } catch (e) {
-        console.error("Primary query failed (likely missing index), attempting fallback:", e);
-
-        // Fallback strategy
-        setWarning("Data mungkin tidak terurut dengan benar. Mohon hubungi administrator untuk memeriksa konfigurasi database.");
-        
-        if (!reset) {
-            setHasMore(false);
-            setIsLoading(false);
-            return;
-        }
-
-        try {
-            const fallbackSnap = await getDocs(baseQuery);
-            let newItems: AllItems[] = fallbackSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
-
-            newItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-            setHasMore(false);
-            setLastVisible(null);
-            setItems(newItems);
-        } catch (fallbackError) {
-            console.error("Fallback query also failed:", fallbackError);
-            setError("Gagal memuat data. Silakan periksa koneksi Anda dan coba lagi.");
-            setItems([]);
-        }
+      console.error("Failed to fetch items:", e);
+      setError("Gagal memuat data. Silakan periksa koneksi Anda dan coba lagi.");
+      setItems([]);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   }, [mode, projectId, user, viewType, lastVisible]);
+
 
   React.useEffect(() => {
     fetchItems(true);
@@ -200,7 +197,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   };
 
   const value = {
-    items, isLoading, hasMore, error, warning,
+    items, isLoading, hasMore, error,
     fetchItems, updateItem, removeItem, removeMultipleItems,
     handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateStatus,
     viewType, setViewType, getObservationById
