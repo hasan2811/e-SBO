@@ -418,46 +418,77 @@ export async function retryAiAnalysis(item: Observation | Inspection) {
     return { ...updatedDoc.data(), id: updatedDoc.id } as AllItems;
 }
 
-export async function shareObservationToPublic(observation: Observation, userProfile: UserProfile) {
-  if (observation.isSharedPublicly) {
-      throw new Error("This observation has already been shared.");
-  }
-  
-  const publicObservationData: Partial<Observation> = {
-      ...observation,
-      date: new Date().toISOString(),
-      status: 'Pending',
-      scope: 'public',
-      projectId: null,
-      originalId: observation.id,
-      originalScope: observation.scope,
-      sharedBy: userProfile.displayName,
-      sharedByPosition: userProfile.position,
-      likes: [],
-      likeCount: 0,
-      commentCount: 0,
-      viewCount: 0,
-  };
+export async function shareObservationToPublic(observation: Observation, userProfile: UserProfile): Promise<Observation> {
+    if (observation.isSharedPublicly) {
+        throw new Error("Laporan ini sudah dibagikan.");
+    }
+    
+    // Explicitly build the public document to avoid copying sensitive or irrelevant data.
+    const publicObservationData: Omit<Observation, 'id'> = {
+        itemType: 'observation',
+        userId: observation.userId,
+        referenceId: observation.referenceId,
+        location: observation.location,
+        submittedBy: observation.submittedBy,
+        date: new Date().toISOString(), // Use a new date for public sharing
+        findings: observation.findings,
+        recommendation: observation.recommendation,
+        riskLevel: observation.riskLevel,
+        status: 'Pending', // Reset status for public feed
+        category: observation.category,
+        company: observation.company,
+        photoUrl: observation.photoUrl,
+        scope: 'public', // Set scope to public
+        projectId: null, // Public items don't belong to a project
 
-  delete (publicObservationData as any).id;
-  delete publicObservationData.isSharedPublicly;
-  delete publicObservationData.actionTakenDescription;
-  delete publicObservationData.actionTakenPhotoUrl;
-  delete publicObservationData.closedBy;
-  delete publicObservationData.closedDate;
-  
-  const originalDocRef = adminDb.collection('observations').doc(observation.id);
+        // AI-related fields to copy
+        aiStatus: observation.aiStatus,
+        aiSummary: observation.aiSummary,
+        aiSuggestedRiskLevel: observation.aiSuggestedRiskLevel,
+        aiRisks: observation.aiRisks,
+        aiSuggestedActions: observation.aiSuggestedActions,
+        aiRelevantRegulations: observation.aiRelevantRegulations,
+        aiRootCauseAnalysis: observation.aiRootCauseAnalysis,
+        aiObserverSkillRating: observation.aiObserverSkillRating,
+        aiObserverSkillExplanation: observation.aiObserverSkillExplanation,
 
-  const batch = adminDb.batch();
-  const newPublicDocRef = adminDb.collection('observations').doc();
-  batch.set(newPublicDocRef, publicObservationData);
-  batch.update(originalDocRef, { isSharedPublicly: true });
-  await batch.commit();
-  
-  revalidatePath('/public', 'page');
-  if (observation.projectId) revalidatePath(`/proyek/${observation.projectId}`, 'page');
-  else revalidatePath('/private', 'page');
-  
-  const updatedDoc = await originalDocRef.get();
-  return { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
+        // Sharing and social-related fields
+        isSharedPublicly: false, // The new doc itself isn't shared again
+        sharedBy: userProfile.displayName,
+        sharedByPosition: userProfile.position,
+        originalId: observation.id,
+        originalScope: observation.scope,
+        likes: [],
+        likeCount: 0,
+        commentCount: 0,
+        viewCount: 0,
+
+        // Fields to explicitly exclude by not including them
+        actionTakenDescription: undefined,
+        actionTakenPhotoUrl: undefined,
+        closedBy: undefined,
+        closedDate: undefined,
+    };
+    
+    const originalDocRef = adminDb.collection('observations').doc(observation.id);
+    const newPublicDocRef = adminDb.collection('observations').doc(); // Let Firestore generate a new ID
+
+    const batch = adminDb.batch();
+    batch.set(newPublicDocRef, publicObservationData);
+    batch.update(originalDocRef, { isSharedPublicly: true });
+    
+    await batch.commit();
+    
+    revalidatePath('/public', 'page');
+    if (observation.projectId) {
+        revalidatePath(`/proyek/${observation.projectId}`, 'page');
+    } else {
+        revalidatePath('/private', 'page');
+    }
+    
+    const updatedDoc = await originalDocRef.get();
+    if (!updatedDoc.exists()) {
+        throw new Error("Dokumen asli tidak ditemukan setelah dibagikan.");
+    }
+    return { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
 }

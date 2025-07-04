@@ -23,6 +23,8 @@ import {
   updateInspectionStatus as updateInspectionStatusAction,
   retryAiAnalysis as retryAiAnalysisAction, 
   shareObservationToPublic as shareObservationToPublicAction, 
+  deleteItem as deleteItemAction,
+  deleteMultipleItems as deleteMultipleItemsAction,
 } from '@/lib/actions/item-actions';
 
 
@@ -36,6 +38,8 @@ interface ObservationContextType {
   fetchItems: (reset?: boolean) => void;
   addItem: (newItem: AllItems) => void;
   updateItem: (updatedItem: AllItems) => void;
+  deleteSingleItem: (item: AllItems) => Promise<void>;
+  deleteMultipleItems: (items: AllItems[]) => Promise<void>;
   handleLikeToggle: (observationId: string) => Promise<void>;
   handleViewCount: (observationId: string) => void;
   shareToPublic: (observation: Observation) => Promise<void>;
@@ -157,6 +161,16 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const updateItem = React.useCallback((updatedItem: AllItems) => {
     setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
   }, []);
+
+  const deleteSingleItem = React.useCallback(async (itemToDelete: AllItems) => {
+    await deleteItemAction(itemToDelete);
+    // Let onSnapshot handle the UI update to ensure consistency
+  }, []);
+  
+  const deleteMultipleItems = React.useCallback(async (itemsToDelete: AllItems[]) => {
+    await deleteMultipleItemsAction(itemsToDelete);
+    // Let onSnapshot handle the UI update
+  }, []);
   
   const handleLikeToggle = React.useCallback(async (observationId: string) => {
     if (!user) {
@@ -201,11 +215,20 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, []);
   
   const shareToPublicHandler = React.useCallback(async (observation: Observation) => {
-      if (!userProfile) {
-          toast({ variant: 'destructive', title: 'User profile not loaded.' }); return;
-      }
-      const updatedItem = await shareObservationToPublicAction(observation, userProfile);
-      if (updatedItem) updateItem(updatedItem);
+    if (!userProfile) {
+        toast({ variant: 'destructive', title: 'User profile not loaded.' }); return;
+    }
+    try {
+        const updatedItem = await shareObservationToPublicAction(observation, userProfile);
+        if (updatedItem) {
+            updateItem(updatedItem);
+            toast({ title: 'Berhasil Dibagikan', description: 'Laporan Anda telah dibagikan ke feed publik.' });
+        }
+    } catch (error) {
+        console.error("Failed to share to public:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+        toast({ variant: 'destructive', title: 'Gagal Membagikan', description: errorMessage });
+    }
   }, [userProfile, toast, updateItem]);
   
   const retryAnalysis = React.useCallback(async (item: Observation | Inspection) => {
@@ -248,14 +271,14 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const value = React.useMemo(() => ({
     items, isLoading, hasMore, error,
     fetchItems: resetAndFetch,
-    addItem, updateItem,
+    addItem, updateItem, deleteSingleItem, deleteMultipleItems,
     handleLikeToggle, handleViewCount, shareToPublic: shareToPublicHandler, retryAnalysis, 
     updateObservationStatus: updateObservationStatusHandler,
     updateInspectionStatus: updateInspectionStatusHandler,
     viewType, setViewType, getObservationById, getInspectionById, getPtwById
   }), [
       items, isLoading, hasMore, error,
-      resetAndFetch, addItem, updateItem,
+      resetAndFetch, addItem, updateItem, deleteSingleItem, deleteMultipleItems,
       handleLikeToggle, handleViewCount, shareToPublicHandler, retryAnalysis, 
       updateObservationStatusHandler, updateInspectionStatusHandler,
       viewType, getObservationById, getInspectionById, getPtwById
