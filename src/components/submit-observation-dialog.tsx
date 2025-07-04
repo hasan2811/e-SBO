@@ -10,7 +10,7 @@ import { Loader2, Upload, Sparkles } from 'lucide-react';
 import { useObservations } from '@/hooks/use-observations';
 import { createObservation } from '@/lib/actions/item-actions';
 
-import type { Project, Scope, Location, Company, Observation, RiskLevel, ObservationCategory } from '@/lib/types';
+import type { Project, Scope, Location, Company } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
@@ -121,11 +121,9 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
         const projectId = match ? match[1] : null;
         
-        let photoUrl: string;
+        let photoUrl: string | undefined;
         if (values.photo) {
           photoUrl = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, projectId);
-        } else {
-          photoUrl = 'https://placehold.co/600x400.png';
         }
 
         const scope: Scope = projectId ? 'project' : 'private';

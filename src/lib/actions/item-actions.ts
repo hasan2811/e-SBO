@@ -1,45 +1,39 @@
 
 'use server';
 
-import {
-  collection,
-  doc,
-  updateDoc,
-  addDoc,
-  deleteDoc,
-  writeBatch,
-  getDoc,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { adminDb } from '@/lib/firebase-admin';
 import { deleteFile } from '@/lib/storage';
 import { revalidatePath } from 'next/cache';
-import type { Observation, Inspection, Ptw, AllItems, Scope, Company, Location, RiskLevel, UserProfile, ObservationCategory } from '@/lib/types';
+import type { Observation, Inspection, Ptw, AllItems, UserProfile } from '@/lib/types';
 import { format } from 'date-fns';
 
 
 // ==================================
 // CREATE ACTIONS
 // ==================================
-type CreateObservationPayload = Omit<Observation, 'id' | 'itemType' | 'referenceId' | 'status' | 'aiStatus' | 'likes' | 'likeCount' | 'commentCount' | 'viewCount' | 'isSharedPublicly' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate' | 'category' | 'riskLevel'>;
+type CreateObservationPayload = Omit<Observation, 'id' | 'itemType' | 'referenceId' | 'status' | 'category' | 'riskLevel' | 'aiStatus' | 'likes' | 'likeCount' | 'commentCount' | 'viewCount' | 'isSharedPublicly' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate'>;
 export async function createObservation(payload: CreateObservationPayload): Promise<Observation> {
     const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    
+    // AI-handled fields are given sensible defaults.
     const observationData: Omit<Observation, 'id'> = {
         itemType: 'observation',
         ...payload,
         referenceId,
-        // Set default values. AI will update these later.
-        category: 'Supervision',
-        riskLevel: 'Low',
+        category: 'Supervision', // Default category
+        riskLevel: 'Low', // Default risk level
         status: 'Pending',
-        // IMPORTANT: AI call is fully disabled during creation to prevent server errors.
-        aiStatus: 'n/a', 
+        aiStatus: 'n/a', // AI processing is disabled for now to ensure stability
         likes: [], likeCount: 0, commentCount: 0, viewCount: 0,
     };
-    const docRef = await addDoc(collection(db, 'observations'), observationData);
+
+    const docRef = await adminDb.collection('observations').add(observationData);
     const newObservation = { ...observationData, id: docRef.id };
     
+    // Revalidate paths to update the UI
     revalidatePath(newObservation.projectId ? `/proyek/${newObservation.projectId}` : '/private', 'page');
     revalidatePath('/tasks', 'page');
+    
     return newObservation;
 }
 
@@ -51,10 +45,10 @@ export async function createInspection(payload: CreateInspectionPayload): Promis
         itemType: 'inspection',
         ...payload,
         referenceId,
-        // IMPORTANT: AI call is fully disabled during creation to prevent server errors.
-        aiStatus: 'n/a',
+        aiStatus: 'n/a', // AI processing is disabled for now
     };
-    const docRef = await addDoc(collection(db, 'inspections'), inspectionData);
+    
+    const docRef = await adminDb.collection('inspections').add(inspectionData);
     const newInspection = { ...inspectionData, id: docRef.id };
 
     revalidatePath(newInspection.projectId ? `/proyek/${newInspection.projectId}` : '/private', 'page');
@@ -70,7 +64,8 @@ export async function createPtw(payload: CreatePtwPayload): Promise<Ptw> {
         referenceId,
         status: 'Pending Approval',
     };
-    const docRef = await addDoc(collection(db, 'ptws'), ptwData);
+    
+    const docRef = await adminDb.collection('ptws').add(ptwData);
     const newPtw = { ...ptwData, id: docRef.id };
     revalidatePath(newPtw.projectId ? `/proyek/${newPtw.projectId}` : '/private', 'page');
     return newPtw;
@@ -89,12 +84,13 @@ export async function updateObservationStatus({ observationId, actionData, user 
       closedDate: new Date().toISOString(),
   };
   
-  const observationDocRef = doc(db, 'observations', observationId);
+  const observationDocRef = adminDb.collection('observations').doc(observationId);
   if (actionData.actionTakenPhotoUrl) {
       updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
   }
-  await updateDoc(observationDocRef, updatedData);
-  const updatedDoc = await getDoc(observationDocRef);
+  
+  await observationDocRef.update(updatedData);
+  const updatedDoc = await observationDocRef.get();
   
   revalidatePath(updatedDoc.data()?.projectId ? `/proyek/${updatedDoc.data()?.projectId}` : '/private', 'page');
   revalidatePath('/tasks', 'page');
@@ -110,24 +106,27 @@ export async function updateInspectionStatus({ inspectionId, actionData, user }:
       closedDate: new Date().toISOString(),
   };
 
-  const inspectionDocRef = doc(db, 'inspections', inspectionId);
+  const inspectionDocRef = adminDb.collection('inspections').doc(inspectionId);
   if (actionData.actionTakenPhotoUrl) {
       updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
   }
-  await updateDoc(inspectionDocRef, updatedData);
-  const updatedDoc = await getDoc(inspectionDocRef);
+
+  await inspectionDocRef.update(updatedData);
+  const updatedDoc = await inspectionDocRef.get();
   
   revalidatePath(updatedDoc.data()?.projectId ? `/proyek/${updatedDoc.data()?.projectId}` : '/private', 'page');
   return { ...updatedDoc.data(), id: updatedDoc.id } as Inspection;
 }
 
 export async function approvePtw({ ptwId, signatureDataUrl, approverName, approverPosition }: { ptwId: string, signatureDataUrl: string, approverName: string, approverPosition: string }): Promise<Ptw> {
-    const ptwDocRef = doc(db, 'ptws', ptwId);
+    const ptwDocRef = adminDb.collection('ptws').doc(ptwId);
     const approver = `${approverName} (${approverPosition || 'N/A'})`;
-    await updateDoc(ptwDocRef, {
+    
+    await ptwDocRef.update({
         status: 'Approved', signatureDataUrl, approver, approvedDate: new Date().toISOString(),
     });
-    const updatedDoc = await getDoc(ptwDocRef);
+
+    const updatedDoc = await ptwDocRef.get();
     revalidatePath(updatedDoc.data()?.projectId ? `/proyek/${updatedDoc.data()?.projectId}` : '/private', 'page');
     return { ...updatedDoc.data(), id: updatedDoc.id } as Ptw;
 }
@@ -137,25 +136,30 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
 // DELETE ACTIONS
 // ==================================
 export async function deleteItem(item: AllItems) {
-  const docRef = doc(db, `${item.itemType}s`, item.id);
+  const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
+  
+  // Delete associated files from storage first
   if (item.itemType === 'observation' || item.itemType === 'inspection') {
     if (item.photoUrl && !item.photoUrl.includes('placehold.co')) await deleteFile(item.photoUrl);
     if (item.actionTakenPhotoUrl) await deleteFile(item.actionTakenPhotoUrl);
   } else if (item.itemType === 'ptw') {
     if (item.jsaPdfUrl) await deleteFile(item.jsaPdfUrl);
   }
-  await deleteDoc(docRef);
+
+  await docRef.delete();
+  
+  // Revalidate relevant paths
   revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private', 'page');
   revalidatePath('/public', 'page');
   revalidatePath('/tasks', 'page');
 }
 
 export async function deleteMultipleItems(items: AllItems[]) {
-    const batch = writeBatch(db);
+    const batch = adminDb.batch();
     const filesToDelete: (string | undefined)[] = [];
 
     items.forEach(item => {
-      const docRef = doc(db, `${item.itemType}s`, item.id);
+      const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
       batch.delete(docRef);
       if (item.itemType === 'observation' || item.itemType === 'inspection') {
         if (item.photoUrl && !item.photoUrl.includes('placehold.co')) filesToDelete.push(item.photoUrl);
@@ -165,9 +169,13 @@ export async function deleteMultipleItems(items: AllItems[]) {
       }
     });
 
-    await Promise.all(filesToDelete.map(url => url ? deleteFile(url) : Promise.resolve()));
-    await batch.commit();
+    // Delete files and commit batch in parallel for efficiency
+    await Promise.all([
+      ...filesToDelete.map(url => url ? deleteFile(url) : Promise.resolve()),
+      batch.commit()
+    ]);
     
+    // Revalidate all potentially affected paths
     revalidatePath('/private', 'page');
     revalidatePath('/public', 'page');
     const projectIds = new Set(items.map(i => i.projectId).filter(Boolean));
@@ -178,18 +186,13 @@ export async function deleteMultipleItems(items: AllItems[]) {
 // ==================================
 // OTHER ACTIONS
 // ==================================
-
-// NOTE: This entire function is disabled.
-// All AI logic will be triggered manually from the client to prevent submission failures.
 export async function retryAiAnalysis(item: Observation | Inspection) {
-    const docRef = doc(db, `${item.itemType}s`, item.id);
-    
-    // For now, we will mark as 'failed' to provide user feedback without calling the broken AI flow.
-    await updateDoc(docRef, { aiStatus: 'failed' });
-    const updatedItem = { ...item, aiStatus: 'failed' as const };
+    const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
+    await docRef.update({ aiStatus: 'failed' });
+    const updatedDoc = await docRef.get();
     
     revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private', 'page');
-    return updatedItem;
+    return { ...updatedDoc.data(), id: updatedDoc.id } as AllItems;
 }
 
 export async function shareObservationToPublic(observation: Observation, userProfile: UserProfile) {
@@ -197,11 +200,11 @@ export async function shareObservationToPublic(observation: Observation, userPro
       throw new Error("This observation has already been shared.");
   }
   
-  const publicObservationData = {
+  const publicObservationData: Partial<Observation> = {
       ...observation,
       date: new Date().toISOString(),
-      status: 'Pending' as const,
-      scope: 'public' as const,
+      status: 'Pending',
+      scope: 'public',
       projectId: null,
       originalId: observation.id,
       originalScope: observation.scope,
@@ -211,12 +214,6 @@ export async function shareObservationToPublic(observation: Observation, userPro
       likeCount: 0,
       commentCount: 0,
       viewCount: 0,
-      id: undefined, // Remove id for new doc
-      isSharedPublicly: undefined,
-      actionTakenDescription: undefined,
-      actionTakenPhotoUrl: undefined,
-      closedBy: undefined,
-      closedDate: undefined,
   };
 
   // Explicitly delete properties that shouldn't be in the new public copy
@@ -226,14 +223,19 @@ export async function shareObservationToPublic(observation: Observation, userPro
   delete publicObservationData.actionTakenPhotoUrl;
   delete publicObservationData.closedBy;
   delete publicObservationData.closedDate;
+  
+  const originalDocRef = adminDb.collection('observations').doc(observation.id);
 
-  await addDoc(collection(db, 'observations'), publicObservationData);
-  const originalDocRef = doc(db, 'observations', observation.id);
-  await updateDoc(originalDocRef, { isSharedPublicly: true });
+  // Use a batch to ensure atomicity
+  const batch = adminDb.batch();
+  const newPublicDocRef = adminDb.collection('observations').doc(); // Create a new doc reference
+  batch.set(newPublicDocRef, publicObservationData);
+  batch.update(originalDocRef, { isSharedPublicly: true });
+  await batch.commit();
   
   revalidatePath('/public', 'page');
   revalidatePath(observation.projectId ? `/proyek/${observation.projectId}` : '/private', 'page');
   
-  const updatedDoc = await getDoc(originalDocRef);
+  const updatedDoc = await originalDocRef.get();
   return { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
 }

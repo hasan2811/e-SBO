@@ -1,8 +1,7 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
-import { doc, runTransaction } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
 
 interface ToggleLikeParams {
@@ -13,6 +12,7 @@ interface ToggleLikeParams {
 
 /**
  * Toggles a like on an observation document. This is an atomic operation.
+ * Now uses the Admin SDK to bypass Firestore rules.
  * @param params - The parameters for the toggle operation.
  */
 export async function toggleLike({ docId, userId, collectionName }: ToggleLikeParams) {
@@ -20,12 +20,12 @@ export async function toggleLike({ docId, userId, collectionName }: ToggleLikePa
     throw new Error('Document ID, User ID, and Collection Name are required.');
   }
 
-  const docRef = doc(db, collectionName, docId);
+  const docRef = adminDb.collection(collectionName).doc(docId);
 
   try {
-    const observationInfo = await runTransaction(db, async (transaction) => {
+    const observationInfo = await adminDb.runTransaction(async (transaction) => {
       const docSnap = await transaction.get(docRef);
-      if (!docSnap.exists()) {
+      if (!docSnap.exists) {
         throw new Error('Document does not exist!');
       }
 
@@ -34,7 +34,6 @@ export async function toggleLike({ docId, userId, collectionName }: ToggleLikePa
         throw new Error(`Document ${docId} exists but contains no data.`);
       }
       
-      // Robustly handle the likes array to prevent type errors.
       const likes: string[] = Array.isArray(currentObservation.likes) ? currentObservation.likes : [];
       
       const newLikes = likes.includes(userId)
@@ -46,14 +45,12 @@ export async function toggleLike({ docId, userId, collectionName }: ToggleLikePa
         likeCount: newLikes.length,
       });
 
-      // Safely access scope and projectId for revalidation
       return { 
         scope: currentObservation.scope || null,
         projectId: currentObservation.projectId || null 
       };
     });
 
-    // Revalidate the correct path based on the observation's scope to ensure data consistency.
     if (observationInfo) {
         if (observationInfo.scope === 'public') {
             revalidatePath('/public', 'page');
@@ -72,31 +69,26 @@ export async function toggleLike({ docId, userId, collectionName }: ToggleLikePa
 
 /**
  * Increments the view count for a document.
+ * Now uses the Admin SDK to bypass Firestore rules.
  * @param params - The parameters for the increment operation.
  */
 export async function incrementViewCount({ docId, collectionName }: { docId: string; collectionName: 'observations' }) {
   if (!docId || !collectionName) {
-    return; // Don't throw error, just fail silently.
+    return;
   }
-  const docRef = doc(db, collectionName, docId);
+  const docRef = adminDb.collection(collectionName).doc(docId);
   try {
-    await runTransaction(db, async (transaction) => {
+    await adminDb.runTransaction(async (transaction) => {
       const docSnap = await transaction.get(docRef);
-      if (!docSnap.exists()) {
-        return; // Document not found, do nothing.
-      }
+      if (!docSnap.exists) return;
       const currentObservation = docSnap.data();
-      if (!currentObservation) {
-        return; // Document exists but has no data
-      }
-      // Robustly handle viewCount to ensure it's a number.
+      if (!currentObservation) return;
+      
       const currentViewCount = typeof currentObservation.viewCount === 'number' ? currentObservation.viewCount : 0;
       transaction.update(docRef, { viewCount: currentViewCount + 1 });
     });
-    // View count is only relevant for public posts, so revalidating /public is correct.
     revalidatePath('/public', 'page');
   } catch (error) {
     console.error('Error incrementing view count:', error);
-    // This is a non-critical error, so we don't re-throw.
   }
 }
