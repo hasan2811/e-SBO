@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -47,25 +48,13 @@ export default function ProjectDetailsPage() {
   }
 
   return (
-    <>
-      <div className="space-y-6">
-        {/* Header Section */}
-        <div className="flex justify-between items-start gap-4">
-          <div>
-             <Button variant="ghost" size="sm" className="mb-2 -ml-3" onClick={() => router.push('/beranda')}>
-              <ArrowLeft className="mr-2" />
-              Kembali ke Hub
-            </Button>
-            <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-            <p className="text-muted-foreground">Feed aktivitas proyek dan opsi manajemen.</p>
-          </div>
-        </div>
-        
-        {/* Main Content: Activity Feed */}
-        <div className="mt-6">
-            <FeedView mode="project" projectId={projectId} observationIdToOpen={observationIdToOpen} />
-        </div>
-      </div>
-    </>
+    <FeedView 
+      mode="project" 
+      projectId={projectId} 
+      observationIdToOpen={observationIdToOpen}
+      title={project.name}
+      description="Feed aktivitas proyek dan opsi manajemen."
+      showBackButton={true}
+    />
   );
 }

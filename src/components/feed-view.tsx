@@ -6,7 +6,7 @@ import Image from 'next/image';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationStatus } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { ChevronRight, Download, FileSignature as PtwIcon, Sparkles, Loader2, Filter, Search, Globe, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical, UserCheck, X } from 'lucide-react';
+import { ChevronRight, Download, FileSignature as PtwIcon, Sparkles, Loader2, Filter, Search, Globe, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical, UserCheck, X, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -256,7 +256,16 @@ const PtwListItem = ({ ptw, onSelect, isSelectionMode, isSelected, onToggleSelec
     )
 };
 
-export function FeedView() {
+interface FeedViewProps {
+  mode: 'public' | 'private' | 'project';
+  projectId?: string;
+  observationIdToOpen?: string | null;
+  title?: string;
+  description?: string;
+  showBackButton?: boolean;
+}
+
+export function FeedView({ mode, projectId, observationIdToOpen, title, description, showBackButton }: FeedViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -274,9 +283,6 @@ export function FeedView() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [isDeleteMultiOpen, setDeleteMultiOpen] = React.useState(false);
 
-  const mode = pathname.startsWith('/public') ? 'public' : pathname.startsWith('/beranda') ? 'private' : 'project';
-  const observationIdToOpen = searchParams.get('openObservation');
-  
   const triggeredOpen = React.useRef(false);
   React.useEffect(() => {
     const openItemFromNotification = async () => {
@@ -330,33 +336,35 @@ export function FeedView() {
   const canSelect = !isLoading && filteredData.length > 0 && mode !== 'public';
 
   const getPageTitle = () => {
+      if (title) return title;
       if (mode === 'public') return 'Feed Publik';
+      if (mode === 'private') return 'Feed Pribadi';
       return 'Feed';
   };
   
   function EmptyState() {
     let Icon = Home;
-    let title = 'Feed Kosong';
+    let titleText = 'Feed Kosong';
     let text = 'Tidak ada laporan yang tersedia.';
   
     if (mode === 'public') {
       Icon = Globe;
-      title = searchTerm ? 'Tidak Ada Hasil' : 'Feed Publik Kosong';
+      titleText = searchTerm ? 'Tidak Ada Hasil' : 'Feed Publik Kosong';
       text = searchTerm ? 'Tidak ada hasil yang cocok dengan pencarian Anda.' : 'Bagikan observasi dari feed pribadi atau proyek Anda agar muncul di sini.';
     } else if (mode === 'project') {
       Icon = Briefcase;
-      title = 'Proyek Kosong';
+      titleText = 'Proyek Kosong';
       text = `Belum ada ${viewTypeInfo[viewType].label.toLowerCase()} untuk proyek ini.`;
     } else if (mode === 'private') {
       Icon = User;
-      title = 'Feed Pribadi Kosong';
+      titleText = 'Feed Pribadi Kosong';
       text = `Anda belum membuat ${viewTypeInfo[viewType].label.toLowerCase()} pribadi.`;
     }
   
     return (
       <div className="text-center py-16 text-muted-foreground bg-card rounded-lg">
         <Icon className="mx-auto h-12 w-12" />
-        <h3 className="mt-4 text-xl font-semibold">{title}</h3>
+        <h3 className="mt-4 text-xl font-semibold">{titleText}</h3>
         <p className="mt-2 text-sm max-w-xs mx-auto">{text}</p>
       </div>
     );
@@ -365,19 +373,29 @@ export function FeedView() {
   return (
     <>
      <div className="space-y-4">
-        <div className="flex justify-between items-center gap-4 min-h-[40px]">
+        <div className="flex justify-between items-start gap-4 min-h-[40px]">
           {isSelectionMode ? (
             <>
               <Button variant="ghost" onClick={() => { setIsSelectionMode(false); setSelectedIds(new Set()); }}>Batal</Button>
-              <p className="font-semibold">{selectedIds.size} dipilih</p>
+              <p className="font-semibold self-center">{selectedIds.size} dipilih</p>
               <Button variant="destructive" size="icon" onClick={() => setDeleteMultiOpen(true)} disabled={selectedIds.size === 0}>
                 <Trash2 className="h-5 w-5" />
               </Button>
             </>
           ) : (
             <>
-                <h2 className="text-2xl font-bold tracking-tight">{getPageTitle()}</h2>
-                <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  {showBackButton && (
+                    <Button variant="ghost" size="sm" className="mb-2 -ml-3" onClick={() => router.push('/beranda')}>
+                      <ArrowLeft className="mr-2" />
+                      Kembali ke Hub
+                    </Button>
+                  )}
+                  <h2 className="text-3xl font-bold tracking-tight">{getPageTitle()}</h2>
+                  {description && <p className="text-muted-foreground mt-1">{description}</p>}
+                </div>
+
+                <div className="flex items-center gap-2 flex-shrink-0 self-start">
                     {mode !== 'public' && (
                         <Popover>
                             <PopoverTrigger asChild>
@@ -443,7 +461,7 @@ export function FeedView() {
           )}
         </div>
 
-      <main>
+      <main className="mt-6">
         {isLoading && filteredData.length === 0 ? (
           <ul className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
