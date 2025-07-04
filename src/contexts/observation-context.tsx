@@ -14,6 +14,11 @@ import {
   DocumentReference,
   deleteDoc,
   writeBatch,
+  orderBy,
+  limit,
+  startAfter,
+  getDocs,
+  QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { deleteFile, uploadFile } from '@/lib/storage';
@@ -32,6 +37,10 @@ interface ObservationContextType {
   privateItems: AllItems[];
   projectItems: AllItems[];
   loading: boolean;
+  publicItems: Observation[];
+  publicItemsLoading: boolean;
+  hasMorePublic: boolean;
+  fetchPublicItems: (reset?: boolean) => Promise<void>;
   addObservation: (
     formData: any,
     scope: Scope,
@@ -79,8 +88,14 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     
     const [privateItems, setPrivateItems] = React.useState<AllItems[]>([]);
     const [projectItems, setProjectItems] = React.useState<AllItems[]>([]);
+    const [publicItems, setPublicItems] = React.useState<Observation[]>([]);
+
     const [privateItemsLoading, setPrivateItemsLoading] = React.useState(true);
     const [projectItemsLoading, setProjectItemsLoading] = React.useState(true);
+    const [publicItemsLoading, setPublicItemsLoading] = React.useState(true);
+    
+    const [lastPublicVisible, setLastPublicVisible] = React.useState<QueryDocumentSnapshot | null>(null);
+    const [hasMorePublic, setHasMorePublic] = React.useState(true);
 
     const sortItemsByDate = (items: AllItems[]) => {
       return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -175,6 +190,55 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         };
     }, [user, projects, projectsLoading]);
     
+     const fetchPublicItems = React.useCallback(async (reset = false) => {
+        setPublicItemsLoading(true);
+        const effectiveLastVisible = reset ? null : lastPublicVisible;
+
+        try {
+            let q = query(
+                collection(db, 'observations'),
+                where('scope', '==', 'public'),
+                orderBy('date', 'desc'),
+                limit(10) // PAGE_SIZE from FeedView
+            );
+
+            if (effectiveLastVisible) {
+                q = query(q, startAfter(effectiveLastVisible));
+            }
+
+            const documentSnapshots = await getDocs(q);
+            const newItems = documentSnapshots.docs.map(doc => ({
+                ...doc.data(),
+                id: doc.id,
+                itemType: 'observation'
+            })) as Observation[];
+
+            setLastPublicVisible(documentSnapshots.docs[documentSnapshots.docs.length - 1] || null);
+            setHasMorePublic(documentSnapshots.docs.length === 10);
+
+            if (reset) {
+                setPublicItems(newItems);
+            } else {
+                setPublicItems(prevItems => {
+                    const combined = [...prevItems, ...newItems];
+                    const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+                    return unique.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                });
+            }
+        } catch (error: any) {
+            console.error('Error fetching public items:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Memuat Data Publik',
+                description: error.message
+            });
+            setHasMorePublic(false);
+        } finally {
+            setPublicItemsLoading(false);
+        }
+    }, [lastPublicVisible]);
+
+
     const _runObservationAiAnalysis = React.useCallback(async (observation: Observation) => {
       const observationDocRef = getDocRef(observation);
       const observationData = `
@@ -466,7 +530,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         if (!user) throw new Error('User is not authenticated.');
     
         const batch = writeBatch(db);
-        const filesToDelete: string[] = [];
+        const filesToDelete: (string | undefined)[] = [];
     
         items.forEach(item => {
           if (item.userId !== user.uid && item.scope !== 'project') {
@@ -489,7 +553,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         });
     
         // Delete files from storage first
-        await Promise.all(filesToDelete.map(url => deleteFile(url)));
+        await Promise.all(filesToDelete.map(url => deleteFile(url as string)));
     
         // Then commit the Firestore batch delete
         await batch.commit();
@@ -583,6 +647,22 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             toast({ variant: 'destructive', title: 'Anda harus masuk untuk menyukai.' });
             return;
         }
+
+        const optimisticUpdate = (item: AllItems): AllItems => {
+          if (item.id === observation.id && item.itemType === 'observation') {
+              const hasLiked = item.likes?.includes(user.uid);
+              const newLikes = hasLiked
+                  ? item.likes!.filter(uid => uid !== user.uid)
+                  : [...(item.likes || []), user.uid];
+              return { ...item, likes: newLikes, likeCount: newLikes.length };
+          }
+          return item;
+        };
+        
+        setPrivateItems(items => items.map(optimisticUpdate));
+        setProjectItems(items => items.map(optimisticUpdate));
+        setPublicItems(items => items.map(item => optimisticUpdate(item) as Observation));
+
         try {
             await toggleLike({
                 docId: observation.id,
@@ -592,10 +672,28 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         } catch (error) {
             console.error('Failed to toggle like:', error);
             toast({ variant: 'destructive', title: 'Gagal', description: 'Tidak dapat memproses suka.'});
+
+            const revertUpdate = (item: AllItems): AllItems => {
+                if (item.id === observation.id) return observation;
+                return item;
+            }
+            setPrivateItems(items => items.map(revertUpdate));
+            setProjectItems(items => items.map(revertUpdate));
+            setPublicItems(items => items.map(item => revertUpdate(item) as Observation));
         }
     }, [user]);
 
     const incrementViewCount = React.useCallback(async (observationId: string) => {
+        const optimisticUpdate = (item: AllItems): AllItems => {
+            if (item.id === observationId && item.itemType === 'observation') {
+                return { ...item, viewCount: (item.viewCount || 0) + 1 };
+            }
+            return item;
+        };
+        setPrivateItems(items => items.map(optimisticUpdate));
+        setProjectItems(items => items.map(optimisticUpdate));
+        setPublicItems(items => items.map(item => optimisticUpdate(item) as Observation));
+
         try {
             await incrementViewCountAction({
                 docId: observationId,
@@ -603,14 +701,17 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             });
         } catch (error) {
             console.error('Failed to increment view count:', error);
-            // Don't toast here as it's a background, non-critical task
         }
     }, []);
 
     const value = {
         privateItems,
         projectItems,
-        loading: authLoading || projectsLoading || privateItemsLoading || projectItemsLoading,
+        loading: authLoading || projectsLoading || privateItemsLoading || projectItemsLoading || publicItemsLoading,
+        publicItems,
+        publicItemsLoading,
+        hasMorePublic,
+        fetchPublicItems,
         addObservation,
         addInspection,
         addPtw,

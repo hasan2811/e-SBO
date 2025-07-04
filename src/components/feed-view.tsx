@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -262,15 +263,18 @@ const PtwListItem = ({ ptw, onSelect, isSelectionMode, isSelected, onToggleSelec
 };
 
 export function FeedView({ mode, projectId }: FeedViewProps) {
-  const { privateItems, projectItems, loading: myItemsLoading, deleteMultipleItems } = useObservations();
+  const { 
+      privateItems, 
+      projectItems, 
+      loading: myItemsLoading, 
+      deleteMultipleItems,
+      publicItems,
+      publicItemsLoading,
+      hasMorePublic,
+      fetchPublicItems,
+  } = useObservations();
   const { user } = useAuth();
   
-  const [publicItems, setPublicItems] = React.useState<AllItems[]>([]);
-  const [loadingPublic, setLoadingPublic] = React.useState(true);
-  const [lastVisible, setLastVisible] = React.useState<QueryDocumentSnapshot | null>(null);
-  const [hasMorePublic, setHasMorePublic] = React.useState(true);
-  const [fetchError, setFetchError] = React.useState<string | null>(null);
-
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
   const [selectedPtwId, setSelectedPtwId] = React.useState<string | null>(null);
@@ -288,61 +292,14 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   
   const { toast } = useToast();
   
-  const fetchPublicItems = React.useCallback(async (reset = false) => {
-    setLoadingPublic(true);
-    setFetchError(null);
-    if (reset) {
-        setLastVisible(null);
-    }
-
-    try {
-        let q: Query<DocumentData> = query(
-            collection(db, 'observations'),
-            where('scope', '==', 'public'),
-            orderBy('date', 'desc'),
-            limit(PAGE_SIZE)
-        );
-
-        if (lastVisible && !reset) {
-            q = query(q, startAfter(lastVisible));
-        }
-
-        const documentSnapshots = await getDocs(q);
-        const newItems = documentSnapshots.docs.map(doc => ({
-            ...doc.data(),
-            id: doc.id,
-            itemType: 'observation'
-        })) as AllItems[];
-
-        setLastVisible(documentSnapshots.docs[documentSnapshots.docs.length - 1] || null);
-        setHasMorePublic(documentSnapshots.docs.length === PAGE_SIZE);
-
-        if (reset) {
-            setPublicItems(newItems);
-        } else {
-            setPublicItems(prevItems => {
-                const combined = [...prevItems, ...newItems];
-                const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
-                return unique.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            });
-        }
-    } catch (error: any) {
-        console.error('Error fetching public items:', error);
-        if (error.code === 'failed-precondition' && error.message.includes('index')) {
-            setFetchError('Database memerlukan konfigurasi (indeks) untuk menampilkan data ini. Klik link di konsol browser untuk membuatnya.');
-        } else {
-            setFetchError(`Gagal memuat data. Periksa koneksi internet Anda. Error: ${error.message}`);
-        }
-        setHasMorePublic(false);
-    } finally {
-        setLoadingPublic(false);
-    }
-  }, [lastVisible]);
-
   React.useEffect(() => {
-    if (mode === 'public') fetchPublicItems(true);
+    if (mode === 'public') {
+      if (publicItems.length === 0) {
+        fetchPublicItems(true);
+      }
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]); 
+  }, [mode, fetchPublicItems]);
 
   React.useEffect(() => {
     setDisplayedItemsCount(PAGE_SIZE);
@@ -357,11 +314,12 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
       return [];
   }, [mode, publicItems, privateItems, projectItems]);
 
-  const isLoading = mode === 'public' ? loadingPublic && data.length === 0 : myItemsLoading;
+  const isLoading = mode === 'public' ? publicItemsLoading && data.length === 0 : myItemsLoading;
 
   const filteredData = React.useMemo(() => {
     let baseData = [...data];
-    let dataToFilter: AllItems[] = baseData.filter(item => item.userId === user?.uid);
+    let dataToFilter: AllItems[] = [];
+
     if (mode === 'project' && projectId) {
         dataToFilter = baseData.filter(item => item.projectId === projectId);
     } else if (mode === 'private') {
@@ -388,7 +346,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
     }
 
     return dataToFilter;
-  }, [data, mode, projectId, viewType, searchTerm, user]);
+  }, [data, mode, projectId, viewType, searchTerm]);
 
   const itemsToDisplay = mode === 'public' ? filteredData : filteredData.slice(0, displayedItemsCount);
   
@@ -558,12 +516,6 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
         </div>
 
       <main>
-        {fetchError && mode === 'public' && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertTitle>Gagal Memuat Data Publik</AlertTitle>
-            <AlertDescription><p>{fetchError}</p><p className="mt-2 text-xs">Setelah membuat indeks, mungkin perlu beberapa menit untuk aktif. Coba muat ulang halaman setelahnya.</p></AlertDescription>
-          </Alert>
-        )}
         {isLoading ? (
           <ul className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -586,11 +538,11 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
              })}
           </ul>
         ) : (
-          !fetchError && <EmptyState />
+          <EmptyState />
         )}
         
         {mode === 'public' && itemsToDisplay.length > 0 && (
-          <div className="mt-6 flex justify-center">{hasMorePublic ? (<Button onClick={() => fetchPublicItems(false)} disabled={loadingPublic}>{loadingPublic && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Tampilkan Lebih Banyak</Button>) : (<p className="py-4 text-center text-sm text-muted-foreground">You have reached the end.</p>)}</div>
+          <div className="mt-6 flex justify-center">{hasMorePublic ? (<Button onClick={() => fetchPublicItems(false)} disabled={publicItemsLoading}>{publicItemsLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Tampilkan Lebih Banyak</Button>) : (<p className="py-4 text-center text-sm text-muted-foreground">You have reached the end.</p>)}</div>
         )}
         {mode !== 'public' && displayedItemsCount < filteredData.length && (
             <div className="mt-6 flex justify-center"><Button onClick={() => setDisplayedItemsCount(prev => prev + PAGE_SIZE)}>Tampilkan Lebih Banyak</Button></div>

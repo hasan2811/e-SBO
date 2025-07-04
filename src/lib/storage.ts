@@ -68,7 +68,7 @@ export function uploadFile(
  * @param fileUrl The public download URL of the file to delete.
  * @returns A promise that resolves when the file is deleted.
  */
-export function deleteFile(fileUrl: string): Promise<void> {
+export function deleteFile(fileUrl: string | undefined): Promise<void> {
   // Don't try to delete placeholder images or invalid URLs
   if (!fileUrl || fileUrl.includes('placehold.co') || !fileUrl.startsWith('https://firebasestorage.googleapis.com')) {
     return Promise.resolve();
