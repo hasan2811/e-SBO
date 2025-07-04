@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -75,8 +74,10 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   );
   
   const handleSuccessDelete = () => {
-    removeItem(inspection.id);
     onOpenChange(false);
+    if (inspection) {
+      removeItem(inspection.id);
+    }
   }
 
   return (

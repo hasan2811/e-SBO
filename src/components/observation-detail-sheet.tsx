@@ -114,8 +114,10 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   }
 
   const handleSuccessDelete = () => {
-    removeItem(observation.id);
     onOpenChange(false);
+    if (observation) {
+      removeItem(observation.id);
+    }
   };
 
   const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;

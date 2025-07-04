@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -56,8 +55,10 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   );
   
   const handleSuccessDelete = () => {
-    removeItem(ptw.id);
     onOpenChange(false);
+    if (ptw) {
+      removeItem(ptw.id);
+    }
   }
 
   return (
