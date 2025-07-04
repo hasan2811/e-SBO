@@ -6,11 +6,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, Sparkles, Wand2 } from 'lucide-react';
+import { useDebounce } from 'use-debounce';
 
-import type { Observation, ObservationCategory, Company, Location, RiskLevel, Project } from '@/lib/types';
+import type { Observation, ObservationCategory, Company, Location, RiskLevel, Project, AssistObservationOutput } from '@/lib/types';
+import { OBSERVATION_CATEGORIES, RISK_LEVELS } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { getAIAssistance } from '@/lib/actions/ai-actions';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -18,6 +21,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AnimatePresence, motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
+
 
 const DEFAULT_LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const DEFAULT_COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
@@ -31,9 +37,59 @@ const formSchema = z.object({
   company: z.string({ required_error: "Company is required." }).min(1, "Company is required."),
   findings: z.string().min(10, { message: 'Temuan harus diisi minimal 10 karakter.' }),
   recommendation: z.string().optional(),
+  category: z.enum(OBSERVATION_CATEGORIES),
+  riskLevel: z.enum(RISK_LEVELS),
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+const AiSuggestion = ({
+  title,
+  suggestion,
+  onApply,
+  isLoading,
+}: {
+  title: string;
+  suggestion: string | undefined | null;
+  onApply: () => void;
+  isLoading: boolean;
+}) => {
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span>Menganalisis...</span>
+      </div>
+    );
+  }
+
+  if (!suggestion) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="text-xs bg-primary/10 p-2 rounded-md border-l-2 border-primary"
+    >
+      <p className="font-semibold text-primary mb-1">{title}</p>
+      <div className="flex justify-between items-start gap-2">
+        <p className="flex-1 text-muted-foreground italic">"{suggestion}"</p>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-auto px-2 py-1 text-primary hover:bg-primary/20"
+          onClick={onApply}
+        >
+          <Wand2 className="mr-1.5 h-3.5 w-3.5" />
+          Terapkan
+        </Button>
+      </div>
+    </motion.div>
+  );
+};
+
 
 interface SubmitObservationDialogProps {
   isOpen: boolean;
@@ -49,6 +105,9 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   
+  const [aiSuggestions, setAiSuggestions] = React.useState<AssistObservationOutput | null>(null);
+  const [isAiLoading, setIsAiLoading] = React.useState(false);
+
   const companyOptions = React.useMemo(() => 
     (project?.customCompanies && project.customCompanies.length > 0) ? project.customCompanies : DEFAULT_COMPANIES,
   [project]);
@@ -65,9 +124,35 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
       company: '',
       findings: '',
       recommendation: '',
+      category: 'Supervision',
+      riskLevel: 'Low',
     },
     mode: 'onChange',
   });
+  
+  const findingsValue = form.watch('findings');
+  const [debouncedFindings] = useDebounce(findingsValue, 1000);
+
+  React.useEffect(() => {
+    const fetchAiSuggestions = async () => {
+      if (debouncedFindings && debouncedFindings.length >= 20) {
+        setIsAiLoading(true);
+        try {
+          const result = await getAIAssistance({ findings: debouncedFindings });
+          setAiSuggestions(result);
+        } catch (error) {
+          console.error("AI assistance failed", error);
+          setAiSuggestions(null);
+        } finally {
+          setIsAiLoading(false);
+        }
+      } else {
+        setAiSuggestions(null);
+      }
+    };
+    fetchAiSuggestions();
+  }, [debouncedFindings]);
+
 
   React.useEffect(() => {
     if (isOpen) {
@@ -77,8 +162,12 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
             company: companyOptions[0],
             findings: '',
             recommendation: '',
+            category: 'Supervision',
+            riskLevel: 'Low',
         });
         setPhotoPreview(null);
+        setAiSuggestions(null);
+        setIsAiLoading(false);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -113,11 +202,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     }
 
     onAddObservation(values);
-
-    toast({
-      title: 'Laporan Terkirim',
-      description: `Observasi Anda sedang diproses di latar belakang.`,
-    });
     onOpenChange(false);
   };
   
@@ -133,9 +217,12 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[525px] p-0 flex flex-col max-h-[90dvh]">
         <DialogHeader className="p-6 pb-4 border-b">
-          <DialogTitle>Submit New Observation</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+             Submit New Observation
+          </DialogTitle>
           <DialogDescription>
-            Isi detail di bawah ini. AI akan membantu menganalisis, mengklasifikasikan, dan memberikan rekomendasi.
+            Isi detail di bawah ini. AI akan membantu menganalisis dan memberi saran secara *real-time*.
           </DialogDescription>
         </DialogHeader>
 
@@ -175,7 +262,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                   </FormItem>
                 )}
               />
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -221,9 +307,64 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                       <Textarea placeholder="Jelaskan detail temuan observasi sejelas mungkin." rows={5} {...field} />
                     </FormControl>
                     <FormMessage />
+                     <AnimatePresence>
+                      <AiSuggestion
+                        title="Saran Perbaikan Kalimat"
+                        suggestion={aiSuggestions?.improvedFindings}
+                        isLoading={isAiLoading && !aiSuggestions}
+                        onApply={() => form.setValue('findings', aiSuggestions!.improvedFindings, { shouldValidate: true })}
+                      />
+                    </AnimatePresence>
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kategori (LSR)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                        <SelectContent>{renderSelectItems(OBSERVATION_CATEGORIES)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                       <AnimatePresence>
+                         <AiSuggestion
+                            title="Saran Kategori"
+                            suggestion={aiSuggestions?.suggestedCategory}
+                            isLoading={isAiLoading && !aiSuggestions}
+                            onApply={() => form.setValue('category', aiSuggestions!.suggestedCategory, { shouldValidate: true })}
+                          />
+                       </AnimatePresence>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="riskLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tingkat Risiko</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                         <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                        <SelectContent>{renderSelectItems(RISK_LEVELS)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                       <AnimatePresence>
+                        <AiSuggestion
+                          title="Saran Tingkat Risiko"
+                          suggestion={aiSuggestions?.suggestedRiskLevel}
+                          isLoading={isAiLoading && !aiSuggestions}
+                          onApply={() => form.setValue('riskLevel', aiSuggestions!.suggestedRiskLevel, { shouldValidate: true })}
+                        />
+                      </AnimatePresence>
+                    </FormItem>
+                  )}
+                />
+              </div>
               
               <FormField
                 control={form.control}
@@ -232,13 +373,20 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                   <FormItem>
                     <FormLabel>Rekomendasi (Opsional)</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Tulis rekomendasi Anda di sini, atau biarkan kosong dan AI akan membuatkannya." rows={3} {...field} />
+                      <Textarea placeholder="Tulis rekomendasi Anda di sini, atau biarkan AI yang membuatkannya." rows={3} {...field} />
                     </FormControl>
                     <FormMessage />
+                    <AnimatePresence>
+                      <AiSuggestion
+                        title="Saran Rekomendasi"
+                        suggestion={aiSuggestions?.suggestedRecommendation}
+                        isLoading={isAiLoading && !aiSuggestions}
+                        onApply={() => form.setValue('recommendation', aiSuggestions!.suggestedRecommendation, { shouldValidate: true })}
+                      />
+                    </AnimatePresence>
                   </FormItem>
                 )}
               />
-
             </form>
           </Form>
         </div>

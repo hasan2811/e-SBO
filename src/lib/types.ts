@@ -2,8 +2,8 @@
 import { z } from 'zod';
 
 export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed';
-export type Company = 'Tambang' | 'Migas' | 'Konstruksi' | 'Manufaktur';
-export type Location = 'International' | 'National' | 'Local' | 'Regional';
+export type Company = 'Tambang' | 'Migas' | 'Konstruksi' | 'Manufaktur' | string; // Allow custom strings
+export type Location = 'International' | 'National' | 'Local' | 'Regional' | string; // Allow custom strings
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 export type Scope = 'public' | 'private' | 'project';
 
@@ -33,6 +33,8 @@ export const OBSERVATION_CATEGORIES = [
   'Excavation Management',
   'Competence & Training',
   'Supervision',
+  // Add a general category as a fallback
+  'General',
 ] as const;
 
 export type ObservationCategory = (typeof OBSERVATION_CATEGORIES)[number];

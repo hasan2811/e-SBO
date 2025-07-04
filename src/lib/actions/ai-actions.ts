@@ -9,11 +9,12 @@ import { assistObservation, AssistObservationInput, AssistObservationOutput } fr
  */
 export async function getAIAssistance(input: AssistObservationInput): Promise<AssistObservationOutput> {
   try {
+    // This flow is designed to be fast and lightweight for real-time use.
     const result = await assistObservation(input);
     return result;
   } catch (error) {
     console.error("Error getting AI assistance:", error);
-    // You might want to throw a more user-friendly error
-    throw new Error("Failed to get AI assistance. Please try again.");
+    // Propagate the error to be handled by the client-side caller.
+    throw new Error("Failed to get AI assistance. The AI model may be temporarily unavailable.");
   }
 }
