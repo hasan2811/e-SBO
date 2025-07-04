@@ -23,21 +23,19 @@ export async function toggleLike({ docId, userId, collectionName }: ToggleLikePa
   const docRef = doc(db, collectionName, docId);
 
   try {
-    const observation = await runTransaction(db, async (transaction) => {
+    const observationInfo = await runTransaction(db, async (transaction) => {
       const docSnap = await transaction.get(docRef);
       if (!docSnap.exists()) {
         throw new Error('Document does not exist!');
       }
 
       const currentObservation = docSnap.data();
-      const likes: string[] = currentObservation.likes || [];
+      // Robustly handle the likes array to prevent type errors.
+      const likes: string[] = Array.isArray(currentObservation.likes) ? currentObservation.likes : [];
       
-      let newLikes: string[];
-      if (likes.includes(userId)) {
-        newLikes = likes.filter(uid => uid !== userId);
-      } else {
-        newLikes = [...likes, userId];
-      }
+      const newLikes = likes.includes(userId)
+        ? likes.filter(uid => uid !== userId)
+        : [...likes, userId];
 
       transaction.update(docRef, {
         likes: newLikes,
@@ -46,8 +44,15 @@ export async function toggleLike({ docId, userId, collectionName }: ToggleLikePa
       return { scope: currentObservation.scope, projectId: currentObservation.projectId };
     });
 
-    if (observation) {
-        revalidatePath('/public');
+    // Revalidate the correct path based on the observation's scope to ensure data consistency.
+    if (observationInfo) {
+        if (observationInfo.scope === 'public') {
+            revalidatePath('/public', 'page');
+        } else if (observationInfo.scope === 'private') {
+            revalidatePath('/private', 'page');
+        } else if (observationInfo.scope === 'project' && observationInfo.projectId) {
+            revalidatePath(`/proyek/${observationInfo.projectId}`, 'page');
+        }
     }
 
   } catch (error) {
@@ -71,10 +76,13 @@ export async function incrementViewCount({ docId, collectionName }: { docId: str
       if (!docSnap.exists()) {
         return; // Document not found, do nothing.
       }
-      const currentViewCount = docSnap.data().viewCount || 0;
+      const currentObservation = docSnap.data();
+      // Robustly handle viewCount to ensure it's a number.
+      const currentViewCount = typeof currentObservation.viewCount === 'number' ? currentObservation.viewCount : 0;
       transaction.update(docRef, { viewCount: currentViewCount + 1 });
     });
-    revalidatePath('/public');
+    // View count is only relevant for public posts, so revalidating /public is correct.
+    revalidatePath('/public', 'page');
   } catch (error) {
     console.error('Error incrementing view count:', error);
     // This is a non-critical error, so we don't re-throw.
