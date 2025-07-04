@@ -328,7 +328,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                       <FormLabel>Kategori (LSR)</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                        <SelectContent>{renderSelectItems(OBSERVATION_CATEGORIES)}</SelectContent>
+                        <SelectContent>{renderSelectItems(OBSERVATION_CATEGORIES as any)}</SelectContent>
                       </Select>
                       <FormMessage />
                        <AnimatePresence>
@@ -336,7 +336,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                             title="Saran Kategori"
                             suggestion={aiSuggestions?.suggestedCategory}
                             isLoading={isAiLoading && !aiSuggestions}
-                            onApply={() => form.setValue('category', aiSuggestions!.suggestedCategory, { shouldValidate: true })}
+                            onApply={() => form.setValue('category', aiSuggestions!.suggestedCategory as any, { shouldValidate: true })}
                           />
                        </AnimatePresence>
                     </FormItem>
@@ -358,7 +358,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, onAddObservation
                           title="Saran Tingkat Risiko"
                           suggestion={aiSuggestions?.suggestedRiskLevel}
                           isLoading={isAiLoading && !aiSuggestions}
-                          onApply={() => form.setValue('riskLevel', aiSuggestions!.suggestedRiskLevel, { shouldValidate: true })}
+                          onApply={() => form.setValue('riskLevel', aiSuggestions!.suggestedRiskLevel as any, { shouldValidate: true })}
                         />
                       </AnimatePresence>
                     </FormItem>

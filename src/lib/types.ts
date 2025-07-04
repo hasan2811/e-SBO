@@ -33,8 +33,6 @@ export const OBSERVATION_CATEGORIES = [
   'Excavation Management',
   'Competence & Training',
   'Supervision',
-  // Add a general category as a fallback
-  'General',
 ] as const;
 
 export type ObservationCategory = (typeof OBSERVATION_CATEGORIES)[number];

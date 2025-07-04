@@ -212,7 +212,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
       try {
         const analysis = await analyzeInspectionData({ inspectionData });
-        const aiData = {
+        const aiData: Partial<Inspection> = {
             aiSummary: analysis.summary,
             aiRisks: analysis.risks,
             aiSuggestedActions: analysis.suggestedActions,
@@ -252,8 +252,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
                 location: formData.location as Location,
                 company: formData.company as Company,
-                category: 'Supervision', // Default, AI will update
-                riskLevel: 'Low', // Default, AI will update
+                category: formData.category as ObservationCategory,
+                riskLevel: formData.riskLevel as RiskLevel,
                 findings: formData.findings,
                 recommendation: formData.recommendation || '',
                 photoUrl: photoUrl,
