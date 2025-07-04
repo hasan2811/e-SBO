@@ -33,7 +33,7 @@ const viewTypeInfo = {
     ptws: { label: 'PTW', icon: PtwIcon, collection: 'ptws' },
 };
 
-const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelected, onToggleSelect, onLikeToggle }: { observation: Observation, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void, onLikeToggle: (obs: Observation) => void }) => {
+const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelected, onToggleSelect, onLikeToggle }: { observation: Observation, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void, onLikeToggle: (observationId: string) => void }) => {
     const { user } = useAuth();
     const pathname = usePathname();
     const mode = pathname.startsWith('/public') ? 'public' : 'project';
@@ -60,7 +60,7 @@ const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelecte
 
     const handleLikeClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        onLikeToggle(observation);
+        onLikeToggle(observation.id);
     };
     
     const handleItemClick = (e: React.MouseEvent<HTMLLIElement>) => {

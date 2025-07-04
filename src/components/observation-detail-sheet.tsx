@@ -64,15 +64,22 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isSharing, setIsSharing] = React.useState(false);
+  const viewCountedRef = React.useRef<string | null>(null);
 
   const observation = observationId ? getObservationById(observationId) : null;
   const mode = observation?.scope || (pathname.startsWith('/public') ? 'public' : 'private');
   
   React.useEffect(() => {
-      if (isOpen && observation && mode === 'public') {
-          handleViewCount(observation);
-      }
-  }, [isOpen, observation, mode, handleViewCount]);
+    // Only run if the sheet is open for a specific observation in public mode.
+    if (isOpen && observationId && mode === 'public') {
+        // Check if we've already counted the view for this observation ID in this session.
+        if (viewCountedRef.current !== observationId) {
+            handleViewCount(observationId);
+            // Mark this observation as viewed for this session.
+            viewCountedRef.current = observationId;
+        }
+    }
+  }, [isOpen, observationId, mode, handleViewCount]);
 
   if (!observation) return null;
   
@@ -207,7 +214,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
               <>
                 <div className="flex items-center justify-around">
                     <button
-                        onClick={() => handleLikeToggle(observation)}
+                        onClick={() => handleLikeToggle(observation.id)}
                         className={cn(
                             "flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors",
                             (observation.likes || []).includes(user?.uid || '') && "text-primary font-semibold"
