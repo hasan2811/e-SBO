@@ -134,6 +134,14 @@ async function safeDeleteStorageFile(fileUrl: string | undefined | null) {
 
 export async function deleteItem(item: AllItems): Promise<{id: string}> {
   const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
+  
+  // Check if document exists before trying to delete
+  const docSnap = await docRef.get();
+  if (!docSnap.exists) {
+      console.warn(`[deleteItem] Document with id ${item.id} in ${item.itemType}s not found. Skipping deletion.`);
+      return { id: item.id };
+  }
+
   await docRef.delete();
 
   if (item.itemType === 'observation' || item.itemType === 'inspection') {
@@ -168,7 +176,8 @@ export async function deleteMultipleItems(items: AllItems[]): Promise<{deletedId
       storageDeletePromises.push(safeDeleteStorageFile(item.jsaPdfUrl));
     }
   }
-
+  
+  // Await storage deletions first, as they are not part of the batch
   await Promise.all(storageDeletePromises);
   await batch.commit();
 
@@ -198,15 +207,16 @@ export async function triggerObservationAnalysis(observation: Observation) {
 
   const observationData = `Temuan: ${observation.findings}\nRekomendasi: ${observation.recommendation}\nLokasi: ${observation.location}\nPerusahaan: ${observation.company}`;
 
-  // PHASE 1: Fast classification. We await this to get immediate user feedback.
   try {
     const classification = await runFastClassification({ observationData }, userProfile);
     const docExists = (await docRef.get()).exists;
     if (docExists) {
+        // AI's automatic work is done. Set status to completed.
         await docRef.update({
             category: classification.suggestedCategory,
-            riskLevel: classification.suggestedRiskLevel, // Update main risk level
+            riskLevel: classification.suggestedRiskLevel,
             aiSuggestedRiskLevel: classification.suggestedRiskLevel,
+            aiStatus: 'completed',
         });
         revalidateRelevantPaths(observation);
     }
@@ -217,48 +227,19 @@ export async function triggerObservationAnalysis(observation: Observation) {
         await docRef.update({ aiStatus: 'failed' });
         revalidateRelevantPaths(observation);
     }
-    return; // Stop if the critical first step fails.
+    return; // Stop on failure.
   }
-
-  // PHASE 2 & 3: Background analysis and notifications (fire-and-forget).
-  const runBackgroundTasks = async () => {
-    try {
-      const analysis = await analyzeDeeperObservation({ observationData }, userProfile);
-      const docExists = (await docRef.get()).exists;
-      if (docExists) {
-          await docRef.update({
-              aiStatus: 'completed',
-              aiSummary: analysis.summary,
-              aiObserverSkillRating: analysis.aiObserverSkillRating,
-              aiObserverSkillExplanation: analysis.aiObserverSkillExplanation,
-              aiRisks: analysis.risks,
-              aiSuggestedActions: analysis.suggestedActions,
-              aiRootCauseAnalysis: analysis.rootCauseAnalysis,
-              aiRelevantRegulations: analysis.relevantRegulations,
-          });
-          revalidateRelevantPaths(observation);
-      }
-    } catch (error) {
-        console.error(`Background analysis failed for obs ${observation.id}:`, error);
-        const docSnap = await docRef.get();
-        if (docSnap.exists && docSnap.data()?.aiStatus !== 'completed') {
-            await docRef.update({ aiStatus: 'failed' });
-            revalidateRelevantPaths(observation);
-        }
-    }
-
-    if (observation.scope === 'project' && observation.projectId) {
-      triggerSmartNotify({
-        observationId: observation.id,
-        projectId: observation.projectId,
-        company: observation.company,
-        findings: observation.findings,
-        submittedBy: observation.submittedBy.split(' (')[0],
-      }, userProfile).catch(err => console.error(`Smart-notify failed for obs ${observation.id}`, err));
-    }
-  };
-
-  runBackgroundTasks();
+  
+  // Trigger smart notify as a separate background task.
+  if (observation.scope === 'project' && observation.projectId) {
+    triggerSmartNotify({
+      observationId: observation.id,
+      projectId: observation.projectId,
+      company: observation.company,
+      findings: observation.findings,
+      submittedBy: observation.submittedBy.split(' (')[0],
+    }, userProfile).catch(err => console.error(`Smart-notify failed for obs ${observation.id}`, err));
+  }
 }
 
 export async function runDeeperAnalysis(observationId: string): Promise<Observation> {
@@ -277,8 +258,12 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
         const observationData = `Temuan: ${observation.findings}\nRekomendasi: ${observation.recommendation}\nKategori Awal: ${observation.category}`;
         const deepAnalysis = await analyzeDeeperObservation({ observationData }, userProfile);
         
+        // Before writing, check if the doc still exists. User might have deleted it.
         const finalDocSnap = await docRef.get();
-        if (!finalDocSnap.exists) throw new Error("Observation was deleted during analysis.");
+        if (!finalDocSnap.exists) {
+          console.log(`[runDeeperAnalysis] Observation ${observationId} deleted during analysis. Aborting update.`);
+          return observation; // Return original data, do not throw error.
+        }
         
         await docRef.update({
             aiStatus: 'completed',
@@ -322,7 +307,10 @@ export async function triggerInspectionAnalysis(inspection: Inspection) {
 
     const docExists = (await docRef.get()).exists;
     if (docExists) {
-        await docRef.update({ aiStatus: 'completed', aiSummary: analysis.summary });
+        await docRef.update({ 
+            aiStatus: 'completed', 
+            aiSummary: analysis.summary 
+        });
         revalidateRelevantPaths(inspection);
     }
   } catch (error) {
@@ -351,8 +339,12 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
         const inspectionData = `Nama Peralatan: ${inspection.equipmentName}\nJenis: ${inspection.equipmentType}\nTemuan: ${inspection.findings}\nRekomendasi: ${inspection.recommendation || 'N/A'}`;
         const deepAnalysis = await analyzeDeeperInspection({ inspectionData }, userProfile);
         
+        // Before writing, check if the doc still exists. User might have deleted it.
         const finalDocSnap = await docRef.get();
-        if (!finalDocSnap.exists) throw new Error("Inspection was deleted during analysis.");
+        if (!finalDocSnap.exists) {
+            console.log(`[runDeeperInspectionAnalysis] Inspection ${inspectionId} deleted during analysis. Aborting update.`);
+            return inspection; // Return original data, do not throw error.
+        }
 
         await docRef.update({
             aiStatus: 'completed',
@@ -395,22 +387,29 @@ export async function retryAiAnalysis(item: Observation | Inspection): Promise<A
 export async function shareObservationToPublic(observation: Observation, userProfile: UserProfile): Promise<{ updatedOriginal: Observation; newPublicItem: Observation }> {
     if (observation.isSharedPublicly) throw new Error("Laporan ini sudah dibagikan.");
     
+    const originalDocRef = adminDb.collection('observations').doc(observation.id);
+    
+    // Ensure the original document hasn't been deleted.
+    const originalSnap = await originalDocRef.get();
+    if (!originalSnap.exists) throw new Error("Laporan asli tidak dapat ditemukan untuk dibagikan.");
+
+    // Create a clean public copy, only including necessary and safe fields.
     const publicObservationData: Omit<Observation, 'id'|'actionTakenDescription'|'actionTakenPhotoUrl'|'closedBy'|'closedDate'> = {
         itemType: 'observation',
         userId: observation.userId,
         referenceId: observation.referenceId,
         location: observation.location,
         submittedBy: observation.submittedBy,
-        date: new Date().toISOString(),
+        date: new Date().toISOString(), // Use current date for public post
         findings: observation.findings,
         recommendation: observation.recommendation,
         riskLevel: observation.riskLevel,
-        status: 'Pending',
+        status: 'Pending', // Public posts are always 'Pending'
         category: observation.category,
         company: observation.company,
         photoUrl: observation.photoUrl,
-        scope: 'public',
-        projectId: null,
+        scope: 'public', // Set scope to public
+        projectId: null, // No project ID for public posts
         aiStatus: observation.aiStatus,
         aiSummary: observation.aiSummary,
         aiSuggestedRiskLevel: observation.aiSuggestedRiskLevel,
@@ -420,8 +419,8 @@ export async function shareObservationToPublic(observation: Observation, userPro
         aiRootCauseAnalysis: observation.aiRootCauseAnalysis,
         aiObserverSkillRating: observation.aiObserverSkillRating,
         aiObserverSkillExplanation: observation.aiObserverSkillExplanation,
-        isSharedPublicly: false,
-        sharedBy: userProfile.displayName,
+        isSharedPublicly: false, // The public copy itself isn't "shared"
+        sharedBy: userProfile.displayName, // The user who shared it
         sharedByPosition: userProfile.position,
         originalId: observation.id,
         originalScope: observation.scope,
@@ -431,7 +430,6 @@ export async function shareObservationToPublic(observation: Observation, userPro
         viewCount: 0,
     };
     
-    const originalDocRef = adminDb.collection('observations').doc(observation.id);
     const newPublicDocRef = adminDb.collection('observations').doc();
     const batch = adminDb.batch();
     batch.set(newPublicDocRef, publicObservationData);
@@ -440,9 +438,10 @@ export async function shareObservationToPublic(observation: Observation, userPro
     await batch.commit();
     
     const updatedDocSnap = await originalDocRef.get();
-    if (!updatedDocSnap.exists) throw new Error("Dokumen asli tidak ditemukan.");
     const newPublicDocSnap = await newPublicDocRef.get();
-    if (!newPublicDocSnap.exists()) throw new Error("Dokumen publik yang baru dibuat tidak ditemukan.");
+    if (!updatedDocSnap.exists() || !newPublicDocSnap.exists()) {
+        throw new Error("Gagal memverifikasi pembuatan laporan publik.");
+    }
 
     const updatedOriginal = { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Observation;
     const newPublicItem = { ...newPublicDocSnap.data(), id: newPublicDocSnap.id } as Observation;

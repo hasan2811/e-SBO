@@ -30,7 +30,7 @@ interface InspectionDetailSheetProps {
 
 export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { getInspectionById, updateItem, removeItem } = useObservations();
   const { toast } = useToast();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
@@ -47,7 +47,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
 
   const projectName = inspection.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
   const canFollowUp = (inspection.status === 'Fail' || inspection.status === 'Needs Repair') && user?.uid === inspection.userId;
-  const hasDeepAnalysis = inspection.aiRisks && inspection.aiSuggestedActions && !inspection.aiRisks.includes('Analisis risiko tersedia');
+  const hasDeepAnalysis = inspection.aiRisks && inspection.aiSuggestedActions;
 
   const handleRetry = async () => {
     if (!inspection) return;
@@ -61,7 +61,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   };
   
   const handleRunDeeperAnalysis = async () => {
-    if (!inspection) return;
+    if (!inspection || !userProfile) return;
     setIsAnalyzing(true);
     try {
         const updatedInspection = await runDeeperInspectionAnalysis(inspection.id);
@@ -168,66 +168,72 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
               )}
 
               {/* AI ANALYSIS SECTION */}
-              <div className="space-y-4 pt-4 mt-4 border-t">
-                  <div className="bg-primary/5 p-4 rounded-lg border-l-4 border-primary space-y-4">
-                      <h4 className="font-semibold text-base flex items-center gap-2">
-                          <Sparkles className="h-5 w-5 text-primary" />
-                          Analisis HSSE Tech
-                      </h4>
+               <div className="space-y-4 pt-4 mt-4 border-t">
+                  <h3 className="font-semibold text-base flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      Analisis HSSE Tech
+                  </h3>
 
-                      {inspection.aiStatus === 'processing' && !hasDeepAnalysis && (
-                          <div className="flex items-center gap-3 p-4 rounded-lg">
-                              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                              <p className="text-sm text-muted-foreground">Analisis awal sedang diproses...</p>
-                          </div>
-                      )}
-                      
-                      {inspection.aiStatus === 'failed' && (
-                          <Alert variant="destructive">
-                              <AlertTriangle className="h-4 w-4" />
-                              <AlertTitle>Analisis Gagal</AlertTitle>
-                              <AlertDescription>
-                                  Analisis AI tidak dapat diselesaikan.
-                                  <Button variant="link" size="sm" onClick={handleRetry} className="p-0 h-auto ml-2 text-destructive">Coba lagi</Button>
-                              </AlertDescription>
-                          </Alert>
-                      )}
-
-                      {inspection.aiStatus === 'completed' && inspection.aiSummary && (
-                          <p className="text-sm text-muted-foreground">{inspection.aiSummary}</p>
-                      )}
-                  </div>
+                  {inspection.aiStatus === 'processing' && !hasDeepAnalysis && (
+                      <div className="flex items-center gap-3 p-4 rounded-lg bg-muted">
+                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                          <p className="text-sm text-muted-foreground">Analisis awal sedang diproses...</p>
+                      </div>
+                  )}
                   
-                  {/* DEEP ANALYSIS SECTION */}
-                  <div className="bg-accent/5 p-4 rounded-lg border-l-4 border-accent space-y-4">
-                      <h4 className="font-semibold text-base flex items-center gap-2 text-accent">
-                          <SearchCheck className="h-5 w-5" />
-                          Analisis HSSE Mendalam
-                      </h4>
-                      {isAnalyzing ? (
-                          <div className="flex items-center gap-3 p-4 rounded-lg">
-                              <Loader2 className="h-5 w-5 animate-spin text-accent" />
-                              <p className="text-sm text-muted-foreground">Menganalisis lebih dalam...</p>
-                          </div>
-                      ) : hasDeepAnalysis ? (
-                          <Accordion type="multiple" className="w-full">
-                              {inspection.aiRisks && (
-                                  <AccordionItem value="risks"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-destructive" />Potensi Risiko</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiRisks, AlertTriangle, "text-destructive")}</AccordionContent></AccordionItem>
-                              )}
-                              {inspection.aiSuggestedActions && (
-                                  <AccordionItem value="actions" className="border-b-0"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-green-600" />Saran Tindakan</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiSuggestedActions, CheckCircle2, "text-green-600")}</AccordionContent></AccordionItem>
-                              )}
-                          </Accordion>
-                      ) : (
-                          <div className="flex flex-col items-start gap-3 p-2">
-                              <p className="text-sm text-muted-foreground">Jalankan analisis mendalam untuk mengidentifikasi risiko dan saran tindakan.</p>
-                              <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={inspection.aiStatus === 'processing'}>
-                                  <SearchCheck className="mr-2 h-4 w-4" />
-                                  Jalankan Analisis Mendalam
-                              </Button>
-                          </div>
-                      )}
-                  </div>
+                  {inspection.aiStatus === 'failed' && (
+                      <Alert variant="destructive">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>Analisis Gagal</AlertTitle>
+                          <AlertDescription>
+                              Analisis AI tidak dapat diselesaikan.
+                              <Button variant="link" size="sm" onClick={handleRetry} className="p-0 h-auto ml-2 text-destructive">Coba lagi</Button>
+                          </AlertDescription>
+                      </Alert>
+                  )}
+
+                  {inspection.aiStatus === 'n/a' && (
+                      <Alert>
+                        <Sparkles className="h-4 w-4" />
+                        <AlertTitle>AI Dinonaktifkan</AlertTitle>
+                        <AlertDescription>
+                          Fitur AI tidak aktif untuk pengguna ini saat laporan dibuat.
+                        </AlertDescription>
+                      </Alert>
+                  )}
+                  
+                  {inspection.aiStatus === 'completed' && (
+                    <div className="space-y-4">
+                        {inspection.aiSummary && (
+                            <div className="p-4 rounded-lg border bg-background">
+                                <h4 className="text-sm font-semibold mb-2">Ringkasan Cepat</h4>
+                                <p className="text-sm text-muted-foreground">{inspection.aiSummary}</p>
+                            </div>
+                        )}
+                        
+                        {hasDeepAnalysis ? (
+                            <div className="p-4 rounded-lg border bg-background">
+                                <h4 className="text-sm font-semibold mb-2">Analisis Mendalam</h4>
+                                <Accordion type="multiple" className="w-full">
+                                    {inspection.aiRisks && (
+                                        <AccordionItem value="risks"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-destructive" />Potensi Risiko</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiRisks, AlertTriangle, "text-destructive")}</AccordionContent></AccordionItem>
+                                    )}
+                                    {inspection.aiSuggestedActions && (
+                                        <AccordionItem value="actions" className="border-b-0"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-green-600" />Saran Tindakan</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiSuggestedActions, CheckCircle2, "text-green-600")}</AccordionContent></AccordionItem>
+                                    )}
+                                </Accordion>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed">
+                                <p className="text-sm text-muted-foreground">Jalankan analisis mendalam untuk mengidentifikasi risiko dan saran tindakan.</p>
+                                <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={isAnalyzing}>
+                                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4" />}
+                                    Jalankan Analisis Mendalam
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                  )}
               </div>
 
 
