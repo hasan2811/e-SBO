@@ -16,7 +16,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { useAuth } from '@/hooks/use-auth';
-import { LogOut, UserCircle, Loader2, Edit, Folder, Camera } from 'lucide-react';
+import { LogOut, UserCircle, Loader2, Edit, Folder, Camera, Sparkles, KeyRound } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 import { useProjects } from '@/hooks/use-projects';
 import { uploadFile } from '@/lib/storage';
+import { Switch } from './ui/switch';
 
 export function UserAccountSheet() {
   const { user, userProfile, loading: authLoading, logout, updateUserProfile } = useAuth();
@@ -39,6 +40,8 @@ export function UserAccountSheet() {
   const [displayName, setDisplayName] = React.useState('');
   const [position, setPosition] = React.useState('');
   const [company, setCompany] = React.useState('');
+  const [aiEnabled, setAiEnabled] = React.useState(true);
+  const [googleAiApiKey, setGoogleAiApiKey] = React.useState('');
   
   const isLoading = authLoading || (user && projectsLoading);
   const hasProject = projects.length > 0;
@@ -48,6 +51,8 @@ export function UserAccountSheet() {
       setDisplayName(userProfile.displayName || '');
       setPosition(userProfile.position || 'Not Set');
       setCompany(userProfile.company || '');
+      setAiEnabled(userProfile.aiEnabled ?? true);
+      setGoogleAiApiKey(userProfile.googleAiApiKey || '');
     }
   }, [userProfile]);
   
@@ -56,6 +61,8 @@ export function UserAccountSheet() {
       setDisplayName(userProfile.displayName || '');
       setPosition(userProfile.position || 'Not Set');
       setCompany(userProfile.company || '');
+      setAiEnabled(userProfile.aiEnabled ?? true);
+      setGoogleAiApiKey(userProfile.googleAiApiKey || '');
       setIsEditing(true);
     }
   };
@@ -74,7 +81,7 @@ export function UserAccountSheet() {
 
     setIsSaving(true);
     try {
-      await updateUserProfile(user.uid, { displayName, position, company });
+      await updateUserProfile(user.uid, { displayName, position, company, aiEnabled, googleAiApiKey });
       toast({ title: 'Profile Updated', description: 'Your information has been saved.' });
       setIsEditing(false);
     } catch (error) {
@@ -214,18 +221,42 @@ export function UserAccountSheet() {
 
               {isEditing ? (
                 <div className="space-y-4">
-                  <div className='space-y-1'>
-                    <Label htmlFor="displayName">Display Name</Label>
-                    <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+                  <div>
+                    <h3 className="font-semibold text-base mb-2">Profile Settings</h3>
+                    <div className='space-y-3'>
+                      <Label htmlFor="displayName">Display Name</Label>
+                      <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+                    </div>
+                    <div className='space-y-3 mt-3'>
+                      <Label htmlFor="position">Position / Jabatan</Label>
+                      <Input id="position" value={position} onChange={(e) => setPosition(e.target.value)} />
+                    </div>
+                     <div className='space-y-3 mt-3'>
+                      <Label htmlFor="company">Perusahaan</Label>
+                      <Input id="company" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="e.g., PT. Konstruksi Utama" />
+                    </div>
                   </div>
-                  <div className='space-y-1'>
-                    <Label htmlFor="position">Position / Jabatan</Label>
-                    <Input id="position" value={position} onChange={(e) => setPosition(e.target.value)} />
+
+                  <Separator />
+
+                  <div>
+                    <h3 className="font-semibold text-base mb-3">AI Settings</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="ai-enabled" className="flex items-center gap-2"><Sparkles className="h-4 w-4"/>Enable AI Features</Label>
+                          <p className="text-xs text-muted-foreground">Turn AI assistance on or off.</p>
+                        </div>
+                        <Switch id="ai-enabled" checked={aiEnabled} onCheckedChange={setAiEnabled} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="api-key" className="flex items-center gap-2"><KeyRound className="h-4 w-4"/>Your Google AI API Key (Optional)</Label>
+                        <Input id="api-key" type="password" placeholder="Enter your own API key" value={googleAiApiKey} onChange={(e) => setGoogleAiApiKey(e.target.value)} />
+                        <p className="text-xs text-muted-foreground">If provided, this key will be used for your AI requests.</p>
+                      </div>
+                    </div>
                   </div>
-                   <div className='space-y-1'>
-                    <Label htmlFor="company">Perusahaan</Label>
-                    <Input id="company" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="e.g., PT. Konstruksi Utama" />
-                  </div>
+
                    <div className="flex justify-end gap-2 pt-2">
                       <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancel</Button>
                       <Button onClick={handleSave} disabled={isSaving}>
@@ -237,7 +268,7 @@ export function UserAccountSheet() {
               ) : (
                 <Button variant="outline" className="w-full" onClick={handleEditClick}>
                   <Edit className="mr-2" />
-                  Edit Profile
+                  Edit Profile & Settings
                 </Button>
               )}
               

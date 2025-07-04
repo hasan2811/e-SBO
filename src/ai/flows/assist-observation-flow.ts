@@ -7,8 +7,9 @@
  */
 
 import {ai} from '@/ai/genkit';
+import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
-import { RISK_LEVELS, OBSERVATION_CATEGORIES, RiskLevel, ObservationCategory, AssistObservationInput, AssistObservationInputSchema, AssistObservationOutput, AssistObservationOutputSchema } from '@/lib/types';
+import { RISK_LEVELS, OBSERVATION_CATEGORIES, RiskLevel, ObservationCategory, AssistObservationInput, AssistObservationInputSchema, AssistObservationOutput, AssistObservationOutputSchema, UserProfile, UserProfileSchema } from '@/lib/types';
 
 /**
  * Finds the best match for a given value from a list of options, or returns a default.
@@ -61,7 +62,10 @@ User's Findings:
 const assistObservationFlow = ai.defineFlow(
   {
     name: 'assistObservationFlow',
-    inputSchema: AssistObservationInputSchema,
+    inputSchema: z.object({
+        payload: AssistObservationInputSchema,
+        userProfile: UserProfileSchema,
+    }),
     outputSchema: z.object({
         suggestedCategory: z.enum(OBSERVATION_CATEGORIES),
         suggestedRiskLevel: z.enum(RISK_LEVELS),
@@ -69,8 +73,12 @@ const assistObservationFlow = ai.defineFlow(
         suggestedRecommendation: z.string(),
     }),
   },
-  async (input) => {
-    const response = await assistObservationPrompt(input);
+  async ({ payload, userProfile }) => {
+    const model = userProfile.googleAiApiKey
+        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
+        : 'googleai/gemini-1.5-flash-latest';
+
+    const response = await assistObservationPrompt(payload, { model });
     const output = response.output;
 
     if (!output) {
@@ -88,8 +96,16 @@ const assistObservationFlow = ai.defineFlow(
   }
 );
 
-export async function assistObservation(input: AssistObservationInput): Promise<AssistObservationOutput> {
-  const result = await assistObservationFlow(input);
+export async function assistObservation(input: AssistObservationInput, userProfile: UserProfile): Promise<AssistObservationOutput> {
+  if (!userProfile.aiEnabled) {
+    return {
+      suggestedCategory: 'Supervision',
+      suggestedRiskLevel: 'Low',
+      improvedFindings: input.findings,
+      suggestedRecommendation: 'AI is disabled.',
+    };
+  }
+  const result = await assistObservationFlow({ payload: input, userProfile });
   // Ensure the final return type matches the expected Zod schema for the exported function.
   return {
       ...result,

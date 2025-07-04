@@ -52,10 +52,25 @@ export type UserProfile = {
   displayName: string;
   email: string;
   position: string;
-  company?: string; // Added company to user profile
+  company?: string;
   photoURL?: string | null;
-  projectIds?: string[]; // Array of project IDs the user is a member of
+  projectIds?: string[];
+  aiEnabled?: boolean;
+  googleAiApiKey?: string;
 };
+
+// Zod schema for UserProfile, useful for validating in server actions or flows
+export const UserProfileSchema = z.object({
+  uid: z.string(),
+  displayName: z.string(),
+  email: z.string().email(),
+  position: z.string(),
+  company: z.string().optional(),
+  photoURL: z.string().url().nullable().optional(),
+  projectIds: z.array(z.string()).optional(),
+  aiEnabled: z.boolean().optional(),
+  googleAiApiKey: z.string().optional(),
+});
 
 export type Project = {
     id: string;

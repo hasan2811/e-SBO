@@ -82,10 +82,14 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   
   React.useEffect(() => {
     async function getAiSuggestions() {
+      if (!userProfile || !(userProfile.aiEnabled ?? true)) {
+        setAiSuggestions(null);
+        return;
+      }
       if (debouncedFindings && debouncedFindings.length > 20) {
         setIsAiLoading(true);
         try {
-          const suggestions = await assistInspection({ findings: debouncedFindings });
+          const suggestions = await assistInspection({ findings: debouncedFindings }, userProfile);
           setAiSuggestions(suggestions);
         } catch (error) {
           console.error('AI suggestion failed:', error);
@@ -98,7 +102,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
       }
     }
     getAiSuggestions();
-  }, [debouncedFindings]);
+  }, [debouncedFindings, userProfile]);
   
   const locationOptions = React.useMemo(() => 
     (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : DEFAULT_LOCATIONS,
@@ -177,9 +181,15 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         const newInspection = { ...newInspectionData, id: docRef.id };
         addItem(newInspection);
 
-        triggerInspectionAnalysis(newInspection).catch(error => {
-          console.error("Failed to trigger AI analysis for inspection:", error);
-        });
+        if (userProfile.aiEnabled ?? true) {
+            triggerInspectionAnalysis(newInspection).catch(error => {
+                console.error("Failed to trigger AI analysis for inspection:", error);
+            });
+        } else {
+            const inspectionDocRef = doc(db, 'inspections', newInspection.id);
+            await updateDoc(inspectionDocRef, { aiStatus: 'n/a' });
+            addItem({ ...newInspection, aiStatus: 'n/a' });
+        }
 
         toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda telah berhasil disimpan.` });
         onOpenChange(false);

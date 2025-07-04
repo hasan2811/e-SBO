@@ -8,7 +8,7 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Sparkles, Wand2 } from 'lucide-react';
 import { useObservations } from '@/hooks/use-observations';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { triggerObservationAnalysis } from '@/lib/actions/item-actions';
@@ -85,10 +85,15 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
 
   React.useEffect(() => {
     async function getAiSuggestions() {
+      if (!userProfile || !(userProfile.aiEnabled ?? true)) {
+        setAiSuggestions(null);
+        return;
+      }
+
       if (debouncedFindings && debouncedFindings.length > 20) {
         setIsAiLoading(true);
         try {
-          const suggestions = await assistObservation({ findings: debouncedFindings });
+          const suggestions = await assistObservation({ findings: debouncedFindings }, userProfile);
           setAiSuggestions(suggestions);
         } catch (error) {
           console.error('AI suggestion failed:', error);
@@ -101,7 +106,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
       }
     }
     getAiSuggestions();
-  }, [debouncedFindings]);
+  }, [debouncedFindings, userProfile]);
 
   const resetForm = React.useCallback(() => {
     form.reset({
@@ -188,10 +193,17 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         
         const finalObservation = { ...newObservationData, id: docRef.id };
         addItem(finalObservation);
+        
+        if (userProfile.aiEnabled ?? true) {
+            triggerObservationAnalysis(finalObservation).catch(error => {
+                console.error("Failed to trigger AI analysis:", error);
+            });
+        } else {
+            const observationDocRef = doc(db, 'observations', finalObservation.id);
+            await updateDoc(observationDocRef, { aiStatus: 'n/a' });
+            addItem({ ...finalObservation, aiStatus: 'n/a' });
+        }
 
-        triggerObservationAnalysis(finalObservation).catch(error => {
-            console.error("Failed to trigger AI analysis:", error);
-        });
 
         toast({ title: 'Laporan Terkirim', description: 'Observasi Anda berhasil disimpan. AI akan menganalisisnya.' });
         onOpenChange(false);

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const ChartContainer = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartContainer), {
   ssr: false,
@@ -55,7 +56,19 @@ const riskPieChartConfig = {
     Critical: { label: "Critical", color: "hsl(var(--destructive))", icon: 'circle' },
 };
 
-const AiAnalysisCard = ({ analysis, loading }: { analysis: AnalyzeDashboardDataOutput | null, loading: boolean }) => {
+const AiAnalysisCard = ({ analysis, loading, isAiEnabled }: { analysis: AnalyzeDashboardDataOutput | null, loading: boolean, isAiEnabled: boolean }) => {
+    if (!isAiEnabled) {
+      return (
+        <Alert className="bg-muted/50">
+          <Sparkles className="h-4 w-4" />
+          <CardTitle>AI Analysis Disabled</CardTitle>
+          <AlertDescription>
+            Enable AI features in your account settings to see dashboard insights.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
     if (loading) {
       return (
         <Card className="bg-primary/5 border-primary/20">
@@ -257,7 +270,7 @@ const HorizontalBarChartCard = ({ loading, title, data, chartConfig, dataKey, na
 
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { projects, loading: projectsLoading } = useProjects();
   const [projectObservations, setProjectObservations] = React.useState<Observation[]>([]);
   const [dataLoading, setDataLoading] = React.useState(true);
@@ -399,9 +412,8 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     const getAnalysis = async () => {
-      if (loading || projectObservations.length === 0) {
-        // If data isn't loading and there are no observations, analysis isn't needed.
-        if (!loading && projectObservations.length === 0) {
+      if (loading || projectObservations.length === 0 || !userProfile) {
+        if (!loading && (projectObservations.length === 0 || !userProfile?.aiEnabled)) {
             setAnalysis(null);
             setAnalysisLoading(false);
         }
@@ -416,7 +428,7 @@ export default function DashboardPage() {
           riskDistribution: riskDetailsData.map(d => ({ name: d.name, count: d.count })),
           companyDistribution: companyDistributionData,
           dailyTrend: dailyData,
-        });
+        }, userProfile);
         setAnalysis(result);
       } catch (error) {
         console.error("Failed to get AI dashboard analysis:", error);
@@ -426,7 +438,7 @@ export default function DashboardPage() {
       }
     };
     getAnalysis();
-  }, [projectObservations, loading, overviewData, criticalPercentageData, riskDetailsData, companyDistributionData, dailyData]);
+  }, [projectObservations, loading, userProfile, overviewData, criticalPercentageData, riskDetailsData, companyDistributionData, dailyData]);
 
 
   const RADIAN = Math.PI / 180;
@@ -478,7 +490,7 @@ export default function DashboardPage() {
       </div>
 
       {!loading && projectObservations.length > 0 && (
-         <AiAnalysisCard analysis={analysis} loading={analysisLoading} />
+         <AiAnalysisCard analysis={analysis} loading={analysisLoading} isAiEnabled={userProfile?.aiEnabled ?? true} />
       )}
       
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

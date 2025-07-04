@@ -10,8 +10,9 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'zod';
-import { SmartNotifyInput, SmartNotifyInputSchema, SmartNotifyOutputSchema, UserProfile } from '@/lib/types';
+import { SmartNotifyInput, SmartNotifyInputSchema, SmartNotifyOutputSchema, UserProfile, UserProfileSchema } from '@/lib/types';
 import { adminDb } from '@/lib/firebase-admin';
 
 // Define the schema for the tool's output. Only include necessary fields.
@@ -101,14 +102,21 @@ Return a JSON object containing a list of UIDs for all the members who should be
 const smartNotifyFlow = ai.defineFlow(
   {
     name: 'smartNotifyFlow',
-    inputSchema: SmartNotifyInputSchema,
+    inputSchema: z.object({
+        payload: SmartNotifyInputSchema,
+        userProfile: UserProfileSchema,
+    }),
     outputSchema: z.void(), // The flow itself doesn't return to the client, it writes to DB.
   },
-  async (input) => {
-    const { observationId, projectId, findings, submittedBy } = input;
+  async ({ payload, userProfile }) => {
+    const { observationId, projectId, findings, submittedBy } = payload;
     
+    const model = userProfile.googleAiApiKey
+        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
+        : 'googleai/gemini-1.5-flash-latest';
+
     // Let the AI determine who to notify.
-    const { output } = await smartNotifyPrompt(input);
+    const { output } = await smartNotifyPrompt(payload, { model });
 
     if (!output?.notifiedUserUids || output.notifiedUserUids.length === 0) {
       console.log(`[smartNotifyFlow] No users identified for notification for observation ${observationId}.`);
@@ -139,10 +147,15 @@ const smartNotifyFlow = ai.defineFlow(
  * A server-side function to trigger the smart notification flow.
  * This is called from the ObservationContext after a new project observation is created.
  * @param input - The details of the new observation.
+ * @param userProfile - The profile of the user triggering the action, for API key/AI status.
  */
-export async function triggerSmartNotify(input: SmartNotifyInput): Promise<void> {
+export async function triggerSmartNotify(input: SmartNotifyInput, userProfile: UserProfile): Promise<void> {
+  if (!userProfile.aiEnabled) {
+    console.log(`[triggerSmartNotify] Smart notify skipped for observation ${input.observationId} because AI is disabled for user ${userProfile.uid}.`);
+    return;
+  }
   // We don't wait for the flow to complete to avoid blocking the client response.
-  smartNotifyFlow(input).catch(error => {
+  smartNotifyFlow({ payload: input, userProfile }).catch(error => {
     console.error(`[triggerSmartNotify] Failed to execute smart notify flow for observation ${input.observationId}:`, error);
   });
 }

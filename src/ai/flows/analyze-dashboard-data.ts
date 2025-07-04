@@ -7,12 +7,15 @@
  */
 
 import {ai} from '@/ai/genkit';
+import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 import {
     AnalyzeDashboardDataInput,
     AnalyzeDashboardDataInputSchema,
     AnalyzeDashboardDataOutput,
     AnalyzeDashboardDataOutputSchema,
+    UserProfile,
+    UserProfileSchema,
 } from '@/lib/types';
 
 
@@ -57,18 +60,25 @@ Based on this data, provide the following insights in Bahasa Indonesia. Each poi
 const analyzeDashboardDataFlow = ai.defineFlow(
   {
     name: 'analyzeDashboardDataFlow',
-    inputSchema: AnalyzeDashboardDataInputSchema,
+    inputSchema: z.object({
+        payload: AnalyzeDashboardDataInputSchema,
+        userProfile: UserProfileSchema,
+    }),
     outputSchema: AnalyzeDashboardDataOutputSchema,
   },
-  async (input) => {
+  async ({ payload, userProfile }) => {
     const promptInput = {
-        ...input,
-        riskDistribution: JSON.stringify(input.riskDistribution),
-        companyDistribution: JSON.stringify(input.companyDistribution),
-        dailyTrend: JSON.stringify(input.dailyTrend),
+        ...payload,
+        riskDistribution: JSON.stringify(payload.riskDistribution),
+        companyDistribution: JSON.stringify(payload.companyDistribution),
+        dailyTrend: JSON.stringify(payload.dailyTrend),
     };
+
+    const model = userProfile.googleAiApiKey 
+        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
+        : 'googleai/gemini-1.5-flash-latest';
     
-    const response = await analyzeDashboardPrompt(promptInput);
+    const response = await analyzeDashboardPrompt(promptInput, { model });
     const output = response.output;
 
     if (!output) {
@@ -78,6 +88,9 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   }
 );
 
-export async function analyzeDashboardData(input: AnalyzeDashboardDataInput): Promise<AnalyzeDashboardDataOutput> {
-  return analyzeDashboardDataFlow(input);
+export async function analyzeDashboardData(input: AnalyzeDashboardDataInput, userProfile: UserProfile): Promise<AnalyzeDashboardDataOutput> {
+  if (!userProfile.aiEnabled) {
+    throw new Error('AI features are disabled for this user.');
+  }
+  return analyzeDashboardDataFlow({ payload: input, userProfile });
 }

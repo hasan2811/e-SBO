@@ -7,8 +7,9 @@
  */
 
 import {ai} from '@/ai/genkit';
+import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
-import { INSPECTION_STATUSES, AssistInspectionInput, AssistInspectionInputSchema, AssistInspectionOutput, AssistInspectionOutputSchema, InspectionStatus } from '@/lib/types';
+import { INSPECTION_STATUSES, AssistInspectionInput, AssistInspectionInputSchema, AssistInspectionOutput, AssistInspectionOutputSchema, InspectionStatus, UserProfile, UserProfileSchema } from '@/lib/types';
 
 /**
  * Finds the best match for a given value from a list of options, or returns a default.
@@ -60,15 +61,22 @@ User's Findings:
 const assistInspectionFlow = ai.defineFlow(
   {
     name: 'assistInspectionFlow',
-    inputSchema: AssistInspectionInputSchema,
+    inputSchema: z.object({
+        payload: AssistInspectionInputSchema,
+        userProfile: UserProfileSchema,
+    }),
     outputSchema: z.object({
         suggestedStatus: z.enum(INSPECTION_STATUSES),
         improvedFindings: z.string(),
         suggestedRecommendation: z.string(),
     }),
   },
-  async (input) => {
-    const response = await assistInspectionPrompt(input);
+  async ({ payload, userProfile }) => {
+    const model = userProfile.googleAiApiKey
+        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
+        : 'googleai/gemini-1.5-flash-latest';
+
+    const response = await assistInspectionPrompt(payload, { model });
     const output = response.output;
 
     if (!output) {
@@ -85,8 +93,15 @@ const assistInspectionFlow = ai.defineFlow(
   }
 );
 
-export async function assistInspection(input: AssistInspectionInput): Promise<AssistInspectionOutput> {
-  const result = await assistInspectionFlow(input);
+export async function assistInspection(input: AssistInspectionInput, userProfile: UserProfile): Promise<AssistInspectionOutput> {
+  if (!userProfile.aiEnabled) {
+    return {
+      suggestedStatus: 'Pass',
+      improvedFindings: input.findings,
+      suggestedRecommendation: 'AI is disabled.',
+    };
+  }
+  const result = await assistInspectionFlow({ payload: input, userProfile });
   return {
       ...result,
       suggestedStatus: result.suggestedStatus as InspectionStatus,

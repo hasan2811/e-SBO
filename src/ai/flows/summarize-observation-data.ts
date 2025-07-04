@@ -11,6 +11,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 import { 
     RISK_LEVELS,
@@ -25,6 +26,8 @@ import {
     AnalyzeInspectionInputSchema,
     AnalyzeInspectionOutput,
     AnalyzeInspectionOutputSchema,
+    UserProfile,
+    UserProfileSchema
 } from '@/lib/types';
 
 /**
@@ -114,23 +117,27 @@ Now, analyze this report:
 const summarizeObservationDataFlow = ai.defineFlow(
   {
     name: 'summarizeObservationDataFlow',
-    inputSchema: SummarizeObservationDataInputSchema,
-    // The flow's final output still matches the full schema to maintain type safety with the client.
+    inputSchema: z.object({
+        payload: SummarizeObservationDataInputSchema,
+        userProfile: UserProfileSchema,
+    }),
     outputSchema: SummarizeObservationDataOutputSchema,
   },
-  async (input) => {
-    const response = await summarizeObservationPrompt(input);
+  async ({ payload, userProfile }) => {
+    const model = userProfile.googleAiApiKey
+        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
+        : 'googleai/gemini-1.5-flash-latest';
+    
+    const response = await summarizeObservationPrompt(payload, { model });
     let output = response.output;
 
     if (!output) {
       throw new Error('AI analysis returned no structured output for observation.');
     }
 
-    // Compose the full output object. We fill in the "slower" fields with default values,
-    // and use the AI's response for the "fast" fields.
     return {
         summary: 'Analisis ringkas tersedia di fitur "Analisis Mendalam".',
-        suggestedRiskLevel: 'Low', // Default to 'Low'. The deep analysis can provide a better one.
+        suggestedRiskLevel: 'Low',
         suggestedCategory: findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'Supervision'),
         aiObserverSkillRating: parseAndClampRating(output.aiObserverSkillRating),
         aiObserverSkillExplanation: output.aiObserverSkillExplanation || 'Penjelasan tidak tersedia.',
@@ -138,8 +145,8 @@ const summarizeObservationDataFlow = ai.defineFlow(
   }
 );
 
-export async function summarizeObservationData(input: SummarizeObservationDataInput): Promise<SummarizeObservationDataOutput> {
-  return summarizeObservationDataFlow(input);
+export async function summarizeObservationData(input: SummarizeObservationDataInput, userProfile: UserProfile): Promise<SummarizeObservationDataOutput> {
+  return summarizeObservationDataFlow({ payload: input, userProfile });
 }
 
 
@@ -175,11 +182,18 @@ Observation Data to Analyze:
 const analyzeDeeperObservationFlow = ai.defineFlow(
   {
     name: 'analyzeDeeperObservationFlow',
-    inputSchema: SummarizeObservationDataInputSchema,
+    inputSchema: z.object({
+        payload: SummarizeObservationDataInputSchema,
+        userProfile: UserProfileSchema,
+    }),
     outputSchema: DeeperAnalysisOutputSchema,
   },
-  async (input) => {
-    const response = await deeperAnalysisPrompt(input);
+  async ({ payload, userProfile }) => {
+    const model = userProfile.googleAiApiKey
+        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
+        : 'googleai/gemini-1.5-flash-latest';
+    
+    const response = await deeperAnalysisPrompt(payload, { model });
     const output = response.output;
 
     if (!output) {
@@ -189,8 +203,8 @@ const analyzeDeeperObservationFlow = ai.defineFlow(
   }
 );
 
-export async function analyzeDeeperObservation(input: SummarizeObservationDataInput): Promise<DeeperAnalysisOutput> {
-  return analyzeDeeperObservationFlow(input);
+export async function analyzeDeeperObservation(input: SummarizeObservationDataInput, userProfile: UserProfile): Promise<DeeperAnalysisOutput> {
+  return analyzeDeeperObservationFlow({ payload: input, userProfile });
 }
 
 
@@ -228,11 +242,18 @@ Data Inspeksi untuk dianalisis:
 const analyzeInspectionDataFlow = ai.defineFlow(
   {
     name: 'analyzeInspectionDataFlow',
-    inputSchema: AnalyzeInspectionInputSchema,
+    inputSchema: z.object({
+        payload: AnalyzeInspectionInputSchema,
+        userProfile: UserProfileSchema,
+    }),
     outputSchema: AnalyzeInspectionOutputSchema, // Still returns the full schema for type safety
   },
-  async (input) => {
-    const response = await summarizeInspectionPrompt(input);
+  async ({ payload, userProfile }) => {
+    const model = userProfile.googleAiApiKey
+        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
+        : 'googleai/gemini-1.5-flash-latest';
+
+    const response = await summarizeInspectionPrompt(payload, { model });
     const output = response.output;
 
     if (!output) {
@@ -248,8 +269,8 @@ const analyzeInspectionDataFlow = ai.defineFlow(
   }
 );
 
-export async function analyzeInspectionData(input: AnalyzeInspectionInput): Promise<AnalyzeInspectionOutput> {
-  return analyzeInspectionDataFlow(input);
+export async function analyzeInspectionData(input: AnalyzeInspectionInput, userProfile: UserProfile): Promise<AnalyzeInspectionOutput> {
+  return analyzeInspectionDataFlow({ payload: input, userProfile });
 }
 
 
@@ -284,11 +305,18 @@ Data Inspeksi:
 const analyzeDeeperInspectionFlow = ai.defineFlow(
   {
     name: 'analyzeDeeperInspectionFlow',
-    inputSchema: AnalyzeInspectionInputSchema,
+    inputSchema: z.object({
+        payload: AnalyzeInspectionInputSchema,
+        userProfile: UserProfileSchema,
+    }),
     outputSchema: AnalyzeInspectionOutputSchema,
   },
-  async (input) => {
-    const response = await deeperAnalysisInspectionPrompt(input);
+  async ({ payload, userProfile }) => {
+    const model = userProfile.googleAiApiKey
+        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
+        : 'googleai/gemini-1.5-flash-latest';
+
+    const response = await deeperAnalysisInspectionPrompt(payload, { model });
     const output = response.output;
 
     if (!output) {
@@ -298,6 +326,6 @@ const analyzeDeeperInspectionFlow = ai.defineFlow(
   }
 );
 
-export async function analyzeDeeperInspection(input: AnalyzeInspectionInput): Promise<AnalyzeInspectionOutput> {
-  return analyzeDeeperInspectionFlow(input);
+export async function analyzeDeeperInspection(input: AnalyzeInspectionInput, userProfile: UserProfile): Promise<AnalyzeInspectionOutput> {
+  return analyzeDeeperInspectionFlow({ payload: input, userProfile });
 }
