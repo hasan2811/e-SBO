@@ -30,6 +30,10 @@ export async function toggleLike({ docId, userId, collectionName }: ToggleLikePa
       }
 
       const currentObservation = docSnap.data();
+      if (!currentObservation) {
+        throw new Error(`Document ${docId} exists but contains no data.`);
+      }
+      
       // Robustly handle the likes array to prevent type errors.
       const likes: string[] = Array.isArray(currentObservation.likes) ? currentObservation.likes : [];
       
@@ -82,6 +86,9 @@ export async function incrementViewCount({ docId, collectionName }: { docId: str
         return; // Document not found, do nothing.
       }
       const currentObservation = docSnap.data();
+      if (!currentObservation) {
+        return; // Document exists but has no data
+      }
       // Robustly handle viewCount to ensure it's a number.
       const currentViewCount = typeof currentObservation.viewCount === 'number' ? currentObservation.viewCount : 0;
       transaction.update(docRef, { viewCount: currentViewCount + 1 });

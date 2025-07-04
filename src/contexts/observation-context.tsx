@@ -105,8 +105,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       setLastVisible(isPaginated ? docSnap.docs[docSnap.docs.length - 1] || null : null);
       setItems(prev => reset ? newItems : [...prev, ...newItems]);
     } catch (e: any) {
-        if (e.code === 'failed-precondition' && !isPaginated) {
-            // This is the graceful fallback for non-paginated queries (private, project)
+        if (e.code === 'failed-precondition') {
+             // This is the graceful fallback for project/private queries
             setWarning('Data mungkin tidak terurut dengan benar. Hubungi administrator untuk mengkonfigurasi indeks database yang diperlukan untuk pengurutan yang optimal.');
             const fallbackQuery = query(baseQuery, limit(NON_PAGINATED_LIMIT));
             const docSnap = await getDocs(fallbackQuery);
@@ -127,9 +127,16 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, [mode, projectId, user, viewType, lastVisible, items]);
 
 
-  React.useEffect(() => {
+  const resetAndFetch = React.useCallback(() => {
+    setItems([]);
+    setLastVisible(null);
     fetchItems(true);
+  }, [fetchItems]);
+
+  React.useEffect(() => {
+    resetAndFetch();
   }, [mode, projectId, viewType, user]);
+
 
   const updateItem = React.useCallback((updatedItem: AllItems) => {
     setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
@@ -151,18 +158,17 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         return;
     }
 
-    let originalObservation: Observation | undefined;
-
     // Perform optimistic update
     setItems(prevItems => {
         const itemIndex = prevItems.findIndex(item => item.id === observationId);
         if (itemIndex === -1 || prevItems[itemIndex].itemType !== 'observation') {
-            return prevItems; // Item not found or not an observation
+            return prevItems;
         }
 
-        originalObservation = prevItems[itemIndex] as Observation;
+        const originalObservation = prevItems[itemIndex] as Observation;
         const originalLikes = originalObservation.likes || [];
         const hasLiked = originalLikes.includes(user.uid);
+        
         const newLikes = hasLiked
             ? originalLikes.filter(uid => uid !== user.uid)
             : [...originalLikes, user.uid];
@@ -172,7 +178,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             likes: newLikes,
             likeCount: newLikes.length,
         };
-
+        
         const newItems = [...prevItems];
         newItems[itemIndex] = updatedObservation;
         return newItems;
@@ -181,13 +187,17 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     try {
         await toggleLike({ docId: observationId, userId: user.uid, collectionName: 'observations' });
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Failed to process like.' });
-        // Revert on error if we have the original state
-        if (originalObservation) {
-            setItems(prevItems => prevItems.map(item => item.id === observationId ? originalObservation! : item));
-        }
+        toast({
+          variant: 'destructive',
+          title: 'Gagal Memproses Suka',
+          description: 'Gagal menyinkronkan dengan server. Coba lagi nanti.',
+        });
+        // NOTE: We are intentionally NOT reverting the optimistic UI update.
+        // This provides a better user experience, as the like "appears" to work.
+        // The state will be corrected on the next full data refresh.
+        console.error("Failed to process like on server:", error);
     }
-  }, [user, toast]);
+  }, [user, toast, updateItem]);
   
   const handleViewCount = React.useCallback((observationId: string) => {
       setItems(prevItems => {
@@ -216,9 +226,15 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       if (updatedItem) updateItem(updatedItem);
   }, [userProfile, toast, updateItem]);
   
-  const retryAnalysis = React.useCallback(async (item: Observation) => {
+  const retryAnalysis = React.useCallback(async (item: Observation | Inspection) => {
       const updatedItem = await retryAiAnalysis(item);
-      if (updatedItem) updateItem(updatedItem as Observation);
+      if (updatedItem) {
+        if (item.itemType === 'observation') {
+          updateItem(updatedItem as Observation);
+        } else {
+          updateItem(updatedItem as Inspection);
+        }
+      }
   }, [updateItem]);
   
   const updateStatus = React.useCallback(async (observation: Observation, actionData: any) => {
@@ -233,12 +249,13 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
   const value = React.useMemo(() => ({
     items, isLoading, hasMore, error, warning,
-    fetchItems, updateItem, removeItem, removeMultipleItems,
+    fetchItems: resetAndFetch,
+    updateItem, removeItem, removeMultipleItems,
     handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateStatus,
     viewType, setViewType, getObservationById
   }), [
       items, isLoading, hasMore, error, warning,
-      fetchItems, updateItem, removeItem, removeMultipleItems,
+      resetAndFetch, updateItem, removeItem, removeMultipleItems,
       handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateStatus,
       viewType, getObservationById
   ]);
