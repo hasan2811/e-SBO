@@ -1,11 +1,7 @@
 
 rules_version = '2';
-
 service firebase.storage {
   match /b/{bucket}/o {
-    // Aturan ini mengizinkan semua pengguna (termasuk yang tidak terautentikasi)
-    // untuk membaca, menulis, dan menghapus file apa pun di Storage.
-    // Ini menghilangkan semua batasan keamanan dari sisi server.
     match /{allPaths=**} {
       allow read, write: if true;
     }

@@ -1,10 +1,7 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Aturan ini mengizinkan akses baca dan tulis penuh ke seluruh database.
-    // Ini menghilangkan semua batasan keamanan dari sisi server.
     match /{document=**} {
       allow read, write: if true;
     }
