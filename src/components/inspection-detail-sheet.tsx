@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -22,20 +23,21 @@ import { runDeeperInspectionAnalysis } from '@/lib/actions/item-actions';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface InspectionDetailSheetProps {
-    inspection: Inspection | null;
+    inspectionId: string | null;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
-    onItemUpdate: (updatedItem: Inspection) => void;
 }
 
-export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItemUpdate }: InspectionDetailSheetProps) {
+export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
   const { user } = useAuth();
-  const { removeItem, retryAnalysis, updateItem } = useObservations();
+  const { getInspectionById, removeItem, retryAnalysis, updateItem } = useObservations();
   const { toast } = useToast();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
+
+  const inspection = inspectionId ? getInspectionById(inspectionId) : null;
 
   if (!inspection) return null;
 

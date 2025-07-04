@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -17,19 +18,20 @@ import { DeletePtwDialog } from './delete-ptw-dialog';
 import { useObservations } from '@/hooks/use-observations';
 
 interface PtwDetailSheetProps {
-    ptw: Ptw | null;
+    ptwId: string | null;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
-    onItemUpdate: (updatedItem: Ptw) => void;
 }
 
-export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwDetailSheetProps) {
+export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetProps) {
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const { projects } = useProjects();
   const { user } = useAuth();
-  const { removeItem } = useObservations();
+  const { getPtwById, removeItem, updateItem } = useObservations();
   
+  const ptw = ptwId ? getPtwById(ptwId) : null;
+
   if (!ptw) return null;
 
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
@@ -39,7 +41,7 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
   };
   
   const handleApprovalSuccess = (updatedPtw: Ptw) => {
-    onItemUpdate(updatedPtw);
+    updateItem(updatedPtw);
     setApproveDialogOpen(false); // Close the dialog after success
   };
 

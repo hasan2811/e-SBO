@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
-import type { AllItems, Scope, Observation, UserProfile, Inspection } from '@/lib/types';
+import type { AllItems, Scope, Observation, UserProfile, Inspection, Ptw } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { usePathname } from 'next/navigation';
 import { toggleLike, incrementViewCount } from '@/lib/actions/interaction-actions';
@@ -48,6 +48,8 @@ interface ObservationContextType {
   viewType: 'observations' | 'inspections' | 'ptws';
   setViewType: (viewType: 'observations' | 'inspections' | 'ptws') => void;
   getObservationById: (id: string) => Observation | undefined;
+  getInspectionById: (id: string) => Inspection | undefined;
+  getPtwById: (id: string) => Ptw | undefined;
 }
 
 export const ObservationContext = React.createContext<ObservationContextType | undefined>(undefined);
@@ -237,6 +239,14 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const getObservationById = React.useCallback((id: string): Observation | undefined => {
     return items.find(item => item.id === id && item.itemType === 'observation') as Observation | undefined;
   }, [items]);
+  
+  const getInspectionById = React.useCallback((id: string): Inspection | undefined => {
+    return items.find(item => item.id === id && item.itemType === 'inspection') as Inspection | undefined;
+  }, [items]);
+
+  const getPtwById = React.useCallback((id: string): Ptw | undefined => {
+    return items.find(item => item.id === id && item.itemType === 'ptw') as Ptw | undefined;
+  }, [items]);
 
   const value = React.useMemo(() => ({
     items, isLoading, hasMore, error,
@@ -245,13 +255,13 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     handleLikeToggle, handleViewCount, shareToPublic: shareToPublicHandler, retryAnalysis, 
     updateObservationStatus: updateObservationStatusHandler,
     updateInspectionStatus: updateInspectionStatusHandler,
-    viewType, setViewType, getObservationById
+    viewType, setViewType, getObservationById, getInspectionById, getPtwById
   }), [
       items, isLoading, hasMore, error,
       resetAndFetch, addItem, updateItem, removeItem, removeMultipleItems,
       handleLikeToggle, handleViewCount, shareToPublicHandler, retryAnalysis, 
       updateObservationStatusHandler, updateInspectionStatusHandler,
-      viewType, getObservationById
+      viewType, getObservationById, getInspectionById, getPtwById
   ]);
 
   return <ObservationContext.Provider value={value}>{children}</ObservationContext.Provider>;

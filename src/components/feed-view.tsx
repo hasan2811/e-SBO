@@ -253,7 +253,7 @@ export function FeedView() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const { items, isLoading, error, hasMore, fetchItems, viewType, setViewType, handleLikeToggle, getObservationById, removeMultipleItems, updateItem } = useObservations();
+  const { items, isLoading, error, hasMore, fetchItems, viewType, setViewType, handleLikeToggle, getObservationById, removeMultipleItems } = useObservations();
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -473,9 +473,8 @@ export function FeedView() {
     </div>
 
     <ObservationDetailSheet isOpen={!!selectedObservationId} onOpenChange={(isOpen) => { if (!isOpen) setSelectedObservationId(null); }} observationId={selectedObservationId} />
-    {selectedInspectionId && <InspectionDetailSheet inspection={items.find(i => i.id === selectedInspectionId) as Inspection} isOpen={!!selectedInspectionId} onOpenChange={(isOpen) => { if (!isOpen) setSelectedInspectionId(null); }} onItemUpdate={updateItem} />}
-    {selectedPtwId && <PtwDetailSheet ptw={items.find(p => p.id === selectedPtwId) as Ptw} isOpen={!!selectedPtwId} onOpenChange={(isOpen) => { if (!isOpen) setSelectedPtwId(null); }} onItemUpdate={updateItem} />}
-
+    <InspectionDetailSheet isOpen={!!selectedInspectionId} onOpenChange={(isOpen) => { if(!isOpen) setSelectedInspectionId(null); }} inspectionId={selectedInspectionId} />
+    <PtwDetailSheet isOpen={!!selectedPtwId} onOpenChange={(isOpen) => { if(!isOpen) setSelectedPtwId(null); }} ptwId={selectedPtwId} />
     
     <DeleteMultipleDialog isOpen={isDeleteMultiOpen} onOpenChange={setDeleteMultiOpen} itemsToDelete={items.filter(item => selectedIds.has(item.id))} onSuccess={() => {
         removeMultipleItems(items.filter(item => selectedIds.has(item.id)));
