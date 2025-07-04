@@ -48,6 +48,8 @@ interface ObservationContextType {
   ) => void;
   updateObservation: (observation: Observation, actionData: { actionTakenDescription: string; actionTakenPhoto?: File }) => void;
   deleteObservation: (observation: Observation) => Promise<void>;
+  deleteInspection: (inspection: Inspection) => Promise<void>;
+  deletePtw: (ptw: Ptw) => Promise<void>;
   approvePtw: (
     ptw: Ptw,
     signatureDataUrl: string,
@@ -432,6 +434,41 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
     }, [user]);
 
+    const deleteInspection = React.useCallback(async (inspection: Inspection) => {
+        if (!user) {
+            throw new Error('User is not authenticated.');
+        }
+        if (user.uid !== inspection.userId) {
+            throw new Error('You do not have permission to delete this inspection.');
+        }
+        
+        const docRef = getDocRef(inspection);
+
+        if (inspection.photoUrl) {
+            await deleteFile(inspection.photoUrl);
+        }
+
+        await deleteDoc(docRef);
+    }, [user]);
+
+    const deletePtw = React.useCallback(async (ptw: Ptw) => {
+        if (!user) {
+            throw new Error('User is not authenticated.');
+        }
+        if (user.uid !== ptw.userId) {
+            throw new Error('You do not have permission to delete this PTW.');
+        }
+        
+        const docRef = getDocRef(ptw);
+
+        if (ptw.jsaPdfUrl) {
+            await deleteFile(ptw.jsaPdfUrl);
+        }
+
+        await deleteDoc(docRef);
+    }, [user]);
+
+
     const approvePtw = React.useCallback(async (ptw: Ptw, signatureDataUrl: string, approver: string) => {
         const ptwDocRef = getDocRef(ptw);
         await updateDoc(ptwDocRef, {
@@ -552,6 +589,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         addPtw,
         updateObservation,
         deleteObservation,
+        deleteInspection,
+        deletePtw,
         approvePtw,
         retryAiAnalysis,
         shareObservationToPublic,

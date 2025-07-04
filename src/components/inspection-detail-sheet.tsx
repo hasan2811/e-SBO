@@ -8,12 +8,14 @@ import { InspectionStatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft, Folder } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft, Folder, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
 import { useObservations } from '@/contexts/observation-context';
 import { useProjects } from '@/hooks/use-projects';
+import { useAuth } from '@/hooks/use-auth';
+import { DeleteInspectionDialog } from './delete-inspection-dialog';
 
 
 interface InspectionDetailSheetProps {
@@ -25,10 +27,14 @@ interface InspectionDetailSheetProps {
 export function InspectionDetailSheet({ inspection, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { retryAiAnalysis } = useObservations();
   const { projects } = useProjects();
-  
+  const { user } = useAuth();
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+
   if (!inspection) return null;
 
   const projectName = inspection.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
+  const isOwner = user && inspection.userId === user.uid;
+  const canDelete = isOwner;
 
   const handleRetry = () => {
     retryAiAnalysis(inspection);
@@ -46,146 +52,163 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange }: Insp
   );
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent hideCloseButton className="w-full sm:max-w-lg p-0 flex flex-col">
-        <SheetHeader className="p-4 border-b">
-          <div className="flex items-center gap-2">
-            <SheetClose asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </SheetClose>
-            <div className="flex flex-col">
-              <SheetTitle>Inspection Details</SheetTitle>
-              <SheetDescription>{inspection.referenceId || inspection.id}</SheetDescription>
-            </div>
-          </div>
-        </SheetHeader>
-        
-        <ScrollArea className="flex-1">
-          <div className="space-y-6 p-6">
-            {inspection.photoUrl && (
-              <div className="relative w-full aspect-video rounded-md overflow-hidden border">
-                <Image
-                  src={inspection.photoUrl}
-                  alt={`Inspection of ${inspection.equipmentName}`}
-                  fill
-                  sizes="(max-width: 640px) 100vw, 512px"
-                  className="object-contain"
-                  data-ai-hint="equipment inspection"
-                />
+    <>
+      <Sheet open={isOpen} onOpenChange={onOpenChange}>
+        <SheetContent hideCloseButton className="w-full sm:max-w-lg p-0 flex flex-col">
+          <SheetHeader className="p-4 border-b">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <SheetClose asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2">
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                </SheetClose>
+                <div className="flex flex-col">
+                  <SheetTitle>Inspection Details</SheetTitle>
+                  <SheetDescription>{inspection.referenceId || inspection.id}</SheetDescription>
+                </div>
               </div>
-            )}
-            <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-center">
-              <div className="font-semibold text-muted-foreground">Submitted On</div>
-              <div>{format(new Date(inspection.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
+              {canDelete && (
+                <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Inspeksi">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </SheetHeader>
+          
+          <ScrollArea className="flex-1">
+            <div className="space-y-6 p-6">
+              {inspection.photoUrl && (
+                <div className="relative w-full aspect-video rounded-md overflow-hidden border">
+                  <Image
+                    src={inspection.photoUrl}
+                    alt={`Inspection of ${inspection.equipmentName}`}
+                    fill
+                    sizes="(max-width: 640px) 100vw, 512px"
+                    className="object-contain"
+                    data-ai-hint="equipment inspection"
+                  />
+                </div>
+              )}
+              <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-center">
+                <div className="font-semibold text-muted-foreground">Submitted On</div>
+                <div>{format(new Date(inspection.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
 
-              <div className="font-semibold text-muted-foreground">Submitted By</div>
-              <div>{inspection.submittedBy}</div>
+                <div className="font-semibold text-muted-foreground">Submitted By</div>
+                <div>{inspection.submittedBy}</div>
+                
+                <div className="font-semibold text-muted-foreground">Location</div>
+                <div>{inspection.location}</div>
+                
+                {projectName && (
+                  <>
+                    <div className="font-semibold text-muted-foreground flex items-center gap-1.5"><Folder className="h-4 w-4"/>Project</div>
+                    <div>{projectName}</div>
+                  </>
+                )}
+
+                <div className="font-semibold text-muted-foreground">Equipment</div>
+                <div>{inspection.equipmentName} ({inspection.equipmentType})</div>
+
+                <div className="font-semibold text-muted-foreground">Status</div>
+                <div><InspectionStatusBadge status={inspection.status} /></div>
+              </div>
+
+              <div className="space-y-1">
+                <h4 className="font-semibold">Findings</h4>
+                <p className="text-sm text-muted-foreground">{inspection.findings}</p>
+              </div>
               
-              <div className="font-semibold text-muted-foreground">Location</div>
-              <div>{inspection.location}</div>
-              
-              {projectName && (
-                <>
-                  <div className="font-semibold text-muted-foreground flex items-center gap-1.5"><Folder className="h-4 w-4"/>Project</div>
-                  <div>{projectName}</div>
-                </>
+              {inspection.recommendation && (
+                <div className="space-y-1">
+                  <h4 className="font-semibold">Recommendation</h4>
+                  <p className="text-sm text-muted-foreground">{inspection.recommendation}</p>
+                </div>
               )}
 
-              <div className="font-semibold text-muted-foreground">Equipment</div>
-              <div>{inspection.equipmentName} ({inspection.equipmentType})</div>
+              {inspection.aiStatus && (
+                <div className="space-y-4 pt-4 mt-4 border-t">
+                   <div className="bg-primary/5 p-4 rounded-lg border-l-4 border-primary space-y-4">
+                      <h4 className="font-semibold text-base flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                        HSSE Tech Analysis
+                      </h4>
 
-              <div className="font-semibold text-muted-foreground">Status</div>
-              <div><InspectionStatusBadge status={inspection.status} /></div>
-            </div>
+                      {inspection.aiStatus === 'processing' && (
+                        <div className="flex items-center gap-3 p-4 rounded-lg">
+                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            <p className="text-sm text-muted-foreground">AI analysis is in progress...</p>
+                        </div>
+                      )}
 
-            <div className="space-y-1">
-              <h4 className="font-semibold">Findings</h4>
-              <p className="text-sm text-muted-foreground">{inspection.findings}</p>
-            </div>
-            
-            {inspection.recommendation && (
-              <div className="space-y-1">
-                <h4 className="font-semibold">Recommendation</h4>
-                <p className="text-sm text-muted-foreground">{inspection.recommendation}</p>
-              </div>
-            )}
+                      {inspection.aiStatus === 'failed' && (
+                        <div className="flex flex-col items-start gap-3 bg-destructive/10 p-4 rounded-lg border border-destructive/20">
+                            <p className="text-sm text-destructive font-medium">The AI analysis could not be completed.</p>
+                            <Button variant="destructive" size="sm" onClick={handleRetry}>
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Retry Analysis
+                            </Button>
+                        </div>
+                      )}
 
-            {inspection.aiStatus && (
-              <div className="space-y-4 pt-4 mt-4 border-t">
-                 <div className="bg-primary/5 p-4 rounded-lg border-l-4 border-primary space-y-4">
-                    <h4 className="font-semibold text-base flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-primary" />
-                      HSSE Tech Analysis
-                    </h4>
-
-                    {inspection.aiStatus === 'processing' && (
-                      <div className="flex items-center gap-3 p-4 rounded-lg">
-                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                          <p className="text-sm text-muted-foreground">AI analysis is in progress...</p>
-                      </div>
-                    )}
-
-                    {inspection.aiStatus === 'failed' && (
-                      <div className="flex flex-col items-start gap-3 bg-destructive/10 p-4 rounded-lg border border-destructive/20">
-                          <p className="text-sm text-destructive font-medium">The AI analysis could not be completed.</p>
-                          <Button variant="destructive" size="sm" onClick={handleRetry}>
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Retry Analysis
-                          </Button>
-                      </div>
-                    )}
-
-                    {inspection.aiStatus === 'completed' && (
-                      <Accordion type="multiple" defaultValue={['summary']} className="w-full">
-                        {inspection.aiSummary && (
-                          <AccordionItem value="summary">
-                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-muted-foreground" />
-                                Summary
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2">
-                              <p className="text-sm text-muted-foreground pl-8">{inspection.aiSummary}</p>
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                        {inspection.aiRisks && (
-                          <AccordionItem value="risks">
-                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                              <div className="flex items-center gap-2">
-                                <ShieldAlert className="h-4 w-4 text-destructive" />
-                                Potential Risks
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2">
-                               {renderBulletedList(inspection.aiRisks, AlertTriangle, "text-destructive")}
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                        {inspection.aiSuggestedActions && (
-                          <AccordionItem value="actions" className="border-b-0">
-                            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                      {inspection.aiStatus === 'completed' && (
+                        <Accordion type="multiple" defaultValue={['summary']} className="w-full">
+                          {inspection.aiSummary && (
+                            <AccordionItem value="summary">
+                              <AccordionTrigger className="text-sm font-semibold hover:no-underline">
                                 <div className="flex items-center gap-2">
-                                  <ListChecks className="h-4 w-4 text-green-600" />
-                                  Suggested Actions
+                                  <FileText className="h-4 w-4 text-muted-foreground" />
+                                  Summary
                                 </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2">
-                              {renderBulletedList(inspection.aiSuggestedActions, CheckCircle2, "text-green-600")}
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                      </Accordion>
-                    )}
-                 </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-      </SheetContent>
-    </Sheet>
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2">
+                                <p className="text-sm text-muted-foreground pl-8">{inspection.aiSummary}</p>
+                              </AccordionContent>
+                            </AccordionItem>
+                          )}
+                          {inspection.aiRisks && (
+                            <AccordionItem value="risks">
+                              <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                                <div className="flex items-center gap-2">
+                                  <ShieldAlert className="h-4 w-4 text-destructive" />
+                                  Potential Risks
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2">
+                                 {renderBulletedList(inspection.aiRisks, AlertTriangle, "text-destructive")}
+                              </AccordionContent>
+                            </AccordionItem>
+                          )}
+                          {inspection.aiSuggestedActions && (
+                            <AccordionItem value="actions" className="border-b-0">
+                              <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                                  <div className="flex items-center gap-2">
+                                    <ListChecks className="h-4 w-4 text-green-600" />
+                                    Suggested Actions
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2">
+                                {renderBulletedList(inspection.aiSuggestedActions, CheckCircle2, "text-green-600")}
+                              </AccordionContent>
+                            </AccordionItem>
+                          )}
+                        </Accordion>
+                      )}
+                   </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+      {canDelete && inspection && (
+        <DeleteInspectionDialog
+          isOpen={isDeleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          inspection={inspection}
+          onSuccess={() => onOpenChange(false)}
+        />
+      )}
+    </>
   );
 }
