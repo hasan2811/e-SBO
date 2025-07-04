@@ -119,8 +119,8 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   }
 
   const handleSuccessDelete = () => {
-    handleCloseSheet();
     fetchItems(true);
+    handleCloseSheet();
   };
 
   const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;

@@ -23,7 +23,6 @@ import {
   updateInspectionStatus as updateInspectionStatusAction,
   retryAiAnalysis as retryAiAnalysisAction, 
   shareObservationToPublic as shareObservationToPublicAction, 
-  deleteMultipleItems as deleteMultipleItemsAction
 } from '@/lib/actions/item-actions';
 
 
@@ -37,8 +36,6 @@ interface ObservationContextType {
   fetchItems: (reset?: boolean) => void;
   addItem: (newItem: AllItems) => void;
   updateItem: (updatedItem: AllItems) => void;
-  removeItem: (itemId: string) => void;
-  removeMultipleItems: (itemsToRemove: AllItems[]) => Promise<void>;
   handleLikeToggle: (observationId: string) => Promise<void>;
   handleViewCount: (observationId: string) => void;
   shareToPublic: (observation: Observation) => Promise<void>;
@@ -161,17 +158,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
   }, []);
   
-  const removeItem = React.useCallback((itemId: string) => {
-    setItems(prevItems => prevItems.filter(item => item.id !== itemId));
-  }, []);
-  
-  const removeMultipleItems = React.useCallback(async (itemsToRemove: AllItems[]) => {
-      const idsToRemove = new Set(itemsToRemove.map(item => item.id));
-      await deleteMultipleItemsAction(itemsToRemove);
-      // Update local state AFTER successful server deletion
-      setItems(prevItems => prevItems.filter(item => !idsToRemove.has(item.id)));
-  }, []);
-
   const handleLikeToggle = React.useCallback(async (observationId: string) => {
     if (!user) {
         toast({ variant: 'destructive', title: 'You must be logged in to like.' });
@@ -262,14 +248,14 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const value = React.useMemo(() => ({
     items, isLoading, hasMore, error,
     fetchItems: resetAndFetch,
-    addItem, updateItem, removeItem, removeMultipleItems,
+    addItem, updateItem,
     handleLikeToggle, handleViewCount, shareToPublic: shareToPublicHandler, retryAnalysis, 
     updateObservationStatus: updateObservationStatusHandler,
     updateInspectionStatus: updateInspectionStatusHandler,
     viewType, setViewType, getObservationById, getInspectionById, getPtwById
   }), [
       items, isLoading, hasMore, error,
-      resetAndFetch, addItem, updateItem, removeItem, removeMultipleItems,
+      resetAndFetch, addItem, updateItem,
       handleLikeToggle, handleViewCount, shareToPublicHandler, retryAnalysis, 
       updateObservationStatusHandler, updateInspectionStatusHandler,
       viewType, getObservationById, getInspectionById, getPtwById

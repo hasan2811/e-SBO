@@ -26,7 +26,6 @@ import {
     DropdownMenuPortal 
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -35,6 +34,7 @@ import { DeleteMultipleDialog } from './delete-multiple-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useObservations } from '@/hooks/use-observations';
 import { useAuth } from '@/hooks/use-auth';
+import { deleteMultipleItems } from '@/lib/actions/item-actions';
 
 const viewTypeInfo = {
     observations: { label: 'Observasi', icon: Briefcase, collection: 'observations' },
@@ -271,7 +271,7 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const { items, isLoading, error, hasMore, fetchItems, viewType, setViewType, handleLikeToggle, getObservationById, removeMultipleItems } = useObservations();
+  const { items, isLoading, error, hasMore, fetchItems, viewType, setViewType, handleLikeToggle, getObservationById } = useObservations();
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -346,7 +346,7 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
     const itemsToDelete = items.filter(item => selectedIds.has(item.id));
     if (itemsToDelete.length > 0) {
         try {
-            await removeMultipleItems(itemsToDelete);
+            await deleteMultipleItems(itemsToDelete);
             toast({
                 title: 'Berhasil Dihapus',
                 description: `${itemsToDelete.length} item telah berhasil dihapus.`,

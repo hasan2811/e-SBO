@@ -61,8 +61,8 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   );
   
   const handleSuccessDelete = () => {
-    handleCloseSheet();
     fetchItems(true);
+    handleCloseSheet();
   }
 
   return (

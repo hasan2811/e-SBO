@@ -79,8 +79,8 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   );
   
   const handleSuccessDelete = () => {
-    handleCloseSheet();
     fetchItems(true);
+    handleCloseSheet();
   }
 
   return (
