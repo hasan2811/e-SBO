@@ -7,11 +7,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Wrench } from 'lucide-react';
+import { format } from 'date-fns';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
-import type { Inspection, InspectionStatus, EquipmentType, Location, Project } from '@/lib/types';
+import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope, Inspection as InspectionType } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { addInspection } from '@/lib/actions/item-actions';
 import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
@@ -109,21 +111,39 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     
     try {
         const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
-        const submissionProjectId = match ? match[1] : null;
+        const projectId = match ? match[1] : null;
 
-        const photoUrl = await uploadFile(values.photo, 'inspections', userProfile.uid, () => {}, submissionProjectId);
+        const photoUrl = await uploadFile(values.photo, 'inspections', userProfile.uid, () => {}, projectId);
         
-        const serializableData = {
-            ...values,
-            photoUrl,
-            photo: undefined,
+        const scope: Scope = projectId ? 'project' : 'private';
+        const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+        const newInspectionData: Omit<InspectionType, 'id'> = {
+            itemType: 'inspection',
+            userId: userProfile.uid,
+            date: new Date().toISOString(),
+            submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+            location: values.location,
+            equipmentName: values.equipmentName,
+            equipmentType: values.equipmentType,
+            status: values.status,
+            findings: values.findings,
+            recommendation: values.recommendation,
+            photoUrl: photoUrl,
+            referenceId,
+            scope,
+            projectId,
+            aiStatus: 'processing',
         };
 
-        await addInspection(serializableData, userProfile, submissionProjectId);
-        toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda sedang diproses.` });
+        await addDoc(collection(db, 'inspections'), newInspectionData);
+
+        toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda telah berhasil disimpan.` });
         onOpenChange(false);
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Submission Failed', description: error instanceof Error ? error.message : "An unexpected error occurred." });
+        console.error("Submission failed:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+        toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
     } finally {
         setIsSubmitting(false);
     }

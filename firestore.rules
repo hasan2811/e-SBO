@@ -1,9 +1,10 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // PUBLIC ACCESS: Allow anyone to read or write to any document.
-    // This removes all server-side security for easier front-end development.
+    // ATURAN SANGAT TERBUKA: Izinkan semua operasi baca dan tulis oleh siapa pun.
+    // Ini menghilangkan semua kemungkinan galat "permission denied" dari sisi Firestore.
     match /{document=**} {
       allow read, write: if true;
     }

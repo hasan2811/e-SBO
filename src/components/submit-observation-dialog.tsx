@@ -8,13 +8,15 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Sparkles, Wand2 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
+import { format } from 'date-fns';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
-import type { Project, AssistObservationOutput } from '@/lib/types';
+import type { Project, AssistObservationOutput, Scope, Location, Company, RiskLevel, ObservationCategory, Observation } from '@/lib/types';
 import { OBSERVATION_CATEGORIES, RISK_LEVELS } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { getAIAssistance } from '@/lib/actions/ai-actions';
-import { addObservation } from '@/lib/actions/item-actions';
 import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
@@ -204,26 +206,49 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     setIsSubmitting(true);
     try {
         const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
-        const submissionProjectId = match ? match[1] : null;
+        const projectId = match ? match[1] : null;
         
         let photoUrl: string;
         if (values.photo) {
-          photoUrl = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, submissionProjectId);
+          photoUrl = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, projectId);
         } else {
           photoUrl = 'https://placehold.co/600x400.png';
         }
+
+        const scope: Scope = projectId ? 'project' : 'private';
+        const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         
-        const serializableData = {
-          ...values,
-          photoUrl,
-          photo: undefined,
+        const newObservationData: Omit<Observation, 'id'> = {
+            itemType: 'observation',
+            userId: userProfile.uid,
+            date: new Date().toISOString(),
+            status: 'Pending',
+            submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+            location: values.location as Location,
+            company: values.company as Company,
+            category: values.category as ObservationCategory,
+            riskLevel: values.riskLevel as RiskLevel,
+            findings: values.findings,
+            recommendation: values.recommendation || '',
+            photoUrl: photoUrl,
+            referenceId,
+            scope,
+            projectId,
+            aiStatus: 'processing', // AI analysis will be triggered separately now.
+            likes: [],
+            likeCount: 0,
+            commentCount: 0,
+            viewCount: 0,
         };
 
-        await addObservation(serializableData, userProfile, submissionProjectId);
-        toast({ title: 'Laporan Terkirim', description: 'Observasi Anda sedang diproses.' });
+        await addDoc(collection(db, 'observations'), newObservationData);
+
+        toast({ title: 'Laporan Terkirim', description: 'Observasi Anda telah berhasil disimpan.' });
         onOpenChange(false);
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Submission Failed', description: error instanceof Error ? error.message : "An unexpected error occurred." });
+        console.error("Submission failed:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+        toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
     } finally {
         setIsSubmitting(false);
     }

@@ -6,11 +6,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Upload, FileSignature, FileText } from 'lucide-react';
+import { format } from 'date-fns';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
-import type { Ptw, Location, Project } from '@/lib/types';
+import type { Ptw, Location, Project, Scope, Ptw as PtwType } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { addPtw } from '@/lib/actions/item-actions';
 import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
@@ -96,21 +98,36 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     
     try {
         const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
-        const submissionProjectId = match ? match[1] : null;
+        const projectId = match ? match[1] : null;
 
-        const jsaPdfUrl = await uploadFile(values.jsaPdf, 'ptw-jsa', userProfile.uid, () => {}, submissionProjectId);
+        const jsaPdfUrl = await uploadFile(values.jsaPdf, 'ptw-jsa', userProfile.uid, () => {}, projectId);
 
-        const serializableData = {
-          ...values,
-          jsaPdfUrl,
-          jsaPdf: undefined,
-        }
+        const scope: Scope = projectId ? 'project' : 'private';
+        const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-        await addPtw(serializableData, userProfile, submissionProjectId);
-        toast({ title: 'PTW Diajukan', description: `Izin kerja Anda sedang diproses.` });
+        const newPtwData: Omit<PtwType, 'id'> = {
+            itemType: 'ptw',
+            userId: userProfile.uid,
+            date: new Date().toISOString(),
+            submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+            location: values.location,
+            workDescription: values.workDescription,
+            contractor: values.contractor,
+            jsaPdfUrl: jsaPdfUrl,
+            status: 'Pending Approval',
+            referenceId,
+            scope,
+            projectId,
+        };
+
+        await addDoc(collection(db, 'ptws'), newPtwData);
+        
+        toast({ title: 'PTW Diajukan', description: `Izin kerja Anda telah berhasil disimpan.` });
         onOpenChange(false);
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Submission Failed', description: error instanceof Error ? error.message : "An unexpected error occurred." });
+        console.error("Submission failed:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+        toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
     } finally {
         setIsSubmitting(false);
     }

@@ -3,8 +3,9 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // PUBLIC ACCESS: Allow anyone to read, write, or delete any file.
-    // This removes all server-side security for easier front-end development and to resolve permission issues.
+    // ATURAN SANGAT TERBUKA: Izinkan semua operasi baca dan tulis oleh siapa pun.
+    // Ini menghilangkan semua kemungkinan galat "permission denied" dari sisi Storage,
+    // dengan asumsi CORS telah diatur dengan benar.
     match /{allPaths=**} {
       allow read, write: if true;
     }
