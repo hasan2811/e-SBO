@@ -10,8 +10,8 @@ import { StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder, ThumbsUp, MessageCircle, Eye, Info } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder, ThumbsUp, MessageCircle, Eye, Info, Trash2 } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose, SheetFooter } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { StarRating } from './star-rating';
@@ -21,6 +21,7 @@ import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { DeleteObservationDialog } from './delete-observation-dialog';
 
 
 const categoryDefinitions: Record<ObservationCategory, string> = {
@@ -60,12 +61,17 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
   const { projects } = useProjects();
   const { user } = useAuth();
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isSharing, setIsSharing] = React.useState(false);
   const { toast } = useToast();
   
   if (!observation) return null;
   
   const hasLiked = user && observation.likes?.includes(user.uid);
+  const isOwner = user && observation.userId === user.uid;
+  const canDelete = isOwner && mode !== 'public';
+  const canTakeAction = observation.status !== 'Completed' && mode !== 'public';
+
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
   const categoryDefinition = categoryDefinitions[observation.category];
 
@@ -427,21 +433,37 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                 )}
               </div>
             )}
-            
-            {observation.status !== 'Completed' && mode !== 'public' && (
-              <div className="pt-6 mt-6 border-t">
-                <Button type="button" onClick={handleTakeAction} className="w-full">
-                  <Gavel className="mr-2 h-4 w-4" />
-                  Ambil Tindakan
-                </Button>
-              </div>
-            )}
           </div>
         </ScrollArea>
+        {(canDelete || canTakeAction) && (
+          <SheetFooter className="p-4 border-t mt-auto flex flex-col sm:flex-row sm:justify-end gap-2">
+            {canDelete && (
+                <Button variant="destructive" className="sm:mr-auto" onClick={() => setDeleteDialogOpen(true)}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                </Button>
+            )}
+            {canTakeAction && (
+                <Button type="button" onClick={handleTakeAction}>
+                    <Gavel className="mr-2 h-4 w-4" />
+                    Ambil Tindakan
+                </Button>
+            )}
+          </SheetFooter>
+        )}
       </SheetContent>
     </Sheet>
     
-    {mode !== 'public' && (
+    {canDelete && observation && (
+      <DeleteObservationDialog
+          isOpen={isDeleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          observation={observation}
+          onSuccess={() => onOpenChange(false)}
+      />
+    )}
+
+    {mode !== 'public' && observation && (
       <TakeActionDialog
           isOpen={isActionDialogOpen}
           onOpenChange={setActionDialogOpen}

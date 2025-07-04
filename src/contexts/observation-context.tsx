@@ -12,9 +12,10 @@ import {
   where,
   Unsubscribe,
   DocumentReference,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { uploadFile } from '@/lib/storage';
+import { deleteFile, uploadFile } from '@/lib/storage';
 import type { Observation, Inspection, Ptw, AllItems, Scope, Company, Location, RiskLevel } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useProjects } from '@/hooks/use-projects';
@@ -46,6 +47,7 @@ interface ObservationContextType {
     projectId: string | null
   ) => void;
   updateObservation: (observation: Observation, actionData: { actionTakenDescription: string; actionTakenPhoto?: File }) => void;
+  deleteObservation: (observation: Observation) => Promise<void>;
   approvePtw: (
     ptw: Ptw,
     signatureDataUrl: string,
@@ -407,6 +409,29 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
     }, [user, userProfile]);
 
+    const deleteObservation = React.useCallback(async (observation: Observation) => {
+        if (!user) {
+            throw new Error('User is not authenticated.');
+        }
+        if (user.uid !== observation.userId) {
+            throw new Error('You do not have permission to delete this observation.');
+        }
+        
+        const docRef = getDocRef(observation);
+
+        // Delete associated photos from storage first
+        if (observation.photoUrl) {
+            await deleteFile(observation.photoUrl);
+        }
+        if (observation.actionTakenPhotoUrl) {
+            await deleteFile(observation.actionTakenPhotoUrl);
+        }
+
+        // Then delete the document from Firestore
+        await deleteDoc(docRef);
+
+    }, [user]);
+
     const approvePtw = React.useCallback(async (ptw: Ptw, signatureDataUrl: string, approver: string) => {
         const ptwDocRef = getDocRef(ptw);
         await updateDoc(ptwDocRef, {
@@ -455,7 +480,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 isSharedPublicly: false,
                 sharedBy: userProfile.displayName,
                 sharedByPosition: userProfile.position,
-                originalId: observation.id,
+                originalId: observation.id, // If it's a shared copy, this points to the original
                 originalScope: observation.scope,
                 aiStatus: 'processing', // Re-trigger AI analysis for the public context if needed, or copy it
                 aiSummary: observation.aiSummary, // Optionally copy existing analysis
@@ -526,6 +551,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         addInspection,
         addPtw,
         updateObservation,
+        deleteObservation,
         approvePtw,
         retryAiAnalysis,
         shareObservationToPublic,
