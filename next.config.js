@@ -111,6 +111,7 @@ const nextConfig = {
       config.resolve.alias['@opentelemetry/sdk-node'] = false;
       config.resolve.alias['genkit'] = false;
       config.resolve.alias['@genkit-ai/googleai'] = false;
+      config.resolve.alias['firebase-admin'] = false;
     }
     return config
   }
