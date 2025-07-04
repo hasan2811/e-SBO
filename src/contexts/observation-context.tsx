@@ -227,12 +227,22 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, [updateItem]);
   
   const updateObservationStatusHandler = React.useCallback(async (observation: Observation, actionData: any, user: UserProfile) => {
-    const updatedItem = await updateObservationStatusAction({ observationId: observation.id, actionData, user });
+    const updatedItem = await updateObservationStatusAction({
+      observationId: observation.id,
+      actionData,
+      userName: user.displayName,
+      userPosition: user.position,
+    });
     if(updatedItem) updateItem(updatedItem);
   }, [updateItem]);
 
   const updateInspectionStatusHandler = React.useCallback(async (inspection: Inspection, actionData: any, user: UserProfile) => {
-    const updatedItem = await updateInspectionStatusAction({ inspectionId: inspection.id, actionData, user });
+    const updatedItem = await updateInspectionStatusAction({
+      inspectionId: inspection.id,
+      actionData,
+      userName: user.displayName,
+      userPosition: user.position,
+    });
     if(updatedItem) updateItem(updatedItem);
   }, [updateItem]);
 

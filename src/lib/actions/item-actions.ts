@@ -12,9 +12,9 @@ import { triggerSmartNotify } from '@/ai/flows/smart-notify-flow';
 // ==================================
 // UPDATE ACTIONS
 // ==================================
-export async function updateObservationStatus({ observationId, actionData, user }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, user: UserProfile }): Promise<Observation> {
+export async function updateObservationStatus({ observationId, actionData, userName, userPosition }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, userName: string, userPosition: string }): Promise<Observation> {
   try {
-    const closerName = `${user.displayName} (${user.position || 'N/A'})`;
+    const closerName = `${userName} (${userPosition || 'N/A'})`;
     const updatedData: Partial<Observation> = {
         status: 'Completed',
         actionTakenDescription: actionData.actionTakenDescription,
@@ -48,9 +48,9 @@ export async function updateObservationStatus({ observationId, actionData, user 
   }
 }
 
-export async function updateInspectionStatus({ inspectionId, actionData, user }: { inspectionId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, user: UserProfile }): Promise<Inspection> {
+export async function updateInspectionStatus({ inspectionId, actionData, userName, userPosition }: { inspectionId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, userName: string, userPosition: string }): Promise<Inspection> {
   try {
-    const closerName = `${user.displayName} (${user.position || 'N/A'})`;
+    const closerName = `${userName} (${userPosition || 'N/A'})`;
     const updatedData: Partial<Inspection> = {
         status: 'Pass',
         actionTakenDescription: actionData.actionTakenDescription,
