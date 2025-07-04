@@ -421,13 +421,9 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         
         const docRef = getDocRef(observation);
 
-        // Delete associated photos from storage first
-        if (observation.photoUrl) {
-            await deleteFile(observation.photoUrl);
-        }
-        if (observation.actionTakenPhotoUrl) {
-            await deleteFile(observation.actionTakenPhotoUrl);
-        }
+        // Delete associated photos from storage first. These operations will not throw errors.
+        await deleteFile(observation.photoUrl);
+        await deleteFile(observation.actionTakenPhotoUrl);
 
         // Then delete the document from Firestore
         await deleteDoc(docRef);
@@ -444,9 +440,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         
         const docRef = getDocRef(inspection);
 
-        if (inspection.photoUrl) {
-            await deleteFile(inspection.photoUrl);
-        }
+        await deleteFile(inspection.photoUrl);
 
         await deleteDoc(docRef);
     }, [user]);
@@ -461,9 +455,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         
         const docRef = getDocRef(ptw);
 
-        if (ptw.jsaPdfUrl) {
-            await deleteFile(ptw.jsaPdfUrl);
-        }
+        await deleteFile(ptw.jsaPdfUrl);
 
         await deleteDoc(docRef);
     }, [user]);
@@ -503,7 +495,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 userId: observation.userId,
                 location: observation.location,
                 submittedBy: observation.submittedBy,
-                date: observation.date, // Keep original date for sorting
+                date: new Date().toISOString(), // Use current date for public post
                 findings: observation.findings,
                 recommendation: observation.recommendation,
                 riskLevel: observation.riskLevel,
@@ -519,8 +511,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
                 sharedByPosition: userProfile.position,
                 originalId: observation.id, // If it's a shared copy, this points to the original
                 originalScope: observation.scope,
-                aiStatus: 'processing', // Re-trigger AI analysis for the public context if needed, or copy it
-                aiSummary: observation.aiSummary, // Optionally copy existing analysis
+                aiStatus: observation.aiStatus,
+                aiSummary: observation.aiSummary,
                 aiRisks: observation.aiRisks,
                 aiSuggestedActions: observation.aiSuggestedActions,
                 aiRelevantRegulations: observation.aiRelevantRegulations,

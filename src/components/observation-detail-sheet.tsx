@@ -153,14 +153,14 @@ export function ObservationDetailSheet({ observation, isOpen, onOpenChange, mode
                 </div>
                 
                 <div className="flex items-center gap-2">
-                    {canDelete && (
-                        <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Observasi">
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    )}
                     {canShare && (
                         <Button variant="outline" size="icon" onClick={handleShare} disabled={isSharing} className="flex-shrink-0" aria-label="Bagikan ke Publik">
                             {isSharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                        </Button>
+                    )}
+                    {canDelete && (
+                        <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Observasi">
+                            <Trash2 className="h-4 w-4" />
                         </Button>
                     )}
                 </div>
