@@ -13,82 +13,97 @@ import { triggerSmartNotify } from '@/ai/flows/smart-notify-flow';
 // UPDATE ACTIONS
 // ==================================
 export async function updateObservationStatus({ observationId, actionData, user }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, user: UserProfile }): Promise<Observation> {
-  const closerName = `${user.displayName} (${user.position || 'N/A'})`;
-  const updatedData: Partial<Observation> = {
-      status: 'Completed',
-      actionTakenDescription: actionData.actionTakenDescription,
-      closedBy: closerName,
-      closedDate: new Date().toISOString(),
-  };
+  try {
+    const closerName = `${user.displayName} (${user.position || 'N/A'})`;
+    const updatedData: Partial<Observation> = {
+        status: 'Completed',
+        actionTakenDescription: actionData.actionTakenDescription,
+        closedBy: closerName,
+        closedDate: new Date().toISOString(),
+    };
+    
+    const observationDocRef = adminDb.collection('observations').doc(observationId);
+    if (actionData.actionTakenPhotoUrl) {
+        updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
+    }
+    
+    await observationDocRef.update(updatedData);
+    const updatedDocSnap = await observationDocRef.get();
+    
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Observation document not found after update. It may have been deleted simultaneously.');
+    }
   
-  const observationDocRef = adminDb.collection('observations').doc(observationId);
-  if (actionData.actionTakenPhotoUrl) {
-      updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
+    const finalDocData = updatedDocSnap.data() as Omit<Observation, 'id'>;
+    const projectId = finalDocData?.projectId;
+  
+    revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
+    revalidatePath('/tasks', 'page');
+    return { ...finalDocData, id: updatedDocSnap.id };
+  } catch (error) {
+    console.error(`[Server Action - updateObservationStatus] Failed for observation ${observationId}:`, error);
+    throw new Error('Failed to update observation status on the server.');
   }
-  
-  await observationDocRef.update(updatedData);
-  const updatedDocSnap = await observationDocRef.get();
-  
-  if (!updatedDocSnap.exists()) {
-    throw new Error('Observation document not found after update. It may have been deleted simultaneously.');
-  }
-
-  const finalDocData = updatedDocSnap.data() as Omit<Observation, 'id'>;
-  const projectId = finalDocData?.projectId;
-
-  revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
-  revalidatePath('/tasks', 'page');
-  return { ...finalDocData, id: updatedDocSnap.id };
 }
 
 export async function updateInspectionStatus({ inspectionId, actionData, user }: { inspectionId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, user: UserProfile }): Promise<Inspection> {
-  const closerName = `${user.displayName} (${user.position || 'N/A'})`;
-  const updatedData: Partial<Inspection> = {
-      status: 'Pass',
-      actionTakenDescription: actionData.actionTakenDescription,
-      closedBy: closerName,
-      closedDate: new Date().toISOString(),
-  };
-
-  const inspectionDocRef = adminDb.collection('inspections').doc(inspectionId);
-  if (actionData.actionTakenPhotoUrl) {
-      updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
-  }
-
-  await inspectionDocRef.update(updatedData);
-  const updatedDocSnap = await inspectionDocRef.get();
+  try {
+    const closerName = `${user.displayName} (${user.position || 'N/A'})`;
+    const updatedData: Partial<Inspection> = {
+        status: 'Pass',
+        actionTakenDescription: actionData.actionTakenDescription,
+        closedBy: closerName,
+        closedDate: new Date().toISOString(),
+    };
   
-  if (!updatedDocSnap.exists()) {
-    throw new Error('Inspection document not found after update. It may have been deleted simultaneously.');
-  }
-
-  const finalDocData = updatedDocSnap.data() as Omit<Inspection, 'id'>;
-  const projectId = finalDocData?.projectId;
+    const inspectionDocRef = adminDb.collection('inspections').doc(inspectionId);
+    if (actionData.actionTakenPhotoUrl) {
+        updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
+    }
   
-  revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
-  revalidatePath('/tasks', 'page');
-  return { ...finalDocData, id: updatedDocSnap.id };
+    await inspectionDocRef.update(updatedData);
+    const updatedDocSnap = await inspectionDocRef.get();
+    
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Inspection document not found after update. It may have been deleted simultaneously.');
+    }
+  
+    const finalDocData = updatedDocSnap.data() as Omit<Inspection, 'id'>;
+    const projectId = finalDocData?.projectId;
+    
+    revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
+    revalidatePath('/tasks', 'page');
+    return { ...finalDocData, id: updatedDocSnap.id };
+  } catch (error) {
+    console.error(`[Server Action - updateInspectionStatus] Failed for inspection ${inspectionId}:`, error);
+    throw new Error('Failed to update inspection status on the server.');
+  }
 }
 
 export async function approvePtw({ ptwId, signatureDataUrl, approverName, approverPosition }: { ptwId: string, signatureDataUrl: string, approverName: string, approverPosition: string }): Promise<Ptw> {
-    const ptwDocRef = adminDb.collection('ptws').doc(ptwId);
-    const approver = `${approverName} (${approverPosition || 'N/A'})`;
-    
-    await ptwDocRef.update({
-        status: 'Approved', signatureDataUrl, approver, approvedDate: new Date().toISOString(),
-    });
-
-    const updatedDocSnap = await ptwDocRef.get();
-
-    if (!updatedDocSnap.exists()) {
-      throw new Error('PTW document not found after update. It may have been deleted simultaneously.');
-    }
+    try {
+      const ptwDocRef = adminDb.collection('ptws').doc(ptwId);
+      const approver = `${approverName} (${approverPosition || 'N/A'})`;
+      
+      await ptwDocRef.update({
+          status: 'Approved', signatureDataUrl, approver, approvedDate: new Date().toISOString(),
+      });
   
-    const finalDocData = updatedDocSnap.data() as Omit<Ptw, 'id'>;
-    const projectId = finalDocData?.projectId;
-
-    revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
-    return { ...finalDocData, id: updatedDocSnap.id };
+      const updatedDocSnap = await ptwDocRef.get();
+  
+      if (!updatedDocSnap.exists()) {
+        throw new Error('PTW document not found after update. It may have been deleted simultaneously.');
+      }
+    
+      const finalDocData = updatedDocSnap.data() as Omit<Ptw, 'id'>;
+      const projectId = finalDocData?.projectId;
+  
+      revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
+      return { ...finalDocData, id: updatedDocSnap.id };
+    } catch (error) {
+      console.error(`[Server Action - approvePtw] Failed for PTW ${ptwId}:`, error);
+      throw new Error('Failed to approve PTW on the server.');
+    }
 }
 
 // ==================================
