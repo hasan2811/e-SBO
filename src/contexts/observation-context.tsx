@@ -17,14 +17,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
-import type { AllItems, Scope, Observation, UserProfile } from '@/lib/types';
+import type { AllItems, Scope, Observation, UserProfile, Inspection } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { usePathname } from 'next/navigation';
 import { toggleLike, incrementViewCount } from '@/lib/actions/interaction-actions';
 import { updateObservationStatus, retryAiAnalysis, shareObservationToPublic, deleteItem, deleteMultipleItems } from '@/lib/actions/item-actions';
 
 const PAGE_SIZE = 10;
-const NON_PAGINATED_LIMIT = 500; // A reasonable limit for non-paginated queries
 
 interface ObservationContextType {
   items: AllItems[];
@@ -39,7 +38,7 @@ interface ObservationContextType {
   handleLikeToggle: (observationId: string) => Promise<void>;
   handleViewCount: (observationId: string) => void;
   shareToPublic: (observation: Observation) => Promise<void>;
-  retryAnalysis: (item: Observation) => Promise<void>;
+  retryAnalysis: (item: Observation | Inspection) => Promise<void>;
   updateStatus: (observation: Observation, actionData: any) => Promise<void>;
   viewType: 'observations' | 'inspections' | 'ptws';
   setViewType: (viewType: 'observations' | 'inspections' | 'ptws') => void;
@@ -77,7 +76,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     setError(null);
     setWarning(null);
     const lastDoc = reset ? null : lastVisible;
-    const isPaginated = mode === 'public';
     const collectionName = viewTypeInfo[viewType].collection;
     
     let baseQuery = query(collection(db, collectionName));
@@ -93,38 +91,34 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       setItems([]); setIsLoading(false); return;
     }
     
-    const finalQuery = isPaginated
-      ? query(baseQuery, orderBy('date', 'desc'), lastDoc ? startAfter(lastDoc) : limit(PAGE_SIZE), limit(PAGE_SIZE))
-      : query(baseQuery, orderBy('date', 'desc'), limit(NON_PAGINATED_LIMIT));
+    // This is the primary query that now relies on the composite indexes you are creating.
+    const finalQuery = query(
+      baseQuery, 
+      orderBy('date', 'desc'), 
+      lastDoc ? startAfter(lastDoc) : limit(PAGE_SIZE), 
+      limit(PAGE_SIZE)
+    );
 
     try {
       const docSnap = await getDocs(finalQuery);
-      let newItems: AllItems[] = docSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
+      const newItems: AllItems[] = docSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
       
-      setHasMore(isPaginated ? newItems.length === PAGE_SIZE : false);
-      setLastVisible(isPaginated ? docSnap.docs[docSnap.docs.length - 1] || null : null);
+      setHasMore(newItems.length === PAGE_SIZE);
+      setLastVisible(docSnap.docs[docSnap.docs.length - 1] || null);
       setItems(prev => reset ? newItems : [...prev, ...newItems]);
     } catch (e: any) {
         if (e.code === 'failed-precondition') {
-             // This is the graceful fallback for project/private queries
-            setWarning('Data mungkin tidak terurut dengan benar. Hubungi administrator untuk mengkonfigurasi indeks database yang diperlukan untuk pengurutan yang optimal.');
-            const fallbackQuery = query(baseQuery, limit(NON_PAGINATED_LIMIT));
-            const docSnap = await getDocs(fallbackQuery);
-            let newItems: AllItems[] = docSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
-            // Sort client-side
-            newItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setHasMore(false);
-            setLastVisible(null);
-            setItems(reset ? newItems : [...items, ...newItems]);
+            setError("Database memerlukan indeks untuk kueri ini. Pastikan Anda telah membuat indeks komposit yang diperlukan di Firebase Console.");
+            console.error("Firestore index missing error. Please create the required composite index in your Firebase console.", e);
         } else {
             console.error("Failed to fetch items:", e);
             setError("Gagal memuat data. Silakan periksa koneksi Anda.");
-            setItems([]);
         }
+        setItems([]);
     } finally {
       setIsLoading(false);
     }
-  }, [mode, projectId, user, viewType, lastVisible, items]);
+  }, [mode, projectId, user, viewType, lastVisible]);
 
 
   const resetAndFetch = React.useCallback(() => {
@@ -157,8 +151,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         toast({ variant: 'destructive', title: 'You must be logged in to like.' });
         return;
     }
-
-    // Perform optimistic update
+    
     setItems(prevItems => {
         const itemIndex = prevItems.findIndex(item => item.id === observationId);
         if (itemIndex === -1 || prevItems[itemIndex].itemType !== 'observation') {
@@ -166,7 +159,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         }
 
         const originalObservation = prevItems[itemIndex] as Observation;
-        const originalLikes = originalObservation.likes || [];
+        const originalLikes = Array.isArray(originalObservation.likes) ? originalObservation.likes : [];
         const hasLiked = originalLikes.includes(user.uid);
         
         const newLikes = hasLiked
@@ -187,17 +180,16 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     try {
         await toggleLike({ docId: observationId, userId: user.uid, collectionName: 'observations' });
     } catch (error) {
+        // The optimistic UI update is not reverted. The user sees a successful like.
+        // A toast notification informs them of the sync failure.
         toast({
           variant: 'destructive',
           title: 'Gagal Memproses Suka',
-          description: 'Gagal menyinkronkan dengan server. Coba lagi nanti.',
+          description: 'Gagal menyinkronkan dengan server. Aksi Anda mungkin tidak tersimpan.',
         });
-        // NOTE: We are intentionally NOT reverting the optimistic UI update.
-        // This provides a better user experience, as the like "appears" to work.
-        // The state will be corrected on the next full data refresh.
         console.error("Failed to process like on server:", error);
     }
-  }, [user, toast, updateItem]);
+  }, [user, toast]);
   
   const handleViewCount = React.useCallback((observationId: string) => {
       setItems(prevItems => {
@@ -207,7 +199,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
         const currentObservation = prevItems[itemIndex] as Observation;
         const updatedObservation: Observation = {
             ...currentObservation,
-            viewCount: (currentObservation.viewCount || 0) + 1,
+            viewCount: (typeof currentObservation.viewCount === 'number' ? currentObservation.viewCount : 0) + 1,
         };
         
         const newItems = [...prevItems];
