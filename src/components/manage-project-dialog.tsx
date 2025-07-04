@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 
 const getInitials = (name: string | null | undefined): string => {
@@ -282,7 +283,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project, defaultTab 
                 </DialogHeader>
                 <div className="flex-1 overflow-hidden">
                     <Tabs defaultValue={defaultTab} key={`${project.id}-${defaultTab}`} className="flex flex-col h-full">
-                        <TabsList className="grid w-full grid-cols-2">
+                        <TabsList className={cn("grid w-full", isOwner ? "grid-cols-2" : "grid-cols-1")}>
                             <TabsTrigger value="members">Members ({project.memberUids?.length || 0})</TabsTrigger>
                             {isOwner && <TabsTrigger value="settings">Settings</TabsTrigger>}
                         </TabsList>
