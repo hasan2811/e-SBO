@@ -153,8 +153,8 @@ Analyze the provided observation data and generate the following points:
 
 1.  "risks": A bulleted list of potential dangers and safety risks arising from the reported condition. Start each point with a hyphen (-).
 2.  "suggestedActions": A bulleted list of clear, actionable recommendations for improvement or mitigation. Start each point with a hyphen (-).
-3.  "rootCauseAnalysis": A brief analysis of the potential root cause of the problem (e.g., lack of procedure, inadequate training, equipment failure).
-4.  "relevantRegulations": A bulleted list of relevant safety regulations that might apply to this situation. Cite Indonesian standards (SNI) and international standards like OSHA, ISO 45001, ANSI, ILO, ASME where applicable. Start each point with a hyphen (-).
+3.  "rootCauseAnalysis": A brief, one-sentence analysis of the most likely root cause (e.g., procedure, training, equipment).
+4.  "relevantRegulations": A bulleted list of **types** of safety standards that apply (e.g., "Standar Bekerja di Ketinggian", "Standar Keselamatan Listrik", "Prosedur Pengangkatan"). **Do not cite specific codes like 'OSHA 1926' or 'SNI 04-0225-2000'.** Focus on the general category of the standard.
 
 Observation Data to Analyze:
 {{{observationData}}}
