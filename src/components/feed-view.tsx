@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -28,12 +27,14 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/use-auth';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteMultipleDialog } from './delete-multiple-dialog';
+import { usePathname, useRouter } from 'next/navigation';
 
 const PAGE_SIZE = 10;
 
 interface FeedViewProps {
   mode: Scope;
   projectId?: string;
+  observationIdToOpen?: string | null;
 }
 
 const viewTypeInfo = {
@@ -262,7 +263,7 @@ const PtwListItem = ({ ptw, onSelect, isSelectionMode, isSelected, onToggleSelec
     )
 };
 
-export function FeedView({ mode, projectId }: FeedViewProps) {
+export function FeedView({ mode, projectId, observationIdToOpen }: FeedViewProps) {
   const { 
       privateItems, 
       projectItems, 
@@ -274,6 +275,8 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
       fetchPublicItems,
   } = useObservations();
   const { user } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -315,6 +318,30 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   }, [mode, publicItems, privateItems, projectItems]);
 
   const isLoading = mode === 'public' ? publicItemsLoading && data.length === 0 : myItemsLoading;
+
+  const triggeredOpen = React.useRef(false);
+
+  React.useEffect(() => {
+    if (observationIdToOpen && !myItemsLoading && !triggeredOpen.current && data.length > 0) {
+        triggeredOpen.current = true;
+        const observationExists = data.some(
+            (item) => item.id === observationIdToOpen && item.itemType === 'observation'
+        );
+
+        if (observationExists) {
+            setViewType('observations');
+            setSelectedObservationId(observationIdToOpen);
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Laporan Tidak Ditemukan',
+                description: 'Observasi yang Anda cari mungkin telah dihapus atau tidak dapat diakses.',
+            });
+        }
+        router.replace(pathname, { scroll: false });
+    }
+  }, [observationIdToOpen, myItemsLoading, data, pathname, router, toast]);
+
 
   const filteredData = React.useMemo(() => {
     let baseData = [...data];

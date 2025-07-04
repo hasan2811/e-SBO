@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useProjects } from '@/hooks/use-projects';
 import { Button } from '@/components/ui/button';
@@ -30,11 +30,13 @@ import {
 export default function ProjectDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { projects, loading: projectsLoading } = useProjects();
   const { toast } = useToast();
   
   const projectId = params.projectId as string;
+  const observationIdToOpen = searchParams.get('openObservation');
   const project = React.useMemo(() => projects.find(p => p.id === projectId), [projects, projectId]);
 
   // State for dialogs
@@ -50,8 +52,7 @@ export default function ProjectDetailsPage() {
   const isLoading = projectsLoading;
   
   const handleSuccess = () => {
-    setDeleteOpen(false);
-    setLeaveOpen(false);
+    onOpenChange(false);
     router.push('/beranda');
   };
 
@@ -182,7 +183,7 @@ export default function ProjectDetailsPage() {
         
         {/* Main Content: Activity Feed */}
         <div className="mt-6">
-            <FeedView mode="project" projectId={projectId} />
+            <FeedView mode="project" projectId={projectId} observationIdToOpen={observationIdToOpen} />
         </div>
       </div>
 

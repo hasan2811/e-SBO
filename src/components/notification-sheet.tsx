@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -102,7 +101,7 @@ export function NotificationSheet() {
             <ul className="divide-y">
               {notifications.map(notification => (
                 <li key={notification.id}>
-                  <Link href={`/proyek/${notification.projectId}`} onClick={() => setIsSheetOpen(false)} className={cn(
+                  <Link href={`/proyek/${notification.projectId}?openObservation=${notification.observationId}`} onClick={() => setIsSheetOpen(false)} className={cn(
                     "block p-4 hover:bg-muted/50 transition-colors",
                     !notification.isRead && "bg-primary/5"
                   )}>
