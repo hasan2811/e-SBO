@@ -10,8 +10,9 @@ import { format } from 'date-fns';
 
 // ==================================
 // CREATE ACTIONS
-// NOTE: These are now handled client-side to prevent server auth issues.
-// This file is kept for other potential server-side logic.
+// NOTE: These have been removed and moved to client-side components (e.g., submit-observation-dialog)
+// to bypass server-side authentication issues that were causing 500 errors.
+// All creations (addDoc) now happen directly from the client.
 // ==================================
 
 
