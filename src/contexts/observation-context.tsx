@@ -30,6 +30,7 @@ interface ObservationContextType {
   isLoading: boolean;
   hasMore: boolean;
   error: string | null;
+  warning: string | null;
   fetchItems: (reset?: boolean) => void;
   updateItem: (updatedItem: AllItems) => void;
   removeItem: (itemId: string) => void;
@@ -61,6 +62,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const [isLoading, setIsLoading] = React.useState(true);
   const [hasMore, setHasMore] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [warning, setWarning] = React.useState<string | null>(null);
   const [lastVisible, setLastVisible] = React.useState<QueryDocumentSnapshot | null>(null);
   const [viewType, setViewType] = React.useState<'observations' | 'inspections' | 'ptws'>('observations');
   
@@ -72,31 +74,60 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
     setIsLoading(true);
     setError(null);
+    if (reset) {
+        setWarning(null);
+    }
     const lastDoc = reset ? null : lastVisible;
 
+    const collectionName = viewTypeInfo[viewType].collection;
+    let baseQuery = query(collection(db, collectionName), limit(PAGE_SIZE));
+
+    if (mode === 'public') baseQuery = query(baseQuery, where('scope', '==', 'public'));
+    else if (mode === 'project' && projectId) baseQuery = query(baseQuery, where('scope', '==', 'project'), where('projectId', '==', projectId));
+    else if (mode === 'private' && user) baseQuery = query(baseQuery, where('scope', '==', 'private'), where('userId', '==', user.uid));
+    else {
+        setItems([]); setIsLoading(false); return;
+    }
+
+    let q = query(baseQuery, orderBy('date', 'desc'));
+    if (lastDoc && !reset) {
+        q = query(q, startAfter(lastDoc));
+    }
+
     try {
-        const collectionName = viewTypeInfo[viewType].collection;
-        let q = query(collection(db, collectionName), orderBy('date', 'desc'), limit(PAGE_SIZE));
-
-        if (mode === 'public') q = query(q, where('scope', '==', 'public'));
-        else if (mode === 'project' && projectId) q = query(q, where('scope', '==', 'project'), where('projectId', '==', projectId));
-        else if (mode === 'private' && user) q = query(q, where('scope', '==', 'private'), where('userId', '==', user.uid));
-        else {
-            setItems([]); setIsLoading(false); return;
-        }
-
-        if (lastDoc) q = query(q, startAfter(lastDoc));
-
         const docSnap = await getDocs(q);
         const newItems: AllItems[] = docSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
         
         setHasMore(newItems.length === PAGE_SIZE);
         setLastVisible(docSnap.docs[docSnap.docs.length - 1] || null);
         setItems(prev => reset ? newItems : [...prev, ...newItems]);
-
+        if (reset) setWarning(null);
     } catch (e) {
-        console.error("Error fetching items:", e);
-        setError("Failed to load feed data. Please check your connection and try again.");
+        console.error("Primary query failed (likely missing index), attempting fallback:", e);
+
+        // Fallback strategy
+        setWarning("Data mungkin tidak terurut dengan benar. Mohon hubungi administrator untuk memeriksa konfigurasi database.");
+        
+        if (!reset) {
+            setHasMore(false);
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            const fallbackSnap = await getDocs(baseQuery);
+            let newItems: AllItems[] = fallbackSnap.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
+
+            newItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+            setHasMore(false);
+            setLastVisible(null);
+            setItems(newItems);
+        } catch (fallbackError) {
+            console.error("Fallback query also failed:", fallbackError);
+            setError("Gagal memuat data. Silakan periksa koneksi Anda dan coba lagi.");
+            setItems([]);
+        }
     } finally {
         setIsLoading(false);
     }
@@ -104,7 +135,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
   React.useEffect(() => {
     fetchItems(true);
-  }, [mode, projectId, viewType, user]); // Removed fetchItems from dependency array to prevent loops
+  }, [mode, projectId, viewType, user]);
 
   const updateItem = (updatedItem: AllItems) => {
     setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
@@ -127,19 +158,17 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
       const hasLiked = originalLikes.includes(user.uid);
       const newLikes = hasLiked ? originalLikes.filter(uid => uid !== user.uid) : [...originalLikes, user.uid];
 
-      // Optimistic update
       updateItem({ ...observation, likes: newLikes, likeCount: newLikes.length });
 
       try {
           await toggleLike({ docId: observation.id, userId: user.uid, collectionName: 'observations' });
       } catch (error) {
           toast({ variant: 'destructive', title: 'Failed to process like.' });
-          updateItem(observation); // Revert on failure
+          updateItem(observation);
       }
   };
   
   const handleViewCount = (observation: Observation) => {
-      // Optimistic update
       updateItem({ ...observation, viewCount: (observation.viewCount || 0) + 1 });
       incrementViewCount({ docId: observation.id, collectionName: 'observations' });
   };
@@ -171,7 +200,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   };
 
   const value = {
-    items, isLoading, hasMore, error,
+    items, isLoading, hasMore, error, warning,
     fetchItems, updateItem, removeItem, removeMultipleItems,
     handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateStatus,
     viewType, setViewType, getObservationById

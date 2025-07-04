@@ -254,7 +254,7 @@ export function FeedView() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const { items, isLoading, error, hasMore, fetchItems, viewType, setViewType, handleLikeToggle, getObservationById, removeMultipleItems } = useObservations();
+  const { items, isLoading, error, warning, hasMore, fetchItems, viewType, setViewType, handleLikeToggle, getObservationById, removeMultipleItems } = useObservations();
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -428,6 +428,16 @@ export function FeedView() {
             </>
           )}
         </div>
+
+      {warning && !isLoading && (
+        <Alert className="mb-4 bg-chart-4/10 border-chart-4/20 text-foreground">
+            <CircleAlert className="h-4 w-4 text-chart-4" />
+            <AlertTitle className="text-chart-4 font-semibold">Peringatan Konfigurasi</AlertTitle>
+            <AlertDescription className="text-foreground/80">
+                {warning}
+            </AlertDescription>
+        </Alert>
+      )}
 
       <main>
         {isLoading && filteredData.length === 0 ? (
