@@ -77,59 +77,59 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
  * This is a server-side only function.
  * @param fileUrl The public download URL of the file to delete.
  */
-async function deleteStorageFileFromUrl(fileUrl: string | undefined): Promise<void> {
-  if (!fileUrl || fileUrl.includes('placehold.co') || !fileUrl.startsWith('https://firebasestorage.googleapis.com')) {
+async function deleteStorageFileFromUrl(fileUrl: string | undefined | null): Promise<void> {
+  if (!fileUrl || !fileUrl.startsWith('https://firebasestorage.googleapis.com')) {
     return;
   }
   
   try {
     const bucket = adminStorage.bucket();
-    const decodedUrl = decodeURIComponent(fileUrl);
-    
-    // Regex to robustly extract file path from URL
-    const matches = decodedUrl.match(/\/o\/(.*?)\?alt=media/);
-    if (!matches || !matches[1]) {
-      console.warn(`Could not extract file path from URL: ${fileUrl}`);
-      return;
-    }
-    const filePath = matches[1];
+    // More robust way to extract the file path from the URL
+    const filePath = decodeURIComponent(fileUrl.split('/o/')[1].split('?')[0]);
     
     const file = bucket.file(filePath);
     const [exists] = await file.exists();
     if (exists) {
         await file.delete();
     } else {
-        console.warn(`File not found for deletion, probably already deleted: ${filePath}`);
+        console.warn(`[Admin Storage] File not found for deletion, probably already deleted: ${filePath}`);
     }
-
   } catch (error) {
-    console.error(`Failed to delete file from storage. URL: ${fileUrl}, Error:`, error);
+    console.error(`[Admin Storage] Failed to delete file. URL: ${fileUrl}, Error:`, error);
     // Do not re-throw, to allow Firestore document deletion to proceed even if file deletion fails.
   }
 }
 
 export async function deleteItem(item: AllItems) {
-  const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
-  
-  // Delete associated files from storage first using the server-side function
-  if (item.itemType === 'observation' || item.itemType === 'inspection') {
-    await deleteStorageFileFromUrl(item.photoUrl);
-    await deleteStorageFileFromUrl(item.actionTakenPhotoUrl);
-  } else if (item.itemType === 'ptw') {
-    await deleteStorageFileFromUrl(item.jsaPdfUrl);
-  }
+  try {
+    const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
+    
+    // Delete associated files from storage first
+    if (item.itemType === 'observation' || item.itemType === 'inspection') {
+      await deleteStorageFileFromUrl(item.photoUrl);
+      await deleteStorageFileFromUrl(item.actionTakenPhotoUrl);
+    } else if (item.itemType === 'ptw') {
+      await deleteStorageFileFromUrl(item.jsaPdfUrl);
+    }
 
-  await docRef.delete();
-  
-  // Revalidate relevant paths
-  revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private', 'page');
-  revalidatePath('/public', 'page');
-  revalidatePath('/tasks', 'page');
+    // Delete the Firestore document
+    await docRef.delete();
+    
+    // Revalidate relevant paths to reflect the change in the UI
+    revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private', 'page');
+    revalidatePath('/public', 'page');
+    revalidatePath('/tasks', 'page');
+  } catch (error) {
+    console.error(`[deleteItem Action] Failed to delete item ${item.id}:`, error);
+    // Re-throw the error to be caught by the client-side component
+    throw new Error('Failed to delete the item on the server.');
+  }
 }
 
 export async function deleteMultipleItems(items: AllItems[]) {
+  try {
     const batch = adminDb.batch();
-    const filesToDelete: (string | undefined)[] = [];
+    const filesToDelete: (string | undefined | null)[] = [];
 
     items.forEach(item => {
       const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
@@ -154,6 +154,10 @@ export async function deleteMultipleItems(items: AllItems[]) {
     const projectIds = new Set(items.map(i => i.projectId).filter(Boolean));
     projectIds.forEach(id => revalidatePath(`/proyek/${id}`, 'page'));
     revalidatePath('/tasks', 'page');
+  } catch (error) {
+    console.error(`[deleteMultipleItems Action] Failed to delete items:`, error);
+    throw new Error('Failed to delete the items on the server.');
+  }
 }
 
 // ==================================
