@@ -31,7 +31,7 @@ interface InspectionDetailSheetProps {
 export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
   const { user } = useAuth();
-  const { getInspectionById, removeItem, retryAnalysis, updateItem } = useObservations();
+  const { getInspectionById, retryAnalysis, updateItem, fetchItems } = useObservations();
   const { toast } = useToast();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
@@ -79,10 +79,8 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   );
   
   const handleSuccessDelete = () => {
-    if (inspection) {
-      removeItem(inspection.id);
-    }
     handleCloseSheet();
+    fetchItems(true);
   }
 
   return (

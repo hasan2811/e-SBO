@@ -345,21 +345,24 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   const handleDeleteConfirm = async () => {
     const itemsToDelete = items.filter(item => selectedIds.has(item.id));
     if (itemsToDelete.length > 0) {
-      try {
-        await removeMultipleItems(itemsToDelete);
-        toast({
-          title: 'Berhasil Dihapus',
-          description: `${itemsToDelete.length} item telah berhasil dihapus.`,
-        });
-        setIsSelectionMode(false);
-        setSelectedIds(new Set());
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Gagal Menghapus',
-          description: 'Terjadi kesalahan saat menghapus item yang dipilih.',
-        });
-      }
+        try {
+            await removeMultipleItems(itemsToDelete);
+            toast({
+                title: 'Berhasil Dihapus',
+                description: `${itemsToDelete.length} item telah berhasil dihapus.`,
+            });
+            fetchItems(true); // Manually trigger a full refresh.
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Menghapus',
+                description: 'Terjadi kesalahan saat menghapus item yang dipilih.',
+            });
+        } finally {
+            // Always reset selection mode
+            setIsSelectionMode(false);
+            setSelectedIds(new Set());
+        }
     }
   };
   
