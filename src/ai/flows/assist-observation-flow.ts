@@ -46,13 +46,13 @@ const assistObservationPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `You are a super-fast AI assistant for an HSSE application. Your task is to instantly analyze the user's text and provide suggestions. Your response must be in Indonesian and formatted as a raw JSON object only.
+    prompt: `You are an extremely fast AI assistant for an HSSE application. Your task is to instantly analyze the user's text and provide suggestions. Your response MUST be a raw JSON object and nothing else. Prioritize speed.
 
-Based on the user's findings, provide the following:
-1.  "suggestedCategory": Analyze the text and determine the most appropriate category. Choose one from: ${OBSERVATION_CATEGORIES.join(', ')}.
-2.  "suggestedRiskLevel": Based on the severity implied in the text, suggest a risk level. Choose one from: ${RISK_LEVELS.join(', ')}.
-3.  "improvedFindings": Rewrite the user's findings to be more professional, clear, and objective. Use formal language (Bahasa Indonesia).
-4.  "suggestedRecommendation": Based on the improved findings, write a clear, actionable recommendation to mitigate the identified risk.
+Analyze the user's findings below and provide the following in Bahasa Indonesia:
+1.  "suggestedCategory": The most fitting category from this list: ${OBSERVATION_CATEGORIES.join(', ')}.
+2.  "suggestedRiskLevel": The most likely risk level from this list: ${RISK_LEVELS.join(', ')}.
+3.  "improvedFindings": A rewritten, more professional version of the user's findings.
+4.  "suggestedRecommendation": A clear, actionable recommendation to mitigate the identified risk.
 
 User's Findings:
 {{{findings}}}`,

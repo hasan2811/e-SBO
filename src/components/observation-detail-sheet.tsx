@@ -312,15 +312,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                 )}
                 
                 {observation.aiStatus === 'completed' && (
-                  <Accordion type="multiple" defaultValue={['summary']} className="w-full">
-                    {observation.aiSummary && (
-                      <AccordionItem value="summary">
-                        <AccordionTrigger className="text-sm font-semibold hover:no-underline">
-                          <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" />Ringkasan</div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-2"><p className="text-sm text-muted-foreground pl-8">{observation.aiSummary}</p></AccordionContent>
-                      </AccordionItem>
-                    )}
+                  <Accordion type="multiple" defaultValue={['observerRating']} className="w-full">
                     {typeof observation.aiObserverSkillRating === 'number' && (
                         <AccordionItem value="observerRating">
                             <AccordionTrigger className="text-sm font-semibold hover:no-underline">
