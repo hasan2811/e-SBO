@@ -12,7 +12,7 @@ import { triggerSmartNotify } from '@/ai/flows/smart-notify-flow';
 // ==================================
 // UPDATE ACTIONS
 // ==================================
-export async function updateObservationStatus({ observationId, actionData, user }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, user: UserProfile }) {
+export async function updateObservationStatus({ observationId, actionData, user }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, user: UserProfile }): Promise<Observation> {
   const closerName = `${user.displayName} (${user.position || 'N/A'})`;
   const updatedData: Partial<Observation> = {
       status: 'Completed',
@@ -27,14 +27,21 @@ export async function updateObservationStatus({ observationId, actionData, user 
   }
   
   await observationDocRef.update(updatedData);
-  const updatedDoc = await observationDocRef.get();
+  const updatedDocSnap = await observationDocRef.get();
   
-  revalidatePath(updatedDoc.data()?.projectId ? `/proyek/${updatedDoc.data()?.projectId}` : '/private', 'page');
+  if (!updatedDocSnap.exists()) {
+    throw new Error('Observation document not found after update. It may have been deleted simultaneously.');
+  }
+
+  const finalDocData = updatedDocSnap.data() as Omit<Observation, 'id'>;
+  const projectId = finalDocData?.projectId;
+
+  revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
   revalidatePath('/tasks', 'page');
-  return { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
+  return { ...finalDocData, id: updatedDocSnap.id };
 }
 
-export async function updateInspectionStatus({ inspectionId, actionData, user }: { inspectionId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, user: UserProfile }) {
+export async function updateInspectionStatus({ inspectionId, actionData, user }: { inspectionId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, user: UserProfile }): Promise<Inspection> {
   const closerName = `${user.displayName} (${user.position || 'N/A'})`;
   const updatedData: Partial<Inspection> = {
       status: 'Pass',
@@ -49,10 +56,18 @@ export async function updateInspectionStatus({ inspectionId, actionData, user }:
   }
 
   await inspectionDocRef.update(updatedData);
-  const updatedDoc = await inspectionDocRef.get();
+  const updatedDocSnap = await inspectionDocRef.get();
   
-  revalidatePath(updatedDoc.data()?.projectId ? `/proyek/${updatedDoc.data()?.projectId}` : '/private', 'page');
-  return { ...updatedDoc.data(), id: updatedDoc.id } as Inspection;
+  if (!updatedDocSnap.exists()) {
+    throw new Error('Inspection document not found after update. It may have been deleted simultaneously.');
+  }
+
+  const finalDocData = updatedDocSnap.data() as Omit<Inspection, 'id'>;
+  const projectId = finalDocData?.projectId;
+  
+  revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
+  revalidatePath('/tasks', 'page'); // Added for consistency
+  return { ...finalDocData, id: updatedDocSnap.id };
 }
 
 export async function approvePtw({ ptwId, signatureDataUrl, approverName, approverPosition }: { ptwId: string, signatureDataUrl: string, approverName: string, approverPosition: string }): Promise<Ptw> {
@@ -63,9 +78,17 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
         status: 'Approved', signatureDataUrl, approver, approvedDate: new Date().toISOString(),
     });
 
-    const updatedDoc = await ptwDocRef.get();
-    revalidatePath(updatedDoc.data()?.projectId ? `/proyek/${updatedDoc.data()?.projectId}` : '/private', 'page');
-    return { ...updatedDoc.data(), id: updatedDoc.id } as Ptw;
+    const updatedDocSnap = await ptwDocRef.get();
+
+    if (!updatedDocSnap.exists()) {
+      throw new Error('PTW document not found after update. It may have been deleted simultaneously.');
+    }
+  
+    const finalDocData = updatedDocSnap.data() as Omit<Ptw, 'id'>;
+    const projectId = finalDocData?.projectId;
+
+    revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
+    return { ...finalDocData, id: updatedDocSnap.id };
 }
 
 // ==================================
@@ -78,12 +101,14 @@ async function deleteStorageFileFromUrl(fileUrl: string | undefined | null): Pro
     }
     try {
         const url = new URL(fileUrl);
+        // Pathname looks like: /v0/b/bucket-name/o/path%2Fto%2Ffile.jpg
         const pathStartIndex = url.pathname.indexOf('/o/');
         if (pathStartIndex === -1) {
             console.warn(`[Admin Storage] Could not find '/o/' in the file URL path: ${fileUrl}`);
             return;
         }
 
+        // The actual path is after the /o/ and needs to be decoded.
         const encodedFilePath = url.pathname.substring(pathStartIndex + 3);
         const filePath = decodeURIComponent(encodedFilePath);
 
@@ -91,9 +116,11 @@ async function deleteStorageFileFromUrl(fileUrl: string | undefined | null): Pro
         const file = bucket.file(filePath);
         await file.delete();
     } catch (error: any) {
+        // A 404 error is okay, it means the file was already gone.
         if (error.code === 404 || error.code === 'storage/object-not-found') {
             console.warn(`[Admin Storage] File not found for deletion, probably already deleted: ${fileUrl}`);
         } else {
+            // Log other errors but don't re-throw, as we don't want to block the primary action.
             console.error(`[Admin Storage] Failed to delete file. URL: ${fileUrl}, Error:`, error);
         }
     }
