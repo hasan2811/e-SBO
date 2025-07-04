@@ -60,7 +60,7 @@ function findClosestMatch<T extends string>(value: string | undefined, options: 
 
 const summarizeObservationPrompt = ai.definePrompt({
     name: 'summarizeObservationPrompt',
-    model: 'googleai/gemini-2.0-flash',
+    model: 'googleai/gemini-1.5-flash-latest',
     input: { schema: SummarizeObservationDataInputSchema },
     output: { schema: SummarizeObservationDataOutputSchema },
     config: {
@@ -158,7 +158,7 @@ export async function summarizeObservationData(input: SummarizeObservationDataIn
 
 const analyzeInspectionPrompt = ai.definePrompt({
     name: 'analyzeInspectionPrompt',
-    model: 'googleai/gemini-2.0-flash',
+    model: 'googleai/gemini-1.5-flash-latest',
     input: { schema: AnalyzeInspectionInputSchema },
     output: { schema: AnalyzeInspectionOutputSchema },
     config: {

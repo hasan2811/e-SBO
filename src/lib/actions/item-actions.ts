@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import type { Observation, Inspection, Ptw, AllItems, UserProfile } from '@/lib/types';
 import { summarizeObservationData } from '@/ai/flows/summarize-observation-data';
 import { analyzeInspectionData } from '@/ai/flows/summarize-observation-data';
+import { triggerSmartNotify } from '@/ai/flows/smart-notify-flow';
 
 
 // ==================================
@@ -137,6 +138,20 @@ export async function triggerObservationAnalysis(observation: Observation) {
       Perusahaan: ${observation.company}
       Pengamat: ${observation.submittedBy}
     `;
+
+    // Trigger smart notify in parallel with the main analysis
+    if (observation.scope === 'project' && observation.projectId) {
+      const submittedByName = observation.submittedBy.split(' (')[0];
+      triggerSmartNotify({
+        observationId: observation.id,
+        projectId: observation.projectId,
+        company: observation.company,
+        findings: observation.findings,
+        submittedBy: submittedByName,
+      }).catch(err => {
+        console.error(`Smart-notify trigger failed for obs ${observation.id}`, err);
+      });
+    }
 
     const analysis = await summarizeObservationData({ observationData });
 

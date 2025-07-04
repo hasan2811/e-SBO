@@ -10,10 +10,9 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 import { SmartNotifyInput, SmartNotifyInputSchema, SmartNotifyOutputSchema, UserProfile } from '@/lib/types';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, addDoc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 
 // Define the schema for the tool's output. Only include necessary fields.
 const MemberProfileSchema = z.object({
@@ -35,27 +34,26 @@ const getProjectMembersTool = ai.defineTool(
   },
   async ({ projectId }) => {
     try {
-      const projectRef = doc(db, 'projects', projectId);
-      const projectSnap = await getDoc(projectRef);
+      const projectRef = adminDb.collection('projects').doc(projectId);
+      const projectSnap = await projectRef.get();
 
-      if (!projectSnap.exists()) {
+      if (!projectSnap.exists) {
         console.warn(`[getProjectMembersTool] Project not found: ${projectId}`);
         return [];
       }
 
-      const project = projectSnap.data();
+      const project = projectSnap.data()!;
       const memberUids = project.memberUids || [];
       if (memberUids.length === 0) {
         return [];
       }
-
-      const memberDocs = await Promise.all(
-        memberUids.map((uid: string) => getDoc(doc(db, 'users', uid)))
-      );
+      
+      const memberRefs = memberUids.map((uid: string) => adminDb.collection('users').doc(uid));
+      const memberDocs = await adminDb.getAll(...memberRefs);
 
       const memberProfiles: z.infer<typeof MemberProfileSchema>[] = [];
       memberDocs.forEach(docSnap => {
-        if (docSnap.exists()) {
+        if (docSnap.exists) {
           const user = docSnap.data() as UserProfile;
           memberProfiles.push({
             uid: user.uid,
@@ -65,6 +63,7 @@ const getProjectMembersTool = ai.defineTool(
         }
       });
       return memberProfiles;
+
     } catch (error) {
       console.error(`[getProjectMembersTool] Failed to fetch members for project ${projectId}:`, error);
       return []; // Return empty on error to allow the flow to continue gracefully
@@ -75,7 +74,7 @@ const getProjectMembersTool = ai.defineTool(
 
 const smartNotifyPrompt = ai.definePrompt({
   name: 'smartNotifyPrompt',
-  model: 'googleai/gemini-2.0-flash',
+  model: 'googleai/gemini-1.5-flash-latest',
   tools: [getProjectMembersTool],
   input: { schema: SmartNotifyInputSchema },
   output: { schema: SmartNotifyOutputSchema },
@@ -128,7 +127,7 @@ const smartNotifyFlow = ai.defineFlow(
         isRead: false,
         createdAt: new Date().toISOString(),
       };
-      return addDoc(collection(db, 'notifications'), notificationData);
+      return adminDb.collection('notifications').add(notificationData);
     });
 
     await Promise.all(notificationPromises);

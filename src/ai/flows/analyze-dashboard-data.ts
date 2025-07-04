@@ -28,7 +28,7 @@ const AnalyzeDashboardPromptInputSchema = z.object({
 
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
-    model: 'googleai/gemini-2.0-flash',
+    model: 'googleai/gemini-1.5-flash-latest',
     input: { schema: AnalyzeDashboardPromptInputSchema },
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
