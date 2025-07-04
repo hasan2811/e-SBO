@@ -85,23 +85,24 @@ export async function createObservation(payload: CreateObservationPayload): Prom
         ...payload,
         referenceId,
         status: 'Pending',
-        aiStatus: 'processing',
+        // Set aiStatus to undefined instead of 'processing' since we are disabling it
+        aiStatus: undefined, 
         likes: [], likeCount: 0, commentCount: 0, viewCount: 0,
     };
     const docRef = await addDoc(collection(db, 'observations'), observationData);
     const newObservation = { ...observationData, id: docRef.id };
 
-    // Trigger AI tasks in the background without blocking the response.
-    _runObservationAiAnalysis(newObservation).catch(console.error);
-    if (newObservation.projectId) {
-        triggerSmartNotify({
-            observationId: newObservation.id,
-            projectId: newObservation.projectId,
-            company: newObservation.company,
-            findings: newObservation.findings,
-            submittedBy: newObservation.submittedBy,
-        }).catch(console.error);
-    }
+    // Temporarily disable AI and notification triggers to diagnose the permission error
+    // _runObservationAiAnalysis(newObservation).catch(console.error);
+    // if (newObservation.projectId) {
+    //     triggerSmartNotify({
+    //         observationId: newObservation.id,
+    //         projectId: newObservation.projectId,
+    //         company: newObservation.company,
+    //         findings: newObservation.findings,
+    //         submittedBy: newObservation.submittedBy,
+    //     }).catch(console.error);
+    // }
     
     revalidatePath(newObservation.projectId ? `/proyek/${newObservation.projectId}` : '/private');
     revalidatePath('/tasks');
@@ -116,12 +117,15 @@ export async function createInspection(payload: CreateInspectionPayload): Promis
         itemType: 'inspection',
         ...payload,
         referenceId,
-        aiStatus: 'processing',
+        // Set aiStatus to undefined instead of 'processing'
+        aiStatus: undefined,
     };
     const docRef = await addDoc(collection(db, 'inspections'), inspectionData);
     const newInspection = { ...inspectionData, id: docRef.id };
 
-    _runInspectionAiAnalysis(newInspection).catch(console.error);
+    // Temporarily disable AI analysis to diagnose the permission error
+    // _runInspectionAiAnalysis(newInspection).catch(console.error);
+    
     revalidatePath(newInspection.projectId ? `/proyek/${newInspection.projectId}` : '/private');
     return newInspection;
 }
