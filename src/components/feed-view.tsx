@@ -387,42 +387,44 @@ export function FeedView() {
                             </DropdownMenuContent>
                         </DropdownMenu>
                     )}
-                    <Popover>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                    
+                    {mode !== 'public' && (
+                        <Popover>
+                            <PopoverTrigger asChild>
                                 <Button variant="ghost" size="icon">
-                                    <MoreVertical className="h-5 w-5" />
-                                    <span className="sr-only">Opsi</span>
+                                    <Search className="h-5 w-5" />
+                                    <span className="sr-only">Cari Laporan</span>
                                 </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {mode !== 'public' && (
-                                    <PopoverTrigger asChild>
-                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); }}>
-                                            <Search className="mr-2 h-4 w-4" />
-                                            <span>Cari</span>
-                                        </DropdownMenuItem>
-                                    </PopoverTrigger>
-                                )}
-                                {canSelect && (
-                                    <DropdownMenuItem onSelect={() => setIsSelectionMode(true)}>
-                                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                                        <span>Pilih</span>
-                                    </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem onSelect={handleExport} disabled={isExportDisabled}>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    <span>Export</span>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="p-2 w-80">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input placeholder="Cari di feed ini..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" autoFocus />
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    )}
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-5 w-5" />
+                                <span className="sr-only">Opsi</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {canSelect && (
+                                <DropdownMenuItem onSelect={() => setIsSelectionMode(true)}>
+                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                                    <span>Pilih</span>
                                 </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <PopoverContent align="end" className="p-2 w-80">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Cari di feed ini..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" autoFocus />
-                            </div>
-                        </PopoverContent>
-                    </Popover>
+                            )}
+                            <DropdownMenuItem onSelect={handleExport} disabled={isExportDisabled}>
+                                <Download className="mr-2 h-4 w-4" />
+                                <span>Export</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </>
           )}
