@@ -6,14 +6,17 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
-import { Loader2, Upload, Wrench } from 'lucide-react';
+import { Loader2, Upload, Wrench, Sparkles, Wand2 } from 'lucide-react';
 import { useObservations } from '@/hooks/use-observations';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { triggerInspectionAnalysis } from '@/lib/actions/item-actions';
+import { useDebounce } from 'use-debounce';
+import { assistInspection } from '@/ai/flows/assist-inspection-flow';
+import { cn } from '@/lib/utils';
 
-import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope } from '@/lib/types';
+import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope, AssistInspectionOutput } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
@@ -25,10 +28,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePathname } from 'next/navigation';
+import { DEFAULT_LOCATIONS, EQUIPMENT_TYPES, INSPECTION_STATUSES } from '@/lib/types';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
-const EQUIPMENT_TYPES = ['Heavy Machinery', 'Hand Tool', 'Vehicle', 'Electrical', 'Other'] as const;
-const INSPECTION_STATUSES = ['Pass', 'Fail', 'Needs Repair'] as const;
 
 const formSchema = z.object({
   location: z.string().min(1),
@@ -59,6 +61,10 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   const formId = React.useId();
   const pathname = usePathname();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  
+  // AI Assistant State
+  const [aiSuggestions, setAiSuggestions] = React.useState<AssistInspectionOutput | null>(null);
+  const [isAiLoading, setIsAiLoading] = React.useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -72,24 +78,52 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     mode: 'onChange',
   });
   
+  const [debouncedFindings] = useDebounce(form.watch('findings'), 1000);
+  
+  React.useEffect(() => {
+    async function getAiSuggestions() {
+      if (debouncedFindings && debouncedFindings.length > 20) {
+        setIsAiLoading(true);
+        try {
+          const suggestions = await assistInspection({ findings: debouncedFindings });
+          setAiSuggestions(suggestions);
+        } catch (error) {
+          console.error('AI suggestion failed:', error);
+          setAiSuggestions(null); // Clear suggestions on error
+        } finally {
+          setIsAiLoading(false);
+        }
+      } else {
+        setAiSuggestions(null);
+      }
+    }
+    getAiSuggestions();
+  }, [debouncedFindings]);
+  
   const locationOptions = React.useMemo(() => 
-    (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : LOCATIONS,
+    (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : DEFAULT_LOCATIONS,
   [project]);
+
+  const resetForm = React.useCallback(() => {
+    form.reset({
+        location: locationOptions[0],
+        equipmentName: '',
+        equipmentType: EQUIPMENT_TYPES[0],
+        status: INSPECTION_STATUSES[0],
+        findings: '',
+        recommendation: '',
+    });
+    setPhotoPreview(null);
+    setAiSuggestions(null);
+    setIsAiLoading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [form, locationOptions]);
 
   React.useEffect(() => {
     if (isOpen) {
-        form.reset({
-            location: locationOptions[0],
-            equipmentName: '',
-            equipmentType: EQUIPMENT_TYPES[0],
-            status: INSPECTION_STATUSES[0],
-            findings: '',
-            recommendation: '',
-        });
-        setPhotoPreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
+      resetForm();
     }
-  }, [isOpen, form, locationOptions]);
+  }, [isOpen, resetForm]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -175,18 +209,57 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
               )} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <FormField name="location" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Lokasi</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(locationOptions)}</SelectContent></Select><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Lokasi</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(locationOptions)}</SelectContent></Select><FormMessage /></FormItem>
                 )} />
                 <FormField name="equipmentType" control={form.control} render={({ field }) => (
                   <FormItem><FormLabel>Jenis Peralatan</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(EQUIPMENT_TYPES)}</SelectContent></Select><FormMessage /></FormItem>
                 )} />
               </div>
               <FormField name="status" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Status Inspeksi</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(INSPECTION_STATUSES)}</SelectContent></Select><FormMessage /></FormItem>
+                <FormItem><FormLabel>Status Inspeksi</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(INSPECTION_STATUSES)}</SelectContent></Select><FormMessage /></FormItem>
               )} />
               <FormField name="findings" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Temuan</FormLabel><FormControl><Textarea placeholder="Jelaskan detail temuan inspeksi." rows={3} {...field} /></FormControl><FormMessage /></FormItem>
               )} />
+              
+              {/* AI Assistant Section */}
+              <div className="relative">
+                {isAiLoading && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+                {aiSuggestions && (
+                   <Alert className="bg-primary/5 border-primary/20 text-primary-foreground mt-4">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <AlertTitle className="text-primary font-semibold">Saran Asisten AI</AlertTitle>
+                    <AlertDescription className="text-primary/90 space-y-3 mt-2">
+                       {aiSuggestions.suggestedStatus && (
+                         <div className="flex items-center justify-between">
+                           <p>Saran Status: <span className="font-semibold">{aiSuggestions.suggestedStatus}</span></p>
+                           <Button type="button" size="sm" variant="outline" onClick={() => form.setValue('status', aiSuggestions.suggestedStatus as InspectionStatus)}>Terapkan</Button>
+                         </div>
+                       )}
+                       {aiSuggestions.improvedFindings && (
+                         <div>
+                            <p className="mb-1">Saran Perbaikan Temuan:</p>
+                            <p className="p-2 bg-background/50 rounded text-sm">{aiSuggestions.improvedFindings}</p>
+                            <Button type="button" size="sm" variant="outline" className="mt-1" onClick={() => form.setValue('findings', aiSuggestions.improvedFindings)}>Terapkan</Button>
+                         </div>
+                       )}
+                        {aiSuggestions.suggestedRecommendation && (
+                         <div>
+                            <p className="mb-1">Saran Rekomendasi:</p>
+                             <Button type="button" size="sm" variant="outline" className="w-full justify-start text-left h-auto whitespace-normal" onClick={() => form.setValue('recommendation', aiSuggestions.suggestedRecommendation)}>
+                                <Wand2 className="mr-2 h-4 w-4 flex-shrink-0" /> {aiSuggestions.suggestedRecommendation}
+                             </Button>
+                         </div>
+                       )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+              
               <FormField name="recommendation" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Rekomendasi (Opsional)</FormLabel><FormControl><Textarea placeholder="Jelaskan tindakan yang direkomendasikan." rows={2} {...field} /></FormControl><FormMessage /></FormItem>
               )} />

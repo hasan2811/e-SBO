@@ -6,9 +6,18 @@ export type Company = 'Tambang' | 'Migas' | 'Konstruksi' | 'Manufaktur' | string
 export type Location = 'International' | 'National' | 'Local' | 'Regional' | string; // Allow custom strings
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 export type Scope = 'public' | 'private' | 'project';
+export type InspectionStatus = 'Pass' | 'Fail' | 'Needs Repair';
+export type EquipmentType = 'Heavy Machinery' | 'Hand Tool' | 'Vehicle' | 'Electrical' | 'Other';
+export type PtwStatus = 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed';
 
+// Centralized Constants
 export const RISK_LEVELS: [RiskLevel, ...RiskLevel[]] = ['Low', 'Medium', 'High', 'Critical'];
 export const OBSERVATION_STATUSES: [ObservationStatus, ...ObservationStatus[]] = ['Pending', 'In Progress', 'Completed'];
+export const INSPECTION_STATUSES: [InspectionStatus, ...InspectionStatus[]] = ['Pass', 'Fail', 'Needs Repair'];
+export const EQUIPMENT_TYPES: [EquipmentType, ...EquipmentType[]] = ['Heavy Machinery', 'Hand Tool', 'Vehicle', 'Electrical', 'Other'];
+export const DEFAULT_LOCATIONS: readonly string[] = ['International', 'National', 'Local', 'Regional'];
+export const DEFAULT_COMPANIES: readonly string[] = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'];
+
 
 // Updated list to reflect Life-Saving Rules (LSR) as categories
 export const OBSERVATION_CATEGORIES = [
@@ -108,10 +117,6 @@ export type Observation = {
   viewCount?: number;
 };
 
-// New Types for Inspection and PTW
-export type InspectionStatus = 'Pass' | 'Fail' | 'Needs Repair';
-export type EquipmentType = 'Heavy Machinery' | 'Hand Tool' | 'Vehicle' | 'Electrical' | 'Other';
-
 export type Inspection = {
   id: string;
   itemType: 'inspection';
@@ -138,8 +143,6 @@ export type Inspection = {
   closedBy?: string;
   closedDate?: string;
 };
-
-export type PtwStatus = 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed';
 
 export type Ptw = {
   id: string;
@@ -209,6 +212,19 @@ export const AssistObservationOutputSchema = z.object({
   suggestedRecommendation: z.string().describe('A suggested recommendation to address the findings.'),
 });
 export type AssistObservationOutput = z.infer<typeof AssistObservationOutputSchema>;
+
+// assist-inspection-flow (NEW)
+export const AssistInspectionInputSchema = z.object({
+  findings: z.string().min(10).describe('The user-written findings from the inspection report.'),
+});
+export type AssistInspectionInput = z.infer<typeof AssistInspectionInputSchema>;
+
+export const AssistInspectionOutputSchema = z.object({
+  suggestedStatus: z.string().describe("The most likely inspection status from this list: 'Pass', 'Fail', 'Needs Repair'."),
+  improvedFindings: z.string().describe('An improved, more professional version of the original findings text.'),
+  suggestedRecommendation: z.string().describe('A suggested recommendation to address the findings.'),
+});
+export type AssistInspectionOutput = z.infer<typeof AssistInspectionOutputSchema>;
 
 
 // summarize-observation-data

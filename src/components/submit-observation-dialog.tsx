@@ -6,14 +6,16 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
-import { Loader2, Upload, Sparkles } from 'lucide-react';
+import { Loader2, Upload, Sparkles, Wand2 } from 'lucide-react';
 import { useObservations } from '@/hooks/use-observations';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { triggerObservationAnalysis } from '@/lib/actions/item-actions';
+import { useDebounce } from 'use-debounce';
+import { assistObservation } from '@/ai/flows/assist-observation-flow';
 
-import type { Project, Scope, Location, Company, Observation } from '@/lib/types';
+import type { Project, Scope, Location, Company, Observation, RiskLevel, ObservationCategory, AssistObservationOutput } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
@@ -25,11 +27,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePathname } from 'next/navigation';
+import { DEFAULT_LOCATIONS, DEFAULT_COMPANIES } from '@/lib/types';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-const DEFAULT_LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
-const DEFAULT_COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
-
-// Schema is now simplified. Category and Risk Level are handled by AI post-submission.
 const formSchema = z.object({
   photo: z
     .instanceof(File)
@@ -59,6 +59,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   const pathname = usePathname();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
+  // AI Assistant State
+  const [aiSuggestions, setAiSuggestions] = React.useState<AssistObservationOutput | null>(null);
+  const [isAiLoading, setIsAiLoading] = React.useState(false);
+
   const companyOptions = React.useMemo(() => 
     (project?.customCompanies && project.customCompanies.length > 0) ? project.customCompanies : DEFAULT_COMPANIES,
   [project]);
@@ -77,21 +81,49 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     mode: 'onChange',
   });
 
+  const [debouncedFindings] = useDebounce(form.watch('findings'), 1000);
+
+  React.useEffect(() => {
+    async function getAiSuggestions() {
+      if (debouncedFindings && debouncedFindings.length > 20) {
+        setIsAiLoading(true);
+        try {
+          const suggestions = await assistObservation({ findings: debouncedFindings });
+          setAiSuggestions(suggestions);
+        } catch (error) {
+          console.error('AI suggestion failed:', error);
+          setAiSuggestions(null);
+        } finally {
+          setIsAiLoading(false);
+        }
+      } else {
+        setAiSuggestions(null);
+      }
+    }
+    getAiSuggestions();
+  }, [debouncedFindings]);
+
+  const resetForm = React.useCallback(() => {
+    form.reset({
+        photo: undefined,
+        location: locationOptions[0],
+        company: companyOptions[0],
+        findings: '',
+        recommendation: '',
+    });
+    setPhotoPreview(null);
+    setAiSuggestions(null);
+    setIsAiLoading(false);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+    }
+  }, [form, locationOptions, companyOptions]);
+
   React.useEffect(() => {
     if (isOpen) {
-        form.reset({
-            photo: undefined,
-            location: locationOptions[0],
-            company: companyOptions[0],
-            findings: '',
-            recommendation: '',
-        });
-        setPhotoPreview(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
+        resetForm();
     }
-  }, [isOpen, form, locationOptions, companyOptions]);
+  }, [isOpen, resetForm]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -145,10 +177,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             scope,
             projectId,
             referenceId,
-            category: 'Supervision', // Default category
-            riskLevel: 'Low', // Default risk level
+            category: (aiSuggestions?.suggestedCategory as ObservationCategory) || 'Supervision',
+            riskLevel: (aiSuggestions?.suggestedRiskLevel as RiskLevel) || 'Low',
             status: 'Pending',
-            aiStatus: 'processing', // Set to processing immediately
+            aiStatus: 'processing',
             likes: [], likeCount: 0, commentCount: 0, viewCount: 0,
         };
         
@@ -157,11 +189,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         const finalObservation = { ...newObservationData, id: docRef.id };
         addItem(finalObservation);
 
-        // Trigger AI analysis in the background without waiting for it
         triggerObservationAnalysis(finalObservation).catch(error => {
             console.error("Failed to trigger AI analysis:", error);
-            // We don't need to show a toast here as the primary submission was successful.
-            // The error is logged for debugging. The UI will show a failed status.
         });
 
         toast({ title: 'Laporan Terkirim', description: 'Observasi Anda berhasil disimpan. AI akan menganalisisnya.' });
@@ -282,6 +311,38 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                 )}
               />
               
+              {/* AI Assistant Section */}
+              <div className="relative">
+                {isAiLoading && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+                {aiSuggestions && (
+                   <Alert className="bg-primary/5 border-primary/20 text-primary-foreground mt-4">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <AlertTitle className="text-primary font-semibold">Saran Asisten AI</AlertTitle>
+                    <AlertDescription className="text-primary/90 space-y-3 mt-2">
+                       {aiSuggestions.improvedFindings && (
+                         <div>
+                            <p className="mb-1">Saran Perbaikan Temuan:</p>
+                            <p className="p-2 bg-background/50 rounded text-sm">{aiSuggestions.improvedFindings}</p>
+                            <Button type="button" size="sm" variant="outline" className="mt-1" onClick={() => form.setValue('findings', aiSuggestions.improvedFindings)}>Terapkan</Button>
+                         </div>
+                       )}
+                        {aiSuggestions.suggestedRecommendation && (
+                         <div>
+                            <p className="mb-1">Saran Rekomendasi:</p>
+                             <Button type="button" size="sm" variant="outline" className="w-full justify-start text-left h-auto whitespace-normal" onClick={() => form.setValue('recommendation', aiSuggestions.suggestedRecommendation)}>
+                                <Wand2 className="mr-2 h-4 w-4 flex-shrink-0" /> {aiSuggestions.suggestedRecommendation}
+                             </Button>
+                         </div>
+                       )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+              
               <FormField
                 control={form.control}
                 name="recommendation"
@@ -289,7 +350,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   <FormItem>
                     <FormLabel>Rekomendasi (Opsional)</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Tulis rekomendasi Anda di sini." rows={3} {...field} disabled={isSubmitting} />
+                      <Textarea placeholder="Tulis rekomendasi Anda di sini, atau gunakan saran AI." rows={3} {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
