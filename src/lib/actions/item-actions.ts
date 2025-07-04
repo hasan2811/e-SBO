@@ -2,7 +2,6 @@
 'use server';
 
 import { adminDb, adminStorage } from '@/lib/firebase-admin';
-import { revalidatePath } from 'next/cache';
 import type { Observation, Inspection, Ptw, AllItems, UserProfile, Scope } from '@/lib/types';
 import { 
     runFastClassification, 
@@ -31,18 +30,6 @@ async function getUserProfile(userId: string): Promise<UserProfile | null> {
     return userSnap.data() as UserProfile;
 }
 
-/**
- * Revalidates Next.js cache paths based on the item's scope.
- * @param item The item that was changed.
- */
-function revalidateRelevantPaths(item: { scope: Scope; projectId?: string | null }) {
-    if (item.scope === 'project' && item.projectId) revalidatePath(`/proyek/${item.projectId}`, 'page');
-    else if (item.scope === 'private') revalidatePath('/private', 'page');
-    else if (item.scope === 'public') revalidatePath('/public', 'page');
-    revalidatePath('/tasks', 'page'); // Always revalidate dashboard
-}
-
-
 // ==================================
 // UPDATE ACTIONS
 // ==================================
@@ -65,7 +52,6 @@ export async function updateObservationStatus({ observationId, actionData, userN
   await observationDocRef.update(updatedData);
   const updatedDocSnap = await observationDocRef.get();
   const finalData = { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Observation;
-  revalidateRelevantPaths(finalData);
   return finalData;
 }
 
@@ -87,7 +73,6 @@ export async function updateInspectionStatus({ inspectionId, actionData, userNam
     await inspectionDocRef.update(updatedData);
     const updatedDocSnap = await inspectionDocRef.get();
     const finalData = { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Inspection;
-    revalidateRelevantPaths(finalData);
     return finalData;
 }
 
@@ -104,7 +89,6 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
     const updatedDocSnap = await ptwDocRef.get();
     const finalDocData = { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Ptw;
 
-    revalidateRelevantPaths(ptw);
     return finalDocData;
 }
 
@@ -149,8 +133,6 @@ export async function deleteItem(item: AllItems): Promise<{id: string}> {
     await safeDeleteStorageFile(item.jsaPdfUrl);
   }
   
-  revalidateRelevantPaths(item);
-  revalidatePath('/beranda', 'page');
   return { id: item.id };
 }
 
@@ -179,13 +161,6 @@ export async function deleteMultipleItems(items: AllItems[]): Promise<{deletedId
   
   await Promise.all(storageDeletePromises);
   await batch.commit();
-
-  revalidatePath('/public', 'page');
-  revalidatePath('/private', 'page');
-  revalidatePath('/tasks', 'page');
-  revalidatePath('/beranda', 'page');
-  const projectIds = new Set(items.map(i => i.projectId).filter(Boolean));
-  projectIds.forEach(id => revalidatePath(`/proyek/${id}`, 'page'));
   
   return { deletedIds };
 }
@@ -202,7 +177,6 @@ export async function triggerObservationAnalysis(observation: Observation) {
   }
 
   await docRef.update({ aiStatus: 'processing' });
-  revalidateRelevantPaths(observation);
 
   const observationData = `Temuan: ${observation.findings}\nRekomendasi: ${observation.recommendation}\nLokasi: ${observation.location}\nPerusahaan: ${observation.company}`;
 
@@ -215,14 +189,12 @@ export async function triggerObservationAnalysis(observation: Observation) {
             riskLevel: classification.suggestedRiskLevel,
             aiSuggestedRiskLevel: classification.suggestedRiskLevel,
         });
-        revalidateRelevantPaths(observation);
     }
   } catch (error) {
     console.error(`Fast classification failed for obs ${observation.id}:`, error);
     const docExists = (await docRef.get()).exists;
     if (docExists) {
         await docRef.update({ aiStatus: 'failed' });
-        revalidateRelevantPaths(observation);
     }
     return;
   }
@@ -248,7 +220,6 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
     if (!userProfile || !userProfile.aiEnabled) throw new Error("AI features are disabled for this user.");
 
     await docRef.update({ aiStatus: 'processing' });
-    revalidateRelevantPaths(observation);
 
     try {
         const observationData = `Temuan: ${observation.findings}\nRekomendasi: ${observation.recommendation}\nKategori Awal: ${observation.category}`;
@@ -273,14 +244,12 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
 
         const updatedDoc = await docRef.get();
         const finalData = { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
-        revalidateRelevantPaths(finalData);
         return finalData;
     } catch (error) {
         console.error(`Deeper AI analysis failed for observation ${observationId}:`, error);
         docSnap = await docRef.get();
         if (docSnap.exists) {
             await docRef.update({ aiStatus: 'failed' });
-            revalidateRelevantPaths(observation);
         }
         throw error;
     }
@@ -294,7 +263,6 @@ export async function triggerInspectionAnalysis(inspection: Inspection) {
   }
   
   await docRef.update({ aiStatus: 'processing' });
-  revalidateRelevantPaths(inspection);
 
   try {
     const inspectionData = `Nama Peralatan: ${inspection.equipmentName}\nJenis: ${inspection.equipmentType}\nTemuan: ${inspection.findings}\nRekomendasi: ${inspection.recommendation || 'N/A'}`;
@@ -306,14 +274,12 @@ export async function triggerInspectionAnalysis(inspection: Inspection) {
             aiStatus: 'completed', 
             aiSummary: analysis.summary 
         });
-        revalidateRelevantPaths(inspection);
     }
   } catch (error) {
     console.error(`AI analysis failed for inspection ${inspection.id}:`, error);
     const docExists = (await docRef.get()).exists;
     if (docExists) {
         await docRef.update({ aiStatus: 'failed' });
-        revalidateRelevantPaths(inspection);
     }
   }
 }
@@ -328,7 +294,6 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
     if (!userProfile || !userProfile.aiEnabled) throw new Error("AI features are disabled for this user.");
 
     await docRef.update({ aiStatus: 'processing' });
-    revalidateRelevantPaths(inspection);
 
     try {
         const inspectionData = `Nama Peralatan: ${inspection.equipmentName}\nJenis: ${inspection.equipmentType}\nTemuan: ${inspection.findings}\nRekomendasi: ${inspection.recommendation || 'N/A'}`;
@@ -349,14 +314,12 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
         
         const updatedDoc = await docRef.get();
         const finalData = { ...updatedDoc.data(), id: updatedDoc.id } as Inspection;
-        revalidateRelevantPaths(finalData);
         return finalData;
     } catch (error) {
         console.error(`Deeper AI analysis failed for inspection ${inspectionId}:`, error);
         docSnap = await docRef.get();
         if (docSnap.exists) {
             await docRef.update({ aiStatus: 'failed' });
-            revalidateRelevantPaths(inspection);
         }
         throw error;
     }
@@ -374,7 +337,6 @@ export async function retryAiAnalysis(item: Observation | Inspection): Promise<A
     }
     const updatedDoc = await docRef.get();
     const finalData = { ...updatedDoc.data(), id: updatedDoc.id } as AllItems;
-    revalidateRelevantPaths(finalData);
     return finalData;
 }
 
@@ -437,9 +399,6 @@ export async function shareObservationToPublic(observation: Observation, userPro
 
     const updatedOriginal = { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Observation;
     const newPublicItem = { ...newPublicDocSnap.data(), id: newPublicDocSnap.id } as Observation;
-
-    revalidateRelevantPaths(updatedOriginal);
-    revalidateRelevantPaths(newPublicItem);
     
     return { updatedOriginal, newPublicItem };
 }
