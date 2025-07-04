@@ -22,9 +22,7 @@ import {
   updateObservationStatus as updateObservationStatusAction, 
   updateInspectionStatus as updateInspectionStatusAction,
   retryAiAnalysis as retryAiAnalysisAction, 
-  shareObservationToPublic as shareObservationToPublicAction, 
-  deleteItem as deleteItemAction,
-  deleteMultipleItems as deleteMultipleItemsAction,
+  shareObservationToPublic as shareObservationToPublicAction,
 } from '@/lib/actions/item-actions';
 
 
@@ -38,8 +36,6 @@ interface ObservationContextType {
   fetchItems: (reset?: boolean) => void;
   addItem: (newItem: AllItems) => void;
   updateItem: (updatedItem: AllItems) => void;
-  deleteSingleItem: (item: AllItems) => Promise<void>;
-  deleteMultipleItems: (items: AllItems[]) => Promise<void>;
   handleLikeToggle: (observationId: string) => Promise<void>;
   handleViewCount: (observationId: string) => void;
   shareToPublic: (observation: Observation) => Promise<void>;
@@ -161,27 +157,6 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const updateItem = React.useCallback((updatedItem: AllItems) => {
     setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
   }, []);
-
-  const deleteSingleItem = React.useCallback(async (itemToDelete: AllItems) => {
-    try {
-        await deleteItemAction(itemToDelete);
-        setItems(prev => prev.filter(item => item.id !== itemToDelete.id));
-    } catch (error) {
-        console.error(`[Context] Failed to delete item ${itemToDelete.id}:`, error);
-        throw error;
-    }
-  }, []);
-  
-  const deleteMultipleItems = React.useCallback(async (itemsToDelete: AllItems[]) => {
-    try {
-      await deleteMultipleItemsAction(itemsToDelete);
-      const idsToDelete = new Set(itemsToDelete.map(i => i.id));
-      setItems(prev => prev.filter(item => !idsToDelete.has(item.id)));
-    } catch(e) {
-      console.error(`[Context] Failed to delete multiple items:`, e);
-      throw e;
-    }
-  }, []);
   
   const handleLikeToggle = React.useCallback(async (observationId: string) => {
     if (!user) {
@@ -283,14 +258,14 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const value = React.useMemo(() => ({
     items, isLoading, hasMore, error,
     fetchItems: resetAndFetch,
-    addItem, updateItem, deleteSingleItem, deleteMultipleItems,
+    addItem, updateItem,
     handleLikeToggle, handleViewCount, shareToPublic: shareToPublicHandler, retryAnalysis, 
     updateObservationStatus: updateObservationStatusHandler,
     updateInspectionStatus: updateInspectionStatusHandler,
     viewType, setViewType, getObservationById, getInspectionById, getPtwById
   }), [
       items, isLoading, hasMore, error,
-      resetAndFetch, addItem, updateItem, deleteSingleItem, deleteMultipleItems,
+      resetAndFetch, addItem, updateItem,
       handleLikeToggle, handleViewCount, shareToPublicHandler, retryAnalysis, 
       updateObservationStatusHandler, updateInspectionStatusHandler,
       viewType, getObservationById, getInspectionById, getPtwById

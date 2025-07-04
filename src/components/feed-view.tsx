@@ -34,7 +34,6 @@ import { DeleteMultipleDialog } from './delete-multiple-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useObservations } from '@/hooks/use-observations';
 import { useAuth } from '@/hooks/use-auth';
-import { deleteMultipleItems } from '@/lib/actions/item-actions';
 
 const viewTypeInfo = {
     observations: { label: 'Observasi', icon: Briefcase, collection: 'observations' },
@@ -282,6 +281,8 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   const [isSelectionMode, setIsSelectionMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [isDeleteMultiOpen, setDeleteMultiOpen] = React.useState(false);
+  const [itemsToDelete, setItemsToDelete] = React.useState<AllItems[]>([]);
+
 
   const triggeredOpen = React.useRef(false);
   React.useEffect(() => {
@@ -331,6 +332,20 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
         return newSet;
     });
   };
+
+  const handleDeleteClick = () => {
+    const itemsToDelete = items.filter(item => selectedIds.has(item.id));
+    setItemsToDelete(itemsToDelete);
+    setDeleteMultiOpen(true);
+  }
+  
+  const handleDeleteSuccess = () => {
+    fetchItems(true); // Manually trigger a full refresh from server.
+    setIsSelectionMode(false);
+    setSelectedIds(new Set());
+    setItemsToDelete([]);
+  };
+
   
   const isExportDisabled = viewType !== 'observations';
   const canSelect = !isLoading && filteredData.length > 0 && mode !== 'public';
@@ -340,30 +355,6 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
       if (mode === 'public') return 'Feed Publik';
       if (mode === 'private') return 'Feed Pribadi';
       return 'Feed';
-  };
-  
-  const handleDeleteConfirm = async () => {
-    const itemsToDelete = items.filter(item => selectedIds.has(item.id));
-    if (itemsToDelete.length > 0) {
-        try {
-            await deleteMultipleItems(itemsToDelete);
-            toast({
-                title: 'Berhasil Dihapus',
-                description: `${itemsToDelete.length} item telah berhasil dihapus.`,
-            });
-            fetchItems(true); // Manually trigger a full refresh.
-        } catch (error) {
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Menghapus',
-                description: 'Terjadi kesalahan saat menghapus item yang dipilih.',
-            });
-        } finally {
-            // Always reset selection mode
-            setIsSelectionMode(false);
-            setSelectedIds(new Set());
-        }
-    }
   };
   
   function EmptyState() {
@@ -402,7 +393,7 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
             <>
               <Button variant="ghost" onClick={() => { setIsSelectionMode(false); setSelectedIds(new Set()); }}>Batal</Button>
               <p className="font-semibold self-center">{selectedIds.size} dipilih</p>
-              <Button variant="destructive" size="icon" onClick={() => setDeleteMultiOpen(true)} disabled={selectedIds.size === 0}>
+              <Button variant="destructive" size="icon" onClick={handleDeleteClick} disabled={selectedIds.size === 0}>
                 <Trash2 className="h-5 w-5" />
               </Button>
             </>
@@ -538,8 +529,8 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
     <DeleteMultipleDialog 
         isOpen={isDeleteMultiOpen} 
         onOpenChange={setDeleteMultiOpen} 
-        itemCount={selectedIds.size}
-        onConfirm={handleDeleteConfirm}
+        itemsToDelete={itemsToDelete}
+        onSuccess={handleDeleteSuccess}
     />
    </>
   );

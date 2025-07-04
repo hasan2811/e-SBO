@@ -22,7 +22,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DeleteObservationDialog } from './delete-observation-dialog';
 import { useObservations } from '@/hooks/use-observations';
 import { usePathname } from 'next/navigation';
-import { runDeeperAnalysis } from '@/lib/actions/item-actions';
+import { runDeeperAnalysis, shareObservationToPublic, retryAiAnalysis } from '@/lib/actions/item-actions';
 import { useToast } from '@/hooks/use-toast';
 
 const categoryDefinitions: Record<ObservationCategory, string> = {
@@ -57,8 +57,8 @@ interface ObservationDetailSheetProps {
 
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
-  const { user } = useAuth();
-  const { getObservationById, handleLikeToggle, handleViewCount, shareToPublic, retryAnalysis, updateItem, fetchItems } = useObservations();
+  const { user, userProfile } = useAuth();
+  const { getObservationById, handleLikeToggle, handleViewCount, updateItem, fetchItems, addItem } = useObservations();
   const pathname = usePathname();
   const { toast } = useToast();
 
@@ -94,32 +94,48 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const handleTakeAction = () => setActionDialogOpen(true);
 
   const handleShare = async () => {
-    if (!observation) return;
+    if (!observation || !userProfile) return;
     setIsSharing(true);
-    await shareToPublic(observation);
-    setIsSharing(false);
+    try {
+        const { updatedOriginal, newPublicItem } = await shareObservationToPublic(observation, userProfile);
+        updateItem(updatedOriginal);
+        addItem(newPublicItem);
+        toast({ title: 'Berhasil Dibagikan', description: 'Laporan Anda telah dibagikan ke feed publik.' });
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Gagal Membagikan', description: 'Terjadi kesalahan saat mencoba membagikan.' });
+    } finally {
+        setIsSharing(false);
+    }
   };
   
   const handleRetryAnalysis = async () => {
     if (!observation) return;
-    await retryAnalysis(observation);
+    try {
+      const updatedItem = await retryAiAnalysis(observation);
+      if (updatedItem) updateItem(updatedItem);
+    } catch (error) {
+       toast({ variant: 'destructive', title: 'Gagal Mencoba Ulang Analisis' });
+    }
   };
   
   const handleRunDeeperAnalysis = async () => {
     if (!observation) return;
     setIsAnalyzing(true);
+    // Optimistically update the UI to show processing state
+    updateItem({ ...observation, aiStatus: 'processing' });
     try {
       const updatedObservation = await runDeeperAnalysis(observation.id);
-      updateItem(updatedObservation); // Update context state
+      updateItem(updatedObservation); // Update context state with the final result
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.'})
+        updateItem({ ...observation, aiStatus: 'failed' }); // Revert on failure
     } finally {
         setIsAnalyzing(false);
     }
   }
 
   const handleSuccessDelete = () => {
-    fetchItems(true);
+    fetchItems(true); // Manually trigger a full refresh from server.
     handleCloseSheet();
   };
 
@@ -348,7 +364,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                     <SearchCheck className="h-5 w-5" />
                     Analisis HSSE Mendalam
                 </h4>
-                {isAnalyzing ? (
+                {isAnalyzing || (observation.aiStatus === 'processing' && hasDeepAnalysis) ? (
                   <div className="flex items-center gap-3 p-4 rounded-lg">
                       <Loader2 className="h-5 w-5 animate-spin text-accent" />
                       <p className="text-sm text-muted-foreground">Menganalisis lebih dalam, ini mungkin perlu waktu sejenak...</p>
