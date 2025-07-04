@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -117,6 +116,16 @@ export default function LoginPage() {
           </p>
         </CardFooter>
       </Card>
+      <div className="mt-8 text-center text-xs text-muted-foreground space-y-1">
+        <p className="font-semibold text-sm text-foreground">HSSE Tech v1.001</p>
+        <div className="pt-2">
+          <p>Copyright © 2024 CV Arzan Sirah Persada</p>
+          <p>All rights reserved.</p>
+        </div>
+        <div className="pt-2">
+          <p>Design by: Arzan (+971502861769)</p>
+        </div>
+      </div>
     </div>
   );
 }
