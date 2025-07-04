@@ -35,6 +35,7 @@ export function UserAccountSheet() {
 
   const [displayName, setDisplayName] = React.useState('');
   const [position, setPosition] = React.useState('');
+  const [company, setCompany] = React.useState('');
   
   const isLoading = authLoading || projectsLoading;
   const hasProject = projects.length > 0;
@@ -43,6 +44,7 @@ export function UserAccountSheet() {
     if (userProfile && !isEditing) {
       setDisplayName(userProfile.displayName);
       setPosition(userProfile.position);
+      setCompany(userProfile.company || '');
     }
   }, [userProfile, isEditing]);
 
@@ -61,7 +63,7 @@ export function UserAccountSheet() {
 
     setIsSaving(true);
     try {
-      await updateUserProfile(user.uid, { displayName, position });
+      await updateUserProfile(user.uid, { displayName, position, company });
       toast({ title: 'Profile Updated', description: 'Your information has been saved.' });
       setIsEditing(false);
     } catch (error) {
@@ -154,6 +156,7 @@ export function UserAccountSheet() {
                 <div className="flex-1">
                   <p className="font-semibold text-lg">{userProfile.displayName}</p>
                   <p className="text-sm text-muted-foreground">{userProfile.position}</p>
+                   {userProfile.company && <p className="text-sm text-muted-foreground">{userProfile.company}</p>}
                 </div>
               </div>
 
@@ -166,6 +169,10 @@ export function UserAccountSheet() {
                   <div className='space-y-1'>
                     <Label htmlFor="position">Position / Jabatan</Label>
                     <Input id="position" value={position} onChange={(e) => setPosition(e.target.value)} />
+                  </div>
+                   <div className='space-y-1'>
+                    <Label htmlFor="company">Perusahaan</Label>
+                    <Input id="company" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="e.g., PT. Konstruksi Utama" />
                   </div>
                    <div className="flex justify-end gap-2 pt-2">
                       <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancel</Button>

@@ -43,6 +43,7 @@ export type UserProfile = {
   displayName: string;
   email: string;
   position: string;
+  company?: string; // Added company to user profile
   photoURL?: string | null;
   projectIds?: string[]; // Array of project IDs the user is a member of
 };
@@ -153,6 +154,17 @@ export type Ptw = {
 
 export type AllItems = Observation | Inspection | Ptw;
 
+// New Notification Type
+export type Notification = {
+    id: string;
+    userId: string; // The user who should receive the notification
+    observationId: string;
+    projectId: string;
+    message: string;
+    isRead: boolean;
+    createdAt: string;
+};
+
 
 // AI Flow Schemas and Types
 
@@ -222,3 +234,19 @@ export const AnalyzeInspectionOutputSchema = z.object({
   suggestedActions: z.string().describe('Saran tindakan perbaikan atau pengecekan lebih lanjut, dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
 });
 export type AnalyzeInspectionOutput = z.infer<typeof AnalyzeInspectionOutputSchema>;
+
+
+// smart-notify-flow
+export const SmartNotifyInputSchema = z.object({
+    observationId: z.string(),
+    projectId: z.string(),
+    company: z.string(),
+    findings: z.string(),
+    submittedBy: z.string(),
+});
+export type SmartNotifyInput = z.infer<typeof SmartNotifyInputSchema>;
+
+export const SmartNotifyOutputSchema = z.object({
+  notifiedUserUids: z.array(z.string()).describe('A list of user UIDs that should be notified about this observation.'),
+});
+export type SmartNotifyOutput = z.infer<typeof SmartNotifyOutputSchema>;

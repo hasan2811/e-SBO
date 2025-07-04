@@ -29,6 +29,7 @@ import {
   summarizeObservationData,
   analyzeInspectionData,
 } from '@/ai/flows/summarize-observation-data';
+import { triggerSmartNotify } from '@/ai/flows/smart-notify-flow';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { toggleLike, incrementViewCount as incrementViewCountAction } from '@/lib/actions/interaction-actions';
@@ -337,6 +338,16 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             
             const fullItemData = { ...newObservationData, id: docRef.id };
             _runObservationAiAnalysis(fullItemData);
+
+            if (scope === 'project' && projectId) {
+                triggerSmartNotify({
+                    observationId: docRef.id,
+                    projectId: projectId,
+                    company: formData.company,
+                    findings: formData.findings,
+                    submittedBy: userProfile.displayName,
+                });
+            }
             
             toast({ title: 'Sukses!', description: 'Laporan observasi baru berhasil disimpan.' });
 
