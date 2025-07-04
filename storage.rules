@@ -1,30 +1,12 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // Helper function to check ownership
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-
-    // Allow authenticated users to read any file.
-    // This is generally safe as URLs are not guessable.
+    // PUBLIC ACCESS: Allow anyone to read, write, or delete any file.
+    // This removes all server-side security for easier front-end development and to resolve permission issues.
     match /{allPaths=**} {
-      allow read: if request.auth != null;
-    }
-
-    // Secure write access.
-    // Users can only write to a path that includes their own UID.
-    
-    // Rule for private uploads (e.g., observations/{userId}/{fileName})
-    match /{path}/{userId}/{fileName} {
-      allow write: if isOwner(userId);
-    }
-    
-    // Rule for project-specific uploads (e.g., projects/{projectId}/{path}/{userId}/{fileName})
-    match /projects/{projectId}/{path}/{userId}/{fileName} {
-      allow write: if isOwner(userId);
+      allow read, write: if true;
     }
   }
 }

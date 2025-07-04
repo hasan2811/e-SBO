@@ -99,7 +99,8 @@ export async function addObservation(formData: any, userProfile: UserProfile, pr
       referenceId,
       scope,
       projectId,
-      aiStatus: 'processing',
+      // Temporarily set AI status to completed to avoid processing
+      aiStatus: 'completed', // DIAGNOSTIC STEP
       likes: [],
       likeCount: 0,
       commentCount: 0,
@@ -107,18 +108,21 @@ export async function addObservation(formData: any, userProfile: UserProfile, pr
   };
 
   const docRef = await addDoc(collection(db, 'observations'), newObservationData);
-  const fullItemData = { ...newObservationData, id: docRef.id };
-  _runObservationAiAnalysis(fullItemData);
+  
+  // DIAGNOSTIC STEP: Temporarily disabled AI and notification triggers
+  // const fullItemData = { ...newObservationData, id: docRef.id };
+  // _runObservationAiAnalysis(fullItemData);
 
-  if (scope === 'project' && projectId) {
-      triggerSmartNotify({
-          observationId: docRef.id,
-          projectId: projectId,
-          company: formData.company,
-          findings: formData.findings,
-          submittedBy: userProfile.displayName,
-      });
-  }
+  // if (scope === 'project' && projectId) {
+  //     triggerSmartNotify({
+  //         observationId: docRef.id,
+  //         projectId: projectId,
+  //         company: formData.company,
+  //         findings: formData.findings,
+  //         submittedBy: userProfile.displayName,
+  //     });
+  // }
+
   revalidatePath(projectId ? `/proyek/${projectId}` : '/private');
 }
 
@@ -141,12 +145,16 @@ export async function addInspection(formData: any, userProfile: UserProfile, pro
       referenceId,
       scope,
       projectId,
-      aiStatus: 'processing',
+      // Temporarily set AI status to completed to avoid processing
+      aiStatus: 'completed', // DIAGNOSTIC STEP
   };
 
   const docRef = await addDoc(collection(db, 'inspections'), newInspectionData);
-  const fullItemData = { ...newInspectionData, id: docRef.id };
-  _runInspectionAiAnalysis(fullItemData);
+  
+  // DIAGNOSTIC STEP: Temporarily disabled AI trigger
+  // const fullItemData = { ...newInspectionData, id: docRef.id };
+  // _runInspectionAiAnalysis(fullItemData);
+
   revalidatePath(projectId ? `/proyek/${projectId}` : '/private');
 }
 
