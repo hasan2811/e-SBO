@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -496,9 +495,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
           ) : (
             <>
                 <h2 className="text-2xl font-bold tracking-tight">
-                    {mode === 'public' 
-                    ? 'Feed Publik' 
-                    : `Feed ${mode === 'project' ? 'Proyek' : 'Pribadi'}`}
+                    {mode === 'public' ? 'Feed Publik' : 'Feed'}
                 </h2>
                 <div className="flex items-center gap-2">
                     {mode !== 'public' && (
