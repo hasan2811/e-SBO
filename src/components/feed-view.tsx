@@ -8,7 +8,7 @@ import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationCate
 import { RISK_LEVELS, OBSERVATION_STATUSES, OBSERVATION_CATEGORIES } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Search, Globe, Building, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2 } from 'lucide-react';
+import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Search, Globe, Building, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -256,12 +256,6 @@ const PtwListItem = ({ ptw, onSelect, isSelectionMode, isSelected, onToggleSelec
     )
 };
 
-const viewConfig = {
-  observations: { label: 'Observasi', icon: Briefcase, itemType: 'observation' },
-  inspections: { label: 'Inspeksi', icon: Wrench, itemType: 'inspection' },
-  ptws: { label: 'PTW', icon: PtwIcon, itemType: 'ptw' },
-};
-
 export function FeedView({ mode, projectId }: FeedViewProps) {
   const { privateItems, projectItems, loading: myItemsLoading, deleteMultipleItems } = useObservations();
   const { user } = useAuth();
@@ -371,7 +365,12 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
         dataToFilter = baseData;
     }
     
-    dataToFilter = dataToFilter.filter(item => item.itemType === viewConfig[viewType].itemType);
+    dataToFilter = dataToFilter.filter(item => {
+        if (viewType === 'observations') return item.itemType === 'observation';
+        if (viewType === 'inspections') return item.itemType === 'inspection';
+        if (viewType === 'ptws') return item.itemType === 'ptw';
+        return false;
+    });
     
     if (searchTerm && mode !== 'public') {
         const lowercasedSearch = searchTerm.toLowerCase();
@@ -404,7 +403,7 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
   );
 
   const handleExport = () => {
-    const dataToExport = filteredData as Observation[];
+    const dataToExport = filteredData.filter(item => item.itemType === 'observation') as Observation[];
     if (dataToExport.length === 0) {
       toast({ variant: 'destructive', title: 'Tidak Ada Data untuk Diekspor', description: `Tidak ada data observasi untuk diekspor.` });
       return;
@@ -455,15 +454,20 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
         );
     }
     
-    const config = viewConfig[viewType];
-    let emptyText = `Tidak ada ${config.label.toLowerCase()} yang tersedia.`;
+    const config = {
+      observations: { label: 'Observasi', icon: Briefcase },
+      inspections: { label: 'Inspeksi', icon: Wrench },
+      ptws: { label: 'PTW', icon: PtwIcon },
+    };
+    const currentConfig = config[viewType];
+    let emptyText = `Tidak ada ${currentConfig.label.toLowerCase()} yang tersedia.`;
     let Icon = Home;
 
     if(mode === 'project') {
-        emptyText = `Belum ada ${config.label.toLowerCase()} untuk proyek ini.`;
+        emptyText = `Belum ada ${currentConfig.label.toLowerCase()} untuk proyek ini.`;
         Icon = Briefcase;
     } else if (mode === 'private') {
-        emptyText = `Anda belum membuat ${config.label.toLowerCase()} pribadi.`;
+        emptyText = `Anda belum membuat ${currentConfig.label.toLowerCase()} pribadi.`;
         Icon = User;
     }
 
@@ -490,53 +494,94 @@ export function FeedView({ mode, projectId }: FeedViewProps) {
             </>
           ) : (
             <>
-              <h2 className="text-2xl font-bold tracking-tight">
-                {mode === 'public' ? 'Feed Publik' : 'Laporan ' + viewConfig[viewType].label}
-              </h2>
-              <div className="flex items-center gap-2">
-                  {canSelect && <Button variant="outline" onClick={() => setIsSelectionMode(true)}>Pilih</Button>}
-                  {mode !== 'public' && (
-                      <Popover>
-                          <PopoverTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                  <Search className="h-5 w-5" />
-                                  <span className="sr-only">Cari</span>
-                              </Button>
-                          </PopoverTrigger>
-                          <PopoverContent align="end" className="p-2 w-80">
-                              <div className="relative">
-                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                  <Input placeholder="Cari di feed ini..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" autoFocus />
-                              </div>
-                          </PopoverContent>
-                      </Popover>
-                  )}
-                  {mode !== 'public' && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="w-[140px] justify-between">
-                            {viewConfig[viewType].label}
-                            <ChevronDown className="h-4 w-4 opacity-50" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => setViewType('observations')}>Observasi</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => setViewType('inspections')}>Inspeksi</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => setViewType('ptws')}>PTW</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                  )}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" onClick={handleExport} disabled={isExportDisabled}>
-                          <Download className="h-4 w-4" /><span className="sr-only">Export</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent><p>{viewType === 'observations' ? "Export Observasi" : "Hanya tersedia untuk Observasi"}</p></TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-              </div>
+                <h2 className="text-2xl font-bold tracking-tight">
+                    {mode === 'public' 
+                    ? 'Feed Publik' 
+                    : `Feed ${mode === 'project' ? 'Proyek' : 'Pribadi'}`}
+                </h2>
+                <div className="flex items-center gap-2">
+                    {mode !== 'public' && (
+                        <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant={viewType === 'observations' ? 'secondary' : 'ghost'}
+                                            size="sm"
+                                            className="h-8 px-2"
+                                            onClick={() => setViewType('observations')}
+                                        >
+                                            <Briefcase className="h-5 w-5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Observasi</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant={viewType === 'inspections' ? 'secondary' : 'ghost'}
+                                            size="sm"
+                                            className="h-8 px-2"
+                                            onClick={() => setViewType('inspections')}
+                                        >
+                                            <Wrench className="h-5 w-5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Inspeksi</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant={viewType === 'ptws' ? 'secondary' : 'ghost'}
+                                            size="sm"
+                                            className="h-8 px-2"
+                                            onClick={() => setViewType('ptws')}
+                                        >
+                                            <PtwIcon className="h-5 w-5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>PTW</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                    )}
+                    <Popover>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreVertical className="h-5 w-5" />
+                                    <span className="sr-only">Opsi</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {mode !== 'public' && (
+                                    <PopoverTrigger asChild>
+                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); }}>
+                                            <Search className="mr-2 h-4 w-4" />
+                                            <span>Cari</span>
+                                        </DropdownMenuItem>
+                                    </PopoverTrigger>
+                                )}
+                                {canSelect && (
+                                    <DropdownMenuItem onSelect={() => setIsSelectionMode(true)}>
+                                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                                        <span>Pilih</span>
+                                    </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onSelect={handleExport} disabled={isExportDisabled}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    <span>Export</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <PopoverContent align="end" className="p-2 w-80">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input placeholder="Cari di feed ini..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" autoFocus />
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                </div>
             </>
           )}
         </div>
