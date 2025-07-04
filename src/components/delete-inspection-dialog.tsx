@@ -42,14 +42,15 @@ export function DeleteInspectionDialog({
         title: 'Inspection Deleted',
         description: `The inspection has been permanently deleted.`,
       });
-      onOpenChange(false);
       onSuccess?.();
+      onOpenChange(false);
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Deletion Failed',
         description: error instanceof Error ? error.message : 'An unexpected error occurred.',
       });
+    } finally {
       setIsDeleting(false);
     }
   };

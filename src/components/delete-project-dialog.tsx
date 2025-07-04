@@ -85,8 +85,8 @@ export function DeleteProjectDialog({
         title: 'Project Deleted',
         description: `Project "${project.name}" and all its contents have been successfully deleted.`,
       });
-      onOpenChange(false);
       onSuccess?.();
+      onOpenChange(false);
     } catch (error) {
       console.error("Error deleting project:", error);
       toast({

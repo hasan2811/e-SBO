@@ -41,15 +41,16 @@ export function DeleteObservationDialog({
         title: 'Observation Deleted',
         description: `The observation has been permanently deleted.`,
       });
-      onOpenChange(false);
       onSuccess?.();
+      onOpenChange(false);
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Deletion Failed',
         description: error instanceof Error ? error.message : 'An unexpected error occurred.',
       });
-      setIsDeleting(false);
+    } finally {
+        setIsDeleting(false);
     }
   };
 
