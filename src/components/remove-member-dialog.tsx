@@ -42,13 +42,13 @@ export function RemoveMemberDialog({
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'User, project, or member data not found.',
+        description: 'Data pengguna, proyek, atau anggota tidak ditemukan.',
       });
       return;
     }
 
     if (member.uid === project.ownerUid) {
-      toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'The project owner cannot be removed.'});
+      toast({ variant: 'destructive', title: 'Tindakan Ditolak', description: 'Pemilik proyek tidak dapat dikeluarkan.'});
       return;
     }
     
@@ -60,7 +60,7 @@ export function RemoveMemberDialog({
       await runTransaction(db, async (transaction) => {
         const projectSnap = await transaction.get(projectRef);
         if (!projectSnap.exists() || projectSnap.data()?.ownerUid !== user.uid) {
-          throw new Error('Only the project owner can remove members.');
+          throw new Error('Hanya pemilik proyek yang dapat mengeluarkan anggota.');
         }
         
         // Remove member from project's member list
@@ -74,13 +74,13 @@ export function RemoveMemberDialog({
         });
       });
 
-      toast({ title: 'Member Removed', description: 'The member has been removed from the project.' });
+      toast({ title: 'Anggota Dikeluarkan', description: 'Anggota telah berhasil dikeluarkan dari proyek.' });
       onOpenChange(false);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while removing the member.';
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga saat mengeluarkan anggota.';
       toast({
         variant: 'destructive',
-        title: 'Error',
+        title: 'Gagal Mengeluarkan Anggota',
         description: errorMessage,
       });
     } finally {
@@ -92,16 +92,16 @@ export function RemoveMemberDialog({
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure you want to remove this member?</AlertDialogTitle>
+          <AlertDialogTitle>Anda yakin ingin mengeluarkan anggota ini?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action will remove{' '}
-            <span className="font-bold">"{member?.displayName}"</span> from the project{' '}
-            <span className="font-bold">"{project?.name}"</span>. They will lose all access.
-            This action can be reversed by inviting them again.
+            Tindakan ini akan mengeluarkan{' '}
+            <span className="font-bold">"{member?.displayName}"</span> dari proyek{' '}
+            <span className="font-bold">"{project?.name}"</span>. Mereka akan kehilangan semua akses.
+            Tindakan ini dapat dibatalkan dengan mengundang mereka lagi.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isRemoving}>Batal</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleRemove}
             disabled={isRemoving}
@@ -112,7 +112,7 @@ export function RemoveMemberDialog({
             ) : (
               <UserX className="mr-2 h-4 w-4" />
             )}
-            Yes, remove member
+            Ya, keluarkan anggota
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -39,16 +38,16 @@ export function DeletePtwDialog({
     try {
       await deleteItem(ptw);
       toast({
-        title: 'PTW Deleted',
-        description: `The Permit to Work has been permanently deleted.`,
+        title: 'Berhasil Dihapus',
+        description: `Izin Kerja (PTW) telah berhasil dihapus.`,
       });
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Deletion Failed',
-        description: error instanceof Error ? error.message : 'An unexpected error occurred.',
+        title: 'Gagal Menghapus',
+        description: error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga.',
       });
     } finally {
       setIsDeleting(false);
@@ -59,13 +58,13 @@ export function DeletePtwDialog({
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogTitle>Anda yakin ingin menghapus ini?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete this Permit to Work record, including its associated JSA document.
+            Tindakan ini tidak dapat dibatalkan. Ini akan menghapus Izin Kerja ini secara permanen, termasuk dokumen JSA terkait.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
@@ -76,7 +75,7 @@ export function DeletePtwDialog({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            Yes, delete it
+            Ya, hapus
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

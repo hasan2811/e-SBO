@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -54,7 +53,7 @@ export function DeleteProjectDialog({
       // Verify ownership before proceeding
       const projectSnap = await getDoc(projectRef);
       if (!projectSnap.exists() || projectSnap.data()?.ownerUid !== user.uid) {
-        toast({ variant: 'destructive', title: 'Permission Denied', description: 'Only the project owner can delete the project.' });
+        toast({ variant: 'destructive', title: 'Akses Ditolak', description: 'Hanya pemilik proyek yang dapat menghapus proyek.' });
         setIsDeleting(false);
         return;
       }
@@ -82,8 +81,8 @@ export function DeleteProjectDialog({
       await batch.commit();
 
       toast({
-        title: 'Project Deleted',
-        description: `Project "${project.name}" and all its contents have been successfully deleted.`,
+        title: 'Proyek Berhasil Dihapus',
+        description: `Proyek "${project.name}" dan semua isinya telah berhasil dihapus.`,
       });
       onSuccess?.();
       onOpenChange(false);
@@ -91,8 +90,8 @@ export function DeleteProjectDialog({
       console.error("Error deleting project:", error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'An unexpected error occurred while deleting the project and its contents.',
+        title: 'Gagal Menghapus Proyek',
+        description: 'Terjadi kesalahan tak terduga saat menghapus proyek.',
       });
     } finally {
       setIsDeleting(false);
@@ -103,14 +102,14 @@ export function DeleteProjectDialog({
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogTitle>Anda yakin ingin menghapus proyek ini?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the project{' '}
-            <span className="font-bold">"{project?.name}"</span> AND ALL of its associated reports (observations, inspections, and PTWs).
+            Tindakan ini tidak dapat dibatalkan. Ini akan menghapus proyek{' '}
+            <span className="font-bold">"{project?.name}"</span> DAN SEMUA laporan terkait (observasi, inspeksi, dan PTW).
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
@@ -121,7 +120,7 @@ export function DeleteProjectDialog({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            Yes, delete everything
+            Ya, hapus semua
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

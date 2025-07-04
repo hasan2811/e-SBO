@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -39,11 +38,11 @@ export function DeleteMultipleDialog({
     setIsDeleting(true);
     try {
         await deleteMultipleItems(itemsToDelete);
-        toast({ title: 'Success', description: `${itemsToDelete.length} items have been deleted.` });
+        toast({ title: 'Berhasil Dihapus', description: `${itemsToDelete.length} item telah berhasil dihapus.` });
         onSuccess?.();
         onOpenChange(false);
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete items.' });
+        toast({ variant: 'destructive', title: 'Gagal Menghapus', description: 'Terjadi kesalahan saat menghapus item.' });
     } finally {
         setIsDeleting(false);
     }
@@ -55,14 +54,14 @@ export function DeleteMultipleDialog({
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogTitle>Anda yakin ingin menghapus item ini?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the selected{' '}
-            <span className="font-bold">{itemsToDelete.length}</span> item(s) and all associated data, including photos.
+            Tindakan ini tidak dapat dibatalkan. Ini akan menghapus{' '}
+            <span className="font-bold">{itemsToDelete.length}</span> item yang dipilih secara permanen, termasuk semua data terkait seperti foto.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={isDeleting}
@@ -73,7 +72,7 @@ export function DeleteMultipleDialog({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            Yes, delete them
+            Ya, hapus semua
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

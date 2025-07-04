@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -39,16 +38,16 @@ export function DeleteObservationDialog({
     try {
       await deleteItem(observation);
       toast({
-        title: 'Observation Deleted',
-        description: `The observation has been permanently deleted.`,
+        title: 'Berhasil Dihapus',
+        description: `Laporan observasi telah berhasil dihapus.`,
       });
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Deletion Failed',
-        description: error instanceof Error ? error.message : 'An unexpected error occurred.',
+        title: 'Gagal Menghapus',
+        description: error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga.',
       });
     } finally {
         setIsDeleting(false);
@@ -59,13 +58,13 @@ export function DeleteObservationDialog({
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogTitle>Anda yakin ingin menghapus ini?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete this observation record, including its photos.
+            Tindakan ini tidak dapat dibatalkan. Ini akan menghapus laporan observasi ini secara permanen, termasuk fotonya.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
@@ -76,7 +75,7 @@ export function DeleteObservationDialog({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            Yes, delete it
+            Ya, hapus
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
