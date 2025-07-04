@@ -37,7 +37,7 @@ const analyzeDashboardPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `You are a senior HSSE (Health, Safety, Security, and Environment) data analyst. Your task is to analyze a summary of project data and provide a concise executive summary for a manager. Your response must be in Indonesian and in a raw JSON object format.
+    prompt: `You are a senior HSSE data analyst. Your task is to analyze project data and provide a fast, concise executive summary. Your response must be in Bahasa Indonesia and formatted as a raw JSON object only. Be direct and focus on the most critical insights.
 
 Analyze the following data points:
 - Total Observations: {{totalObservations}}

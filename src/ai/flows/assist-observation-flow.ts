@@ -46,7 +46,7 @@ const assistObservationPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `You are an AI assistant for an HSSE (Health, Safety, Security, and Environment) application. Your task is to help a user write a better observation report by analyzing their initial "findings" text. Your response must be in Indonesian and in a raw JSON object format.
+    prompt: `You are a super-fast AI assistant for an HSSE application. Your task is to instantly analyze the user's text and provide suggestions. Your response must be in Indonesian and formatted as a raw JSON object only.
 
 Based on the user's findings, provide the following:
 1.  "suggestedCategory": Analyze the text and determine the most appropriate category. Choose one from: ${OBSERVATION_CATEGORIES.join(', ')}.

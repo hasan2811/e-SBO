@@ -85,7 +85,7 @@ const summarizeObservationPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `You are an expert HSSE (Health, Safety, Security, and Environment) analyst. Your task is to perform a quick, core analysis of an observation report and provide a structured JSON object. Your response MUST be a raw JSON object only, in Indonesian.
+    prompt: `You are an expert HSSE analyst. Your task is to perform a very fast initial analysis of an observation report. Your response MUST be a raw JSON object only, in Indonesian. Prioritize speed.
 
 Carefully analyze the user's observation data to understand the situation.
 
@@ -147,7 +147,7 @@ const deeperAnalysisPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `You are a world-class HSSE (Health, Safety, Security, and Environment) expert analyst. Your task is to perform a detailed analysis of an observation report. Your response MUST be a raw JSON object only, in Bahasa Indonesia.
+    prompt: `You are a world-class HSSE expert analyst. Your task is to perform a detailed analysis of an observation report. Provide a concise but thorough analysis. Your response MUST be a raw JSON object only, in Bahasa Indonesia.
 
 Analyze the provided observation data and generate the following points:
 
