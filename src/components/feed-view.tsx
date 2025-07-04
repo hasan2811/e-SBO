@@ -6,7 +6,7 @@ import Image from 'next/image';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationStatus } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { FileText, ChevronRight, Download, Wrench, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Search, Globe, Building, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical } from 'lucide-react';
+import { ChevronRight, Download, FileSignature as PtwIcon, ChevronDown, Sparkles, Loader2, FilterX, Search, Globe, Building, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -29,7 +29,7 @@ import { useAuth } from '@/hooks/use-auth';
 
 const viewTypeInfo = {
     observations: { label: 'Observasi', icon: Briefcase, collection: 'observations' },
-    inspections: { label: 'Inspeksi', icon: Wrench, collection: 'inspections' },
+    inspections: { label: 'Inspeksi', icon: CheckCircle2, collection: 'inspections' },
     ptws: { label: 'PTW', icon: PtwIcon, collection: 'ptws' },
 };
 
@@ -92,7 +92,7 @@ const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelecte
                 {observation.photoUrl ? (
                     <Image src={observation.photoUrl} alt={observation.findings} fill sizes="64px" className="object-cover" data-ai-hint="site observation" />
                 ) : (
-                    <FileText className="h-8 w-8 text-muted-foreground/50" />
+                    <Image src="/logo.svg" alt="Default observation image" width={40} height={40} className="opacity-50" />
                 )}
                 {observation.aiStatus === 'processing' && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -200,7 +200,7 @@ const InspectionListItem = ({ inspection, onSelect, isSelectionMode, isSelected,
             {inspection.photoUrl ? (
                 <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="80px" className="object-cover" data-ai-hint="equipment inspection" />
             ) : (
-                <Wrench className="h-8 w-8 text-muted-foreground/50" />
+                <Image src="/logo.svg" alt="Default inspection image" width={48} height={48} className="opacity-50" />
             )}
             {inspection.aiStatus === 'processing' && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">

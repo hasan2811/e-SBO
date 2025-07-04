@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { DeleteInspectionDialog } from './delete-inspection-dialog';
 import { useObservations } from '@/hooks/use-observations';
 import { FollowUpInspectionDialog } from './follow-up-inspection-dialog';
+import { cn } from '@/lib/utils';
 
 interface InspectionDetailSheetProps {
     inspection: Inspection | null;
@@ -87,18 +88,23 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItem
           
           <ScrollArea className="flex-1">
             <div className="space-y-6 p-6">
-              {inspection.photoUrl && (
-                <div className="relative w-full aspect-video rounded-md overflow-hidden border">
+              <div className={cn(
+                  "relative w-full aspect-video rounded-md overflow-hidden border",
+                  !inspection.photoUrl && "bg-muted/20 flex items-center justify-center"
+              )}>
+                  {inspection.photoUrl ? (
                   <Image
-                    src={inspection.photoUrl}
-                    alt={`Inspection of ${inspection.equipmentName}`}
-                    fill
-                    sizes="(max-width: 640px) 100vw, 512px"
-                    className="object-contain"
-                    data-ai-hint="equipment inspection"
+                      src={inspection.photoUrl}
+                      alt={`Inspection of ${inspection.equipmentName}`}
+                      fill
+                      sizes="(max-width: 640px) 100vw, 512px"
+                      className="object-contain"
+                      data-ai-hint="equipment inspection"
                   />
-                </div>
-              )}
+                  ) : (
+                      <Image src="/logo.svg" alt="Default inspection image" width={80} height={80} className="opacity-50" />
+                  )}
+              </div>
               <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-center">
                 <div className="font-semibold text-muted-foreground">Submitted On</div>
                 <div>{format(new Date(inspection.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>

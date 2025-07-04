@@ -155,18 +155,23 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
         
         <ScrollArea className="flex-1">
           <div className="space-y-6 p-6">
-            {observation.photoUrl && (
-              <div className="relative w-full aspect-video rounded-md overflow-hidden border">
+            <div className={cn(
+                "relative w-full aspect-video rounded-md overflow-hidden border",
+                !observation.photoUrl && "bg-muted/20 flex items-center justify-center"
+            )}>
+                {observation.photoUrl ? (
                 <Image
-                  src={observation.photoUrl}
-                  alt={`Observation at ${observation.location}`}
-                  fill
-                  sizes="(max-width: 640px) 100vw, 512px"
-                  className="object-contain"
-                  data-ai-hint="construction site"
+                    src={observation.photoUrl}
+                    alt={`Observation at ${observation.location}`}
+                    fill
+                    sizes="(max-width: 640px) 100vw, 512px"
+                    className="object-contain"
+                    data-ai-hint="construction site"
                 />
-              </div>
-            )}
+                ) : (
+                    <Image src="/logo.svg" alt="Default observation image" width={80} height={80} className="opacity-50" />
+                )}
+            </div>
             {observation.scope !== 'public' && observation.isSharedPublicly && (
               <Alert className="bg-primary/10 border-primary/20 text-primary-foreground">
                 <Globe className="h-4 w-4 text-primary" />
