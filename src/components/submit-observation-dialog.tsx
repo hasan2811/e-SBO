@@ -140,7 +140,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             company: values.company as Company,
             findings: values.findings,
             recommendation: values.recommendation || '',
-            photoUrl: photoUrl,
+            photoUrl: photoUrl || null,
             scope,
             projectId,
             referenceId,
@@ -218,7 +218,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                     </Button>
                     {photoPreview && (
                       <div className="mt-2 relative w-full h-48 rounded-md overflow-hidden border">
-                        <Image src={photoPreview} alt="Pratinjau Foto" fill sizes="(max-width: 525px) 100vw, 525px" className="object-cover" />
+                        <Image src={photoPreview} alt="Pratinjau Foto" fill sizes="(max-width: 525px) 100vw, 525px" className="object-cover" data-ai-hint="site observation" />
                       </div>
                     )}
                     <FormMessage />
