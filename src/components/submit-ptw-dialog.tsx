@@ -11,6 +11,7 @@ import type { Ptw, Location, Project } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { addPtw } from '@/lib/actions/item-actions';
+import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -97,7 +98,15 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
         const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
         const submissionProjectId = match ? match[1] : null;
 
-        await addPtw(values, userProfile, submissionProjectId);
+        const jsaPdfUrl = await uploadFile(values.jsaPdf, 'ptw-jsa', userProfile.uid, () => {}, submissionProjectId);
+
+        const serializableData = {
+          ...values,
+          jsaPdfUrl,
+          jsaPdf: undefined,
+        }
+
+        await addPtw(serializableData, userProfile, submissionProjectId);
         toast({ title: 'PTW Diajukan', description: `Izin kerja Anda sedang diproses.` });
         onOpenChange(false);
     } catch (error) {

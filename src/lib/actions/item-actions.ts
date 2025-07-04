@@ -11,7 +11,7 @@ import {
   getDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { deleteFile, uploadFile } from '@/lib/storage';
+import { deleteFile } from '@/lib/storage';
 import { revalidatePath } from 'next/cache';
 import type { Observation, Inspection, Ptw, AllItems, Scope, Company, Location, RiskLevel, UserProfile, ObservationCategory } from '@/lib/types';
 import {
@@ -81,13 +81,6 @@ const _runInspectionAiAnalysis = async (inspection: Inspection) => {
 // ==================================
 export async function addObservation(formData: any, userProfile: UserProfile, projectId: string | null) {
   const scope: Scope = projectId ? 'project' : 'private';
-  let photoUrl: string;
-  if (formData.photo) {
-    photoUrl = await uploadFile(formData.photo, 'observations', userProfile.uid, () => {}, projectId);
-  } else {
-    photoUrl = 'https://placehold.co/600x400.png';
-  }
-  
   const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
   
   const newObservationData: Omit<Observation, 'id'> = {
@@ -102,7 +95,7 @@ export async function addObservation(formData: any, userProfile: UserProfile, pr
       riskLevel: formData.riskLevel as RiskLevel,
       findings: formData.findings,
       recommendation: formData.recommendation || '',
-      photoUrl: photoUrl,
+      photoUrl: formData.photoUrl,
       referenceId,
       scope,
       projectId,
@@ -131,7 +124,6 @@ export async function addObservation(formData: any, userProfile: UserProfile, pr
 
 export async function addInspection(formData: any, userProfile: UserProfile, projectId: string | null) {
   const scope: Scope = projectId ? 'project' : 'private';
-  const photoUrl = await uploadFile(formData.photo, 'inspections', userProfile.uid, () => {}, projectId);
   const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
   const newInspectionData: Omit<Inspection, 'id'> = {
@@ -145,7 +137,7 @@ export async function addInspection(formData: any, userProfile: UserProfile, pro
       status: formData.status,
       findings: formData.findings,
       recommendation: formData.recommendation,
-      photoUrl: photoUrl,
+      photoUrl: formData.photoUrl,
       referenceId,
       scope,
       projectId,
@@ -160,7 +152,6 @@ export async function addInspection(formData: any, userProfile: UserProfile, pro
 
 export async function addPtw(formData: any, userProfile: UserProfile, projectId: string | null) {
   const scope: Scope = projectId ? 'project' : 'private';
-  const jsaPdfUrl = await uploadFile(formData.jsaPdf, 'ptw-jsa', userProfile.uid, () => {}, projectId);
   const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
   const newPtwData: Omit<Ptw, 'id'> = {
@@ -171,7 +162,7 @@ export async function addPtw(formData: any, userProfile: UserProfile, projectId:
       location: formData.location,
       workDescription: formData.workDescription,
       contractor: formData.contractor,
-      jsaPdfUrl,
+      jsaPdfUrl: formData.jsaPdfUrl,
       status: 'Pending Approval',
       referenceId,
       scope,
@@ -186,7 +177,7 @@ export async function addPtw(formData: any, userProfile: UserProfile, projectId:
 // ==================================
 // UPDATE ACTIONS
 // ==================================
-export async function updateObservationStatus({ observationId, actionData, user }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhoto?: File }, user: UserProfile }) {
+export async function updateObservationStatus({ observationId, actionData, user }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, user: UserProfile }) {
   const closerName = `${user.displayName} (${user.position || 'N/A'})`;
   const updatedData: Partial<Observation> = {
       status: 'Completed',
@@ -197,11 +188,8 @@ export async function updateObservationStatus({ observationId, actionData, user 
   
   const observationDocRef = doc(db, 'observations', observationId);
 
-  if (actionData.actionTakenPhoto) {
-      const file = actionData.actionTakenPhoto;
-      const observation = (await getDoc(observationDocRef)).data();
-      const actionTakenPhotoUrl = await uploadFile(file, 'actions', user.uid, () => {}, observation?.projectId);
-      updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
+  if (actionData.actionTakenPhotoUrl) {
+      updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
   }
 
   await updateDoc(observationDocRef, updatedData);

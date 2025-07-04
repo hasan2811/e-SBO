@@ -12,6 +12,7 @@ import type { Inspection, InspectionStatus, EquipmentType, Location, Project } f
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { addInspection } from '@/lib/actions/item-actions';
+import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -110,7 +111,15 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
         const submissionProjectId = match ? match[1] : null;
 
-        await addInspection(values, userProfile, submissionProjectId);
+        const photoUrl = await uploadFile(values.photo, 'inspections', userProfile.uid, () => {}, submissionProjectId);
+        
+        const serializableData = {
+            ...values,
+            photoUrl,
+            photo: undefined,
+        };
+
+        await addInspection(serializableData, userProfile, submissionProjectId);
         toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda sedang diproses.` });
         onOpenChange(false);
     } catch (error) {

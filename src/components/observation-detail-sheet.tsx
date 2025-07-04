@@ -90,7 +90,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
   const categoryDefinition = categoryDefinitions[observation.category];
 
-  const handleUpdateAction = (data: { actionTakenDescription: string; actionTakenPhoto?: File }) => {
+  const handleUpdateAction = (data: { actionTakenDescription: string; actionTakenPhotoUrl?: string }) => {
     updateStatus(observation, data);
     setActionDialogOpen(false);
   };

@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { getAIAssistance } from '@/lib/actions/ai-actions';
 import { addObservation } from '@/lib/actions/item-actions';
+import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -204,8 +205,21 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     try {
         const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
         const submissionProjectId = match ? match[1] : null;
+        
+        let photoUrl: string;
+        if (values.photo) {
+          photoUrl = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, submissionProjectId);
+        } else {
+          photoUrl = 'https://placehold.co/600x400.png';
+        }
+        
+        const serializableData = {
+          ...values,
+          photoUrl,
+          photo: undefined,
+        };
 
-        await addObservation(values, userProfile, submissionProjectId);
+        await addObservation(serializableData, userProfile, submissionProjectId);
         toast({ title: 'Laporan Terkirim', description: 'Observasi Anda sedang diproses.' });
         onOpenChange(false);
     } catch (error) {

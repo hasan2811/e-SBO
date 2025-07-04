@@ -11,7 +11,7 @@ import { Loader2, Upload, ListChecks } from 'lucide-react';
 import type { Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { updateObservationStatus } from '@/lib/actions/item-actions';
+import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -49,7 +49,7 @@ interface TakeActionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   observation?: Observation;
-  onUpdate: (data: FormValues) => void;
+  onUpdate: (data: { actionTakenDescription: string; actionTakenPhotoUrl?: string }) => void;
 }
 
 export function TakeActionDialog({
@@ -131,16 +131,31 @@ export function TakeActionDialog({
     return null;
   }
 
-  const onSubmit = (values: FormValues) => {
+  const onSubmit = async (values: FormValues) => {
     if (!user || !userProfile) {
         toast({ variant: 'destructive', title: 'Not Authenticated' });
         return;
     }
     
     setIsSubmitting(true);
-    onUpdate(values);
-    handleOpenChange(false);
-    setIsSubmitting(false);
+    try {
+      let actionTakenPhotoUrl: string | undefined;
+      if (values.actionTakenPhoto) {
+        actionTakenPhotoUrl = await uploadFile(values.actionTakenPhoto, 'actions', user.uid, () => {}, observation?.projectId);
+      }
+      
+      const updatePayload = {
+        actionTakenDescription: values.actionTakenDescription,
+        actionTakenPhotoUrl: actionTakenPhotoUrl,
+      };
+      
+      onUpdate(updatePayload);
+      handleOpenChange(false);
+    } catch(error) {
+      toast({ variant: 'destructive', title: 'Update Failed', description: error instanceof Error ? error.message : "An unexpected error occurred." });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
