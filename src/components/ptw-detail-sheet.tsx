@@ -33,8 +33,6 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
   if (!ptw) return null;
 
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
-  const isOwner = user && ptw.userId === user.uid;
-  const canDelete = isOwner;
 
   const handleApproveClick = () => {
     setApproveDialogOpen(true);
@@ -77,11 +75,9 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
                       <SheetDescription>{ptw.referenceId || ptw.id}</SheetDescription>
                   </div>
               </div>
-              {canDelete && (
-                <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus PTW">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
+              <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus PTW">
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           </SheetHeader>
           
@@ -158,14 +154,12 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
               onSuccess={handleApprovalSuccess}
           />
       )}
-      {canDelete && ptw && (
-        <DeletePtwDialog
-          isOpen={isDeleteDialogOpen}
-          onOpenChange={setDeleteDialogOpen}
-          ptw={ptw}
-          onSuccess={handleSuccessDelete}
-        />
-      )}
+      <DeletePtwDialog
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        ptw={ptw}
+        onSuccess={handleSuccessDelete}
+      />
     </>
   );
 }

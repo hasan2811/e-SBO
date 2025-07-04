@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -41,8 +40,6 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItem
   if (!inspection) return null;
 
   const projectName = inspection.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
-  const isOwner = user && inspection.userId === user.uid;
-  const canDelete = isOwner;
   const canFollowUp = inspection.status === 'Fail' || inspection.status === 'Needs Repair';
   const hasDeepAnalysis = inspection.aiRisks && inspection.aiSuggestedActions && !inspection.aiRisks.includes('Analisis risiko tersedia');
 
@@ -97,11 +94,9 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItem
                   <SheetDescription>{inspection.referenceId || inspection.id}</SheetDescription>
                 </div>
               </div>
-              {canDelete && (
-                <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Inspeksi">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
+              <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Inspeksi">
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           </SheetHeader>
           
@@ -278,14 +273,12 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItem
             )}
         </SheetContent>
       </Sheet>
-      {canDelete && inspection && (
-        <DeleteInspectionDialog
-          isOpen={isDeleteDialogOpen}
-          onOpenChange={setDeleteDialogOpen}
-          inspection={inspection}
-          onSuccess={handleSuccessDelete}
-        />
-      )}
+      <DeleteInspectionDialog
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        inspection={inspection}
+        onSuccess={handleSuccessDelete}
+      />
       {inspection && (
         <FollowUpInspectionDialog
           isOpen={isFollowUpOpen}

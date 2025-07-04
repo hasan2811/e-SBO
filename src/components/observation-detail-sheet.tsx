@@ -81,8 +81,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
 
   if (!observation) return null;
   
-  const isOwner = user && observation.userId === user.uid;
-  const canDelete = isOwner && mode !== 'public';
   const canTakeAction = observation.status !== 'Completed' && mode !== 'public';
 
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
@@ -121,7 +119,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   };
 
   const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;
-  const showBasicAiSection = observation.aiStatus;
   const hasDeepAnalysis = observation.aiRisks && observation.aiSuggestedActions;
   
   const riskStyles: Record<RiskLevel, string> = {
@@ -166,11 +163,9 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                             {isSharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
                         </Button>
                     )}
-                    {canDelete && (
-                        <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Observasi">
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    )}
+                    <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Observasi">
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
                 </div>
             </div>
         </SheetHeader>
@@ -440,14 +435,12 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
       </SheetContent>
     </Sheet>
     
-    {canDelete && observation && (
-      <DeleteObservationDialog
-          isOpen={isDeleteDialogOpen}
-          onOpenChange={setDeleteDialogOpen}
-          observation={observation}
-          onSuccess={handleSuccessDelete}
-      />
-    )}
+    <DeleteObservationDialog
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        observation={observation}
+        onSuccess={handleSuccessDelete}
+    />
 
     {mode !== 'public' && observation && (
       <TakeActionDialog
