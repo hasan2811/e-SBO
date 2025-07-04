@@ -14,36 +14,30 @@ import { db } from '@/lib/firebase';
 import { deleteFile } from '@/lib/storage';
 import { revalidatePath } from 'next/cache';
 import type { Observation, Inspection, Ptw, AllItems, Scope, Company, Location, RiskLevel, UserProfile, ObservationCategory } from '@/lib/types';
-import {
-  summarizeObservationData,
-  analyzeInspectionData,
-} from '@/ai/flows/summarize-observation-data';
-import { triggerSmartNotify } from '@/ai/flows/smart-notify-flow';
 import { format } from 'date-fns';
 
 
 // ==================================
 // CREATE ACTIONS
 // ==================================
-type CreateObservationPayload = Omit<Observation, 'id' | 'itemType' | 'referenceId' | 'status' | 'aiStatus' | 'likes' | 'likeCount' | 'commentCount' | 'viewCount' | 'isSharedPublicly' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate'>;
+type CreateObservationPayload = Omit<Observation, 'id' | 'itemType' | 'referenceId' | 'status' | 'aiStatus' | 'likes' | 'likeCount' | 'commentCount' | 'viewCount' | 'isSharedPublicly' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate' | 'category' | 'riskLevel'>;
 export async function createObservation(payload: CreateObservationPayload): Promise<Observation> {
     const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const observationData: Omit<Observation, 'id'> = {
         itemType: 'observation',
         ...payload,
         referenceId,
+        // Set default values. AI will update these later.
+        category: 'Supervision',
+        riskLevel: 'Low',
         status: 'Pending',
-        aiStatus: 'n/a', // AI is disabled on creation to prevent errors
+        // IMPORTANT: AI call is fully disabled during creation to prevent server errors.
+        aiStatus: 'n/a', 
         likes: [], likeCount: 0, commentCount: 0, viewCount: 0,
     };
     const docRef = await addDoc(collection(db, 'observations'), observationData);
     const newObservation = { ...observationData, id: docRef.id };
     
-    // AI analysis is disabled to prevent server errors.
-    // _runObservationAiAnalysis(newObservation).catch(e => {
-    //     console.error(`Detached AI analysis trigger failed for ${newObservation.id}:`, e);
-    // });
-
     revalidatePath(newObservation.projectId ? `/proyek/${newObservation.projectId}` : '/private', 'page');
     revalidatePath('/tasks', 'page');
     return newObservation;
@@ -57,12 +51,12 @@ export async function createInspection(payload: CreateInspectionPayload): Promis
         itemType: 'inspection',
         ...payload,
         referenceId,
-        aiStatus: 'n/a', // AI is disabled on creation
+        // IMPORTANT: AI call is fully disabled during creation to prevent server errors.
+        aiStatus: 'n/a',
     };
     const docRef = await addDoc(collection(db, 'inspections'), inspectionData);
     const newInspection = { ...inspectionData, id: docRef.id };
 
-    // AI analysis for inspection is disabled to prevent server errors
     revalidatePath(newInspection.projectId ? `/proyek/${newInspection.projectId}` : '/private', 'page');
     return newInspection;
 }
@@ -184,19 +178,16 @@ export async function deleteMultipleItems(items: AllItems[]) {
 // ==================================
 // OTHER ACTIONS
 // ==================================
+
+// NOTE: This entire function is disabled.
+// All AI logic will be triggered manually from the client to prevent submission failures.
 export async function retryAiAnalysis(item: Observation | Inspection) {
     const docRef = doc(db, `${item.itemType}s`, item.id);
-    await updateDoc(docRef, { aiStatus: 'processing' });
-    let updatedItem: Observation | Inspection;
     
-    // AI is disabled for now.
-    // if (item.itemType === 'observation') {
-    //     _runObservationAiAnalysis(item as Observation);
-    //     updatedItem = { ...item, aiStatus: 'processing' };
-    // } else {
-        // AI analysis for inspections can be re-enabled here if needed
-        updatedItem = { ...item, aiStatus: 'failed' };
-    // }
+    // For now, we will mark as 'failed' to provide user feedback without calling the broken AI flow.
+    await updateDoc(docRef, { aiStatus: 'failed' });
+    const updatedItem = { ...item, aiStatus: 'failed' as const };
+    
     revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private', 'page');
     return updatedItem;
 }
