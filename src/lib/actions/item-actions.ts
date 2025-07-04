@@ -211,7 +211,7 @@ export async function updateObservationStatus({ observationId, actionData, user 
   return { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
 }
 
-export async function approvePtw({ ptwId, signatureDataUrl, approverName, approverPosition }: { ptwId: string, signatureDataUrl: string, approverName: string, approverPosition: string }) {
+export async function approvePtw({ ptwId, signatureDataUrl, approverName, approverPosition }: { ptwId: string, signatureDataUrl: string, approverName: string, approverPosition: string }): Promise<Ptw> {
     const ptwDocRef = doc(db, 'ptws', ptwId);
     const approver = `${approverName} (${approverPosition || 'N/A'})`;
     await updateDoc(ptwDocRef, {
@@ -219,6 +219,7 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
     });
     const updatedDoc = await getDoc(ptwDocRef);
     revalidatePath(updatedDoc.data()?.projectId ? `/proyek/${updatedDoc.data()?.projectId}` : '/private');
+    return { ...updatedDoc.data(), id: updatedDoc.id } as Ptw;
 }
 
 

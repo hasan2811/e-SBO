@@ -23,7 +23,7 @@ interface ApprovePtwDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   ptw: Ptw;
-  onSuccess?: () => void;
+  onSuccess?: (updatedPtw: Ptw) => void;
 }
 
 export function ApprovePtwDialog({ isOpen, onOpenChange, ptw, onSuccess }: ApprovePtwDialogProps) {
@@ -50,7 +50,7 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw, onSuccess }: Appro
     try {
       const signatureDataUrl = sigCanvasRef.current?.getTrimmedCanvas().toDataURL('image/png') || '';
       
-      await approvePtwAction({
+      const updatedPtw = await approvePtwAction({
           ptwId: ptw.id, 
           signatureDataUrl, 
           approverName: userProfile.displayName, 
@@ -61,7 +61,7 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw, onSuccess }: Appro
         title: 'PTW Approved!',
         description: `Permit ${ptw.referenceId} has been successfully approved.`,
       });
-      onSuccess?.();
+      onSuccess?.(updatedPtw);
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to approve PTW:', error);

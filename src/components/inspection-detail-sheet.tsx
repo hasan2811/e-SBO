@@ -37,6 +37,7 @@ export function InspectionDetailSheet({ inspection, isOpen, onOpenChange, onItem
   const canDelete = isOwner;
 
   const handleRetry = async () => {
+    if (!inspection) return;
     const updatedItem = await retryAiAnalysis(inspection);
     if (updatedItem) {
       onItemUpdate(updatedItem as Inspection);

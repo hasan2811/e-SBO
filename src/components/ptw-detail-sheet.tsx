@@ -29,17 +29,10 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
   const { projects } = useProjects();
   const { user } = useAuth();
   
-  // Use local state to manage the PTW object
-  const [currentPtw, setCurrentPtw] = React.useState(ptw);
+  if (!ptw) return null;
 
-  React.useEffect(() => {
-    setCurrentPtw(ptw);
-  }, [ptw]);
-
-  if (!currentPtw) return null;
-
-  const projectName = currentPtw.projectId ? projects.find(p => p.id === currentPtw.projectId)?.name : null;
-  const isOwner = user && currentPtw.userId === user.uid;
+  const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
+  const isOwner = user && ptw.userId === user.uid;
   const canDelete = isOwner;
 
   const handleApproveClick = () => {
@@ -47,8 +40,8 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
   };
   
   const handleApprovalSuccess = (updatedPtw: Ptw) => {
-    setCurrentPtw(updatedPtw);
     onItemUpdate(updatedPtw);
+    setApproveDialogOpen(false); // Close the dialog after success
   };
 
   const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) => (
@@ -79,7 +72,7 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
                   </SheetClose>
                   <div className="flex flex-col">
                       <SheetTitle>PTW Details</SheetTitle>
-                      <SheetDescription>{currentPtw.referenceId || currentPtw.id}</SheetDescription>
+                      <SheetDescription>{ptw.referenceId || ptw.id}</SheetDescription>
                   </div>
               </div>
               {canDelete && (
@@ -94,10 +87,10 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
             <div className="space-y-6 p-6">
               
               <div className="space-y-4 bg-card p-4 rounded-lg border">
-                  <DetailRow icon={Calendar} label="Submitted On" value={format(new Date(currentPtw.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />
-                  <DetailRow icon={User} label="Submitted By" value={currentPtw.submittedBy} />
-                  <DetailRow icon={Building} label="Contractor" value={currentPtw.contractor} />
-                  <DetailRow icon={MapPin} label="Location" value={currentPtw.location} />
+                  <DetailRow icon={Calendar} label="Submitted On" value={format(new Date(ptw.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />
+                  <DetailRow icon={User} label="Submitted By" value={ptw.submittedBy} />
+                  <DetailRow icon={Building} label="Contractor" value={ptw.contractor} />
+                  <DetailRow icon={MapPin} label="Location" value={ptw.location} />
                   {projectName && (
                       <DetailRow icon={Folder} label="Project" value={projectName} />
                   )}
@@ -105,25 +98,25 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
 
               <div className="space-y-2">
                 <h4 className="font-semibold">Work Description</h4>
-                <p className="text-sm text-muted-foreground">{currentPtw.workDescription}</p>
+                <p className="text-sm text-muted-foreground">{ptw.workDescription}</p>
               </div>
 
               <div className="space-y-2">
                 <h4 className="font-semibold">Status</h4>
-                <PtwStatusBadge status={currentPtw.status} />
+                <PtwStatusBadge status={ptw.status} />
               </div>
 
-               {currentPtw.status === 'Approved' && (
+               {ptw.status === 'Approved' && (
                 <div className="space-y-4 pt-4 mt-4 border-t">
                     <h4 className="font-semibold">Approval Details</h4>
                     <div className="space-y-4 bg-card p-4 rounded-lg border border-green-200">
-                      <DetailRow icon={Check} label="Approved By" value={currentPtw.approver} />
-                      <DetailRow icon={Calendar} label="Approved Date" value={currentPtw.approvedDate ? format(new Date(currentPtw.approvedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale }) : ''} />
-                      {currentPtw.signatureDataUrl && (
+                      <DetailRow icon={Check} label="Approved By" value={ptw.approver} />
+                      <DetailRow icon={Calendar} label="Approved Date" value={ptw.approvedDate ? format(new Date(ptw.approvedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale }) : ''} />
+                      {ptw.signatureDataUrl && (
                           <div>
                               <span className="text-sm text-muted-foreground">Signature</span>
                                <div className="mt-2 p-2 border bg-secondary rounded-md flex justify-center">
-                                  <Image src={currentPtw.signatureDataUrl} alt="Signature" width={200} height={100} className="h-auto" data-ai-hint="signature" />
+                                  <Image src={ptw.signatureDataUrl} alt="Signature" width={200} height={100} className="h-auto" data-ai-hint="signature" />
                               </div>
                           </div>
                       )}
@@ -135,7 +128,7 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
               <div className="space-y-4 pt-4 mt-4 border-t">
                 <h4 className="font-semibold">Dokumen JSA</h4>
                 <Button asChild variant="outline" className="w-full">
-                  <a href={currentPtw.jsaPdfUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={ptw.jsaPdfUrl} target="_blank" rel="noopener noreferrer">
                     <FileText className="mr-2 h-4 w-4" />
                     Lihat JSA (PDF)
                     <ExternalLink className="ml-auto h-4 w-4 text-muted-foreground" />
@@ -143,7 +136,7 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
                 </Button>
               </div>
               
-              {currentPtw.status === 'Pending Approval' && (
+              {ptw.status === 'Pending Approval' && (
                 <div className="pt-6 mt-6 border-t">
                   <Button type="button" onClick={handleApproveClick} className="w-full">
                     <PenSquare className="mr-2 h-4 w-4" />
@@ -155,23 +148,19 @@ export function PtwDetailSheet({ ptw, isOpen, onOpenChange, onItemUpdate }: PtwD
           </ScrollArea>
         </SheetContent>
       </Sheet>
-      {currentPtw && (
+      {ptw && (
           <ApprovePtwDialog 
               isOpen={isApproveDialogOpen}
               onOpenChange={setApproveDialogOpen}
-              ptw={currentPtw}
-              onSuccess={() => {
-                // Manually create the updated object to reflect the change immediately
-                const updatedPtw = { ...currentPtw, status: 'Approved' as const };
-                handleApprovalSuccess(updatedPtw);
-              }}
+              ptw={ptw}
+              onSuccess={handleApprovalSuccess}
           />
       )}
-      {canDelete && currentPtw && (
+      {canDelete && ptw && (
         <DeletePtwDialog
           isOpen={isDeleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
-          ptw={currentPtw}
+          ptw={ptw}
           onSuccess={handleSuccessDelete}
         />
       )}
