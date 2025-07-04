@@ -1,7 +1,7 @@
 
 'use client';
 
-import { ref, getDownloadURL, uploadBytesResumable, type UploadTask, deleteObject } from 'firebase/storage';
+import { ref, getDownloadURL, uploadBytesResumable, type UploadTask } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
 
 /**
@@ -60,34 +60,4 @@ export function uploadFile(
       }
     );
   });
-}
-
-
-/**
- * Deletes a file from Firebase Storage based on its download URL.
- * @param fileUrl The public download URL of the file to delete.
- * @returns A promise that resolves when the file is deleted.
- */
-export function deleteFile(fileUrl: string | undefined): Promise<void> {
-  // Don't try to delete placeholder images or invalid URLs
-  if (!fileUrl || fileUrl.includes('placehold.co') || !fileUrl.startsWith('https://firebasestorage.googleapis.com')) {
-    return Promise.resolve();
-  }
-  
-  try {
-    const storageRef = ref(storage, fileUrl);
-    return deleteObject(storageRef).catch((error) => {
-      // It's okay if the file doesn't exist (e.g., already deleted), so we can ignore 'object-not-found'.
-      if (error.code === 'storage/object-not-found') {
-        console.warn(`File not found for deletion, probably already deleted: ${fileUrl}`);
-      } else {
-        // For other errors, we log them but don't re-throw.
-        // This prevents the entire Firestore document deletion from failing if a storage file deletion fails for some reason.
-        console.error("Error deleting file from storage:", error);
-      }
-    });
-  } catch (error) {
-    console.error(`Invalid URL provided to deleteFile: ${fileUrl}`, error);
-    return Promise.resolve();
-  }
 }

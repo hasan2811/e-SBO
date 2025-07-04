@@ -1,8 +1,7 @@
 
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
-import { deleteFile } from '@/lib/storage';
+import { adminDb, adminStorage } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
 import type { Observation, Inspection, Ptw, AllItems, UserProfile } from '@/lib/types';
 import { summarizeObservationData } from '@/ai/flows/summarize-observation-data';
@@ -69,19 +68,55 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
     return { ...updatedDoc.data(), id: updatedDoc.id } as Ptw;
 }
 
-
 // ==================================
 // DELETE ACTIONS
 // ==================================
+
+/**
+ * Deletes a file from Firebase Storage using the Admin SDK.
+ * This is a server-side only function.
+ * @param fileUrl The public download URL of the file to delete.
+ */
+async function deleteStorageFileFromUrl(fileUrl: string | undefined): Promise<void> {
+  if (!fileUrl || fileUrl.includes('placehold.co') || !fileUrl.startsWith('https://firebasestorage.googleapis.com')) {
+    return;
+  }
+  
+  try {
+    const bucket = adminStorage.bucket();
+    const decodedUrl = decodeURIComponent(fileUrl);
+    
+    // Regex to robustly extract file path from URL
+    const matches = decodedUrl.match(/\/o\/(.*?)\?alt=media/);
+    if (!matches || !matches[1]) {
+      console.warn(`Could not extract file path from URL: ${fileUrl}`);
+      return;
+    }
+    const filePath = matches[1];
+    
+    const file = bucket.file(filePath);
+    const [exists] = await file.exists();
+    if (exists) {
+        await file.delete();
+    } else {
+        console.warn(`File not found for deletion, probably already deleted: ${filePath}`);
+    }
+
+  } catch (error) {
+    console.error(`Failed to delete file from storage. URL: ${fileUrl}, Error:`, error);
+    // Do not re-throw, to allow Firestore document deletion to proceed even if file deletion fails.
+  }
+}
+
 export async function deleteItem(item: AllItems) {
   const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
   
-  // Delete associated files from storage first
+  // Delete associated files from storage first using the server-side function
   if (item.itemType === 'observation' || item.itemType === 'inspection') {
-    if (item.photoUrl && !item.photoUrl.includes('placehold.co')) await deleteFile(item.photoUrl);
-    if (item.actionTakenPhotoUrl) await deleteFile(item.actionTakenPhotoUrl);
+    await deleteStorageFileFromUrl(item.photoUrl);
+    await deleteStorageFileFromUrl(item.actionTakenPhotoUrl);
   } else if (item.itemType === 'ptw') {
-    if (item.jsaPdfUrl) await deleteFile(item.jsaPdfUrl);
+    await deleteStorageFileFromUrl(item.jsaPdfUrl);
   }
 
   await docRef.delete();
@@ -100,16 +135,16 @@ export async function deleteMultipleItems(items: AllItems[]) {
       const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
       batch.delete(docRef);
       if (item.itemType === 'observation' || item.itemType === 'inspection') {
-        if (item.photoUrl && !item.photoUrl.includes('placehold.co')) filesToDelete.push(item.photoUrl);
-        if (item.actionTakenPhotoUrl) filesToDelete.push(item.actionTakenPhotoUrl);
+        filesToDelete.push(item.photoUrl);
+        filesToDelete.push(item.actionTakenPhotoUrl);
       } else if (item.itemType === 'ptw') {
-        if (item.jsaPdfUrl) filesToDelete.push(item.jsaPdfUrl);
+        filesToDelete.push(item.jsaPdfUrl);
       }
     });
 
     // Delete files and commit batch in parallel for efficiency
     await Promise.all([
-      ...filesToDelete.map(url => url ? deleteFile(url) : Promise.resolve()),
+      ...filesToDelete.map(url => url ? deleteStorageFileFromUrl(url) : Promise.resolve()),
       batch.commit()
     ]);
     
