@@ -10,7 +10,8 @@ import { Loader2, Upload, Sparkles } from 'lucide-react';
 import { useObservations } from '@/hooks/use-observations';
 import { createObservation } from '@/lib/actions/item-actions';
 
-import type { Project, Scope, Location, Company, Observation } from '@/lib/types';
+import type { Project, Scope, Location, Company, Observation, RiskLevel, ObservationCategory } from '@/lib/types';
+import { OBSERVATION_CATEGORIES, RISK_LEVELS } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
@@ -26,7 +27,7 @@ import { usePathname } from 'next/navigation';
 const DEFAULT_LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 const DEFAULT_COMPANIES = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'] as const;
 
-// Schema is now simplified. Category and Risk Level are removed.
+// Schema is now simplified. Category and Risk Level are re-added for manual input.
 const formSchema = z.object({
   photo: z
     .instanceof(File)
@@ -34,6 +35,8 @@ const formSchema = z.object({
     .optional(),
   location: z.string({ required_error: "Location is required." }).min(1, "Location is required."),
   company: z.string({ required_error: "Company is required." }).min(1, "Company is required."),
+  category: z.enum(OBSERVATION_CATEGORIES),
+  riskLevel: z.enum(RISK_LEVELS),
   findings: z.string().min(10, { message: 'Temuan harus diisi minimal 10 karakter.' }),
   recommendation: z.string().optional(),
 });
@@ -70,6 +73,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
       photo: undefined,
       findings: '',
       recommendation: '',
+      riskLevel: 'Low',
+      category: 'Supervision',
     },
     mode: 'onChange',
   });
@@ -80,6 +85,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             photo: undefined,
             location: locationOptions[0],
             company: companyOptions[0],
+            riskLevel: 'Low',
+            category: 'Supervision',
             findings: '',
             recommendation: '',
         });
@@ -130,13 +137,14 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
 
         const scope: Scope = projectId ? 'project' : 'private';
         
-        // Payload no longer includes category and riskLevel
         const payload = {
             userId: userProfile.uid,
             date: new Date().toISOString(),
             submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
             location: values.location as Location,
             company: values.company as Company,
+            category: values.category,
+            riskLevel: values.riskLevel,
             findings: values.findings,
             recommendation: values.recommendation || '',
             photoUrl: photoUrl,
@@ -148,7 +156,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         
         addItem(newObservation);
 
-        toast({ title: 'Laporan Terkirim', description: 'Observasi Anda telah disimpan. AI sedang menganalisisnya.' });
+        toast({ title: 'Laporan Terkirim', description: 'Observasi Anda telah berhasil disimpan.' });
         onOpenChange(false);
     } catch (error) {
         console.error("Submission failed:", error);
@@ -245,6 +253,41 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                           <SelectTrigger><SelectValue placeholder="Pilih perusahaan" /></SelectTrigger>
                         </FormControl>
                         <SelectContent>{renderSelectItems(companyOptions)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kategori</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>{renderSelectItems(OBSERVATION_CATEGORIES)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="riskLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tingkat Risiko</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Pilih tingkat risiko" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>{renderSelectItems(RISK_LEVELS)}</SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
