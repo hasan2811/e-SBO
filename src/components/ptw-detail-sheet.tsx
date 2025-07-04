@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -26,14 +27,19 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const { projects } = useProjects();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { getPtwById, removeItem, updateItem } = useObservations();
   
   const ptw = ptwId ? getPtwById(ptwId) : null;
 
+  const handleCloseSheet = () => {
+    onOpenChange(false);
+  };
+
   if (!ptw) return null;
 
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
+  const canApprove = ptw.status === 'Pending Approval' && user?.uid !== ptw.userId;
 
   const handleApproveClick = () => {
     setApproveDialogOpen(true);
@@ -55,10 +61,10 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   );
   
   const handleSuccessDelete = () => {
-    onOpenChange(false);
     if (ptw) {
       removeItem(ptw.id);
     }
+    handleCloseSheet();
   }
 
   return (
@@ -68,13 +74,11 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
           <SheetHeader className="p-4 border-b">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                  <SheetClose asChild>
-                      <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2">
-                          <ArrowLeft className="h-5 w-5" />
-                      </Button>
-                  </SheetClose>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2" onClick={handleCloseSheet}>
+                      <ArrowLeft className="h-5 w-5" />
+                  </Button>
                   <div className="flex flex-col">
-                      <SheetTitle>PTW Details</SheetTitle>
+                      <SheetTitle>Detail PTW</SheetTitle>
                       <SheetDescription>{ptw.referenceId || ptw.id}</SheetDescription>
                   </div>
               </div>
@@ -88,17 +92,17 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
             <div className="space-y-6 p-6">
               
               <div className="space-y-4 bg-card p-4 rounded-lg border">
-                  <DetailRow icon={Calendar} label="Submitted On" value={format(new Date(ptw.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />
-                  <DetailRow icon={User} label="Submitted By" value={ptw.submittedBy} />
-                  <DetailRow icon={Building} label="Contractor" value={ptw.contractor} />
-                  <DetailRow icon={MapPin} label="Location" value={ptw.location} />
+                  <DetailRow icon={Calendar} label="Tanggal Kirim" value={format(new Date(ptw.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />
+                  <DetailRow icon={User} label="Dikirim Oleh" value={ptw.submittedBy} />
+                  <DetailRow icon={Building} label="Kontraktor" value={ptw.contractor} />
+                  <DetailRow icon={MapPin} label="Lokasi" value={ptw.location} />
                   {projectName && (
-                      <DetailRow icon={Folder} label="Project" value={projectName} />
+                      <DetailRow icon={Folder} label="Proyek" value={projectName} />
                   )}
               </div>
 
               <div className="space-y-2">
-                <h4 className="font-semibold">Work Description</h4>
+                <h4 className="font-semibold">Deskripsi Pekerjaan</h4>
                 <p className="text-sm text-muted-foreground">{ptw.workDescription}</p>
               </div>
 
@@ -109,13 +113,13 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
 
                {ptw.status === 'Approved' && (
                 <div className="space-y-4 pt-4 mt-4 border-t">
-                    <h4 className="font-semibold">Approval Details</h4>
+                    <h4 className="font-semibold">Detail Persetujuan</h4>
                     <div className="space-y-4 bg-card p-4 rounded-lg border border-green-200">
-                      <DetailRow icon={Check} label="Approved By" value={ptw.approver} />
-                      <DetailRow icon={Calendar} label="Approved Date" value={ptw.approvedDate ? format(new Date(ptw.approvedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale }) : ''} />
+                      <DetailRow icon={Check} label="Disetujui Oleh" value={ptw.approver} />
+                      <DetailRow icon={Calendar} label="Tanggal Disetujui" value={ptw.approvedDate ? format(new Date(ptw.approvedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale }) : ''} />
                       {ptw.signatureDataUrl && (
                           <div>
-                              <span className="text-sm text-muted-foreground">Signature</span>
+                              <span className="text-sm text-muted-foreground">Tanda Tangan</span>
                                <div className="mt-2 p-2 border bg-secondary rounded-md flex justify-center">
                                   <Image src={ptw.signatureDataUrl} alt="Signature" width={200} height={100} className="h-auto" data-ai-hint="signature" />
                               </div>
@@ -137,11 +141,11 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                 </Button>
               </div>
               
-              {ptw.status === 'Pending Approval' && (
+              {canApprove && (
                 <div className="pt-6 mt-6 border-t">
                   <Button type="button" onClick={handleApproveClick} className="w-full">
                     <PenSquare className="mr-2 h-4 w-4" />
-                    Review & Approve PTW
+                    Review & Setujui PTW
                   </Button>
                 </div>
               )}
@@ -149,7 +153,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
           </ScrollArea>
         </SheetContent>
       </Sheet>
-      {ptw && (
+      {ptw && userProfile && (
           <ApprovePtwDialog 
               isOpen={isApproveDialogOpen}
               onOpenChange={setApproveDialogOpen}

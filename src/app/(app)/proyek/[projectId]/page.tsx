@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -52,7 +53,8 @@ export default function ProjectDetailsPage() {
   const isLoading = projectsLoading;
   
   const handleSuccess = () => {
-    onOpenChange(false);
+    // This function is called after successfully leaving or deleting a project.
+    // It navigates the user back to the main hub.
     router.push('/beranda');
   };
 
@@ -63,14 +65,14 @@ export default function ProjectDetailsPage() {
     try {
       await updateDoc(projectRef, { isOpen: checked });
       toast({
-        title: 'Project Status Updated',
-        description: `Project is now ${checked ? 'open' : 'closed'} for new members.`,
+        title: 'Status Proyek Diperbarui',
+        description: `Proyek sekarang ${checked ? 'terbuka' : 'tertutup'} untuk anggota baru.`,
       });
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Update Failed',
-        description: 'Could not update project status. Please try again.',
+        title: 'Pembaruan Gagal',
+        description: 'Tidak dapat memperbarui status proyek. Silakan coba lagi.',
       });
     } finally {
       setIsUpdatingStatus(false);
@@ -98,11 +100,11 @@ export default function ProjectDetailsPage() {
   if (!project) {
     return (
       <div className="text-center py-10">
-        <h2 className="text-2xl font-bold">Project Not Found</h2>
-        <p className="text-muted-foreground">The project may have been deleted or you do not have permission to view it.</p>
+        <h2 className="text-2xl font-bold">Proyek Tidak Ditemukan</h2>
+        <p className="text-muted-foreground">Proyek mungkin telah dihapus atau Anda tidak memiliki izin untuk melihatnya.</p>
         <Button onClick={() => router.push('/beranda')} className="mt-4">
           <ArrowLeft className="mr-2" />
-          Back to Project Hub
+          Kembali ke Project Hub
         </Button>
       </div>
     );
@@ -116,53 +118,53 @@ export default function ProjectDetailsPage() {
           <div>
              <Button variant="ghost" size="sm" className="mb-2 -ml-3" onClick={() => router.push('/beranda')}>
               <ArrowLeft className="mr-2" />
-              Back to Hub
+              Kembali ke Hub
             </Button>
             <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-            <p className="text-muted-foreground">Project activity feed and management options.</p>
+            <p className="text-muted-foreground">Feed aktivitas proyek dan opsi manajemen.</p>
           </div>
           <div className="flex-shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
                   <MoreVertical className="h-5 w-5" />
-                  <span className="sr-only">Project Options</span>
+                  <span className="sr-only">Opsi Proyek</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem onSelect={() => openManageDialog('members')}>
                   <Users className="mr-2 h-4 w-4" />
-                  <span>View Members ({project.memberUids?.length || 0})</span>
+                  <span>Lihat Anggota ({project.memberUids?.length || 0})</span>
                 </DropdownMenuItem>
 
                 {isOwner && (
                   <>
                     <DropdownMenuItem onSelect={() => openManageDialog('settings')}>
                       <FileCog className="mr-2 h-4 w-4" />
-                      <span>Project Settings</span>
+                      <span>Pengaturan Proyek</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuLabel>Owner Actions</DropdownMenuLabel>
+                    <DropdownMenuLabel>Tindakan Pemilik</DropdownMenuLabel>
                     <DropdownMenuItem onSelect={() => setAddMemberOpen(true)} disabled={!(project.isOpen ?? true)}>
                       <UserPlus className="mr-2 h-4 w-4" />
-                      <span>Add Member</span>
+                      <span>Tambah Anggota</span>
                     </DropdownMenuItem>
                     <div className="relative flex items-center select-none rounded-sm px-2 py-1.5 text-sm outline-none">
                       <Label htmlFor="project-status-switch" className="flex-1 pr-2 cursor-pointer">
-                        Open to Join
+                        Terbuka untuk Gabung
                       </Label>
                       <Switch
                         id="project-status-switch"
                         checked={project.isOpen ?? true}
                         onCheckedChange={handleStatusChange}
                         disabled={isUpdatingStatus}
-                        aria-label="Project open for joining switch"
+                        aria-label="Alihkan status keterbukaan proyek"
                       />
                     </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => setDeleteOpen(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
                       <Trash2 className="mr-2 h-4 w-4" />
-                      <span>Delete Project</span>
+                      <span>Hapus Proyek</span>
                     </DropdownMenuItem>
                   </>
                 )}
@@ -172,7 +174,7 @@ export default function ProjectDetailsPage() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => setLeaveOpen(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
                       <LogOut className="mr-2 h-4 w-4" />
-                      <span>Leave Project</span>
+                      <span>Tinggalkan Proyek</span>
                     </DropdownMenuItem>
                   </>
                 )}

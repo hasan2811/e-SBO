@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -8,7 +9,7 @@ import { StatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder, ThumbsUp, MessageCircle, Eye, Info, Trash2, SearchCheck } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder, ThumbsUp, MessageCircle, Eye, Info, Trash2, SearchCheck, User } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose, SheetFooter } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { StarRating } from './star-rating';
@@ -68,20 +69,24 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const viewCountedRef = React.useRef<string | null>(null);
 
   const observation = observationId ? getObservationById(observationId) : null;
-  const mode = observation?.scope || (pathname.startsWith('/public') ? 'public' : 'private');
+  
+  const handleCloseSheet = () => {
+    onOpenChange(false);
+  };
   
   React.useEffect(() => {
-    if (isOpen && observationId && mode === 'public') {
+    if (isOpen && observationId && observation?.scope === 'public') {
         if (viewCountedRef.current !== observationId) {
             handleViewCount(observationId);
             viewCountedRef.current = observationId;
         }
     }
-  }, [isOpen, observationId, mode, handleViewCount]);
+  }, [isOpen, observationId, observation?.scope, handleViewCount]);
 
   if (!observation) return null;
   
-  const canTakeAction = observation.status !== 'Completed' && mode !== 'public';
+  const mode = observation.scope;
+  const canTakeAction = observation.status !== 'Completed' && mode !== 'public' && user?.uid === observation.userId;
 
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
   const categoryDefinition = categoryDefinitions[observation.category];
@@ -114,10 +119,10 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   }
 
   const handleSuccessDelete = () => {
-    onOpenChange(false);
     if (observation) {
       removeItem(observation.id);
     }
+    handleCloseSheet();
   };
 
   const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;
@@ -148,11 +153,9 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
         <SheetHeader className="p-4 border-b">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <SheetClose asChild>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </SheetClose>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2" onClick={handleCloseSheet}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
                     <div className="flex flex-col">
                         <SheetTitle>Detail Observasi</SheetTitle>
                         <SheetDescription>{observation.referenceId || observation.id}</SheetDescription>
@@ -407,7 +410,10 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                    )}
 
                    <div className="font-semibold text-muted-foreground">Ditutup Oleh</div>
-                   <div className="text-muted-foreground">{observation.closedBy || '-'}</div>
+                   <div className="text-muted-foreground flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        {observation.closedBy || '-'}
+                    </div>
                  </div>
                 
                 {observation.actionTakenPhotoUrl && (
@@ -430,7 +436,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
           <SheetFooter className="p-4 border-t mt-auto">
             <Button type="button" onClick={handleTakeAction} className="w-full">
               <Gavel className="mr-2 h-4 w-4" />
-              Ambil Tindakan
+              Ambil Tindakan & Selesaikan
             </Button>
           </SheetFooter>
         )}

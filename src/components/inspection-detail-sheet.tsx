@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -7,7 +8,7 @@ import { InspectionStatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft, Folder, Trash2, Gavel, SearchCheck } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft, Folder, Trash2, Gavel, SearchCheck, User } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose, SheetFooter } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
@@ -38,10 +39,14 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
 
   const inspection = inspectionId ? getInspectionById(inspectionId) : null;
 
+  const handleCloseSheet = () => {
+    onOpenChange(false);
+  };
+
   if (!inspection) return null;
 
   const projectName = inspection.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
-  const canFollowUp = inspection.status === 'Fail' || inspection.status === 'Needs Repair';
+  const canFollowUp = (inspection.status === 'Fail' || inspection.status === 'Needs Repair') && user?.uid === inspection.userId;
   const hasDeepAnalysis = inspection.aiRisks && inspection.aiSuggestedActions && !inspection.aiRisks.includes('Analisis risiko tersedia');
 
   const handleRetry = async () => {
@@ -74,10 +79,10 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   );
   
   const handleSuccessDelete = () => {
-    onOpenChange(false);
     if (inspection) {
       removeItem(inspection.id);
     }
+    handleCloseSheet();
   }
 
   return (
@@ -87,13 +92,11 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
           <SheetHeader className="p-4 border-b">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <SheetClose asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2">
-                    <ArrowLeft className="h-5 w-5" />
-                  </Button>
-                </SheetClose>
+                <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2" onClick={handleCloseSheet}>
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
                 <div className="flex flex-col">
-                  <SheetTitle>Inspection Details</SheetTitle>
+                  <SheetTitle>Detail Inspeksi</SheetTitle>
                   <SheetDescription>{inspection.referenceId || inspection.id}</SheetDescription>
                 </div>
               </div>
@@ -123,23 +126,23 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                   )}
               </div>
               <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-center">
-                <div className="font-semibold text-muted-foreground">Submitted On</div>
+                <div className="font-semibold text-muted-foreground">Tanggal Kirim</div>
                 <div>{format(new Date(inspection.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
 
-                <div className="font-semibold text-muted-foreground">Submitted By</div>
+                <div className="font-semibold text-muted-foreground">Dikirim Oleh</div>
                 <div>{inspection.submittedBy}</div>
                 
-                <div className="font-semibold text-muted-foreground">Location</div>
+                <div className="font-semibold text-muted-foreground">Lokasi</div>
                 <div>{inspection.location}</div>
                 
                 {projectName && (
                   <>
-                    <div className="font-semibold text-muted-foreground flex items-center gap-1.5"><Folder className="h-4 w-4"/>Project</div>
+                    <div className="font-semibold text-muted-foreground flex items-center gap-1.5"><Folder className="h-4 w-4"/>Proyek</div>
                     <div>{projectName}</div>
                   </>
                 )}
 
-                <div className="font-semibold text-muted-foreground">Equipment</div>
+                <div className="font-semibold text-muted-foreground">Peralatan</div>
                 <div>{inspection.equipmentName} ({inspection.equipmentType})</div>
 
                 <div className="font-semibold text-muted-foreground">Status</div>
@@ -147,13 +150,13 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
               </div>
 
               <div className="space-y-1">
-                <h4 className="font-semibold">Findings</h4>
+                <h4 className="font-semibold">Temuan</h4>
                 <p className="text-sm text-muted-foreground">{inspection.findings}</p>
               </div>
               
               {inspection.recommendation && (
                 <div className="space-y-1">
-                  <h4 className="font-semibold">Recommendation</h4>
+                  <h4 className="font-semibold">Rekomendasi</h4>
                   <p className="text-sm text-muted-foreground">{inspection.recommendation}</p>
                 </div>
               )}
@@ -163,7 +166,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                   <div className="bg-primary/5 p-4 rounded-lg border-l-4 border-primary space-y-4">
                       <h4 className="font-semibold text-base flex items-center gap-2">
                           <Sparkles className="h-5 w-5 text-primary" />
-                          HSSE Tech Analysis
+                          Analisis HSSE Tech
                       </h4>
 
                       {inspection.aiStatus === 'processing' && !hasDeepAnalysis && (
@@ -246,7 +249,10 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                        )}
 
                        <div className="font-semibold text-muted-foreground">Diselesaikan Oleh</div>
-                       <div className="text-muted-foreground">{inspection.closedBy || '-'}</div>
+                       <div className="text-muted-foreground flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            {inspection.closedBy || '-'}
+                        </div>
                      </div>
                     
                     {inspection.actionTakenPhotoUrl && (

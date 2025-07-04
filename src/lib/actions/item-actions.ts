@@ -37,8 +37,10 @@ export async function updateObservationStatus({ observationId, actionData, user 
     const finalDocData = updatedDocSnap.data() as Omit<Observation, 'id'>;
     const projectId = finalDocData?.projectId;
   
-    revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
+    if (projectId) revalidatePath(`/proyek/${projectId}`, 'page');
+    else revalidatePath('/private', 'page');
     revalidatePath('/tasks', 'page');
+
     return { ...finalDocData, id: updatedDocSnap.id };
   } catch (error) {
     console.error(`[Server Action - updateObservationStatus] Failed for observation ${observationId}:`, error);
@@ -71,8 +73,10 @@ export async function updateInspectionStatus({ inspectionId, actionData, user }:
     const finalDocData = updatedDocSnap.data() as Omit<Inspection, 'id'>;
     const projectId = finalDocData?.projectId;
     
-    revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
+    if (projectId) revalidatePath(`/proyek/${projectId}`, 'page');
+    else revalidatePath('/private', 'page');
     revalidatePath('/tasks', 'page');
+
     return { ...finalDocData, id: updatedDocSnap.id };
   } catch (error) {
     console.error(`[Server Action - updateInspectionStatus] Failed for inspection ${inspectionId}:`, error);
@@ -98,7 +102,9 @@ export async function approvePtw({ ptwId, signatureDataUrl, approverName, approv
       const finalDocData = updatedDocSnap.data() as Omit<Ptw, 'id'>;
       const projectId = finalDocData?.projectId;
   
-      revalidatePath(projectId ? `/proyek/${projectId}` : '/private', 'page');
+      if (projectId) revalidatePath(`/proyek/${projectId}`, 'page');
+      else revalidatePath('/private', 'page');
+
       return { ...finalDocData, id: updatedDocSnap.id };
     } catch (error) {
       console.error(`[Server Action - approvePtw] Failed for PTW ${ptwId}:`, error);
@@ -116,18 +122,19 @@ async function safeDeleteStorageFile(fileUrl: string | undefined | null) {
   }
   try {
     const bucket = adminStorage.bucket();
-    const url = new URL(fileUrl);
-    const pathParts = url.pathname.split('/o/');
-    if (pathParts.length < 2) return;
-    const encodedFilePath = pathParts[1].split('?')[0];
-    if (!encodedFilePath) return;
+    // Extract the full path from the URL
+    const decodedUrl = decodeURIComponent(fileUrl);
+    const pathStartIndex = decodedUrl.indexOf('/o/') + 3;
+    const pathEndIndex = decodedUrl.indexOf('?');
+    const filePath = decodedUrl.substring(pathStartIndex, pathEndIndex);
 
-    const filePath = decodeURIComponent(encodedFilePath);
+    if (!filePath) return;
+    
     const file = bucket.file(filePath);
     const [exists] = await file.exists();
     if (exists) await file.delete();
   } catch (error) {
-    console.error(`[safeDeleteStorageFile] An unexpected error occurred while trying to delete file at ${fileUrl}. Error:`, error);
+    console.error(`[safeDeleteStorageFile] An unexpected error occurred while trying to delete file at ${fileUrl}. This may be a non-blocking error if the file was already deleted. Error:`, error);
   }
 }
 
@@ -137,15 +144,16 @@ export async function deleteItem(item: AllItems) {
     await docRef.delete();
 
     if (item.itemType === 'observation' || item.itemType === 'inspection') {
-      safeDeleteStorageFile(item.photoUrl);
-      if ('actionTakenPhotoUrl' in item) safeDeleteStorageFile(item.actionTakenPhotoUrl);
+      await safeDeleteStorageFile(item.photoUrl);
+      if ('actionTakenPhotoUrl' in item) await safeDeleteStorageFile(item.actionTakenPhotoUrl);
     } else if (item.itemType === 'ptw') {
-      safeDeleteStorageFile(item.jsaPdfUrl);
+      await safeDeleteStorageFile(item.jsaPdfUrl);
     }
     
     revalidatePath('/public', 'page');
     revalidatePath('/private', 'page');
     revalidatePath('/tasks', 'page');
+    revalidatePath('/beranda', 'page');
     if (item.projectId) revalidatePath(`/proyek/${item.projectId}`, 'page');
 
   } catch (error) {
@@ -159,22 +167,27 @@ export async function deleteMultipleItems(items: AllItems[]) {
 
   try {
     const batch = adminDb.batch();
-    items.forEach(item => {
+    const deletePromises = items.map(item => {
       const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
       batch.delete(docRef);
       if (item.itemType === 'observation' || item.itemType === 'inspection') {
-        safeDeleteStorageFile(item.photoUrl);
-        if ('actionTakenPhotoUrl' in item) safeDeleteStorageFile(item.actionTakenPhotoUrl);
+        return Promise.all([
+            safeDeleteStorageFile(item.photoUrl),
+            'actionTakenPhotoUrl' in item ? safeDeleteStorageFile(item.actionTakenPhotoUrl) : Promise.resolve()
+        ]);
       } else if (item.itemType === 'ptw') {
-        safeDeleteStorageFile(item.jsaPdfUrl);
+        return safeDeleteStorageFile(item.jsaPdfUrl);
       }
+      return Promise.resolve();
     });
 
+    await Promise.all(deletePromises);
     await batch.commit();
 
     revalidatePath('/public', 'page');
     revalidatePath('/private', 'page');
     revalidatePath('/tasks', 'page');
+    revalidatePath('/beranda', 'page');
     const projectIds = new Set(items.map(i => i.projectId).filter(Boolean));
     projectIds.forEach(id => revalidatePath(`/proyek/${id}`, 'page'));
     
@@ -198,8 +211,9 @@ export async function triggerObservationAnalysis(observation: Observation) {
       return;
     }
     const currentData = docSnap.data() as Observation;
+    // This is the gatekeeper logic: if analysis is done or in progress, stop immediately.
     if (currentData.aiStatus === 'completed' || currentData.aiStatus === 'processing') {
-      console.log(`[AI Trigger] Analysis for observation ${observation.id} already done. Skipping.`);
+      console.log(`[AI Trigger] Analysis for observation ${observation.id} already processed. Skipping.`);
       return;
     }
 
@@ -244,7 +258,8 @@ export async function triggerObservationAnalysis(observation: Observation) {
     console.error(`AI analysis failed for observation ${observation.id}:`, error);
     await docRef.update({ aiStatus: 'failed' });
   } finally {
-      revalidatePath(observation.projectId ? `/proyek/${observation.projectId}` : '/private', 'page');
+      if (observation.projectId) revalidatePath(`/proyek/${observation.projectId}`, 'page');
+      else revalidatePath('/private', 'page');
       revalidatePath('/tasks', 'page');
   }
 }
@@ -258,7 +273,8 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
         const observation = docSnap.data() as Observation;
 
         await docRef.update({ aiStatus: 'processing' });
-        revalidatePath(observation.projectId ? `/proyek/${observation.projectId}` : '/private', 'page');
+        if (observation.projectId) revalidatePath(`/proyek/${observation.projectId}`, 'page');
+        else revalidatePath('/private', 'page');
 
         const observationData = `
             Temuan: ${observation.findings}
@@ -282,7 +298,8 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
         
         await docRef.update(updatePayload);
         const updatedDoc = await docRef.get();
-        revalidatePath(observation.projectId ? `/proyek/${observation.projectId}` : '/private', 'page');
+        if (observation.projectId) revalidatePath(`/proyek/${observation.projectId}`, 'page');
+        else revalidatePath('/private', 'page');
         
         return { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
 
@@ -304,13 +321,15 @@ export async function triggerInspectionAnalysis(inspection: Inspection) {
         return;
     }
     const currentData = docSnap.data() as Inspection;
+    // Gatekeeper logic for inspections
     if (currentData.aiStatus === 'completed' || currentData.aiStatus === 'processing') {
-        console.log(`[AI Trigger] Analysis for inspection ${inspection.id} already done. Skipping.`);
+        console.log(`[AI Trigger] Analysis for inspection ${inspection.id} already processed. Skipping.`);
         return;
     }
     
     await docRef.update({ aiStatus: 'processing' });
-    revalidatePath(inspection.projectId ? `/proyek/${inspection.projectId}` : '/private', 'page');
+    if (inspection.projectId) revalidatePath(`/proyek/${inspection.projectId}`, 'page');
+    else revalidatePath('/private', 'page');
 
     const inspectionData = `
       Nama Peralatan: ${inspection.equipmentName}
@@ -335,7 +354,8 @@ export async function triggerInspectionAnalysis(inspection: Inspection) {
     console.error(`AI analysis failed for inspection ${inspection.id}:`, error);
     await docRef.update({ aiStatus: 'failed' });
   } finally {
-    revalidatePath(inspection.projectId ? `/proyek/${inspection.projectId}` : '/private', 'page');
+    if (inspection.projectId) revalidatePath(`/proyek/${inspection.projectId}`, 'page');
+    else revalidatePath('/private', 'page');
   }
 }
 
@@ -348,7 +368,8 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
         const inspection = docSnap.data() as Inspection;
 
         await docRef.update({ aiStatus: 'processing' });
-        revalidatePath(inspection.projectId ? `/proyek/${inspection.projectId}` : '/private', 'page');
+        if (inspection.projectId) revalidatePath(`/proyek/${inspection.projectId}`, 'page');
+        else revalidatePath('/private', 'page');
 
         const inspectionData = `
           Nama Peralatan: ${inspection.equipmentName}
@@ -371,7 +392,8 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
         
         await docRef.update(updatePayload);
         const updatedDoc = await docRef.get();
-        revalidatePath(inspection.projectId ? `/proyek/${inspection.projectId}` : '/private', 'page');
+        if (inspection.projectId) revalidatePath(`/proyek/${inspection.projectId}`, 'page');
+        else revalidatePath('/private', 'page');
         
         return { ...updatedDoc.data(), id: updatedDoc.id } as Inspection;
 
@@ -384,12 +406,15 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
 
 
 export async function retryAiAnalysis(item: Observation | Inspection) {
+    const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
+    await docRef.update({ aiStatus: 'pending' }); // Reset status to allow re-triggering
+
     if (item.itemType === 'observation') {
       await triggerObservationAnalysis(item);
     } else if (item.itemType === 'inspection') {
       await triggerInspectionAnalysis(item);
     }
-    const updatedDoc = await adminDb.collection(`${item.itemType}s`).doc(item.id).get();
+    const updatedDoc = await docRef.get();
     return { ...updatedDoc.data(), id: updatedDoc.id } as AllItems;
 }
 
@@ -414,7 +439,7 @@ export async function shareObservationToPublic(observation: Observation, userPro
       viewCount: 0,
   };
 
-  delete publicObservationData.id;
+  delete (publicObservationData as any).id;
   delete publicObservationData.isSharedPublicly;
   delete publicObservationData.actionTakenDescription;
   delete publicObservationData.actionTakenPhotoUrl;
@@ -430,7 +455,8 @@ export async function shareObservationToPublic(observation: Observation, userPro
   await batch.commit();
   
   revalidatePath('/public', 'page');
-  revalidatePath(observation.projectId ? `/proyek/${observation.projectId}` : '/private', 'page');
+  if (observation.projectId) revalidatePath(`/proyek/${observation.projectId}`, 'page');
+  else revalidatePath('/private', 'page');
   
   const updatedDoc = await originalDocRef.get();
   return { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
