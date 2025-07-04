@@ -23,65 +23,9 @@ import { format } from 'date-fns';
 
 
 // ==================================
-// AI ANALYSIS HELPERS (BACKGROUND TASKS)
-// ==================================
-const _runObservationAiAnalysis = async (observation: Observation) => {
-  const observationDocRef = doc(db, 'observations', observation.id);
-  const observationData = `
-    Submitted By: ${observation.submittedBy}, Date: ${new Date(observation.date).toLocaleString()}, Findings: ${observation.findings}, User's Recommendation: ${observation.recommendation}
-  `;
-  try {
-    const summary = await summarizeObservationData({ observationData });
-    const aiData: Partial<Observation> = {
-      // Don't update risk level directly from summary, let it be suggested
-      category: summary.suggestedCategory,
-      aiSummary: summary.summary,
-      aiRisks: summary.risks,
-      aiSuggestedActions: summary.suggestedActions,
-      aiRelevantRegulations: summary.relevantRegulations,
-      aiSuggestedRiskLevel: summary.suggestedRiskLevel,
-      aiRootCauseAnalysis: summary.rootCauseAnalysis,
-      aiObserverSkillRating: summary.observerAssessment.rating,
-      aiObserverSkillExplanation: summary.observerAssessment.explanation,
-      aiStatus: 'completed' as const,
-    };
-    // Let's also update the main riskLevel field based on AI suggestion
-    if (summary.suggestedRiskLevel) {
-        aiData.riskLevel = summary.suggestedRiskLevel;
-    }
-    await updateDoc(observationDocRef, aiData);
-    // Don't return here, this is a background task. The UI is already updated.
-  } catch (error) {
-    console.error(`AI analysis failed for observation ${observation.id}:`, error);
-    await updateDoc(observationDocRef, { aiStatus: 'failed' });
-  }
-};
-
-const _runInspectionAiAnalysis = async (inspection: Inspection) => {
-  const inspectionDocRef = doc(db, 'inspections', inspection.id);
-  const inspectionData = `
-    Equipment Name: ${inspection.equipmentName}, Type: ${inspection.equipmentType}, Location: ${inspection.location}, Status: ${inspection.status}, Submitted By: ${inspection.submittedBy}, Date: ${new Date(inspection.date).toLocaleString()}, Findings: ${inspection.findings}, Recommendation: ${inspection.recommendation || 'N/A'}
-  `;
-  try {
-    const analysis = await analyzeInspectionData({ inspectionData });
-    const aiData: Partial<Inspection> = {
-        aiSummary: analysis.summary,
-        aiRisks: analysis.risks,
-        aiSuggestedActions: analysis.suggestedActions,
-        aiStatus: 'completed' as const,
-    };
-    await updateDoc(inspectionDocRef, aiData);
-  } catch (error) {
-    console.error(`AI analysis failed for inspection ${inspection.id}:`, error);
-    await updateDoc(inspectionDocRef, { aiStatus: 'failed' });
-  }
-};
-
-
-// ==================================
 // CREATE ACTIONS
 // ==================================
-type CreateObservationPayload = Omit<Observation, 'id' | 'itemType' | 'referenceId' | 'status' | 'aiStatus' | 'likes' | 'likeCount' | 'commentCount' | 'viewCount' | 'isSharedPublicly' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate' | 'category' | 'riskLevel'>;
+type CreateObservationPayload = Omit<Observation, 'id' | 'itemType' | 'referenceId' | 'status' | 'aiStatus' | 'likes' | 'likeCount' | 'commentCount' | 'viewCount' | 'isSharedPublicly' | 'actionTakenDescription' | 'actionTakenPhotoUrl' | 'closedBy' | 'closedDate'>;
 export async function createObservation(payload: CreateObservationPayload): Promise<Observation> {
     const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const observationData: Omit<Observation, 'id'> = {
@@ -89,24 +33,11 @@ export async function createObservation(payload: CreateObservationPayload): Prom
         ...payload,
         referenceId,
         status: 'Pending',
-        category: 'Supervision', // Default value, will be updated by AI
-        riskLevel: 'Low', // Default value, will be updated by AI
-        aiStatus: 'processing',
+        aiStatus: 'n/a', // AI is disabled for now
         likes: [], likeCount: 0, commentCount: 0, viewCount: 0,
     };
     const docRef = await addDoc(collection(db, 'observations'), observationData);
     const newObservation = { ...observationData, id: docRef.id };
-
-    _runObservationAiAnalysis(newObservation).catch(console.error);
-    if (newObservation.projectId) {
-        triggerSmartNotify({
-            observationId: newObservation.id,
-            projectId: newObservation.projectId,
-            company: newObservation.company,
-            findings: newObservation.findings,
-            submittedBy: newObservation.submittedBy,
-        }).catch(console.error);
-    }
     
     revalidatePath(newObservation.projectId ? `/proyek/${newObservation.projectId}` : '/private');
     revalidatePath('/tasks');
@@ -121,12 +52,10 @@ export async function createInspection(payload: CreateInspectionPayload): Promis
         itemType: 'inspection',
         ...payload,
         referenceId,
-        aiStatus: 'processing',
+        aiStatus: 'n/a', // AI is disabled for now
     };
     const docRef = await addDoc(collection(db, 'inspections'), inspectionData);
     const newInspection = { ...inspectionData, id: docRef.id };
-
-    _runInspectionAiAnalysis(newInspection).catch(console.error);
     
     revalidatePath(newInspection.projectId ? `/proyek/${newInspection.projectId}` : '/private');
     return newInspection;
@@ -253,13 +182,40 @@ export async function retryAiAnalysis(item: Observation | Inspection) {
     const docRef = doc(db, `${item.itemType}s`, item.id);
     await updateDoc(docRef, { aiStatus: 'processing' });
     let updatedItem: Observation | Inspection;
+    
+    const _runObservationAiAnalysis = async (observation: Observation) => {
+      const observationDocRef = doc(db, 'observations', observation.id);
+      const observationData = `
+        Submitted By: ${observation.submittedBy}, Date: ${new Date(observation.date).toLocaleString()}, Findings: ${observation.findings}, User's Recommendation: ${observation.recommendation}
+      `;
+      try {
+        const summary = await summarizeObservationData({ observationData });
+        const aiData: Partial<Observation> = {
+          category: summary.suggestedCategory,
+          aiSummary: summary.summary,
+          aiRisks: summary.risks,
+          aiSuggestedActions: summary.suggestedActions,
+          aiRelevantRegulations: summary.relevantRegulations,
+          aiSuggestedRiskLevel: summary.suggestedRiskLevel,
+          aiRootCauseAnalysis: summary.rootCauseAnalysis,
+          aiObserverSkillRating: summary.observerAssessment.rating,
+aiObserverSkillExplanation: summary.observerAssessment.explanation,
+          aiStatus: 'completed' as const,
+          riskLevel: summary.suggestedRiskLevel,
+        };
+        await updateDoc(observationDocRef, aiData);
+      } catch (error) {
+        console.error(`AI analysis failed for observation ${observation.id}:`, error);
+        await updateDoc(observationDocRef, { aiStatus: 'failed' });
+      }
+    };
+    
     if (item.itemType === 'observation') {
-        // We don't await this, but we can refetch the document to return the 'processing' state
         _runObservationAiAnalysis(item as Observation);
         updatedItem = { ...item, aiStatus: 'processing' };
     } else {
-        _runInspectionAiAnalysis(item as Inspection);
-        updatedItem = { ...item, aiStatus: 'processing' };
+        // AI analysis for inspections can be re-enabled here if needed
+        updatedItem = { ...item, aiStatus: 'failed' };
     }
     revalidatePath(item.projectId ? `/proyek/${item.projectId}` : '/private');
     return updatedItem;

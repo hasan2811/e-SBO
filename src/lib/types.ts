@@ -83,7 +83,7 @@ export type Observation = {
   actionTakenPhotoUrl?: string;
   closedBy?: string;
   closedDate?: string;
-  aiStatus?: 'processing' | 'completed' | 'failed';
+  aiStatus?: 'processing' | 'completed' | 'failed' | 'n/a';
   aiSummary?: string;
   aiRisks?: string;
   aiSuggestedActions?: string;
@@ -124,7 +124,7 @@ export type Inspection = {
   photoUrl?: string;
   scope: Scope;
   projectId: string | null;
-  aiStatus?: 'processing' | 'completed' | 'failed';
+  aiStatus?: 'processing' | 'completed' | 'failed' | 'n/a';
   aiSummary?: string;
   aiRisks?: string;
   aiSuggestedActions?: string;
