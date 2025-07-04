@@ -1,13 +1,12 @@
-
 rules_version = '2';
-
 service firebase.storage {
   match /b/{bucket}/o {
-    // ATURAN SANGAT TERBUKA: Izinkan semua operasi baca dan tulis oleh siapa pun.
-    // Ini menghilangkan semua kemungkinan galat "permission denied" dari sisi Storage,
-    // dengan asumsi CORS telah diatur dengan benar.
-    match /{allPaths=**} {
-      allow read, write: if true;
+    // This rule covers all upload paths used by the application,
+    // both private and within projects. It ensures that a logged-in
+    // user can only manage files inside their own user-ID-named folder.
+    // This provides the absolute right for users to manage their own files.
+    match /{allPaths=**}/{userId}/{fileName} {
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
