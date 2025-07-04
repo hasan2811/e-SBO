@@ -14,7 +14,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { Observation } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { deleteItem } from '@/lib/actions/item-actions';
+import { deleteItem as deleteItemAction } from '@/lib/actions/item-actions';
 
 
 interface DeleteObservationDialogProps {
@@ -36,7 +36,7 @@ export function DeleteObservationDialog({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteItem(observation);
+      await deleteItemAction(observation);
       toast({
         title: 'Berhasil Dihapus',
         description: `Laporan observasi telah berhasil dihapus.`,

@@ -58,8 +58,7 @@ interface ObservationDetailSheetProps {
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getObservationById, handleLikeToggle, handleViewCount, updateItem, fetchItems, addItem } = useObservations();
-  const pathname = usePathname();
+  const { getObservationById, handleLikeToggle, handleViewCount, updateItem, addItem, removeItem } = useObservations();
   const { toast } = useToast();
 
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
@@ -113,6 +112,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     try {
       const updatedItem = await retryAiAnalysis(observation);
       if (updatedItem) updateItem(updatedItem);
+      toast({ title: 'Analisis diulang', description: 'Analisis AI telah dimulai ulang untuk laporan ini.' });
     } catch (error) {
        toast({ variant: 'destructive', title: 'Gagal Mencoba Ulang Analisis' });
     }
@@ -121,21 +121,20 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const handleRunDeeperAnalysis = async () => {
     if (!observation) return;
     setIsAnalyzing(true);
-    // Optimistically update the UI to show processing state
-    updateItem({ ...observation, aiStatus: 'processing' });
     try {
       const updatedObservation = await runDeeperAnalysis(observation.id);
-      updateItem(updatedObservation); // Update context state with the final result
+      updateItem(updatedObservation);
+      toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.'})
-        updateItem({ ...observation, aiStatus: 'failed' }); // Revert on failure
     } finally {
         setIsAnalyzing(false);
     }
   }
 
   const handleSuccessDelete = () => {
-    fetchItems(true); // Manually trigger a full refresh from server.
+    if (!observationId) return;
+    removeItem(observationId);
     handleCloseSheet();
   };
 

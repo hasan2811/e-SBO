@@ -28,7 +28,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getPtwById, updateItem, fetchItems } = useObservations();
+  const { getPtwById, updateItem, removeItem } = useObservations();
   
   const ptw = ptwId ? getPtwById(ptwId) : null;
 
@@ -61,7 +61,8 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   );
   
   const handleSuccessDelete = () => {
-    fetchItems(true);
+    if (!ptwId) return;
+    removeItem(ptwId);
     handleCloseSheet();
   }
 

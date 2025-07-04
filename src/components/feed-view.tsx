@@ -270,7 +270,7 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const { items, isLoading, error, hasMore, fetchItems, viewType, setViewType, handleLikeToggle, getObservationById } = useObservations();
+  const { items, isLoading, error, hasMore, fetchItems, viewType, setViewType, handleLikeToggle, getObservationById, removeItems, removeItems: removeItemsFromContext } = useObservations();
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -334,13 +334,13 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   };
 
   const handleDeleteClick = () => {
-    const itemsToDelete = items.filter(item => selectedIds.has(item.id));
-    setItemsToDelete(itemsToDelete);
+    const toDelete = items.filter(item => selectedIds.has(item.id));
+    setItemsToDelete(toDelete);
     setDeleteMultiOpen(true);
   }
   
-  const handleDeleteSuccess = () => {
-    fetchItems(true); // Manually trigger a full refresh from server.
+  const handleDeleteSuccess = (deletedIds: string[]) => {
+    removeItemsFromContext(deletedIds);
     setIsSelectionMode(false);
     setSelectedIds(new Set());
     setItemsToDelete([]);

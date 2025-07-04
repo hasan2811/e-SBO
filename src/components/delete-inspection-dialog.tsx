@@ -14,7 +14,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { Inspection } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { deleteItem } from '@/lib/actions/item-actions';
+import { deleteItem as deleteItemAction } from '@/lib/actions/item-actions';
 
 
 interface DeleteInspectionDialogProps {
@@ -36,7 +36,7 @@ export function DeleteInspectionDialog({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteItem(inspection);
+      await deleteItemAction(inspection);
       toast({
         title: 'Berhasil Dihapus',
         description: `Laporan inspeksi telah berhasil dihapus.`,

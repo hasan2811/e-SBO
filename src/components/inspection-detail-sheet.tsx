@@ -19,7 +19,7 @@ import { useObservations } from '@/hooks/use-observations';
 import { FollowUpInspectionDialog } from './follow-up-inspection-dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { runDeeperInspectionAnalysis } from '@/lib/actions/item-actions';
+import { runDeeperInspectionAnalysis, retryAiAnalysis } from '@/lib/actions/item-actions';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface InspectionDetailSheetProps {
@@ -31,7 +31,7 @@ interface InspectionDetailSheetProps {
 export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
   const { user } = useAuth();
-  const { getInspectionById, retryAnalysis, updateItem, fetchItems } = useObservations();
+  const { getInspectionById, updateItem, removeItem } = useObservations();
   const { toast } = useToast();
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
@@ -51,7 +51,13 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
 
   const handleRetry = async () => {
     if (!inspection) return;
-    await retryAnalysis(inspection);
+    try {
+        const updatedItem = await retryAiAnalysis(inspection);
+        if (updatedItem) updateItem(updatedItem);
+        toast({ title: 'Analisis diulang', description: 'Analisis AI telah dimulai ulang untuk laporan ini.' });
+    } catch(error) {
+        toast({ variant: 'destructive', title: 'Gagal Mencoba Ulang Analisis' });
+    }
   };
   
   const handleRunDeeperAnalysis = async () => {
@@ -60,6 +66,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
     try {
         const updatedInspection = await runDeeperInspectionAnalysis(inspection.id);
         updateItem(updatedInspection);
+        toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.' });
     } finally {
@@ -79,7 +86,8 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   );
   
   const handleSuccessDelete = () => {
-    fetchItems(true);
+    if (!inspectionId) return;
+    removeItem(inspectionId);
     handleCloseSheet();
   }
 

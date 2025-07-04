@@ -20,7 +20,7 @@ interface DeleteMultipleDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   itemsToDelete: AllItems[];
-  onSuccess: () => void;
+  onSuccess: (deletedIds: string[]) => void;
 }
 
 export function DeleteMultipleDialog({
@@ -42,7 +42,7 @@ export function DeleteMultipleDialog({
         title: 'Berhasil Dihapus',
         description: `${itemsToDelete.length} item telah berhasil dihapus.`,
       });
-      onSuccess();
+      onSuccess(itemsToDelete.map(item => item.id));
       onOpenChange(false);
     } catch (error) {
       toast({

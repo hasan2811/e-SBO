@@ -14,7 +14,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { Ptw } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { deleteItem } from '@/lib/actions/item-actions';
+import { deleteItem as deleteItemAction } from '@/lib/actions/item-actions';
 
 
 interface DeletePtwDialogProps {
@@ -36,7 +36,7 @@ export function DeletePtwDialog({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteItem(ptw);
+      await deleteItemAction(ptw);
       toast({
         title: 'Berhasil Dihapus',
         description: `Izin Kerja (PTW) telah berhasil dihapus.`,
