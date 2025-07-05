@@ -15,8 +15,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { Inspection } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { deleteItem as deleteItemAction } from '@/lib/actions/db-actions';
 import { useObservations } from '@/hooks/use-observations';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
+import { ref, deleteObject } from 'firebase/storage';
 
 interface DeleteInspectionDialogProps {
   isOpen: boolean;
@@ -38,8 +40,20 @@ export function DeleteInspectionDialog({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const { id } = await deleteItemAction(inspection);
-      removeItem(id); // Explicitly update context state
+      const docRef = doc(db, 'inspections', inspection.id);
+      await deleteDoc(docRef);
+
+      // Delete associated photos
+      if (inspection.photoUrl) {
+        const photoRef = ref(storage, inspection.photoUrl);
+        await deleteObject(photoRef).catch(err => console.error("Non-blocking: Failed to delete main photo", err));
+      }
+      if (inspection.actionTakenPhotoUrl) {
+          const actionPhotoRef = ref(storage, inspection.actionTakenPhotoUrl);
+          await deleteObject(actionPhotoRef).catch(err => console.error("Non-blocking: Failed to delete action photo", err));
+      }
+
+      removeItem(inspection.id);
       toast({
         title: 'Berhasil Dihapus',
         description: `Laporan inspeksi telah berhasil dihapus.`,

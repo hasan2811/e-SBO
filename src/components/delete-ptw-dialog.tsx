@@ -15,8 +15,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { Ptw } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { deleteItem as deleteItemAction } from '@/lib/actions/db-actions';
 import { useObservations } from '@/hooks/use-observations';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
+import { ref, deleteObject } from 'firebase/storage';
 
 interface DeletePtwDialogProps {
   isOpen: boolean;
@@ -38,8 +40,15 @@ export function DeletePtwDialog({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const { id } = await deleteItemAction(ptw);
-      removeItem(id); // Explicitly update context state
+      const docRef = doc(db, 'ptws', ptw.id);
+      await deleteDoc(docRef);
+
+      if (ptw.jsaPdfUrl) {
+        const fileRef = ref(storage, ptw.jsaPdfUrl);
+        await deleteObject(fileRef).catch(err => console.error("Non-blocking: Failed to delete JSA PDF", err));
+      }
+
+      removeItem(ptw.id);
       toast({
         title: 'Berhasil Dihapus',
         description: `Izin Kerja (PTW) telah berhasil dihapus.`,

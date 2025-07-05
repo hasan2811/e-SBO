@@ -35,7 +35,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { updateObservationStatus } from '@/lib/actions/db-actions';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(1, 'Description cannot be empty.'),
@@ -145,19 +146,21 @@ export function TakeActionDialog({
         actionTakenPhotoUrl = await uploadFile(values.actionTakenPhoto, 'actions', user.uid, () => {}, observation?.projectId);
       }
       
-      const actionData = {
-        actionTakenDescription: values.actionTakenDescription,
-        actionTakenPhotoUrl: actionTakenPhotoUrl,
+      const observationDocRef = doc(db, 'observations', observation.id);
+      const closerName = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
+      const updatedData: Partial<Observation> = {
+          status: 'Completed',
+          actionTakenDescription: values.actionTakenDescription,
+          closedBy: closerName,
+          closedDate: new Date().toISOString(),
       };
+      if (actionTakenPhotoUrl) updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
       
-      const updatedObservation = await updateObservationStatus({
-          observationId: observation.id,
-          actionData: actionData,
-          userName: userProfile.displayName,
-          userPosition: userProfile.position
-      });
+      await updateDoc(observationDocRef, updatedData);
       
-      updateItem(updatedObservation); // Explicitly update context state
+      const updatedObservation = { ...observation, ...updatedData };
+      updateItem(updatedObservation);
+
       toast({ title: 'Success', description: 'Observation has been marked as completed.' });
       handleOpenChange(false);
     } catch(error) {

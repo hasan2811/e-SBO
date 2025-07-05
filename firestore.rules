@@ -1,8 +1,9 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read and write access to all documents for any authenticated user.
-    // This is a permissive rule set as requested to bypass all security obstacles.
+    // This is a permissive ruleset for development and frontend-heavy control.
+    // It allows any authenticated user to read and write to any document.
     match /{document=**} {
       allow read, write: if request.auth != null;
     }

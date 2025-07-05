@@ -17,7 +17,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, PenSquare, Trash2 } from 'lucide-react';
-import { approvePtw as approvePtwAction } from '@/lib/actions/db-actions';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface ApprovePtwDialogProps {
   isOpen: boolean;
@@ -49,15 +50,20 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialog
     setIsSubmitting(true);
     try {
       const signatureDataUrl = sigCanvasRef.current?.getTrimmedCanvas().toDataURL('image/png') || '';
-      
-      const updatedPtw = await approvePtwAction({
-          ptwId: ptw.id, 
-          signatureDataUrl, 
-          approverName: userProfile.displayName, 
-          approverPosition: userProfile.position
-      });
+      const ptwDocRef = doc(db, 'ptws', ptw.id);
 
-      updateItem(updatedPtw); // Explicitly update context state
+      const approver = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
+      const updatedData: Partial<Ptw> = {
+        status: 'Approved',
+        signatureDataUrl,
+        approver,
+        approvedDate: new Date().toISOString(),
+      };
+      
+      await updateDoc(ptwDocRef, updatedData);
+      
+      const updatedPtw = { ...ptw, ...updatedData };
+      updateItem(updatedPtw);
 
       toast({
         title: 'PTW Approved!',

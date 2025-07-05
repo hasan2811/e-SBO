@@ -15,8 +15,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { Observation } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { deleteItem as deleteItemAction } from '@/lib/actions/db-actions';
 import { useObservations } from '@/hooks/use-observations';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
+import { ref, deleteObject } from 'firebase/storage';
 
 interface DeleteObservationDialogProps {
   isOpen: boolean;
@@ -38,8 +40,20 @@ export function DeleteObservationDialog({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const { id } = await deleteItemAction(observation);
-      removeItem(id); // Explicitly update context state
+      const docRef = doc(db, 'observations', observation.id);
+      await deleteDoc(docRef);
+
+      // Delete associated photos
+      if (observation.photoUrl) {
+        const photoRef = ref(storage, observation.photoUrl);
+        await deleteObject(photoRef).catch(err => console.error("Non-blocking: Failed to delete main photo", err));
+      }
+      if (observation.actionTakenPhotoUrl) {
+          const actionPhotoRef = ref(storage, observation.actionTakenPhotoUrl);
+          await deleteObject(actionPhotoRef).catch(err => console.error("Non-blocking: Failed to delete action photo", err));
+      }
+
+      removeItem(observation.id);
       toast({
         title: 'Berhasil Dihapus',
         description: `Laporan observasi telah berhasil dihapus.`,

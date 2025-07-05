@@ -35,7 +35,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { updateInspectionStatus } from '@/lib/actions/db-actions';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(1, 'Description cannot be empty.'),
@@ -145,19 +146,21 @@ export function FollowUpInspectionDialog({
         actionTakenPhotoUrl = await uploadFile(values.actionTakenPhoto, 'actions', user.uid, () => {}, inspection?.projectId);
       }
       
-      const actionData = {
-        actionTakenDescription: values.actionTakenDescription,
-        actionTakenPhotoUrl: actionTakenPhotoUrl,
+      const inspectionDocRef = doc(db, 'inspections', inspection.id);
+      const closerName = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
+      const updatedData: Partial<Inspection> = {
+          status: 'Pass',
+          actionTakenDescription: values.actionTakenDescription,
+          closedBy: closerName,
+          closedDate: new Date().toISOString(),
       };
+      if (actionTakenPhotoUrl) updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
+    
+      await updateDoc(inspectionDocRef, updatedData);
       
-      const updatedInspection = await updateInspectionStatus({
-          inspectionId: inspection.id,
-          actionData,
-          userName: userProfile.displayName,
-          userPosition: userProfile.position,
-      });
-      
+      const updatedInspection = { ...inspection, ...updatedData };
       updateItem(updatedInspection);
+
       toast({ title: 'Success', description: 'Inspection has been marked as completed.' });
       handleOpenChange(false);
     } catch(error) {

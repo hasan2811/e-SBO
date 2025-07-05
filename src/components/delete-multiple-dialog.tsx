@@ -16,7 +16,9 @@ import { Loader2, Trash2 } from 'lucide-react';
 import type { AllItems } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useObservations } from '@/hooks/use-observations';
-import { deleteMultipleItems as deleteMultipleItemsAction } from '@/lib/actions/db-actions';
+import { writeBatch, doc } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
+import { ref, deleteObject } from 'firebase/storage';
 
 interface DeleteMultipleDialogProps {
   isOpen: boolean;
@@ -40,8 +42,28 @@ export function DeleteMultipleDialog({
     
     setIsDeleting(true);
     try {
-      const { deletedIds } = await deleteMultipleItemsAction(itemsToDelete);
-      deletedIds.forEach(id => removeItem(id)); // Explicitly update context state
+      const batch = writeBatch(db);
+      const storageDeletePromises: Promise<any>[] = [];
+
+      for (const item of itemsToDelete) {
+        const docRef = doc(db, `${item.itemType}s`, item.id);
+        batch.delete(docRef);
+
+        if (item.itemType === 'observation' || item.itemType === 'inspection') {
+          if(item.photoUrl) storageDeletePromises.push(deleteObject(ref(storage, item.photoUrl)).catch(e => console.error(e)));
+          if ('actionTakenPhotoUrl' in item && item.actionTakenPhotoUrl) {
+            storageDeletePromises.push(deleteObject(ref(storage, item.actionTakenPhotoUrl)).catch(e => console.error(e)));
+          }
+        } else if (item.itemType === 'ptw' && item.jsaPdfUrl) {
+          storageDeletePromises.push(deleteObject(ref(storage, item.jsaPdfUrl)).catch(e => console.error(e)));
+        }
+      }
+
+      await batch.commit();
+      await Promise.all(storageDeletePromises);
+
+      itemsToDelete.forEach(item => removeItem(item.id));
+
       toast({
         title: 'Berhasil Dihapus',
         description: `${itemsToDelete.length} item telah berhasil dihapus.`,
