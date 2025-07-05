@@ -16,7 +16,7 @@ interface ProjectContextType {
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { user, userProfile, isAdmin, loading: authLoading } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
   
@@ -36,55 +36,57 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     let unsubscribe: Unsubscribe = () => {};
 
-    // First, wait for the authentication status to be resolved.
-    // If auth is still loading, we cannot know which projects to fetch.
     if (authLoading) {
       setLoading(true);
       return;
     }
     
-    // If authentication is resolved and there is no user, it means they are logged out.
-    // Clear any existing project data and stop loading.
-    if (!user) {
+    if (!user || !userProfile) {
       setProjects([]);
       setLoading(false);
       return;
     }
 
-    // If we reach this point, we have a logged-in user.
-    // Start fetching projects and set our own loading state.
     setLoading(true);
-
     const projectsCollection = collection(db, 'projects');
-    
-    // The query changes based on user role:
-    // - Admins see all projects, ordered by creation date.
-    // - Regular users see only projects where their UID is in the `memberUids` array.
-    const q = isAdmin 
-        ? query(projectsCollection, orderBy('createdAt', 'desc'))
-        : query(projectsCollection, where('memberUids', 'array-contains', user.uid), orderBy('createdAt', 'desc'));
+    let q;
 
-    // onSnapshot creates a real-time listener. Any changes in the Firestore
-    // data matching the query will automatically trigger this callback.
+    if (isAdmin) {
+      // Admin gets all projects, ordered by creation date.
+      q = query(projectsCollection, orderBy('createdAt', 'desc'));
+    } else {
+      const userProjectIds = userProfile.projectIds || [];
+      if (userProjectIds.length === 0) {
+        setProjects([]);
+        setLoading(false);
+        return; // Early exit if user has no projects.
+      }
+      // Fetch only the projects whose IDs are in the user's profile.
+      // Note: Firestore 'in' queries are limited to 30 values.
+      q = query(projectsCollection, where('id', 'in', userProjectIds));
+    }
+
     unsubscribe = onSnapshot(q, (snapshot) => {
       const serverProjects = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Project[];
       
+      // If not admin, sort client-side as 'in' query doesn't support ordering on another field.
+      if (!isAdmin) {
+        serverProjects.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      }
+      
       setProjects(serverProjects);
-      setLoading(false); // We've received data, so we can stop loading.
+      setLoading(false);
     }, (error) => {
       console.error("Error fetching projects:", error);
-      setProjects([]); // Clear projects on error
-      setLoading(false); // And stop loading.
+      setProjects([]);
+      setLoading(false);
     });
 
-    // The cleanup function returned by useEffect.
-    // React calls this when the component unmounts or dependencies change,
-    // which prevents memory leaks by unsubscribing from the listener.
     return () => unsubscribe();
-  }, [user, isAdmin, authLoading]); // Re-run this effect if the user, their admin status, or auth loading state changes.
+  }, [user, userProfile, isAdmin, authLoading]);
 
   const value = { projects, loading, addProject };
 
