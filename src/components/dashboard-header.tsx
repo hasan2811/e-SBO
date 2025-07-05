@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, Check, Folder, FileCog, FolderPlus, LogIn, Download } from 'lucide-react';
+import { ChevronsUpDown, Check, Folder, FileCog, FolderPlus, LogIn, Download, Trash2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserAccountSheet } from '@/components/user-account-sheet';
 import { AppLogo } from '@/components/app-logo';
@@ -21,6 +21,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { exportToExcel } from '@/lib/export';
 import { useObservations } from '@/hooks/use-observations';
+import { LeaveProjectDialog } from './leave-project-dialog';
+import { DeleteProjectDialog } from './delete-project-dialog';
 
 function ProjectSwitcher() {
   const { user } = useAuth();
@@ -32,10 +34,22 @@ function ProjectSwitcher() {
   const [isCreateOpen, setCreateOpen] = React.useState(false);
   const [isJoinOpen, setJoinOpen] = React.useState(false);
   const [isManageOpen, setManageOpen] = React.useState(false);
+  const [isLeaveOpen, setLeaveOpen] = React.useState(false);
+  const [isDeleteOpen, setDeleteOpen] = React.useState(false);
+
 
   const projectId = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/)?.[1] || null;
   const { items: allProjectItems } = useObservations(projectId);
   const selectedProject = projects.find((p) => p.id === projectId);
+  
+  const isOwner = selectedProject && user && selectedProject.ownerUid === user.uid;
+
+  const handleActionSuccess = () => {
+    setManageOpen(false);
+    setLeaveOpen(false);
+    setDeleteOpen(false);
+    router.push('/beranda');
+  };
 
   const handleExport = () => {
     if (!selectedProject) return;
@@ -107,12 +121,24 @@ function ProjectSwitcher() {
                         <DropdownMenuLabel>Aksi Proyek</DropdownMenuLabel>
                         <DropdownMenuItem onSelect={() => setManageOpen(true)}>
                             <FileCog className="mr-2"/>
-                            <span>Kelola Proyek</span>
+                            <span>Kelola Anggota</span>
                         </DropdownMenuItem>
                          <DropdownMenuItem onSelect={handleExport}>
                             <Download className="mr-2"/>
                             <span>Export Laporan</span>
                         </DropdownMenuItem>
+                        {isOwner ? (
+                            <DropdownMenuItem onSelect={() => setDeleteOpen(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                <Trash2 className="mr-2"/>
+                                <span>Hapus Proyek</span>
+                            </DropdownMenuItem>
+                        ) : (
+                             <DropdownMenuItem onSelect={() => setLeaveOpen(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                <LogOut className="mr-2"/>
+                                <span>Tinggalkan Proyek</span>
+                            </DropdownMenuItem>
+                        )}
+
                     </DropdownMenuGroup>
                 </>
             )}
@@ -139,9 +165,24 @@ function ProjectSwitcher() {
           isOpen={isManageOpen}
           onOpenChange={setManageOpen}
           project={selectedProject}
-          defaultTab="members"
         />
       )}
+       {selectedProject && (
+        <LeaveProjectDialog
+          isOpen={isLeaveOpen}
+          onOpenChange={setLeaveOpen}
+          project={selectedProject}
+          onSuccess={handleActionSuccess}
+        />
+       )}
+        {selectedProject && (
+        <DeleteProjectDialog
+          isOpen={isDeleteOpen}
+          onOpenChange={setDeleteOpen}
+          project={selectedProject}
+          onSuccess={handleActionSuccess}
+        />
+       )}
     </>
   );
 }

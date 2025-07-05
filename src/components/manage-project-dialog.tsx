@@ -3,11 +3,11 @@
 import * as React from 'react';
 import type { Project, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Crown, User, UserX, Loader2 } from 'lucide-react';
+import { Crown, User, UserX, Loader2, Trash2, LogOut } from 'lucide-react';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -19,6 +19,9 @@ import { cn } from '@/lib/utils';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import { CustomListInput } from './custom-list-input';
+import { DeleteProjectDialog } from './delete-project-dialog';
+import { LeaveProjectDialog } from './leave-project-dialog';
+import { useRouter } from 'next/navigation';
 
 
 const getInitials = (name: string | null | undefined): string => {
@@ -251,13 +254,15 @@ interface ManageProjectDialogProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     project: Project;
-    defaultTab: 'members' | 'settings';
 }
 
-export function ManageProjectDialog({ isOpen, onOpenChange, project, defaultTab }: ManageProjectDialogProps) {
+export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManageProjectDialogProps) {
     const { user } = useAuth();
+    const router = useRouter();
     const isOwner = user && project && project.ownerUid === user.uid;
     const [currentProject, setCurrentProject] = React.useState(project);
+    const [isLeaveOpen, setLeaveOpen] = React.useState(false);
+    const [isDeleteOpen, setDeleteOpen] = React.useState(false);
 
     React.useEffect(() => {
         setCurrentProject(project);
@@ -266,37 +271,70 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project, defaultTab 
     const handleProjectUpdate = (updatedData: Partial<Project>) => {
         setCurrentProject(prev => ({ ...prev, ...updatedData }));
     };
+    
+    const handleActionSuccess = () => {
+        setLeaveOpen(false);
+        setDeleteOpen(false);
+        onOpenChange(false); // Close the manage dialog
+        router.push('/beranda');
+    };
 
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>Manage "{currentProject.name}"</DialogTitle>
-                    <DialogDescription>
-                        View members or manage project settings.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="flex-1 overflow-hidden">
-                    <Tabs defaultValue={defaultTab} key={`${currentProject.id}-${defaultTab}`} className="flex flex-col h-full">
-                        <TabsList className={cn("grid w-full", isOwner ? "grid-cols-2" : "grid-cols-1")}>
-                            <TabsTrigger value="members">Members ({currentProject.memberUids?.length || 0})</TabsTrigger>
-                            {isOwner && <TabsTrigger value="settings">Settings</TabsTrigger>}
-                        </TabsList>
-                        <div className="flex-1 mt-4 overflow-hidden">
-                          <ScrollArea className="h-full pr-4 -mr-4">
-                              <TabsContent value="members" className="mt-0">
-                                  <MemberList project={currentProject} />
-                              </TabsContent>
-                              {isOwner && (
-                                  <TabsContent value="settings" className="mt-0">
-                                    <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
-                                  </TabsContent>
-                              )}
-                          </ScrollArea>
-                        </div>
-                    </Tabs>
-                </div>
-            </DialogContent>
-        </Dialog>
+        <>
+            <Dialog open={isOpen} onOpenChange={onOpenChange}>
+                <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="p-6 pb-2">
+                        <DialogTitle>Kelola "{currentProject.name}"</DialogTitle>
+                        <DialogDescription>
+                            Lihat anggota dan kelola pengaturan proyek.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-hidden px-6">
+                        <Tabs defaultValue="members" key={`${currentProject.id}-members`} className="flex flex-col h-full">
+                            <TabsList className={cn("grid w-full", isOwner ? "grid-cols-2" : "grid-cols-1")}>
+                                <TabsTrigger value="members">Anggota ({currentProject.memberUids?.length || 0})</TabsTrigger>
+                                {isOwner && <TabsTrigger value="settings">Pengaturan</TabsTrigger>}
+                            </TabsList>
+                            <div className="flex-1 mt-4 overflow-hidden">
+                            <ScrollArea className="h-full pr-4 -mr-4">
+                                <TabsContent value="members" className="mt-0">
+                                    <MemberList project={currentProject} />
+                                </TabsContent>
+                                {isOwner && (
+                                    <TabsContent value="settings" className="mt-0">
+                                        <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
+                                    </TabsContent>
+                                )}
+                            </ScrollArea>
+                            </div>
+                        </Tabs>
+                    </div>
+                    <DialogFooter className="p-6 pt-4 border-t flex-shrink-0">
+                        {isOwner ? (
+                             <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+                                <Trash2 className="mr-2"/> Hapus Proyek
+                            </Button>
+                        ) : (
+                            <Button variant="destructive" onClick={() => setLeaveOpen(true)}>
+                                <LogOut className="mr-2"/> Tinggalkan Proyek
+                            </Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <LeaveProjectDialog
+                isOpen={isLeaveOpen}
+                onOpenChange={setLeaveOpen}
+                project={currentProject}
+                onSuccess={handleActionSuccess}
+            />
+             <DeleteProjectDialog
+                isOpen={isDeleteOpen}
+                onOpenChange={setDeleteOpen}
+                project={currentProject}
+                onSuccess={handleActionSuccess}
+            />
+        </>
     );
 }
