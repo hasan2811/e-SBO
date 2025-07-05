@@ -50,12 +50,14 @@ interface TakeActionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   observation?: Observation;
+  onSuccess: (updatedObservation: Observation) => void;
 }
 
 export function TakeActionDialog({
   isOpen,
   onOpenChange,
   observation,
+  onSuccess,
 }: TakeActionDialogProps) {
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
@@ -148,14 +150,14 @@ export function TakeActionDialog({
         actionTakenPhotoUrl: actionTakenPhotoUrl,
       };
       
-      await updateObservationStatus({
+      const updatedObservation = await updateObservationStatus({
           observationId: observation.id,
           actionData: actionData,
           userName: userProfile.displayName,
           userPosition: userProfile.position
       });
       
-      // No longer call updateItem here. The onSnapshot listener will handle it.
+      onSuccess(updatedObservation);
       toast({ title: 'Success', description: 'Observation has been marked as completed.' });
       handleOpenChange(false);
     } catch(error) {

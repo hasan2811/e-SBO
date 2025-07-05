@@ -35,11 +35,10 @@ async function getUserProfile(userId: string): Promise<UserProfile | null> {
 // ==================================
 export async function updateObservationStatus({ observationId, actionData, userName, userPosition }: { observationId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, userName: string, userPosition: string }): Promise<Observation> {
   const observationDocRef = adminDb.collection('observations').doc(observationId);
-  const docSnap = await observationDocRef.get();
-  if (!docSnap.exists) throw new Error('Laporan observasi tidak ditemukan.');
   
-  const observation = docSnap.data() as Observation;
-
+  const docSnapBeforeUpdate = await observationDocRef.get();
+  if (!docSnapBeforeUpdate.exists) throw new Error('Laporan observasi tidak ditemukan.');
+  
   const closerName = `${userName} (${userPosition || 'N/A'})`;
   const updatedData: Partial<Observation> = {
       status: 'Completed',
@@ -50,6 +49,7 @@ export async function updateObservationStatus({ observationId, actionData, userN
   if (actionData.actionTakenPhotoUrl) updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
   
   await observationDocRef.update(updatedData);
+
   const updatedDocSnap = await observationDocRef.get();
   const finalData = { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Observation;
   return finalData;
@@ -57,9 +57,9 @@ export async function updateObservationStatus({ observationId, actionData, userN
 
 export async function updateInspectionStatus({ inspectionId, actionData, userName, userPosition }: { inspectionId: string, actionData: { actionTakenDescription: string, actionTakenPhotoUrl?: string }, userName: string, userPosition: string }): Promise<Inspection> {
     const inspectionDocRef = adminDb.collection('inspections').doc(inspectionId);
-    const docSnap = await inspectionDocRef.get();
-    if (!docSnap.exists) throw new Error('Laporan inspeksi tidak ditemukan.');
-    const inspection = docSnap.data() as Inspection;
+    
+    const docSnapBeforeUpdate = await inspectionDocRef.get();
+    if (!docSnapBeforeUpdate.exists) throw new Error('Laporan inspeksi tidak ditemukan.');
 
     const closerName = `${userName} (${userPosition || 'N/A'})`;
     const updatedData: Partial<Inspection> = {
@@ -71,6 +71,7 @@ export async function updateInspectionStatus({ inspectionId, actionData, userNam
     if (actionData.actionTakenPhotoUrl) updatedData.actionTakenPhotoUrl = actionData.actionTakenPhotoUrl;
   
     await inspectionDocRef.update(updatedData);
+    
     const updatedDocSnap = await inspectionDocRef.get();
     const finalData = { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Inspection;
     return finalData;

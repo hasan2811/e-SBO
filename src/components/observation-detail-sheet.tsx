@@ -60,29 +60,40 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const { getObservationById, handleLikeToggle, handleViewCount } = useObservations();
   const { toast } = useToast();
 
+  const observationFromContext = observationId ? getObservationById(observationId) : null;
+  const [currentObservation, setCurrentObservation] = React.useState(observationFromContext);
+
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isSharing, setIsSharing] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const viewCountedRef = React.useRef<string | null>(null);
 
-  const observation = observationId ? getObservationById(observationId) : null;
-  
+  React.useEffect(() => {
+    // This effect ensures that if the context updates (e.g. from the snapshot listener),
+    // the local state is updated to reflect the latest truth from the database.
+    const latestObservation = observationId ? getObservationById(observationId) : null;
+    setCurrentObservation(latestObservation);
+  }, [observationId, getObservationById, isOpen]);
+
   const handleCloseSheet = () => {
     onOpenChange(false);
   };
   
   React.useEffect(() => {
-    if (isOpen && observationId && observation?.scope === 'public') {
-        if (viewCountedRef.current !== observationId) {
-            handleViewCount(observationId);
-            viewCountedRef.current = observationId;
+    if (isOpen && currentObservation?.scope === 'public') {
+        if (viewCountedRef.current !== currentObservation.id) {
+            handleViewCount(currentObservation.id);
+            viewCountedRef.current = currentObservation.id;
         }
     }
-  }, [isOpen, observationId, observation?.scope, handleViewCount]);
+  }, [isOpen, currentObservation, handleViewCount]);
 
-  if (!observation) return null;
+  if (!currentObservation) return null;
   
+  // Use the local state for all rendering logic from now on.
+  const observation = currentObservation;
+
   const mode = observation.scope;
   const canTakeAction = observation.status !== 'Completed' && mode !== 'public' && user?.uid === observation.userId;
 
@@ -117,8 +128,8 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     if (!observation || !userProfile) return;
     setIsAnalyzing(true);
     try {
-      await runDeeperAnalysis(observation.id);
-      // No optimistic update needed. onSnapshot will update the UI.
+      const updatedObservation = await runDeeperAnalysis(observation.id);
+      setCurrentObservation(updatedObservation); // Immediately update UI with server response
       toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.'})
@@ -453,6 +464,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
           isOpen={isActionDialogOpen}
           onOpenChange={setActionDialogOpen}
           observation={observation}
+          onSuccess={setCurrentObservation}
       />
     )}
     </>

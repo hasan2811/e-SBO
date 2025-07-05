@@ -50,12 +50,14 @@ interface FollowUpInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   inspection?: Inspection;
+  onSuccess: (updatedInspection: Inspection) => void;
 }
 
 export function FollowUpInspectionDialog({
   isOpen,
   onOpenChange,
   inspection,
+  onSuccess,
 }: FollowUpInspectionDialogProps) {
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
@@ -148,14 +150,14 @@ export function FollowUpInspectionDialog({
         actionTakenPhotoUrl: actionTakenPhotoUrl,
       };
       
-      await updateInspectionStatus({
+      const updatedInspection = await updateInspectionStatus({
           inspectionId: inspection.id,
           actionData,
           userName: userProfile.displayName,
           userPosition: userProfile.position,
       });
       
-      // No longer call updateItem here. The onSnapshot listener will handle it.
+      onSuccess(updatedInspection);
       toast({ title: 'Success', description: 'Inspection has been marked as completed.' });
       handleOpenChange(false);
     } catch(error) {

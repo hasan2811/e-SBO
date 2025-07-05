@@ -33,17 +33,26 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   const { user, userProfile } = useAuth();
   const { getInspectionById } = useObservations();
   const { toast } = useToast();
+  
+  const inspectionFromContext = inspectionId ? getInspectionById(inspectionId) : null;
+  const [currentInspection, setCurrentInspection] = React.useState(inspectionFromContext);
+  
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
 
-  const inspection = inspectionId ? getInspectionById(inspectionId) : null;
+  React.useEffect(() => {
+    const latestInspection = inspectionId ? getInspectionById(inspectionId) : null;
+    setCurrentInspection(latestInspection);
+  }, [inspectionId, getInspectionById, isOpen]);
+
 
   const handleCloseSheet = () => {
     onOpenChange(false);
   };
 
-  if (!inspection) return null;
+  if (!currentInspection) return null;
+  const inspection = currentInspection;
 
   const projectName = inspection.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
   const canFollowUp = (inspection.status === 'Fail' || inspection.status === 'Needs Repair') && user?.uid === inspection.userId;
@@ -63,8 +72,8 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
     if (!inspection || !userProfile) return;
     setIsAnalyzing(true);
     try {
-        await runDeeperInspectionAnalysis(inspection.id);
-        // No optimistic update needed. onSnapshot will update the UI.
+        const updatedInspection = await runDeeperInspectionAnalysis(inspection.id);
+        setCurrentInspection(updatedInspection);
         toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.' });
@@ -298,6 +307,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
           isOpen={isFollowUpOpen}
           onOpenChange={setFollowUpOpen}
           inspection={inspection}
+          onSuccess={setCurrentInspection}
         />
       )}
     </>
