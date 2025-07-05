@@ -41,23 +41,26 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
   const [joinableProjects, setJoinableProjects] = React.useState<JoinableProject[]>([]);
 
   React.useEffect(() => {
-    // Wait until the user profile is fully loaded before fetching projects.
-    if (!isOpen || !userProfile) {
-      if (isOpen) setLoadingProjects(true);
+    // Clean up state when dialog is closed
+    if (!isOpen) {
+      setJoinableProjects([]);
+      setJoiningProjectId(null);
+      setLoadingProjects(true); // Reset loading state for next open
+      return;
+    }
+
+    if (!userProfile) {
       return;
     }
     
     const fetchJoinableProjects = async () => {
       setLoadingProjects(true);
       try {
-        // More efficient query: Only fetch projects that are open for joining.
-        // where("isOpen", "!=", false) gets docs where isOpen is true OR where the field doesn't exist.
         const projectsQuery = query(collection(db, 'projects'), where("isOpen", "!=", false));
         const projectsSnapshot = await getDocs(projectsQuery);
         
         const allOpenProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
 
-        // Filter out projects the user is already a member of on the client.
         const userProjectIds = userProfile.projectIds || [];
         const finalJoinableProjects = allOpenProjects.filter(p => !userProjectIds.includes(p.id));
 
@@ -100,38 +103,23 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
       const userRef = doc(db, 'users', user.uid);
 
       await runTransaction(db, async (transaction) => {
-        // READ FIRST for transaction safety
         const projectSnap = await transaction.get(projectRef);
         const userSnap = await transaction.get(userRef);
 
-        if (!projectSnap.exists()) {
-          throw new Error('Project not found');
-        }
-        if (!userSnap.exists()) {
-          throw new Error("User profile not found. Cannot join project.");
-        }
-        
-        // Check if the project is explicitly closed. `undefined` is treated as open.
-        if (projectSnap.data()?.isOpen === false) {
-            throw new Error('Project is not open for joining.');
-        }
+        if (!projectSnap.exists()) throw new Error('Project not found');
+        if (!userSnap.exists()) throw new Error("User profile not found. Cannot join project.");
+        if (projectSnap.data()?.isOpen === false) throw new Error('Project is not open for joining.');
 
-        // Add user to project's member list
-        transaction.update(projectRef, {
-          memberUids: arrayUnion(user.uid),
-        });
-        // Add project to user's project list
-        transaction.update(userRef, {
-          projectIds: arrayUnion(projectToJoin.id),
-        });
+        transaction.update(projectRef, { memberUids: arrayUnion(user.uid) });
+        transaction.update(userRef, { projectIds: arrayUnion(projectToJoin.id) });
       });
       
-      // Manually add project to local state to prevent race conditions
+      // Manually add project to local state for immediate UI update before redirecting
       addProject(projectToJoin);
 
       toast({ title: 'Sukses!', description: `Berhasil bergabung dengan proyek!` });
-      onOpenChange(false); // Close dialog on success
-      router.push(`/proyek/${projectToJoin.id}/observasi`); // Redirect to the joined project page
+      onOpenChange(false);
+      router.push(`/proyek/${projectToJoin.id}/observasi`);
     } catch (error: any) {
       let description = 'Terjadi kesalahan tak terduga.';
       if (error.message === 'Project not found') {
@@ -163,7 +151,6 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
           <ScrollArea className="h-full pr-4">
             <div className="space-y-4">
               {loadingProjects ? (
-                // Skeleton Loader
                 Array.from({ length: 3 }).map((_, index) => (
                   <Card key={index} className="p-4 space-y-3">
                     <div className="flex items-center space-x-4">

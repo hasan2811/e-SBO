@@ -97,7 +97,7 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
         });
       });
       
-      // Manually add project to local state for immediate UI update
+      // Manually add project to local state for immediate UI update before redirecting
       addProject(newProjectData);
 
       toast({ title: 'Sukses!', description: `Proyek "${values.name}" berhasil dibuat.` });
