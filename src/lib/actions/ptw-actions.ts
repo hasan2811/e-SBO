@@ -13,10 +13,13 @@ import { format } from 'date-fns';
  * @returns The file path within the bucket.
  */
 function httpsUrlToFilePath(url: string): string {
-    const urlObject = new URL(url);
+    // First, remove any query parameters (like ?alt=media&token=...)
+    const baseUrl = url.split('?')[0];
+    const urlObject = new URL(baseUrl);
     // Pathname will be like /v0/b/bucket-name/o/path%2Fto%2Ffile.pdf
+    // Then, decode the URL-encoded path segments.
     const path = decodeURIComponent(urlObject.pathname);
-    // Extract the path after the /o/ part, which is the actual file path.
+    // Finally, extract the path after the /o/ part, which is the actual file path.
     const filePath = path.substring(path.indexOf('/o/') + 3);
     return filePath;
 }
@@ -93,7 +96,8 @@ export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, sign
     });
 
     // Make the file public to get a download URL
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${stampedFilePath}`;
+    await stampedFile.makePublic();
+    const publicUrl = stampedFile.publicUrl();
 
     // 8. Update the Firestore document
     const ptwDocRef = adminDb.collection('ptws').doc(ptw.id);
