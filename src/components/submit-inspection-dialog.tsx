@@ -62,6 +62,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   // AI Assistant State
   const [aiSuggestions, setAiSuggestions] = React.useState<AssistInspectionOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
+  const isAiEnabled = userProfile?.aiEnabled ?? true;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -79,14 +80,14 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   
   React.useEffect(() => {
     async function getAiSuggestions() {
-      if (!userProfile || !(userProfile.aiEnabled ?? true)) {
+      if (!isAiEnabled) {
         setAiSuggestions(null);
         return;
       }
       if (debouncedFindings && debouncedFindings.length > 20) {
         setIsAiLoading(true);
         try {
-          const suggestions = await assistInspection({ findings: debouncedFindings }, userProfile);
+          const suggestions = await assistInspection({ findings: debouncedFindings }, userProfile!);
           setAiSuggestions(suggestions);
         } catch (error) {
           console.error('AI suggestion failed:', error);
@@ -99,7 +100,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
       }
     }
     getAiSuggestions();
-  }, [debouncedFindings, userProfile]);
+  }, [debouncedFindings, userProfile, isAiEnabled]);
   
   const locationOptions = React.useMemo(() => 
     (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : DEFAULT_LOCATIONS,
@@ -171,21 +172,16 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
             scope,
             projectId,
             referenceId,
-            aiStatus: 'processing',
+            aiStatus: isAiEnabled ? 'processing' : 'n/a',
         };
 
         const docRef = await addDoc(collection(db, "inspections"), newInspectionData);
-        const newInspection = { ...newInspectionData, id: docRef.id };
         
-        // No longer call addItem here. The onSnapshot listener will handle it.
-
-        if (userProfile.aiEnabled ?? true) {
+        if (isAiEnabled) {
+            const newInspection = { ...newInspectionData, id: docRef.id };
             triggerInspectionAnalysis(newInspection).catch(error => {
                 console.error("Failed to trigger AI analysis for inspection:", error);
             });
-        } else {
-            const inspectionDocRef = doc(db, 'inspections', newInspection.id);
-            await updateDoc(inspectionDocRef, { aiStatus: 'n/a' });
         }
 
         toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda telah berhasil disimpan.` });
@@ -230,42 +226,44 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
               )} />
               
               {/* AI Assistant Section */}
-              <div className="relative">
-                {isAiLoading && (
-                  <div className="absolute top-2 right-2 z-10">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-                {aiSuggestions && (
-                   <Alert className="bg-primary/5 border-primary/20 text-primary-foreground mt-4">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    <AlertTitle className="text-primary font-semibold">Saran Asisten AI</AlertTitle>
-                    <AlertDescription className="text-primary/90 space-y-3 mt-2">
-                       {aiSuggestions.suggestedStatus && (
-                         <div className="flex items-center justify-between">
-                           <p>Saran Status: <span className="font-semibold">{aiSuggestions.suggestedStatus}</span></p>
-                           <Button type="button" size="sm" variant="outline" onClick={() => form.setValue('status', aiSuggestions.suggestedStatus as InspectionStatus)}>Terapkan</Button>
-                         </div>
-                       )}
-                       {aiSuggestions.improvedFindings && (
-                         <div>
-                            <p className="mb-1">Saran Perbaikan Temuan:</p>
-                            <p className="p-2 bg-background/50 rounded text-sm">{aiSuggestions.improvedFindings}</p>
-                            <Button type="button" size="sm" variant="outline" className="mt-1" onClick={() => form.setValue('findings', aiSuggestions.improvedFindings)}>Terapkan</Button>
-                         </div>
-                       )}
-                        {aiSuggestions.suggestedRecommendation && (
-                         <div>
-                            <p className="mb-1">Saran Rekomendasi:</p>
-                             <Button type="button" size="sm" variant="outline" className="w-full justify-start text-left h-auto whitespace-normal" onClick={() => form.setValue('recommendation', aiSuggestions.suggestedRecommendation)}>
-                                <Wand2 className="mr-2 h-4 w-4 flex-shrink-0" /> {aiSuggestions.suggestedRecommendation}
-                             </Button>
-                         </div>
-                       )}
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
+              {isAiEnabled && (
+                <div className="relative">
+                  {isAiLoading && (
+                    <div className="absolute top-2 right-2 z-10">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                  {aiSuggestions && (
+                     <Alert className="bg-primary/5 border-primary/20 text-primary-foreground mt-4">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <AlertTitle className="text-primary font-semibold">Saran Asisten AI</AlertTitle>
+                      <AlertDescription className="text-primary/90 space-y-3 mt-2">
+                         {aiSuggestions.suggestedStatus && (
+                           <div className="flex items-center justify-between">
+                             <p>Saran Status: <span className="font-semibold">{aiSuggestions.suggestedStatus}</span></p>
+                             <Button type="button" size="sm" variant="outline" onClick={() => form.setValue('status', aiSuggestions.suggestedStatus as InspectionStatus)}>Terapkan</Button>
+                           </div>
+                         )}
+                         {aiSuggestions.improvedFindings && (
+                           <div>
+                              <p className="mb-1">Saran Perbaikan Temuan:</p>
+                              <p className="p-2 bg-background/50 rounded text-sm">{aiSuggestions.improvedFindings}</p>
+                              <Button type="button" size="sm" variant="outline" className="mt-1" onClick={() => form.setValue('findings', aiSuggestions.improvedFindings)}>Terapkan</Button>
+                           </div>
+                         )}
+                          {aiSuggestions.suggestedRecommendation && (
+                           <div>
+                              <p className="mb-1">Saran Rekomendasi:</p>
+                               <Button type="button" size="sm" variant="outline" className="w-full justify-start text-left h-auto whitespace-normal" onClick={() => form.setValue('recommendation', aiSuggestions.suggestedRecommendation)}>
+                                  <Wand2 className="mr-2 h-4 w-4 flex-shrink-0" /> {aiSuggestions.suggestedRecommendation}
+                               </Button>
+                           </div>
+                         )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
               
               <FormField name="recommendation" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Rekomendasi (Opsional)</FormLabel><FormControl><Textarea placeholder="Jelaskan tindakan yang direkomendasikan." rows={2} {...field} /></FormControl><FormMessage /></FormItem>

@@ -93,6 +93,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   
   // Use the local state for all rendering logic from now on.
   const observation = currentObservation;
+  const isAiViewerEnabled = userProfile?.aiEnabled ?? true;
 
   const mode = observation.scope;
   const canTakeAction = observation.status !== 'Completed' && mode !== 'public' && user?.uid === observation.userId;
@@ -302,93 +303,83 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
               <p className="text-sm text-muted-foreground">{observation.recommendation}</p>
             </div>
 
-            {/* AI ANALYSIS SECTION */}
-            <div className="space-y-4 pt-4 mt-4 border-t">
-              <h3 className="font-semibold text-base flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  Analisis HSSE Tech
-              </h3>
-              
-              {observation.aiStatus === 'processing' && (
-                  <div className="flex items-center gap-3 p-4 rounded-lg bg-muted">
-                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                      <p className="text-sm text-muted-foreground">AI sedang menganalisis...</p>
-                  </div>
-              )}
-              
-              {observation.aiStatus === 'failed' && (
-                  <Alert variant="destructive">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertTitle>Analisis Gagal</AlertTitle>
-                      <AlertDescription>
-                          Analisis AI tidak dapat diselesaikan.
-                          <Button variant="link" size="sm" onClick={handleRetryAnalysis} className="p-0 h-auto ml-2 text-destructive">Coba lagi</Button>
-                      </AlertDescription>
-                  </Alert>
-              )}
-
-              {observation.aiStatus === 'n/a' && (
-                  <Alert>
-                    <Sparkles className="h-4 w-4" />
-                    <AlertTitle>AI Dinonaktifkan</AlertTitle>
-                    <AlertDescription>
-                      Fitur AI tidak aktif untuk pengguna ini saat laporan dibuat.
-                    </AlertDescription>
-                  </Alert>
-              )}
-              
-              {observation.aiStatus === 'completed' && (
-                <div className="space-y-4">
-                  {/* Show fast analysis results if they exist */}
-                  {observation.aiSuggestedRiskLevel && (
-                     <div className="p-4 rounded-lg border bg-background">
-                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><Activity className="h-4 w-4 text-muted-foreground" />Saran Tingkat Risiko</h4>
-                        <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", riskStyles[observation.aiSuggestedRiskLevel])}>
-                          {observation.aiSuggestedRiskLevel}
-                        </div>
-                      </div>
-                  )}
-
-                  {/* Conditionally show deep analysis OR the button to trigger it */}
-                  {hasDeepAnalysis ? (
-                    <div className="p-4 rounded-lg border bg-background">
-                      <h4 className="text-sm font-semibold mb-2">Analisis Mendalam</h4>
-                       <Accordion type="multiple" className="w-full">
-                          {typeof observation.aiObserverSkillRating === 'number' && (
-                              <AccordionItem value="observerRating">
-                                  <AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><UserCheck className="h-4 w-4 text-muted-foreground" />Kualitas Laporan</div></AccordionTrigger>
-                                  <AccordionContent className="pt-2 pl-8 space-y-2">
-                                      <StarRating rating={observation.aiObserverSkillRating} />
-                                      {observation.aiObserverSkillExplanation && <p className="text-sm text-muted-foreground">{observation.aiObserverSkillExplanation}</p>}
-                                  </AccordionContent>
-                              </AccordionItem>
-                          )}
-                          {observation.aiRisks && (
-                              <AccordionItem value="risks"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-destructive" />Potensi Risiko</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiRisks, AlertTriangle, "text-destructive")}</AccordionContent></AccordionItem>
-                          )}
-                          {observation.aiSuggestedActions && (
-                              <AccordionItem value="actions"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-green-600" />Saran Tindakan</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiSuggestedActions, CheckCircle2, "text-green-600")}</AccordionContent></AccordionItem>
-                          )}
-                          {observation.aiRootCauseAnalysis && (
-                              <AccordionItem value="rootCause"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><Target className="h-4 w-4 text-muted-foreground" />Analisis Akar Masalah</div></AccordionTrigger><AccordionContent className="pt-2"><p className="text-sm text-muted-foreground pl-8">{observation.aiRootCauseAnalysis}</p></AccordionContent></AccordionItem>
-                          )}
-                          {observation.aiRelevantRegulations && (
-                              <AccordionItem value="regulations" className="border-b-0"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" />Referensi Regulasi</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiRelevantRegulations, FileText, "text-muted-foreground")}</AccordionContent></AccordionItem>
-                          )}
-                       </Accordion>
+            {/* AI ANALYSIS SECTION - Conditionally rendered based on viewer's settings */}
+            {isAiViewerEnabled && observation.aiStatus !== 'n/a' && (
+              <div className="space-y-4 pt-4 mt-4 border-t">
+                <h3 className="font-semibold text-base flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    Analisis HSSE Tech
+                </h3>
+                
+                {observation.aiStatus === 'processing' && (
+                    <div className="flex items-center gap-3 p-4 rounded-lg bg-muted">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground">AI sedang menganalisis...</p>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed">
-                       <p className="text-sm text-muted-foreground">Jalankan analisis mendalam untuk wawasan lebih lanjut mengenai risiko, tindakan, dan lainnya.</p>
-                       <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={isAnalyzing}>
-                           {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4" />}
-                           Jalankan Analisis Mendalam
-                       </Button>
-                   </div>
-                  )}
-                </div>
-              )}
-            </div>
+                )}
+                
+                {observation.aiStatus === 'failed' && (
+                    <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Analisis Gagal</AlertTitle>
+                        <AlertDescription>
+                            Analisis AI tidak dapat diselesaikan.
+                            <Button variant="link" size="sm" onClick={handleRetryAnalysis} className="p-0 h-auto ml-2 text-destructive">Coba lagi</Button>
+                        </AlertDescription>
+                    </Alert>
+                )}
+                
+                {observation.aiStatus === 'completed' && (
+                  <div className="space-y-4">
+                    {observation.aiSuggestedRiskLevel && (
+                       <div className="p-4 rounded-lg border bg-background">
+                          <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><Activity className="h-4 w-4 text-muted-foreground" />Saran Tingkat Risiko</h4>
+                          <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", riskStyles[observation.aiSuggestedRiskLevel])}>
+                            {observation.aiSuggestedRiskLevel}
+                          </div>
+                        </div>
+                    )}
+                    
+                    {hasDeepAnalysis ? (
+                      <div className="p-4 rounded-lg border bg-background">
+                        <h4 className="text-sm font-semibold mb-2">Analisis Mendalam</h4>
+                         <Accordion type="multiple" className="w-full">
+                            {typeof observation.aiObserverSkillRating === 'number' && (
+                                <AccordionItem value="observerRating">
+                                    <AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><UserCheck className="h-4 w-4 text-muted-foreground" />Kualitas Laporan</div></AccordionTrigger>
+                                    <AccordionContent className="pt-2 pl-8 space-y-2">
+                                        <StarRating rating={observation.aiObserverSkillRating} />
+                                        {observation.aiObserverSkillExplanation && <p className="text-sm text-muted-foreground">{observation.aiObserverSkillExplanation}</p>}
+                                    </AccordionContent>
+                                </AccordionItem>
+                            )}
+                            {observation.aiRisks && (
+                                <AccordionItem value="risks"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-destructive" />Potensi Risiko</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiRisks, AlertTriangle, "text-destructive")}</AccordionContent></AccordionItem>
+                            )}
+                            {observation.aiSuggestedActions && (
+                                <AccordionItem value="actions"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-green-600" />Saran Tindakan</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiSuggestedActions, CheckCircle2, "text-green-600")}</AccordionContent></AccordionItem>
+                            )}
+                            {observation.aiRootCauseAnalysis && (
+                                <AccordionItem value="rootCause"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><Target className="h-4 w-4 text-muted-foreground" />Analisis Akar Masalah</div></AccordionTrigger><AccordionContent className="pt-2"><p className="text-sm text-muted-foreground pl-8">{observation.aiRootCauseAnalysis}</p></AccordionContent></AccordionItem>
+                            )}
+                            {observation.aiRelevantRegulations && (
+                                <AccordionItem value="regulations" className="border-b-0"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" />Referensi Regulasi</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiRelevantRegulations, FileText, "text-muted-foreground")}</AccordionContent></AccordionItem>
+                            )}
+                         </Accordion>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed">
+                         <p className="text-sm text-muted-foreground">Jalankan analisis mendalam untuk wawasan lebih lanjut mengenai risiko, tindakan, dan lainnya.</p>
+                         <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={isAnalyzing}>
+                             {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4" />}
+                             Jalankan Analisis Mendalam
+                         </Button>
+                     </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
 
             {observation.status === 'Completed' && (

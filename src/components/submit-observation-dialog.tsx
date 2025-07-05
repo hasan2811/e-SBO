@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Sparkles, Wand2 } from 'lucide-react';
-import { useObservations } from '@/hooks/use-observations';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
@@ -53,7 +52,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  // We no longer need addItem from useObservations
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -62,6 +60,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   // AI Assistant State
   const [aiSuggestions, setAiSuggestions] = React.useState<AssistObservationOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
+  const isAiEnabled = userProfile?.aiEnabled ?? true;
 
   const companyOptions = React.useMemo(() => 
     (project?.customCompanies && project.customCompanies.length > 0) ? project.customCompanies : DEFAULT_COMPANIES,
@@ -85,7 +84,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
 
   React.useEffect(() => {
     async function getAiSuggestions() {
-      if (!userProfile || !(userProfile.aiEnabled ?? true)) {
+      if (!isAiEnabled) {
         setAiSuggestions(null);
         return;
       }
@@ -93,7 +92,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
       if (debouncedFindings && debouncedFindings.length > 20) {
         setIsAiLoading(true);
         try {
-          const suggestions = await assistObservation({ findings: debouncedFindings }, userProfile);
+          const suggestions = await assistObservation({ findings: debouncedFindings }, userProfile!);
           setAiSuggestions(suggestions);
         } catch (error) {
           console.error('AI suggestion failed:', error);
@@ -106,7 +105,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
       }
     }
     getAiSuggestions();
-  }, [debouncedFindings, userProfile]);
+  }, [debouncedFindings, userProfile, isAiEnabled]);
 
   const resetForm = React.useCallback(() => {
     form.reset({
@@ -185,25 +184,18 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             category: (aiSuggestions?.suggestedCategory as ObservationCategory) || 'Supervision',
             riskLevel: (aiSuggestions?.suggestedRiskLevel as RiskLevel) || 'Low',
             status: 'Pending',
-            aiStatus: 'processing',
+            aiStatus: isAiEnabled ? 'processing' : 'n/a',
             likes: [], likeCount: 0, commentCount: 0, viewCount: 0,
         };
         
         const docRef = await addDoc(collection(db, "observations"), newObservationData);
         
-        const finalObservation = { ...newObservationData, id: docRef.id };
-        
-        // No longer call addItem here. The onSnapshot listener will handle it.
-        
-        if (userProfile.aiEnabled ?? true) {
-            triggerObservationAnalysis(finalObservation).catch(error => {
-                console.error("Failed to trigger AI analysis:", error);
-            });
-        } else {
-            const observationDocRef = doc(db, 'observations', finalObservation.id);
-            await updateDoc(observationDocRef, { aiStatus: 'n/a' });
+        if (isAiEnabled) {
+          const finalObservation = { ...newObservationData, id: docRef.id };
+          triggerObservationAnalysis(finalObservation).catch(error => {
+              console.error("Failed to trigger AI analysis:", error);
+          });
         }
-
 
         toast({ title: 'Laporan Terkirim', description: 'Observasi Anda berhasil disimpan. AI akan menganalisisnya.' });
         onOpenChange(false);
@@ -324,36 +316,38 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
               />
               
               {/* AI Assistant Section */}
-              <div className="relative">
-                {isAiLoading && (
-                  <div className="absolute top-2 right-2 z-10">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-                {aiSuggestions && (
-                   <Alert className="bg-primary/5 border-primary/20 text-primary-foreground mt-4">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    <AlertTitle className="text-primary font-semibold">Saran Asisten AI</AlertTitle>
-                    <AlertDescription className="text-primary/90 space-y-3 mt-2">
-                       {aiSuggestions.improvedFindings && (
-                         <div>
-                            <p className="mb-1">Saran Perbaikan Temuan:</p>
-                            <p className="p-2 bg-background/50 rounded text-sm">{aiSuggestions.improvedFindings}</p>
-                            <Button type="button" size="sm" variant="outline" className="mt-1" onClick={() => form.setValue('findings', aiSuggestions.improvedFindings)}>Terapkan</Button>
-                         </div>
-                       )}
-                        {aiSuggestions.suggestedRecommendation && (
-                         <div>
-                            <p className="mb-1">Saran Rekomendasi:</p>
-                             <Button type="button" size="sm" variant="outline" className="w-full justify-start text-left h-auto whitespace-normal" onClick={() => form.setValue('recommendation', aiSuggestions.suggestedRecommendation)}>
-                                <Wand2 className="mr-2 h-4 w-4 flex-shrink-0" /> {aiSuggestions.suggestedRecommendation}
-                             </Button>
-                         </div>
-                       )}
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
+              {isAiEnabled && (
+                <div className="relative">
+                  {isAiLoading && (
+                    <div className="absolute top-2 right-2 z-10">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                  {aiSuggestions && (
+                     <Alert className="bg-primary/5 border-primary/20 text-primary-foreground mt-4">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <AlertTitle className="text-primary font-semibold">Saran Asisten AI</AlertTitle>
+                      <AlertDescription className="text-primary/90 space-y-3 mt-2">
+                         {aiSuggestions.improvedFindings && (
+                           <div>
+                              <p className="mb-1">Saran Perbaikan Temuan:</p>
+                              <p className="p-2 bg-background/50 rounded text-sm">{aiSuggestions.improvedFindings}</p>
+                              <Button type="button" size="sm" variant="outline" className="mt-1" onClick={() => form.setValue('findings', aiSuggestions.improvedFindings)}>Terapkan</Button>
+                           </div>
+                         )}
+                          {aiSuggestions.suggestedRecommendation && (
+                           <div>
+                              <p className="mb-1">Saran Rekomendasi:</p>
+                               <Button type="button" size="sm" variant="outline" className="w-full justify-start text-left h-auto whitespace-normal" onClick={() => form.setValue('recommendation', aiSuggestions.suggestedRecommendation)}>
+                                  <Wand2 className="mr-2 h-4 w-4 flex-shrink-0" /> {aiSuggestions.suggestedRecommendation}
+                               </Button>
+                           </div>
+                         )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
               
               <FormField
                 control={form.control}

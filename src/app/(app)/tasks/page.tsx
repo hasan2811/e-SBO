@@ -56,19 +56,7 @@ const riskPieChartConfig = {
     Critical: { label: "Critical", color: "hsl(var(--destructive))", icon: 'circle' },
 };
 
-const AiAnalysisCard = ({ analysis, loading, isAiEnabled }: { analysis: AnalyzeDashboardDataOutput | null, loading: boolean, isAiEnabled: boolean }) => {
-    if (!isAiEnabled) {
-      return (
-        <Alert className="bg-muted/50">
-          <Sparkles className="h-4 w-4" />
-          <CardTitle>AI Analysis Disabled</CardTitle>
-          <AlertDescription>
-            Enable AI features in your account settings to see dashboard insights.
-          </AlertDescription>
-        </Alert>
-      );
-    }
-
+const AiAnalysisCard = ({ analysis, loading }: { analysis: AnalyzeDashboardDataOutput | null, loading: boolean }) => {
     if (loading) {
       return (
         <Card className="bg-primary/5 border-primary/20">
@@ -279,6 +267,7 @@ export default function DashboardPage() {
 
   // The main loading state for the page, true if either projects list or observations are loading.
   const loading = dataLoading || projectsLoading;
+  const isAiEnabled = userProfile?.aiEnabled ?? true;
 
   React.useEffect(() => {
     const fetchProjectObservations = async () => {
@@ -412,11 +401,9 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     const getAnalysis = async () => {
-      if (loading || projectObservations.length === 0 || !userProfile) {
-        if (!loading && (projectObservations.length === 0 || !userProfile?.aiEnabled)) {
-            setAnalysis(null);
-            setAnalysisLoading(false);
-        }
+      if (loading || projectObservations.length === 0 || !userProfile || !isAiEnabled) {
+        setAnalysis(null);
+        setAnalysisLoading(false);
         return;
       }
       setAnalysisLoading(true);
@@ -438,7 +425,7 @@ export default function DashboardPage() {
       }
     };
     getAnalysis();
-  }, [projectObservations, loading, userProfile, overviewData, criticalPercentageData, riskDetailsData, companyDistributionData, dailyData]);
+  }, [projectObservations, loading, userProfile, isAiEnabled, overviewData, criticalPercentageData, riskDetailsData, companyDistributionData, dailyData]);
 
 
   const RADIAN = Math.PI / 180;
@@ -489,8 +476,8 @@ export default function DashboardPage() {
         <h2 className="text-2xl font-bold tracking-tight">Dashboard Proyek</h2>
       </div>
 
-      {!loading && projectObservations.length > 0 && (
-         <AiAnalysisCard analysis={analysis} loading={analysisLoading} isAiEnabled={userProfile?.aiEnabled ?? true} />
+      {!loading && projectObservations.length > 0 && isAiEnabled && (
+         <AiAnalysisCard analysis={analysis} loading={analysisLoading} />
       )}
       
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
