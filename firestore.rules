@@ -1,10 +1,8 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Aturan yang disederhanakan secara radikal untuk mengizinkan semua akses baca/tulis
-    // bagi pengguna yang sudah terautentikasi (login).
-    // Ini menghilangkan semua potensi error yang disebabkan oleh izin.
+    // Allow read and write access to all documents for any authenticated user.
+    // This is a permissive rule set as requested to bypass all security obstacles.
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
