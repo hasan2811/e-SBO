@@ -16,8 +16,8 @@ import { format } from 'date-fns';
  */
 export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, signatureDataUrl: string): Promise<{ stampedPdfUrl: string }> {
   try {
-    // Explicitly select the bucket to ensure there is no ambiguity.
-    const bucket = adminStorage.bucket('hssetech-e1710.appspot.com');
+    // Use the default bucket that was configured during admin initialization.
+    const bucket = adminStorage.bucket();
 
     // 1. Get the original PDF file from storage using the robust storage path
     if (!ptw.jsaPdfStoragePath) {

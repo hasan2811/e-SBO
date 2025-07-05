@@ -7,10 +7,11 @@ import * as admin from 'firebase-admin';
 if (!admin.apps.length) {
   try {
     // In a managed Google Cloud environment (like App Hosting or Cloud Functions),
-    // calling initializeApp() with no arguments allows the SDK to automatically
-    // discover service account credentials and project details. This is the
-    // most robust method for these environments and resolves token refresh issues.
-    admin.initializeApp();
+    // initializing with the storageBucket explicitly defined is the most robust method.
+    // This resolves token refresh issues by removing any ambiguity about the target bucket.
+    admin.initializeApp({
+        storageBucket: 'hssetech-e1710.appspot.com',
+    });
   } catch (e) {
     console.error('Firebase admin initialization error', e);
   }
