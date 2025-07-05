@@ -44,7 +44,8 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
 
         setIsLoading(true);
         setError(null);
-        setItems([]); // Clear previous project's items
+        // Do NOT clear items here to prevent a jarring visual flash during project switching.
+        // The new items will seamlessly replace the old ones.
 
         try {
             const collectionName = `${itemTypeFilter}s`;
@@ -65,6 +66,7 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
         } catch (err) {
             console.error(err);
             setError(`Failed to load ${itemTypeFilter}s.`);
+            setItems([]); // On error, clear items to avoid showing stale data.
         } finally {
             setIsLoading(false);
         }
