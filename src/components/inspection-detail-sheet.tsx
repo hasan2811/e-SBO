@@ -15,7 +15,7 @@ import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { DeleteInspectionDialog } from './delete-inspection-dialog';
-import { useObservations } from '@/hooks/use-observations';
+import { useObservationData } from '@/hooks/use-observation-data';
 import { FollowUpInspectionDialog } from './follow-up-inspection-dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -55,7 +55,7 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getInspectionById } = useObservations();
+  const { getInspectionById } = useObservationData();
   const { toast } = useToast();
   
   const [localInspection, setLocalInspection] = React.useState<Inspection | null>(null);

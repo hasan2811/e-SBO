@@ -19,7 +19,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DeleteObservationDialog } from './delete-observation-dialog';
-import { useObservations } from '@/hooks/use-observations';
+import { useObservationData } from '@/hooks/use-observation-data';
 import { runDeeperAnalysis, retryAiAnalysis } from '@/lib/actions/ai-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -54,7 +54,7 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getObservationById } = useObservations();
+  const { getObservationById } = useObservationData();
   const { toast } = useToast();
 
   const [localObservation, setLocalObservation] = React.useState<Observation | null>(null);

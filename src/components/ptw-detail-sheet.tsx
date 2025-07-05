@@ -14,11 +14,12 @@ import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { DeletePtwDialog } from './delete-ptw-dialog';
-import { useObservations } from '@/hooks/use-observations';
+import { useObservationData } from '@/hooks/use-observation-data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ApprovePtwDialog } from './approve-ptw-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import QRCode from 'react-qr-code';
 
 interface PtwDetailSheetProps {
     ptwId: string | null;
@@ -42,7 +43,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
 
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getPtwById } = useObservations();
+  const { getPtwById } = useObservationData();
   const { toast } = useToast();
   
   const ptw = ptwId ? getPtwById(ptwId) : null;
