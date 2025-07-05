@@ -14,7 +14,6 @@ import { MultiActionButton } from '@/components/multi-action-button';
 import { SubmitInspectionDialog } from '@/components/submit-inspection-dialog';
 import { SubmitPtwDialog } from '@/components/submit-ptw-dialog';
 import { useProjects } from '@/hooks/use-projects';
-import type { Project } from '@/lib/types';
 import { PageSkeleton } from '@/components/page-skeleton';
 
 
@@ -49,7 +48,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, authLoading, router]);
 
   React.useEffect(() => {
-    // Open the profile dialog only if the user profile is loaded and the position is not set.
     if (userProfile && (userProfile.position === 'Not Set' || !userProfile.position)) {
       setProfileDialogOpen(true);
     } else {
@@ -57,13 +55,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [userProfile]);
 
-  // Combine loading states: show spinner if auth is loading, or if we have a user but their projects are still loading.
   const isAppLoading = authLoading || (!!user && projectsLoading);
 
   if (isAppLoading) {
     return (
        <div className="flex flex-col min-h-screen">
         <DashboardHeader
+          projectName={null}
           onNewObservation={() => {}}
           onNewInspection={() => {}}
           onNewPtw={() => {}}
@@ -81,8 +79,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If loading is finished but there's no user, the redirect effect will handle it.
-  // Render nothing in the meantime to avoid a flash of content.
   if (!user) {
     return null;
   }
@@ -104,6 +100,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <div className="flex flex-col min-h-screen">
         <DashboardHeader 
+          projectName={currentProject?.name || null}
           onNewObservation={() => setObservationDialogOpen(true)}
           onNewInspection={() => setInspectionDialogOpen(true)}
           onNewPtw={() => setPtwDialogOpen(true)}
@@ -121,7 +118,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   variants={variants}
                   transition={{ duration: 0.3, ease: 'easeInOut' }}
                 >
-                  {/* Don't render children if profile dialog is forced open */}
                   {!isProfileDialogOpen && children}
                 </motion.div>
               </AnimatePresence>

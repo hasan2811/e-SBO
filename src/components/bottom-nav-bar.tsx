@@ -1,24 +1,23 @@
+
 'use client';
 
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Home, Briefcase, User } from 'lucide-react';
+import { Home, User, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function BottomNavBar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/public', label: 'Publik', icon: Home },
+    { href: '/beranda', label: 'Proyek', icon: Briefcase },
     { href: '/private', label: 'Pribadi', icon: User },
-    { href: '/beranda', label: 'Project', icon: Briefcase },
-    { href: '/tasks', label: 'Dashboard', icon: LayoutDashboard },
   ];
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 z-50 w-full h-16 bg-card border-t">
-      <div className="grid h-full grid-cols-4 mx-auto">
+      <div className="grid h-full grid-cols-2 mx-auto">
         {navItems.map((item) => {
           const isActive = item.href === '/beranda'
               ? pathname.startsWith('/beranda') || pathname.startsWith('/proyek/')

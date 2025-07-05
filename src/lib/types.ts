@@ -5,7 +5,7 @@ export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed';
 export type Company = 'Tambang' | 'Migas' | 'Konstruksi' | 'Manufaktur' | string; // Allow custom strings
 export type Location = 'International' | 'National' | 'Local' | 'Regional' | string; // Allow custom strings
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
-export type Scope = 'public' | 'private' | 'project';
+export type Scope = 'private' | 'project';
 export type InspectionStatus = 'Pass' | 'Fail' | 'Needs Repair';
 export type EquipmentType = 'Heavy Machinery' | 'Hand Tool' | 'Vehicle' | 'Electrical' | 'Other';
 export type PtwStatus = 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed';
@@ -119,17 +119,6 @@ export type Observation = {
   aiRootCauseAnalysis?: string;
   aiObserverSkillRating?: number;
   aiObserverSkillExplanation?: string;
-
-  isSharedPublicly?: boolean;
-  sharedBy?: string;
-  sharedByPosition?: string;
-  originalId?: string; // If it's a shared copy, this points to the original
-  originalScope?: Scope;
-  // Social Features
-  likes?: string[]; // Array of user UIDs who liked it
-  likeCount?: number;
-  commentCount?: number;
-  viewCount?: number;
 };
 
 export type Inspection = {

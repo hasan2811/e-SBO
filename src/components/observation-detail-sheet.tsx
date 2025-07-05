@@ -3,15 +3,14 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import type { Observation, RiskLevel, Scope, ObservationCategory } from '@/lib/types';
+import type { Observation, ObservationCategory } from '@/lib/types';
 import { TakeActionDialog } from '@/components/take-action-dialog';
 import { StatusBadge, RiskBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, Globe, ArrowLeft, Folder, ThumbsUp, MessageCircle, Eye, Info, Trash2, SearchCheck, User, Calendar, MapPin, Building, Tag } from 'lucide-react';
+import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, ArrowLeft, Folder, Trash2, SearchCheck, User, Calendar, MapPin, Building, Tag } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
 import { StarRating } from './star-rating';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
@@ -21,9 +20,9 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DeleteObservationDialog } from './delete-observation-dialog';
 import { useObservations } from '@/hooks/use-observations';
-import { runDeeperAnalysis, shareObservationToPublic, retryAiAnalysis } from '@/lib/actions/ai-actions';
+import { runDeeperAnalysis, retryAiAnalysis } from '@/lib/actions/ai-actions';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const categoryDefinitions: Record<ObservationCategory, string> = {
   'Safe Zone Position': 'Berada di posisi yang aman terlindung dari bahaya seperti peralatan bergerak, benda jatuh, atau pelepasan energi.',
@@ -79,53 +78,27 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getObservationById, handleLikeToggle, handleViewCount } = useObservations();
+  const { getObservationById } = useObservations();
   const { toast } = useToast();
 
   const observation = observationId ? getObservationById(observationId) : null;
   
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
-  const [isSharing, setIsSharing] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
-  const viewCountedRef = React.useRef<string | null>(null);
 
   const handleCloseSheet = () => {
     onOpenChange(false);
   };
   
-  React.useEffect(() => {
-    if (isOpen && observation?.scope === 'public') {
-        if (viewCountedRef.current !== observation.id) {
-            handleViewCount(observation.id);
-            viewCountedRef.current = observation.id;
-        }
-    }
-  }, [isOpen, observation, handleViewCount]);
-
   if (!observation) return null;
   
   const isAiEnabled = userProfile?.aiEnabled ?? false;
-  const mode = observation.scope;
-  const canTakeAction = observation.status !== 'Completed' && mode !== 'public' && user?.uid === observation.userId;
+  const canTakeAction = observation.status !== 'Completed' && user?.uid === observation.userId;
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
   const categoryDefinition = categoryDefinitions[observation.category];
   const hasDeepAnalysis = observation.aiRisks && observation.aiObserverSkillRating;
-  const canShare = observation.scope !== 'public' && !observation.isSharedPublicly;
 
-  const handleShare = async () => {
-    if (!observation || !userProfile) return;
-    setIsSharing(true);
-    try {
-        await shareObservationToPublic(observation, userProfile);
-        toast({ title: 'Berhasil Dibagikan', description: 'Laporan Anda telah dibagikan ke feed publik.' });
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Gagal Membagikan', description: 'Terjadi kesalahan saat mencoba membagikan.' });
-    } finally {
-        setIsSharing(false);
-    }
-  };
-  
   const handleRetryAnalysis = async () => {
     if (!observation) return;
     try {
@@ -166,11 +139,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                 </div>
                 
                 <div className="flex items-center gap-2">
-                    {canShare && (
-                        <Button variant="outline" size="icon" onClick={handleShare} disabled={isSharing} className="flex-shrink-0" aria-label="Bagikan ke Publik">
-                            {isSharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
-                        </Button>
-                    )}
                     <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Observasi">
                         <Trash2 className="h-4 w-4" />
                     </Button>
@@ -180,32 +148,17 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
         
         <ScrollArea className="flex-1">
           <div className="space-y-6 p-4">
-            <div className={cn(
-                "relative w-full aspect-video rounded-md overflow-hidden border",
-                !observation.photoUrl && "bg-muted/20 flex items-center justify-center"
-            )}>
-                {observation.photoUrl ? (
-                <Image
-                    src={observation.photoUrl}
-                    alt={`Observation at ${observation.location}`}
-                    fill
-                    sizes="(max-width: 640px) 100vw, 512px"
-                    className="object-contain"
-                    data-ai-hint="site observation"
-                />
-                ) : (
-                    <Image src="/logo.svg" alt="Default observation image" width={80} height={80} className="opacity-50" />
-                )}
-            </div>
-            
-            {observation.isSharedPublicly && observation.scope !== 'public' && (
-              <Alert className="bg-primary/10 border-primary/20 text-primary-foreground">
-                <Globe className="h-4 w-4 text-primary" />
-                <AlertTitle className="text-primary font-semibold">Laporan ini bersifat Publik</AlertTitle>
-                <AlertDescription className="text-primary/90">
-                  Laporan ini telah dibagikan ke feed publik dan dapat dilihat oleh semua pengguna.
-                </AlertDescription>
-              </Alert>
+            {observation.photoUrl && (
+                <div className="relative w-full aspect-video rounded-md overflow-hidden border">
+                    <Image
+                        src={observation.photoUrl}
+                        alt={`Observation at ${observation.location}`}
+                        fill
+                        sizes="(max-width: 640px) 100vw, 512px"
+                        className="object-contain"
+                        data-ai-hint="site observation"
+                    />
+                </div>
             )}
 
             <Card>
@@ -225,12 +178,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                     <DetailRow icon={Activity} label="Status" value={<StatusBadge status={observation.status} />} />
                     <DetailRow icon={ShieldAlert} label="Tingkat Risiko" value={<RiskBadge riskLevel={observation.riskLevel} />} />
                     <DetailRow icon={Tag} label="Kategori" value={observation.category} />
-                    {categoryDefinition && (
-                        <Alert className="border-primary/50 bg-primary/5 text-primary text-xs">
-                          <Info className="h-4 w-4 text-primary" />
-                          <AlertDescription className="text-primary/90">{categoryDefinition}</AlertDescription>
-                        </Alert>
-                    )}
                 </CardContent>
             </Card>
             
@@ -360,26 +307,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                 </CardContent>
               </Card>
             )}
-
-            {mode === 'public' && (
-              <Card>
-                <CardHeader><CardTitle>Interaksi Publik</CardTitle></CardHeader>
-                <CardContent className="flex items-center justify-around">
-                    <button onClick={() => handleLikeToggle(observation.id)} className={cn("flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors", (observation.likes || []).includes(user?.uid || '') && "text-primary font-semibold")}>
-                        <ThumbsUp className={cn("h-5 w-5", (observation.likes || []).includes(user?.uid || '') && "fill-current")} />
-                        <span>{observation.likeCount || 0} Suka</span>
-                    </button>
-                    <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
-                        <MessageCircle className="h-5 w-5" />
-                        <span>{observation.commentCount || 0} Komentar</span>
-                    </div>
-                     <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
-                        <Eye className="h-5 w-5" />
-                        <span>{observation.viewCount || 0} Dilihat</span>
-                    </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
         </ScrollArea>
         {canTakeAction && (
@@ -400,13 +327,11 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
         onSuccess={handleCloseSheet}
     />
 
-    {mode !== 'public' && observation && (
-      <TakeActionDialog
-          isOpen={isActionDialogOpen}
-          onOpenChange={setActionDialogOpen}
-          observation={observation}
-      />
-    )}
+    <TakeActionDialog
+        isOpen={isActionDialogOpen}
+        onOpenChange={setActionDialogOpen}
+        observation={observation}
+    />
     </>
   );
 }

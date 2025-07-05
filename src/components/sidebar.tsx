@@ -3,14 +3,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, User, Briefcase, LayoutDashboard } from 'lucide-react';
+import { User, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/public', label: 'Publik', icon: Home },
-  { href: '/private', label: 'Pribadi', icon: User },
   { href: '/beranda', label: 'Proyek', icon: Briefcase },
-  { href: '/tasks', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/private', label: 'Pribadi', icon: User },
 ];
 
 export function Sidebar() {
@@ -21,7 +19,6 @@ export function Sidebar() {
       <div className="flex-1">
         <nav className="grid items-start gap-2">
           {navItems.map((item) => {
-            // The 'Proyek' link should be active for both the hub and individual project pages.
             const isActive = item.href === '/beranda'
               ? pathname.startsWith('/beranda') || pathname.startsWith('/proyek/')
               : pathname === item.href;

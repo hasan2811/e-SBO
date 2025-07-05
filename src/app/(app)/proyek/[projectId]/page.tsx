@@ -5,9 +5,9 @@ import * as React from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useProjects } from '@/hooks/use-projects';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft } from 'lucide-react';
 import { FeedView } from '@/components/feed-view';
+import { PageSkeleton } from '@/components/page-skeleton';
 
 export default function ProjectDetailsPage() {
   const params = useParams();
@@ -19,19 +19,8 @@ export default function ProjectDetailsPage() {
   const observationIdToOpen = searchParams.get('openObservation');
   const project = React.useMemo(() => projects.find(p => p.id === projectId), [projects, projectId]);
 
-  const isLoading = projectsLoading;
-  
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-3/4" />
-        <Skeleton className="h-8 w-1/4" />
-        <Skeleton className="h-8 w-1/3" />
-        <div className="mt-8">
-            <Skeleton className="h-96 w-full" />
-        </div>
-      </div>
-    );
+  if (projectsLoading) {
+    return <PageSkeleton />;
   }
 
   if (!project) {
@@ -53,7 +42,7 @@ export default function ProjectDetailsPage() {
       projectId={projectId} 
       observationIdToOpen={observationIdToOpen}
       title={project.name}
-      description="Feed aktivitas proyek dan opsi manajemen."
+      description="Feed terpadu untuk semua aktivitas proyek."
       showBackButton={true}
     />
   );
