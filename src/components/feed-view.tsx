@@ -68,7 +68,7 @@ const ListItemWrapper = ({ children, onSelect, item }: { children: React.ReactNo
               </div>
             )}
             
-            <CardContent className="p-4 pl-6 flex items-start gap-4">
+            <CardContent className="p-4 pl-6">
                 {children}
             </CardContent>
         </Card>
@@ -78,23 +78,23 @@ const ListItemWrapper = ({ children, onSelect, item }: { children: React.ReactNo
 const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
     return (
         <ListItemWrapper onSelect={onSelect} item={observation}>
-            <div className="relative h-24 w-24 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
-                {observation.photoUrl ? (
-                    <Image src={observation.photoUrl} alt={observation.findings} fill sizes="96px" className="object-cover" data-ai-hint="site observation" />
-                ) : (
-                    <Eye className="h-10 w-10 text-muted-foreground/50" />
+            <div className="flex flex-col space-y-2">
+                <div className="flex justify-between items-start">
+                    <Badge variant="outline" className="text-primary border-primary py-0.5 px-2 text-xs">{observation.category}</Badge>
+                    {/* The status icon will be positioned absolutely by the wrapper */}
+                </div>
+                
+                <p className="font-semibold leading-snug pr-8">{observation.findings}</p>
+
+                {observation.photoUrl && (
+                    <div className="pt-2">
+                      <div className="relative aspect-video w-full rounded-md overflow-hidden border bg-muted/20">
+                          <Image src={observation.photoUrl} alt={observation.findings} fill sizes="(max-width: 640px) 100vw, 512px" className="object-cover" data-ai-hint="site observation" />
+                      </div>
+                    </div>
                 )}
-            </div>
-            <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="flex justify-end items-start">
-                    {/* Status icon from ListItemWrapper is here, so we have space */}
-                </div>
-                <p className="font-semibold leading-snug line-clamp-2 pr-6">{observation.findings}</p>
-                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <RiskBadge riskLevel={observation.riskLevel} />
-                    <Badge variant="secondary">{observation.category}</Badge>
-                </div>
-                <div className="text-xs text-muted-foreground truncate pt-1">
+                
+                <div className="text-xs text-muted-foreground pt-1">
                     {observation.company} &bull; {observation.location} &bull; {format(new Date(observation.date), 'd MMM yy')}
                 </div>
             </div>
@@ -105,18 +105,23 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
 const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, onSelect: () => void }) => {
     return (
         <ListItemWrapper onSelect={onSelect} item={inspection}>
-            <div className="relative h-24 w-24 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
-                {inspection.photoUrl ? (
-                    <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="96px" className="object-cover" data-ai-hint="equipment inspection" />
-                ) : (
-                    <SearchCheck className="h-10 w-10 text-muted-foreground/50" />
+            <div className="flex flex-col space-y-2">
+                <div className="flex justify-between items-start">
+                    <Badge variant="outline" className="text-primary border-primary py-0.5 px-2 text-xs">{inspection.equipmentType}</Badge>
+                    {/* Status icon from wrapper */}
+                </div>
+                <p className="font-semibold leading-snug pr-8">{inspection.equipmentName}</p>
+                <p className="text-sm text-muted-foreground line-clamp-2 pr-8">{inspection.findings}</p>
+
+                 {inspection.photoUrl && (
+                    <div className="pt-2">
+                      <div className="relative aspect-video w-full rounded-md overflow-hidden border bg-muted/20">
+                          <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="(max-width: 640px) 100vw, 512px" className="object-cover" data-ai-hint="equipment inspection" />
+                      </div>
+                    </div>
                 )}
-            </div>
-            <div className="flex-1 min-w-0 space-y-2">
-                <p className="text-xs text-primary font-semibold truncate pr-2">{inspection.equipmentType}</p>
-                <p className="font-semibold leading-snug line-clamp-2">{inspection.equipmentName}</p>
-                <p className="text-sm text-muted-foreground line-clamp-1">{inspection.findings}</p>
-                <div className="flex flex-wrap items-center gap-2">
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
                     <InspectionStatusBadge status={inspection.status} />
                     <span className="text-xs text-muted-foreground">{inspection.location} &bull; {format(new Date(inspection.date), 'd MMM yy')}</span>
                 </div>
@@ -128,22 +133,19 @@ const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, 
 const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => {
     return (
         <ListItemWrapper onSelect={onSelect} item={ptw}>
-            <div className="flex-shrink-0 rounded-md bg-muted flex items-center justify-center h-24 w-24">
-                <FileSignature className="h-10 w-10 text-muted-foreground/50" />
-            </div>
-            <div className="flex-1 min-w-0 space-y-2 self-stretch flex flex-col justify-between">
-                <div>
-                    <p className="text-xs text-primary font-semibold truncate pr-2">Permit to Work</p>
-                    <p className="font-semibold leading-snug line-clamp-2 mt-1">{ptw.workDescription}</p>
+             <div className="flex flex-col space-y-2">
+                <div className="flex justify-between items-start">
+                    <Badge variant="outline" className="text-primary border-primary py-0.5 px-2 text-xs">Permit to Work</Badge>
+                     {/* Status icon from wrapper */}
                 </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                      {ptw.status !== 'Pending Approval' && <PtwStatusBadge status={ptw.status} />}
-                      <span className="text-xs text-muted-foreground">{ptw.location}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-2">
+                <p className="font-semibold leading-snug pr-8">{ptw.workDescription}</p>
+
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                    <PtwStatusBadge status={ptw.status} />
+                     <span className="text-xs text-muted-foreground">{ptw.location}</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
                     {ptw.contractor} &bull; {format(new Date(ptw.date), 'd MMM yy')}
-                  </div>
                 </div>
             </div>
         </ListItemWrapper>
@@ -241,18 +243,16 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
         {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="relative overflow-hidden">
                 <Skeleton className="absolute left-0 top-0 bottom-0 w-1.5" />
-                <CardContent className="p-4 pl-6 flex items-start gap-4">
-                    <Skeleton className="h-24 w-24 flex-shrink-0 rounded-md" />
-                    <div className="flex-1 min-w-0 space-y-3">
+                <CardContent className="p-4 pl-6">
+                   <div className="flex flex-col space-y-3">
                         <div className="flex justify-between items-start">
                             <Skeleton className="h-5 w-24" />
                             <Skeleton className="h-4 w-4 rounded-full" />
                         </div>
                         <Skeleton className="h-5 w-full" />
                         <Skeleton className="h-5 w-5/6" />
-                        <div className="flex items-center gap-2 pt-1">
-                            <Skeleton className="h-5 w-16 rounded-full" />
-                            <Skeleton className="h-5 w-20 rounded-full" />
+                        <div className="pt-2">
+                          <Skeleton className="aspect-video w-full" />
                         </div>
                         <Skeleton className="h-4 w-2/3 pt-1" />
                     </div>
