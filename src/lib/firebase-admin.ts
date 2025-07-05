@@ -6,12 +6,11 @@ import * as admin from 'firebase-admin';
 // Check if the app is already initialized to prevent errors in hot-reloading environments.
 if (!admin.apps.length) {
   try {
-    // Simplified initialization: In a managed Google Cloud environment (like App Hosting),
-    // the SDK can often automatically discover the necessary credentials and project details.
-    // We explicitly provide the storage bucket to be certain.
-    admin.initializeApp({
-      storageBucket: 'hssetech-e1710.appspot.com',
-    });
+    // In a managed Google Cloud environment (like App Hosting or Cloud Functions),
+    // calling initializeApp() with no arguments allows the SDK to automatically
+    // discover service account credentials and project details. This is the
+    // most robust method for these environments and resolves token refresh issues.
+    admin.initializeApp();
   } catch (e) {
     console.error('Firebase admin initialization error', e);
   }
