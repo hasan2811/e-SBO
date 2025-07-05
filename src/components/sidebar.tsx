@@ -7,8 +7,8 @@ import { User, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/beranda', label: 'Proyek', icon: Briefcase },
-  { href: '/private', label: 'Pribadi', icon: User },
+  { href: '/beranda', label: 'Project Hub', icon: Briefcase },
+  { href: '/private', label: 'Feed Pribadi', icon: User },
 ];
 
 export function Sidebar() {

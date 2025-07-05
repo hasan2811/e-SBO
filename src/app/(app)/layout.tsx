@@ -10,7 +10,6 @@ import { Sidebar } from '@/components/sidebar';
 import { SubmitObservationDialog } from '@/components/submit-observation-dialog';
 import { CompleteProfileDialog } from '@/components/complete-profile-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MultiActionButton } from '@/components/multi-action-button';
 import { SubmitInspectionDialog } from '@/components/submit-inspection-dialog';
 import { SubmitPtwDialog } from '@/components/submit-ptw-dialog';
 import { useProjects } from '@/hooks/use-projects';
@@ -74,7 +73,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </main>
         </div>
-        <BottomNavBar />
+        <BottomNavBar
+            onNewObservation={() => {}}
+            onNewInspection={() => {}}
+            onNewPtw={() => {}}
+        />
       </div>
     );
   }
@@ -89,8 +92,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     exit: { opacity: 0, x: -20 },
   };
   
-  const showMultiActionButton = pathname.startsWith('/proyek/') || pathname.startsWith('/private');
-
   return (
     <>
       <CompleteProfileDialog 
@@ -124,17 +125,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </main>
         </div>
-        <BottomNavBar />
-      </div>
-
-      {showMultiActionButton && (
-        <MultiActionButton
-          onObservationClick={() => setObservationDialogOpen(true)}
-          onInspectionClick={() => setInspectionDialogOpen(true)}
-          onPtwClick={() => setPtwDialogOpen(true)}
+        <BottomNavBar 
+           onNewObservation={() => setObservationDialogOpen(true)}
+           onNewInspection={() => setInspectionDialogOpen(true)}
+           onNewPtw={() => setPtwDialogOpen(true)}
         />
-      )}
-
+      </div>
+      
       <SubmitObservationDialog
         isOpen={isObservationDialogOpen}
         onOpenChange={setObservationDialogOpen}
