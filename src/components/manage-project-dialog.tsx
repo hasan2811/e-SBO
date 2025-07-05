@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -8,10 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Crown, User, UserX, Loader2, X } from 'lucide-react';
+import { Crown, User, UserX, Loader2 } from 'lucide-react';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
+import { CustomListInput } from './custom-list-input';
 
 
 const getInitials = (name: string | null | undefined): string => {
@@ -35,43 +33,35 @@ const getInitials = (name: string | null | undefined): string => {
     return 'U';
 };
 
-const ProjectSettings = ({ project }: { project: Project }) => {
+const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onProjectUpdate: (updatedData: Partial<Project>) => void }) => {
   const { toast } = useToast();
   const [customCompanies, setCustomCompanies] = React.useState(project.customCompanies || []);
-  const [newCompany, setNewCompany] = React.useState("");
   const [customLocations, setCustomLocations] = React.useState(project.customLocations || []);
-  const [newLocation, setNewLocation] = React.useState("");
   const [isProjectOpen, setIsProjectOpen] = React.useState(project.isOpen ?? true);
   const [isSaving, setIsSaving] = React.useState(false);
 
-  const handleAddCompany = () => {
-    if (newCompany.trim() && !customCompanies.includes(newCompany.trim())) {
-      setCustomCompanies([...customCompanies, newCompany.trim()]);
-      setNewCompany("");
-    }
-  };
-  const handleRemoveCompany = (company: string) => setCustomCompanies(customCompanies.filter(c => c !== company));
-  const handleAddLocation = () => {
-    if (newLocation.trim() && !customLocations.includes(newLocation.trim())) {
-      setCustomLocations([...customLocations, newLocation.trim()]);
-      setNewLocation("");
-    }
-  };
-  const handleRemoveLocation = (location: string) => setCustomLocations(customLocations.filter(l => l !== location));
+  // Update local state if the project prop changes
+  React.useEffect(() => {
+    setCustomCompanies(project.customCompanies || []);
+    setCustomLocations(project.customLocations || []);
+    setIsProjectOpen(project.isOpen ?? true);
+  }, [project]);
 
   const handleSave = async () => {
     setIsSaving(true);
     const projectRef = doc(db, 'projects', project.id);
-    try {
-      await updateDoc(projectRef, {
+    const updatedData = {
         customCompanies: customCompanies,
         customLocations: customLocations,
         isOpen: isProjectOpen,
-      });
+    };
+    try {
+      await updateDoc(projectRef, updatedData);
       toast({
         title: 'Settings Saved',
         description: 'Your project settings have been updated.',
       });
+      onProjectUpdate(updatedData); // Notify parent component of the change
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -107,63 +97,21 @@ const ProjectSettings = ({ project }: { project: Project }) => {
         </CardContent>
       </Card>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Manage Custom Companies</CardTitle>
-          <CardDescription>Add or remove company options for observation forms in this project.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter a new company name"
-              value={newCompany}
-              onChange={(e) => setNewCompany(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddCompany()}
-            />
-            <Button onClick={handleAddCompany}>Add</Button>
-          </div>
-          <div className="flex flex-wrap gap-2 rounded-md border p-3 min-h-[40px]">
-            {customCompanies.length > 0 ? customCompanies.map(company => (
-              <Badge key={company} variant="secondary" className="text-base py-1 pl-3 pr-2">
-                {company}
-                <button onClick={() => handleRemoveCompany(company)} className="ml-2 rounded-full hover:bg-muted-foreground/20 p-0.5">
-                  <X className="h-3 w-3" />
-                  <span className="sr-only">Remove {company}</span>
-                </button>
-              </Badge>
-            )) : <span className="text-sm text-muted-foreground">No custom companies added.</span>}
-          </div>
-        </CardContent>
-      </Card>
+      <CustomListInput
+        title="Manage Custom Companies"
+        description="Add or remove company options for observation forms in this project."
+        placeholder="Enter a new company name"
+        items={customCompanies}
+        setItems={setCustomCompanies}
+      />
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Manage Custom Locations</CardTitle>
-          <CardDescription>Add or remove location options for observation forms in this project.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter a new location name"
-              value={newLocation}
-              onChange={(e) => setNewLocation(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddLocation()}
-            />
-            <Button onClick={handleAddLocation}>Add</Button>
-          </div>
-          <div className="flex flex-wrap gap-2 rounded-md border p-3 min-h-[40px]">
-            {customLocations.length > 0 ? customLocations.map(location => (
-              <Badge key={location} variant="secondary" className="text-base py-1 pl-3 pr-2">
-                {location}
-                <button onClick={() => handleRemoveLocation(location)} className="ml-2 rounded-full hover:bg-muted-foreground/20 p-0.5">
-                  <X className="h-3 w-3" />
-                  <span className="sr-only">Remove {location}</span>
-                </button>
-              </Badge>
-            )) : <span className="text-sm text-muted-foreground">No custom locations added.</span>}
-          </div>
-        </CardContent>
-      </Card>
+      <CustomListInput
+        title="Manage Custom Locations"
+        description="Add or remove location options for observation forms in this project."
+        placeholder="Enter a new location name"
+        items={customLocations}
+        setItems={setCustomLocations}
+      />
 
       <div className="flex justify-end pt-4">
           <Button onClick={handleSave} disabled={isSaving}>
@@ -299,29 +247,38 @@ interface ManageProjectDialogProps {
 export function ManageProjectDialog({ isOpen, onOpenChange, project, defaultTab }: ManageProjectDialogProps) {
     const { user } = useAuth();
     const isOwner = user && project && project.ownerUid === user.uid;
+    const [currentProject, setCurrentProject] = React.useState(project);
+
+    React.useEffect(() => {
+        setCurrentProject(project);
+    }, [project]);
+
+    const handleProjectUpdate = (updatedData: Partial<Project>) => {
+        setCurrentProject(prev => ({ ...prev, ...updatedData }));
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle>Manage "{project.name}"</DialogTitle>
+                    <DialogTitle>Manage "{currentProject.name}"</DialogTitle>
                     <DialogDescription>
                         View members or manage project settings.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="flex-1 overflow-hidden">
-                    <Tabs defaultValue={defaultTab} key={`${project.id}-${defaultTab}`} className="flex flex-col h-full">
+                    <Tabs defaultValue={defaultTab} key={`${currentProject.id}-${defaultTab}`} className="flex flex-col h-full">
                         <TabsList className={cn("grid w-full", isOwner ? "grid-cols-2" : "grid-cols-1")}>
-                            <TabsTrigger value="members">Members ({project.memberUids?.length || 0})</TabsTrigger>
+                            <TabsTrigger value="members">Members ({currentProject.memberUids?.length || 0})</TabsTrigger>
                             {isOwner && <TabsTrigger value="settings">Settings</TabsTrigger>}
                         </TabsList>
                         <ScrollArea className="flex-1 mt-4 pr-4">
                             <TabsContent value="members" className="mt-0">
-                                <MemberList project={project} />
+                                <MemberList project={currentProject} />
                             </TabsContent>
                             {isOwner && (
                                 <TabsContent value="settings" className="mt-0">
-                                  <ProjectSettings project={project} />
+                                  <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
                                 </TabsContent>
                             )}
                         </ScrollArea>
