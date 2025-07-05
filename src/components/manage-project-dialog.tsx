@@ -192,7 +192,7 @@ const MemberList = ({ project }: { project: Project }) => {
 
     return (
         <>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 p-1">
                 {isLoadingMembers ? renderSkeleton() : members.sort((a,b) => (a.uid === project.ownerUid ? -1 : 1)).map(member => (
                     <Card key={member.uid} className="flex flex-col">
                       <CardHeader className="flex flex-row items-center gap-4 pb-4">
@@ -282,16 +282,18 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project, defaultTab 
                             <TabsTrigger value="members">Members ({currentProject.memberUids?.length || 0})</TabsTrigger>
                             {isOwner && <TabsTrigger value="settings">Settings</TabsTrigger>}
                         </TabsList>
-                        <ScrollArea className="flex-1 mt-4 pr-4">
-                            <TabsContent value="members" className="mt-0">
-                                <MemberList project={currentProject} />
-                            </TabsContent>
-                            {isOwner && (
-                                <TabsContent value="settings" className="mt-0">
-                                  <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
-                                </TabsContent>
-                            )}
-                        </ScrollArea>
+                        <div className="flex-1 mt-4 overflow-hidden">
+                          <ScrollArea className="h-full pr-4 -mr-4">
+                              <TabsContent value="members" className="mt-0">
+                                  <MemberList project={currentProject} />
+                              </TabsContent>
+                              {isOwner && (
+                                  <TabsContent value="settings" className="mt-0">
+                                    <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
+                                  </TabsContent>
+                              )}
+                          </ScrollArea>
+                        </div>
                     </Tabs>
                 </div>
             </DialogContent>
