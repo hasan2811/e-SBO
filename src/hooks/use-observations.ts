@@ -32,8 +32,17 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
         unsubscribeRef.current();
     }
 
-    if (!projectId || !user) {
+    // If there is no authenticated user, always clear the data and stop.
+    if (!user) {
       setItems([]);
+      setIsLoading(false);
+      return;
+    }
+    
+    // If there is a user but no projectId, it means we are not in a project context.
+    // We should not clear the data here, as it might be a temporary state during navigation.
+    // Simply stop and wait for a valid projectId.
+    if (!projectId) {
       setIsLoading(false);
       return;
     }
@@ -51,16 +60,9 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
     unsubscribeRef.current = onSnapshot(q, (snapshot) => {
         const serverItems: AllItems[] = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AllItems));
         
-        // Merge server data with any existing optimistic items from the local state
-        setItems(prevLocalItems => {
-            // Keep optimistic items that haven't been confirmed by the server yet
-            const optimisticItems = prevLocalItems.filter(
-                item => item.optimisticState === 'uploading' && !serverItems.some(s_item => s_item.referenceId === item.referenceId)
-            );
-            const finalItems = [...optimisticItems, ...serverItems];
-            // The sort is implicitly handled by the query's `orderBy`
-            return finalItems;
-        });
+        // Atomically replace the context's items with the new data from the snapshot.
+        // This is the single source of truth for the feed.
+        setItems(serverItems);
 
         setIsLoading(false);
     }, (err) => {
@@ -74,7 +76,6 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
             unsubscribeRef.current();
         }
     };
-  // We only want to re-run this ENTIRE effect if the project or filter changes.
   // The context setters are stable and do not need to be dependencies.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, itemTypeFilter, user?.uid]);
