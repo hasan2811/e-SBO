@@ -96,13 +96,14 @@ export const exportToExcel = (items: AllItems[], fileName: string): boolean => {
       'Work Description': ptw.workDescription,
       'Status': ptw.status,
       'JSA PDF URL': ptw.jsaPdfUrl,
+      'Stamped JSA PDF URL': ptw.stampedPdfUrl || '',
       'Approver': ptw.approver || '',
       'Approved Date': ptw.approvedDate ? format(new Date(ptw.approvedDate), 'yyyy-MM-dd HH:mm') : '',
     }));
     const ptwSheet = XLSX.utils.json_to_sheet(ptwData);
     ptwSheet['!cols'] = [
         { wch: 20 }, { wch: 18 }, { wch: 25 }, { wch: 15 }, { wch: 25 },
-        { wch: 50 }, { wch: 20 }, { wch: 50 }, { wch: 25 }, { wch: 18 },
+        { wch: 50 }, { wch: 20 }, { wch: 50 }, { wch: 50 }, { wch: 25 }, { wch: 18 },
     ];
     XLSX.utils.book_append_sheet(wb, ptwSheet, 'PTW');
   }

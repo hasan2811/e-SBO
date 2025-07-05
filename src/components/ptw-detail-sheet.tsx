@@ -41,7 +41,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
 
   const { projects } = useProjects();
-  const { userProfile } = useAuth();
+  const { user, userProfile } = useAuth();
   const { getPtwById } = useObservations();
   const { toast } = useToast();
   
@@ -65,6 +65,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
 
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
   const canApprove = ptw.status === 'Pending Approval';
+  const pdfUrlToView = ptw.stampedPdfUrl || ptw.jsaPdfUrl;
   
   return (
     <>
@@ -148,13 +149,13 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
               <Card>
                 <CardHeader>
                     <CardTitle>Dokumen JSA</CardTitle>
-                    <CardDescription>Job Safety Analysis yang dilampirkan.</CardDescription>
+                    <CardDescription>{ptw.stampedPdfUrl ? "Dokumen yang telah disetujui dan dicap." : "Job Safety Analysis yang dilampirkan."}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button asChild variant="outline" className="w-full">
-                    <a href={ptw.jsaPdfUrl} target="_blank" rel="noopener noreferrer">
+                    <a href={pdfUrlToView} target="_blank" rel="noopener noreferrer">
                       <FileText />
-                      Lihat JSA (PDF)
+                      {ptw.stampedPdfUrl ? "Lihat JSA (Telah Dicap)" : "Lihat JSA (Asli)"}
                       <ExternalLink className="ml-auto" />
                     </a>
                   </Button>

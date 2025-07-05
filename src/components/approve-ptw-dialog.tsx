@@ -5,7 +5,6 @@ import * as React from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { useObservations } from '@/hooks/use-observations';
 import type { Ptw } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,8 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, PenSquare, Trash2 } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { approvePtwAndStampPdf } from '@/lib/actions/ptw-actions'; // Import server action
 
 interface ApprovePtwDialogProps {
   isOpen: boolean;
@@ -30,15 +28,14 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialog
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const sigCanvasRef = React.useRef<SignatureCanvas>(null);
   const { toast } = useToast();
-  const { user, userProfile } = useAuth();
-  const { updateItem } = useObservations();
+  const { userProfile } = useAuth();
 
   const clearSignature = () => {
     sigCanvasRef.current?.clear();
   };
 
   const handleSave = async () => {
-    if (!user || !userProfile) {
+    if (!userProfile) {
       toast({ variant: 'destructive', title: 'Not Authenticated' });
       return;
     }
@@ -50,39 +47,32 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialog
     setIsSubmitting(true);
     try {
       const signatureDataUrl = sigCanvasRef.current?.getTrimmedCanvas().toDataURL('image/png') || '';
-      const ptwDocRef = doc(db, 'ptws', ptw.id);
+      const approverName = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
 
-      const approver = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
-      const updatedData: Partial<Ptw> = {
-        status: 'Approved',
-        signatureDataUrl,
-        approver,
-        approvedDate: new Date().toISOString(),
-      };
-      
-      await updateDoc(ptwDocRef, updatedData);
-      
-      const updatedPtw = { ...ptw, ...updatedData };
-      updateItem(updatedPtw);
+      // Call the server action instead of updating DB from client
+      await approvePtwAndStampPdf(ptw, approverName, signatureDataUrl);
 
       toast({
         title: 'PTW Approved!',
-        description: `Permit ${ptw.referenceId} has been successfully approved.`,
+        description: `Permit ${ptw.referenceId} has been successfully approved and stamped.`,
       });
-      onOpenChange(false);
+      onOpenChange(false); // The real-time listener will update the UI
     } catch (error) {
       console.error('Failed to approve PTW:', error);
-      toast({ variant: 'destructive', title: 'Approval Failed', description: 'Could not save the approval. Please try again.' });
+      const errorMessage = error instanceof Error ? error.message : 'Could not save the approval. Please try again.';
+      toast({ variant: 'destructive', title: 'Approval Failed', description: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      clearSignature();
+    if (!isSubmitting) { // Prevent closing while submitting
+        if (!open) {
+          clearSignature();
+        }
+        onOpenChange(open);
     }
-    onOpenChange(open);
   };
 
   return (
@@ -94,7 +84,7 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialog
             Approve Permit to Work
           </DialogTitle>
           <DialogDescription>
-            Review the details and provide your signature to approve this PTW. This action is final.
+            Review the details and provide your signature to approve this PTW. This action will stamp the PDF.
           </DialogDescription>
         </DialogHeader>
         

@@ -147,6 +147,7 @@ export type Ptw = {
   workDescription: string;
   contractor: string;
   jsaPdfUrl: string;
+  stampedPdfUrl?: string;
   status: PtwStatus;
   scope: Scope;
   projectId: string | null;
