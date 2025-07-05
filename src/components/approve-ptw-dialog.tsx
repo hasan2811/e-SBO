@@ -93,7 +93,8 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialog
               ref={sigCanvasRef}
               penColor="black"
               canvasProps={{
-                className: 'w-full h-full'
+                className: 'w-full h-full',
+                willReadFrequently: true
               }}
             />
           </div>
