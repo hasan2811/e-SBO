@@ -17,6 +17,7 @@ import { assistObservation } from '@/ai/flows/assist-observation-flow';
 import type { Project, Scope, Location, Company, Observation, RiskLevel, ObservationCategory, AssistObservationOutput } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useObservations } from '@/hooks/use-observations';
 import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { addItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -166,6 +168,32 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     }
     setIsSubmitting(true);
 
+    const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    const optimisticItem: Observation = {
+        id: `optimistic-${referenceId}`,
+        itemType: 'observation',
+        referenceId: referenceId,
+        userId: userProfile.uid,
+        date: new Date().toISOString(),
+        submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+        location: values.location as Location,
+        company: values.company as Company,
+        findings: values.findings,
+        recommendation: values.recommendation || '',
+        photoUrl: photoPreview,
+        scope: project ? 'project' : 'private',
+        projectId: project?.id || null,
+        category: values.category as ObservationCategory,
+        riskLevel: values.riskLevel,
+        status: 'uploading',
+        aiStatus: 'n/a',
+        optimisticState: 'uploading',
+    };
+
+    addItem(optimisticItem);
+    onOpenChange(false);
+
     const handleBackgroundSubmit = async () => {
       try {
           const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
@@ -177,9 +205,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           }
 
           const scope: Scope = projectId ? 'project' : 'private';
-          const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-          const newObservationData: Omit<Observation, 'id'> = {
+          const newObservationData: Omit<Observation, 'id' | 'optimisticState'> = {
               itemType: 'observation',
               userId: userProfile.uid,
               date: new Date().toISOString(),
@@ -201,7 +228,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           const docRef = await addDoc(collection(db, "observations"), newObservationData);
           
           if (isAiEnabled) {
-            const finalObservation = { ...newObservationData, id: docRef.id };
+            const finalObservation: Observation = { ...newObservationData, id: docRef.id };
             triggerObservationAnalysis(finalObservation, userProfile).catch(error => {
                 console.error("Failed to trigger AI analysis:", error);
             });
@@ -210,15 +237,12 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           console.error("Submission failed:", error);
           const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
           toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
+          // Optionally, remove the optimistic item on failure
+          // removeItem(optimisticItem.id);
       }
     };
     
-    // Fire and forget background task
     handleBackgroundSubmit();
-
-    // Optimistic UI response
-    toast({ title: 'Laporan Terkirim', description: 'Observasi Anda akan segera muncul di feed.' });
-    onOpenChange(false);
   };
   
   const renderSelectItems = (items: readonly string[]) => {

@@ -17,6 +17,7 @@ import { assistInspection } from '@/ai/flows/assist-inspection-flow';
 import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope, AssistInspectionOutput } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useObservations } from '@/hooks/use-observations';
 import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { addItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -152,6 +154,30 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     }
     
     setIsSubmitting(true);
+    const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    const optimisticItem: Inspection = {
+      id: `optimistic-${referenceId}`,
+      itemType: 'inspection',
+      referenceId,
+      userId: userProfile.uid,
+      date: new Date().toISOString(),
+      submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+      location: values.location as Location,
+      equipmentName: values.equipmentName,
+      equipmentType: values.equipmentType,
+      status: 'uploading',
+      findings: values.findings,
+      recommendation: values.recommendation,
+      photoUrl: photoPreview || undefined,
+      scope: project ? 'project' : 'private',
+      projectId: project?.id || null,
+      aiStatus: 'n/a',
+      optimisticState: 'uploading',
+    };
+
+    addItem(optimisticItem);
+    onOpenChange(false);
 
     const handleBackgroundSubmit = async () => {
       try {
@@ -161,9 +187,8 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
           const photoUrl = await uploadFile(values.photo!, 'inspections', userProfile.uid, () => {}, projectId);
           
           const scope: Scope = projectId ? 'project' : 'private';
-          const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-          const newInspectionData: Omit<Inspection, 'id'> = {
+          const newInspectionData: Omit<Inspection, 'id' | 'optimisticState'> = {
               itemType: 'inspection',
               userId: userProfile.uid,
               date: new Date().toISOString(),
@@ -196,12 +221,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
       }
     };
     
-    // Fire and forget background task
     handleBackgroundSubmit();
-
-    // Optimistic UI response
-    toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda akan segera muncul.` });
-    onOpenChange(false);
   };
   
   const renderSelectItems = (items: readonly string[]) => items.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>);

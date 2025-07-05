@@ -1,14 +1,14 @@
 
 import { z } from 'zod';
 
-export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed';
+export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed' | 'uploading';
 export type Company = 'Tambang' | 'Migas' | 'Konstruksi' | 'Manufaktur' | string; // Allow custom strings
 export type Location = 'International' | 'National' | 'Local' | 'Regional' | string; // Allow custom strings
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 export type Scope = 'private' | 'project';
-export type InspectionStatus = 'Pass' | 'Fail' | 'Needs Repair';
+export type InspectionStatus = 'Pass' | 'Fail' | 'Needs Repair' | 'uploading';
 export type EquipmentType = 'Heavy Machinery' | 'Hand Tool' | 'Vehicle' | 'Electrical' | 'Other';
-export type PtwStatus = 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed';
+export type PtwStatus = 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed' | 'uploading';
 
 // Centralized Constants
 export const RISK_LEVELS: [RiskLevel, ...RiskLevel[]] = ['Low', 'Medium', 'High', 'Critical'];
@@ -94,6 +94,7 @@ export type Observation = {
   actionTakenPhotoUrl?: string;
   closedBy?: string;
   closedDate?: string;
+  optimisticState?: 'uploading';
   
   // AI Fields
   aiStatus?: 'processing' | 'completed' | 'failed' | 'n/a';
@@ -124,6 +125,7 @@ export type Inspection = {
   photoUrl?: string;
   scope: Scope;
   projectId: string | null;
+  optimisticState?: 'uploading';
   aiStatus?: 'processing' | 'completed' | 'failed' | 'n/a';
   aiSummary?: string;
   aiRisks?: string;
@@ -149,6 +151,7 @@ export type Ptw = {
   status: PtwStatus;
   scope: Scope;
   projectId: string | null;
+  optimisticState?: 'uploading';
   approver?: string;
   approvedDate?: string;
   rejectionReason?: string;

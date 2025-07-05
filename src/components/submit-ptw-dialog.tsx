@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import type { Ptw, Location, Project, Scope } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useObservations } from '@/hooks/use-observations';
 import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   const [fileName, setFileName] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { addItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -100,6 +102,28 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     }
     setIsSubmitting(true);
     
+    const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    const optimisticItem: Ptw = {
+      id: `optimistic-${referenceId}`,
+      itemType: 'ptw',
+      referenceId,
+      userId: userProfile.uid,
+      date: new Date().toISOString(),
+      submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+      location: values.location as Location,
+      workDescription: values.workDescription,
+      contractor: values.contractor,
+      jsaPdfUrl: '', // Placeholder
+      status: 'uploading',
+      scope: project ? 'project' : 'private',
+      projectId: project?.id || null,
+      optimisticState: 'uploading',
+    };
+
+    addItem(optimisticItem);
+    onOpenChange(false);
+
     const handleBackgroundSubmit = async () => {
       try {
           const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
@@ -108,9 +132,8 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
           const jsaPdfUrl = await uploadFile(values.jsaPdf!, 'ptw-jsa', userProfile.uid, () => {}, projectId);
 
           const scope: Scope = projectId ? 'project' : 'private';
-          const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
           
-          const newPtwData: Omit<Ptw, 'id'> = {
+          const newPtwData: Omit<Ptw, 'id' | 'optimisticState'> = {
               itemType: 'ptw',
               userId: userProfile.uid,
               date: new Date().toISOString(),
@@ -133,12 +156,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
       }
     };
     
-    // Fire and forget background task
     handleBackgroundSubmit();
-
-    // Optimistic UI response
-    toast({ title: 'PTW Diajukan', description: `Izin kerja Anda akan segera muncul.` });
-    onOpenChange(false);
   };
 
   return (

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -27,12 +28,22 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
   const updateItem = React.useCallback((updatedItem: AllItems) => {
     setItems(prevItems => {
-        const index = prevItems.findIndex(item => item.id === updatedItem.id);
+        // Find and remove the optimistic placeholder if it exists.
+        // It's identified by having an `optimisticState` and a matching `referenceId`.
+        const filteredItems = prevItems.filter(item => 
+            !(item.optimisticState && item.referenceId && item.referenceId === updatedItem.referenceId)
+        );
+
+        // Now, find the real item's index in the filtered list.
+        const index = filteredItems.findIndex(item => item.id === updatedItem.id);
+
         if (index === -1) {
-          const newItems = [updatedItem, ...prevItems];
-          return newItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            // If the item doesn't exist, it's a new item. Add it.
+            return [...filteredItems, updatedItem].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         }
-        const newItems = [...prevItems];
+        
+        // It's an update to an existing item, so replace it at its index.
+        const newItems = [...filteredItems];
         newItems[index] = updatedItem;
         return newItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     });
@@ -43,10 +54,12 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, []);
   
   const addItem = React.useCallback((newItem: AllItems) => {
+    // This function is now specifically for adding optimistic items.
     setItems(prev => {
       if (prev.some(item => item.id === newItem.id)) {
-        return prev;
+          return prev; // Prevent adding duplicate optimistic items
       }
+      // Add the new item and re-sort.
       return [newItem, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     });
   }, []);

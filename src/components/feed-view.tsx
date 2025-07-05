@@ -4,15 +4,13 @@
 import * as React from 'react';
 import Image from 'next/image';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel } from '@/lib/types';
-import { InspectionStatusBadge, PtwStatusBadge, RiskBadge } from '@/components/status-badges';
+import { PtwStatusBadge, InspectionStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
 import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
 import { InspectionDetailSheet } from '@/components/inspection-detail-sheet';
 import { PtwDetailSheet } from '@/components/ptw-detail-sheet';
-import { StarRating } from '@/components/star-rating';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { usePathname, useRouter } from 'next/navigation';
@@ -21,6 +19,7 @@ import { useObservations } from '@/hooks/use-observations';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from './ui/badge';
+import { ListItemSkeleton } from './list-item-skeleton';
 
 const riskColorMap: Record<RiskLevel, string> = {
     Low: 'bg-chart-2',
@@ -29,31 +28,20 @@ const riskColorMap: Record<RiskLevel, string> = {
     Critical: 'bg-destructive',
 };
 
-const ListItemWrapper = ({ children, onSelect, item }: { children: React.ReactNode, onSelect: () => void, item: AllItems }) => {
-    const preventBubble = (e: React.MouseEvent) => {
-        e.stopPropagation();
-    };
+const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
+    if (observation.optimisticState === 'uploading') {
+        return <ListItemSkeleton key={observation.id} />;
+    }
 
-    const isCompleted = 
-        (item.itemType === 'observation' && item.status === 'Completed') ||
-        (item.itemType === 'inspection' && item.status === 'Pass') ||
-        (item.itemType === 'ptw' && (item.status === 'Approved' || item.status === 'Closed'));
-        
-    const isPending = !isCompleted && 
-        !((item.itemType === 'ptw' && item.status === 'Rejected'));
-
-    const riskLevel = item.itemType === 'observation' ? item.riskLevel : undefined;
-    const riskColor = riskLevel ? riskColorMap[riskLevel] : 'bg-transparent';
+    const isCompleted = observation.status === 'Completed';
+    const isPending = !isCompleted;
 
     return (
-        <Card 
-          onClick={onSelect}
-          className="transition-all cursor-pointer hover:border-primary/50 relative overflow-hidden"
-        >
-            <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${riskColor}`} />
+        <Card onClick={onSelect} className="transition-all cursor-pointer hover:border-primary/50 relative overflow-hidden">
+            <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${riskColorMap[observation.riskLevel]}`} />
             
             {(isPending || isCompleted) && (
-              <div className="absolute top-2 right-2" onClick={preventBubble}>
+              <div className="absolute top-2 right-2">
                 <TooltipProvider delayDuration={100}>
                   <Tooltip>
                     <TooltipTrigger>
@@ -61,7 +49,7 @@ const ListItemWrapper = ({ children, onSelect, item }: { children: React.ReactNo
                       {isCompleted && <CheckCircle2 className="h-4 w-4 text-green-600" />}
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Status: {item.status}</p>
+                      <p>Status: {observation.status}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -69,86 +57,129 @@ const ListItemWrapper = ({ children, onSelect, item }: { children: React.ReactNo
             )}
             
             <CardContent className="p-4 pl-6">
-                {children}
+                <div className="flex gap-4 items-start">
+                    {observation.photoUrl ? (
+                        <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border">
+                            <Image src={observation.photoUrl} alt={observation.findings} fill sizes="64px" className="object-cover" data-ai-hint="site observation" />
+                        </div>
+                    ) : (
+                         <div className="relative h-16 w-16 flex-shrink-0 rounded-md bg-muted flex items-center justify-center">
+                             <ClipboardList className="h-8 w-8 text-muted-foreground" />
+                         </div>
+                    )}
+                    <div className="flex-1 space-y-1 overflow-hidden">
+                        <Badge variant="outline" className="text-primary border-primary py-0.5 px-2 text-xs">{observation.category}</Badge>
+                        <p className="font-semibold leading-snug truncate pr-8">{observation.findings}</p>
+                        <div className="text-xs text-muted-foreground pt-1">
+                            {observation.company} &bull; {observation.location} &bull; {format(new Date(observation.date), 'd MMM yy')}
+                        </div>
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );
 };
 
-const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
-    return (
-        <ListItemWrapper onSelect={onSelect} item={observation}>
-            <div className="flex flex-col space-y-2">
-                <div className="flex justify-between items-start">
-                    <Badge variant="outline" className="text-primary border-primary py-0.5 px-2 text-xs">{observation.category}</Badge>
-                    {/* The status icon will be positioned absolutely by the wrapper */}
-                </div>
-                
-                <p className="font-semibold leading-snug pr-8">{observation.findings}</p>
-
-                {observation.photoUrl && (
-                    <div className="pt-2">
-                      <div className="relative aspect-video w-full rounded-md overflow-hidden border bg-muted/20">
-                          <Image src={observation.photoUrl} alt={observation.findings} fill sizes="(max-width: 640px) 100vw, 512px" className="object-cover" data-ai-hint="site observation" />
-                      </div>
-                    </div>
-                )}
-                
-                <div className="text-xs text-muted-foreground pt-1">
-                    {observation.company} &bull; {observation.location} &bull; {format(new Date(observation.date), 'd MMM yy')}
-                </div>
-            </div>
-        </ListItemWrapper>
-    );
-};
 
 const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, onSelect: () => void }) => {
+    if (inspection.optimisticState === 'uploading') {
+        return <ListItemSkeleton key={inspection.id} />;
+    }
+
+    const isCompleted = inspection.status === 'Pass';
+    const isPending = !isCompleted;
+    
     return (
-        <ListItemWrapper onSelect={onSelect} item={inspection}>
-            <div className="flex flex-col space-y-2">
-                <div className="flex justify-between items-start">
-                    <Badge variant="outline" className="text-primary border-primary py-0.5 px-2 text-xs">{inspection.equipmentType}</Badge>
-                    {/* Status icon from wrapper */}
-                </div>
-                <p className="font-semibold leading-snug pr-8">{inspection.equipmentName}</p>
-                <p className="text-sm text-muted-foreground line-clamp-2 pr-8">{inspection.findings}</p>
-
-                 {inspection.photoUrl && (
-                    <div className="pt-2">
-                      <div className="relative aspect-video w-full rounded-md overflow-hidden border bg-muted/20">
-                          <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="(max-width: 640px) 100vw, 512px" className="object-cover" data-ai-hint="equipment inspection" />
-                      </div>
+        <Card onClick={onSelect} className="transition-all cursor-pointer hover:border-primary/50 relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-muted-foreground" />
+            
+            {(isPending || isCompleted) && (
+              <div className="absolute top-2 right-2">
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      {isPending && <Clock className="h-4 w-4 text-chart-5" />}
+                      {isCompleted && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Status: {inspection.status}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
+            
+            <CardContent className="p-4 pl-6">
+                 <div className="flex gap-4 items-start">
+                    {inspection.photoUrl ? (
+                        <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border">
+                            <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="64px" className="object-cover" data-ai-hint="equipment inspection" />
+                        </div>
+                    ) : (
+                         <div className="relative h-16 w-16 flex-shrink-0 rounded-md bg-muted flex items-center justify-center">
+                             <Wrench className="h-8 w-8 text-muted-foreground" />
+                         </div>
+                    )}
+                    <div className="flex-1 space-y-1 overflow-hidden">
+                        <p className="font-semibold leading-snug truncate pr-8">{inspection.equipmentName}</p>
+                        <p className="text-sm text-muted-foreground truncate pr-8">{inspection.findings}</p>
+                         <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <InspectionStatusBadge status={inspection.status} />
+                            <span className="text-xs text-muted-foreground">{inspection.location} &bull; {format(new Date(inspection.date), 'd MMM yy')}</span>
+                        </div>
                     </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <InspectionStatusBadge status={inspection.status} />
-                    <span className="text-xs text-muted-foreground">{inspection.location} &bull; {format(new Date(inspection.date), 'd MMM yy')}</span>
                 </div>
-            </div>
-        </ListItemWrapper>
+            </CardContent>
+        </Card>
     );
 };
 
 const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => {
-    return (
-        <ListItemWrapper onSelect={onSelect} item={ptw}>
-             <div className="flex flex-col space-y-2">
-                <div className="flex justify-between items-start">
-                    <Badge variant="outline" className="text-primary border-primary py-0.5 px-2 text-xs">Permit to Work</Badge>
-                     {/* Status icon from wrapper */}
-                </div>
-                <p className="font-semibold leading-snug pr-8">{ptw.workDescription}</p>
+    if (ptw.optimisticState === 'uploading') {
+        return <ListItemSkeleton key={ptw.id} />;
+    }
 
-                <div className="flex flex-wrap items-center gap-2 pt-2">
-                    <PtwStatusBadge status={ptw.status} />
-                     <span className="text-xs text-muted-foreground">{ptw.location}</span>
+    const isCompleted = ptw.status === 'Approved' || ptw.status === 'Closed';
+    const isPending = !isCompleted && ptw.status !== 'Rejected';
+    
+    return (
+       <Card onClick={onSelect} className="transition-all cursor-pointer hover:border-primary/50 relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-muted-foreground" />
+
+             {(isPending || isCompleted) && (
+              <div className="absolute top-2 right-2">
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      {isPending && <Clock className="h-4 w-4 text-chart-5" />}
+                      {isCompleted && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Status: {ptw.status}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
+
+             <CardContent className="p-4 pl-6">
+                 <div className="flex gap-4 items-start">
+                     <div className="relative h-16 w-16 flex-shrink-0 rounded-md bg-muted flex items-center justify-center">
+                         <FileSignature className="h-8 w-8 text-muted-foreground" />
+                     </div>
+                    <div className="flex-1 space-y-1 overflow-hidden">
+                        <p className="font-semibold leading-snug truncate pr-8">{ptw.workDescription}</p>
+                         <div className="flex flex-wrap items-center gap-2 pt-2">
+                            <PtwStatusBadge status={ptw.status} />
+                            <span className="text-xs text-muted-foreground">{ptw.location}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                            {ptw.contractor} &bull; {format(new Date(ptw.date), 'd MMM yy')}
+                        </div>
+                    </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                    {ptw.contractor} &bull; {format(new Date(ptw.date), 'd MMM yy')}
-                </div>
-            </div>
-        </ListItemWrapper>
+            </CardContent>
+        </Card>
     )
 };
 
@@ -164,7 +195,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   const pathname = usePathname();
   const { toast } = useToast();
   
-  const { items, isLoading, getObservationById, getInspectionById, getPtwById } = useObservations(projectId);
+  const { items, isLoading, getObservationById } = useObservations(projectId);
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -241,23 +272,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   const FeedSkeleton = () => (
     <ul className="space-y-4">
         {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="relative overflow-hidden">
-                <Skeleton className="absolute left-0 top-0 bottom-0 w-1.5" />
-                <CardContent className="p-4 pl-6">
-                   <div className="flex flex-col space-y-3">
-                        <div className="flex justify-between items-start">
-                            <Skeleton className="h-5 w-24" />
-                            <Skeleton className="h-4 w-4 rounded-full" />
-                        </div>
-                        <Skeleton className="h-5 w-full" />
-                        <Skeleton className="h-5 w-5/6" />
-                        <div className="pt-2">
-                          <Skeleton className="aspect-video w-full" />
-                        </div>
-                        <Skeleton className="h-4 w-2/3 pt-1" />
-                    </div>
-                </CardContent>
-            </Card>
+            <ListItemSkeleton key={i} />
         ))}
     </ul>
   );
