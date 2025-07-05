@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { Loader2, LogIn, User, Folder } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -31,6 +32,7 @@ interface JoinProjectDialogProps {
 
 export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogProps) {
   const { user, userProfile } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [loadingProjects, setLoadingProjects] = React.useState(true);
   const [joiningProjectId, setJoiningProjectId] = React.useState<string | null>(null);
@@ -110,6 +112,7 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
       
       toast({ title: 'Sukses!', description: `Berhasil bergabung dengan proyek!` });
       onOpenChange(false); // Close dialog on success
+      router.push(`/proyek/${projectId}/observasi`); // Redirect to the joined project page
     } catch (error: any) {
       let description = 'Terjadi kesalahan tak terduga.';
       if (error.message === 'Project not found') {

@@ -21,6 +21,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { collection, addDoc, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 const formSchema = z.object({
   name: z.string().min(3, { message: 'Nama proyek minimal harus 3 karakter.' }),
@@ -35,6 +36,7 @@ interface CreateProjectDialogProps {
 
 export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialogProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [isCreating, setIsCreating] = React.useState(false);
   const formId = React.useId();
@@ -73,6 +75,7 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
       
       toast({ title: 'Sukses!', description: `Proyek "${values.name}" berhasil dibuat.` });
       onOpenChange(false);
+      router.push(`/proyek/${newProjectRef.id}/observasi`); // Redirect to the new project page
     } catch (error) {
       console.error("Failed to create project:", error);
       toast({ variant: 'destructive', title: 'Gagal Membuat Proyek', description: 'Terjadi kesalahan tak terduga.' });

@@ -19,6 +19,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { Switch } from './ui/switch';
+import { Label } from './ui/label';
 
 
 const getInitials = (name: string | null | undefined): string => {
@@ -39,6 +41,7 @@ const ProjectSettings = ({ project }: { project: Project }) => {
   const [newCompany, setNewCompany] = React.useState("");
   const [customLocations, setCustomLocations] = React.useState(project.customLocations || []);
   const [newLocation, setNewLocation] = React.useState("");
+  const [isProjectOpen, setIsProjectOpen] = React.useState(project.isOpen ?? true);
   const [isSaving, setIsSaving] = React.useState(false);
 
   const handleAddCompany = () => {
@@ -63,16 +66,17 @@ const ProjectSettings = ({ project }: { project: Project }) => {
       await updateDoc(projectRef, {
         customCompanies: customCompanies,
         customLocations: customLocations,
+        isOpen: isProjectOpen,
       });
       toast({
         title: 'Settings Saved',
-        description: 'Your custom dropdown lists have been updated.',
+        description: 'Your project settings have been updated.',
       });
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Save Failed',
-        description: 'Could not save your custom lists. Please try again.',
+        description: 'Could not save your project settings. Please try again.',
       });
     } finally {
       setIsSaving(false);
@@ -81,6 +85,28 @@ const ProjectSettings = ({ project }: { project: Project }) => {
 
   return (
     <div className="space-y-6 p-1">
+      <Card>
+        <CardHeader>
+            <CardTitle>Project Access</CardTitle>
+            <CardDescription>Control who can join this project.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                <div className="space-y-0.5">
+                    <Label htmlFor="project-open" className="font-medium">Open to Join</Label>
+                    <p className="text-xs text-muted-foreground">
+                        If enabled, any user can join this project from the "Join Project" list.
+                    </p>
+                </div>
+                <Switch
+                    id="project-open"
+                    checked={isProjectOpen}
+                    onCheckedChange={setIsProjectOpen}
+                />
+            </div>
+        </CardContent>
+      </Card>
+      
       <Card>
         <CardHeader>
           <CardTitle>Manage Custom Companies</CardTitle>
