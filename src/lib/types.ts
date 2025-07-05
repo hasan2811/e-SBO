@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 
 export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed' | 'uploading';

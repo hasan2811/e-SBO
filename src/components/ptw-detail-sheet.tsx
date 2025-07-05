@@ -7,7 +7,7 @@ import type { Ptw } from '@/lib/types';
 import { PtwStatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, ArrowLeft, FileText, User, Building, MapPin, Calendar, ExternalLink, Trash2, Loader2 } from 'lucide-react';
+import { Check, ArrowLeft, FileText, User, Building, MapPin, Calendar, ExternalLink, Trash2, Loader2, PenSquare } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
@@ -16,7 +16,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { DeletePtwDialog } from './delete-ptw-dialog';
 import { useObservations } from '@/hooks/use-observations';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { stampAndApprovePtw } from '@/lib/actions/ptw-actions';
+import { ApprovePtwDialog } from './approve-ptw-dialog';
 import { useToast } from '@/hooks/use-toast';
 
 interface PtwDetailSheetProps {
@@ -38,10 +38,11 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, labe
 export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetProps) {
   const [localPtw, setLocalPtw] = React.useState<Ptw | null>(null);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
+
   const { projects } = useProjects();
   const { userProfile } = useAuth();
   const { getPtwById } = useObservations();
-  const [isApproving, setIsApproving] = React.useState(false);
   const { toast } = useToast();
   
   React.useEffect(() => {
@@ -60,18 +61,6 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   const handleSuccessfulDelete = () => {
     onOpenChange(false);
     setDeleteDialogOpen(false);
-  };
-
-  const handleApprove = async () => {
-    if (!ptw || !userProfile) return;
-    setIsApproving(true);
-    const result = await stampAndApprovePtw(ptw.id, userProfile);
-    if (result.success) {
-        toast({ title: 'Success!', description: result.message });
-    } else {
-        toast({ variant: 'destructive', title: 'Approval Failed', description: result.message });
-    }
-    setIsApproving(false);
   };
 
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
@@ -137,6 +126,20 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                   <CardContent className="space-y-4">
                       <DetailRow icon={Check} label="Disetujui Oleh" value={ptw.approver} />
                       <DetailRow icon={Calendar} label="Tanggal Disetujui" value={ptw.approvedDate ? format(new Date(ptw.approvedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale }) : ''} />
+                      {ptw.signatureDataUrl && (
+                        <div>
+                           <h4 className="text-sm text-muted-foreground mb-2">Tanda Tangan</h4>
+                           <div className="relative aspect-video w-full max-w-sm rounded-md border bg-muted/50 p-2">
+                             <Image
+                                src={ptw.signatureDataUrl}
+                                alt="Signature"
+                                fill
+                                className="object-contain"
+                                data-ai-hint="signature"
+                             />
+                           </div>
+                        </div>
+                      )}
                     </CardContent>
                 </Card>
               )}
@@ -161,19 +164,26 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
           </ScrollArea>
            {canApprove && (
             <SheetFooter className="p-4 border-t mt-auto">
-              <Button type="button" onClick={handleApprove} className="w-full" disabled={isApproving}>
-                {isApproving ? <Loader2 /> : <Check />}
-                Setujui Izin
+              <Button type="button" onClick={() => setApproveDialogOpen(true)} className="w-full">
+                <PenSquare />
+                Setujui & Tanda Tangani
               </Button>
             </SheetFooter>
           )}
         </SheetContent>
       </Sheet>
+      
       <DeletePtwDialog
         isOpen={isDeleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         ptw={ptw}
         onSuccess={handleSuccessfulDelete}
+      />
+      
+      <ApprovePtwDialog
+        isOpen={isApproveDialogOpen}
+        onOpenChange={setApproveDialogOpen}
+        ptw={ptw}
       />
     </>
   );
