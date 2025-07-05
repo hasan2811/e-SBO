@@ -150,7 +150,7 @@ export default function ProjectHubPage() {
   };
 
   const itemVariants = {
-    hidden: { y: 10, opacity: 0 },
+    hidden: { y: 20, opacity: 0 },
     visible: { y: 0, opacity: 1 },
   };
 
@@ -200,9 +200,14 @@ export default function ProjectHubPage() {
         </div>
 
         {projects.length > 0 ? (
-          <div className="space-y-8">
+          <motion.div 
+            className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             {projects.map((project) => (
-                <motion.div key={project.id} variants={itemVariants} className="h-full">
+                <motion.div key={project.id} variants={itemVariants}>
                     <ProjectCard 
                       project={project}
                       onManageClick={() => setProjectToManage(project)}
@@ -211,7 +216,7 @@ export default function ProjectHubPage() {
                     />
                 </motion.div>
               ))}
-          </div>
+          </motion.div>
         ) : (
           <div className="flex h-full items-center justify-center pt-16">
             <Card className="w-full max-w-lg text-center p-8 border-dashed">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -284,12 +283,26 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   }
 
   const FeedSkeleton = () => (
-    <ul className="space-y-3">
+    <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
             <ListItemSkeleton key={i} />
         ))}
-    </ul>
+    </div>
   );
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05
+      }
+    }
+  };
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    show: { y: 0, opacity: 1 }
+  };
 
 
   return (
@@ -335,20 +348,29 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
         {isLoading && items.length === 0 ? (
           <FeedSkeleton />
         ) : itemsToDisplay.length > 0 ? (
-          <ul className="space-y-3">
-             {itemsToDisplay.map(item => {
-                switch(item.itemType) {
-                  case 'observation':
-                    return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} />;
-                  case 'inspection':
-                    return <InspectionListItem key={item.id} inspection={item} onSelect={() => setSelectedInspectionId(item.id)} />;
-                  case 'ptw':
-                    return <PtwListItem key={item.id} ptw={item} onSelect={() => setSelectedPtwId(item.id)} />;
-                  default:
-                    return null;
-                }
-             })}
-          </ul>
+          <motion.div 
+            className="space-y-3"
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+          >
+             {itemsToDisplay.map(item => (
+                <motion.div key={item.id} variants={itemVariants}>
+                    {(() => {
+                        switch(item.itemType) {
+                            case 'observation':
+                                return <ObservationListItem observation={item} onSelect={() => setSelectedObservationId(item.id)} />;
+                            case 'inspection':
+                                return <InspectionListItem inspection={item} onSelect={() => setSelectedInspectionId(item.id)} />;
+                            case 'ptw':
+                                return <PtwListItem ptw={item} onSelect={() => setSelectedPtwId(item.id)} />;
+                            default:
+                                return null;
+                        }
+                    })()}
+                </motion.div>
+             ))}
+          </motion.div>
         ) : (
           <EmptyState />
         )}
