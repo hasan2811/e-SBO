@@ -6,7 +6,7 @@ import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
-// Your web app's Firebase configuration, with the corrected storageBucket name.
+// Your web app's Firebase configuration, with the correct storageBucket name.
 const firebaseConfig = {
   apiKey: "AIzaSyD-P_1XOQ9xQOgxwMApClEFoqHcxs7fYPI",
   authDomain: "hssetech-e1710.firebaseapp.com",
@@ -21,7 +21,7 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 // Use the standard, idempotent getFirestore() to ensure a stable connection
-// in both client and server environments. This is the core fix.
+// in both client and server environments.
 const db = getFirestore(app);
 
 const auth = getAuth(app);

@@ -1,4 +1,6 @@
 
+'use server';
+
 import * as admin from 'firebase-admin';
 
 // This file is for server-side operations only.
@@ -6,10 +8,10 @@ import * as admin from 'firebase-admin';
 // Check if the app is already initialized to prevent errors in hot-reloading environments.
 if (!admin.apps.length) {
   try {
-    // The Admin SDK requires the GCS bucket name, which ends in .appspot.com.
+    // The Admin SDK requires the GCS bucket name. Using the name from the client-side config as per user direction.
     // This is the definitive fix for the server-side authentication issues.
     admin.initializeApp({
-        storageBucket: 'hssetech-e1710.appspot.com',
+        storageBucket: 'hssetech-e1710.firebasestorage.app',
     });
   } catch (e) {
     console.error('Firebase admin initialization error', e);
