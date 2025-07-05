@@ -27,18 +27,18 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
   const unsubscribeRef = React.useRef<Unsubscribe | null>(null);
 
   React.useEffect(() => {
-    // Clean up the previous listener when the component unmounts or dependencies change.
     if (unsubscribeRef.current) {
         unsubscribeRef.current();
     }
 
     if (!projectId || !user || !itemTypeFilter) {
       setIsLoading(false);
-      setItems([]); // Clear items if there's no project to view
+      setItems([]);
       return;
     }
 
     setIsLoading(true);
+    setItems([]); // Always start with a clean slate when dependencies change
     setError(null);
     
     const collectionName = `${itemTypeFilter}s`;
@@ -49,14 +49,45 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
         limit(ITEMS_PER_PAGE)
     );
 
-    // Establish a real-time listener for the first page of data.
+    // This flag helps distinguish the very first data snapshot from subsequent real-time updates.
+    let isInitialLoad = true;
+
     unsubscribeRef.current = onSnapshot(q, (snapshot) => {
-        const newItems: AllItems[] = [];
-        snapshot.forEach(doc => {
-            newItems.push({ ...doc.data(), id: doc.id } as AllItems);
-        });
+        if (isInitialLoad) {
+            // For the very first load, just set the items directly.
+            const initialItems: AllItems[] = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AllItems));
+            setItems(initialItems);
+            isInitialLoad = false;
+        } else {
+            // For all subsequent real-time updates, process changes granularly.
+            snapshot.docChanges().forEach((change) => {
+                const changedItem = { ...change.doc.data(), id: change.doc.id } as AllItems;
+
+                if (change.type === "added") {
+                    // Handles new items from others AND confirms our optimistic items.
+                    setItems(prevItems => {
+                        // Remove the corresponding optimistic item if it exists.
+                        const itemsWithoutOptimistic = prevItems.filter(item => 
+                            !(item.optimisticState === 'uploading' && item.referenceId === changedItem.referenceId)
+                        );
+                        // Add the new server-confirmed item, ensuring no duplicates.
+                        const finalItems = [changedItem, ...itemsWithoutOptimistic.filter(i => i.id !== changedItem.id)];
+                        // Re-sort to maintain chronological order.
+                        finalItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                        return finalItems;
+                    });
+                }
+                if (change.type === "modified") {
+                    // An item was updated (e.g., status change, AI analysis completed).
+                    updateItem(changedItem);
+                }
+                if (change.type === "removed") {
+                    // An item was deleted.
+                    removeItem(changedItem.id);
+                }
+            });
+        }
         
-        setItems(newItems);
         setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
         setHasMore(snapshot.docs.length === ITEMS_PER_PAGE);
         setIsLoading(false);
@@ -66,13 +97,12 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
         setIsLoading(false);
     });
 
-    // Cleanup function to detach the listener.
     return () => {
         if (unsubscribeRef.current) {
             unsubscribeRef.current();
         }
     };
-  }, [projectId, user, itemTypeFilter, setItems, setIsLoading, setError]);
+  }, [projectId, user, itemTypeFilter, setItems, setIsLoading, setError, updateItem, removeItem]);
 
   const loadMore = React.useCallback(async () => {
     if (isFetchingMore || !hasMore || !lastVisible || !projectId || !itemTypeFilter) {
