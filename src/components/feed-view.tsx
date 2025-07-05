@@ -3,10 +3,10 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import type { AllItems, Observation, Inspection, Ptw } from '@/lib/types';
-import { InspectionStatusBadge, PtwStatusBadge, StatusBadge, RiskBadge } from '@/components/status-badges';
+import type { AllItems, Observation, Inspection, Ptw, RiskLevel } from '@/lib/types';
+import { InspectionStatusBadge, PtwStatusBadge, StatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck } from 'lucide-react';
+import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -15,34 +15,62 @@ import { PtwDetailSheet } from '@/components/ptw-detail-sheet';
 import { StarRating } from '@/components/star-rating';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { useObservations } from '@/hooks/use-observations';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const ListItemWrapper = ({ children, onSelect }: { children: React.ReactNode, onSelect: () => void }) => {
+const riskColorMap: Record<RiskLevel, string> = {
+    Low: 'bg-chart-2',
+    Medium: 'bg-chart-4',
+    High: 'bg-chart-5',
+    Critical: 'bg-destructive',
+};
+
+const ListItemWrapper = ({ children, onSelect, item }: { children: React.ReactNode, onSelect: () => void, item: AllItems }) => {
     const handleItemClick = (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
-        // Prevent opening the detail sheet if a button or link inside the card is clicked
         if (target.closest('button, a, [data-prevent-item-click]')) return;
         onSelect();
     };
 
+    const isPending = item.status === 'Pending' || item.status === 'Pending Approval';
+    const riskLevel = item.itemType === 'observation' ? item.riskLevel : undefined;
+    const riskColor = riskLevel ? riskColorMap[riskLevel] : 'bg-transparent';
+
     return (
         <Card 
           onClick={handleItemClick}
-          className="transition-all cursor-pointer hover:border-primary/50"
+          className="transition-all cursor-pointer hover:border-primary/50 relative overflow-hidden"
         >
-            <CardContent className="p-4 flex items-start gap-4">
+            <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${riskColor}`} />
+            
+            {isPending && (
+                <div className="absolute top-2 right-2 text-muted-foreground" data-prevent-item-click>
+                    <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Clock className="h-4 w-4" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Status: {item.status}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                </div>
+            )}
+            
+            <CardContent className="p-4 pl-6 flex items-start gap-4">
                 {children}
             </CardContent>
         </Card>
-    )
+    );
 };
 
 const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
     return (
-        <ListItemWrapper onSelect={onSelect}>
+        <ListItemWrapper onSelect={onSelect} item={observation}>
             <div className="relative h-24 w-24 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
                 {observation.photoUrl ? (
                     <Image src={observation.photoUrl} alt={observation.findings} fill sizes="96px" className="object-cover" data-ai-hint="site observation" />
@@ -59,8 +87,7 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
                 </div>
                 <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
                 <div className="flex flex-wrap items-center gap-2">
-                    <RiskBadge riskLevel={observation.riskLevel} />
-                    <StatusBadge status={observation.status} />
+                    {observation.status !== 'Pending' && <StatusBadge status={observation.status} />}
                 </div>
                 <div className="text-xs text-muted-foreground pt-1 truncate">
                     {observation.company} &bull; {observation.location} &bull; {format(new Date(observation.date), 'd MMM yy')}
@@ -72,7 +99,7 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
 
 const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, onSelect: () => void }) => {
     return (
-        <ListItemWrapper onSelect={onSelect}>
+        <ListItemWrapper onSelect={onSelect} item={inspection}>
             <div className="relative h-24 w-24 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
                 {inspection.photoUrl ? (
                     <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="96px" className="object-cover" data-ai-hint="equipment inspection" />
@@ -95,7 +122,7 @@ const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, 
 
 const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => {
     return (
-        <ListItemWrapper onSelect={onSelect}>
+        <ListItemWrapper onSelect={onSelect} item={ptw}>
             <div className="flex-shrink-0 rounded-md bg-muted flex items-center justify-center h-24 w-24">
                 <FileSignature className="h-10 w-10 text-muted-foreground/50" />
             </div>
@@ -106,7 +133,7 @@ const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => {
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                      <PtwStatusBadge status={ptw.status} />
+                      {ptw.status !== 'Pending Approval' && <PtwStatusBadge status={ptw.status} />}
                       <span className="text-xs text-muted-foreground">{ptw.location}</span>
                   </div>
                   <div className="text-xs text-muted-foreground mt-2">

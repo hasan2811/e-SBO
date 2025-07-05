@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -21,13 +22,16 @@ export function useObservations(projectId: string | null) {
   const { setItems, setIsLoading, setError } = context;
 
   React.useEffect(() => {
+    // Clear previous project's items and set loading state immediately.
+    // This ensures a clean slate when switching projects.
+    setItems([]);
+    setIsLoading(true);
+
     if (!projectId || !user) {
-      setItems([]);
-      setIsLoading(false);
+      setIsLoading(false); // No project/user, so stop loading.
       return;
     }
 
-    setIsLoading(true);
     setError(null);
 
     const collectionsToQuery = ['observations', 'inspections', 'ptws'];
@@ -41,8 +45,7 @@ export function useObservations(projectId: string | null) {
       setItems(sortedData);
     };
 
-    let collectionsLoadedCount = 0;
-    const totalCollections = collectionsToQuery.length;
+    let initialLoadsPending = collectionsToQuery.length;
     
     collectionsToQuery.forEach(collName => {
         const q = query(
@@ -53,7 +56,6 @@ export function useObservations(projectId: string | null) {
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            // Use docChanges to efficiently update the map
             snapshot.docChanges().forEach((change) => {
               if (change.type === "removed") {
                 allData.delete(change.doc.id);
@@ -64,15 +66,12 @@ export function useObservations(projectId: string | null) {
             
             processAndSetData();
             
-            // This ensures isLoading is only false after the initial fetch of all collections
-            if (collectionsLoadedCount < totalCollections) {
-                collectionsLoadedCount++;
-                if (collectionsLoadedCount === totalCollections) {
-                    setIsLoading(false);
-                }
-            } else {
-                // Subsequent updates should not set isLoading to true
+            // Only stop the main loading spinner after the first fetch from all collections completes.
+            if (initialLoadsPending > 0) {
+              initialLoadsPending--;
+              if (initialLoadsPending === 0) {
                 setIsLoading(false);
+              }
             }
 
         }, (err) => {
