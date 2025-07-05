@@ -10,6 +10,7 @@ import type { Project } from '@/lib/types';
 interface ProjectContextType {
   projects: Project[];
   loading: boolean;
+  addProject: (project: Project) => void;
 }
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -19,6 +20,19 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
   
+  const addProject = React.useCallback((newProject: Project) => {
+    setProjects(prevProjects => {
+      // Avoid duplicates if the listener fires simultaneously
+      if (prevProjects.find(p => p.id === newProject.id)) {
+        return prevProjects;
+      }
+      const newProjects = [newProject, ...prevProjects];
+      // Keep it sorted
+      newProjects.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return newProjects;
+    });
+  }, []);
+
   React.useEffect(() => {
     let unsubscribe: Unsubscribe = () => {};
 
@@ -59,7 +73,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [user, isAdmin, authLoading]);
 
-  const value = { projects, loading };
+  const value = { projects, loading, addProject };
 
   return (
     <ProjectContext.Provider value={value}>

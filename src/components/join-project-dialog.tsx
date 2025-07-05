@@ -20,6 +20,7 @@ import { db } from '@/lib/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { useProjects } from '@/hooks/use-projects';
 
 interface JoinableProject extends Project {
   owner: UserProfile | null;
@@ -34,6 +35,7 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
   const { user, userProfile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const { addProject } = useProjects();
   const [loadingProjects, setLoadingProjects] = React.useState(true);
   const [joiningProjectId, setJoiningProjectId] = React.useState<string | null>(null);
   const [joinableProjects, setJoinableProjects] = React.useState<JoinableProject[]>([]);
@@ -82,15 +84,15 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
     }
   }, [isOpen, user, userProfile, toast]);
 
-  const onJoin = async (projectId: string) => {
+  const onJoin = async (projectToJoin: JoinableProject) => {
     if (!user || !userProfile) {
       toast({ variant: 'destructive', title: 'Authentication Error' });
       return;
     }
 
-    setJoiningProjectId(projectId);
+    setJoiningProjectId(projectToJoin.id);
     try {
-      const projectRef = doc(db, 'projects', projectId);
+      const projectRef = doc(db, 'projects', projectToJoin.id);
       const userRef = doc(db, 'users', user.uid);
 
       await runTransaction(db, async (transaction) => {
@@ -110,13 +112,16 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
         });
         // Add project to user's project list
         transaction.update(userRef, {
-          projectIds: arrayUnion(projectId),
+          projectIds: arrayUnion(projectToJoin.id),
         });
       });
       
+      // Manually add project to local state to prevent race conditions
+      addProject(projectToJoin);
+
       toast({ title: 'Sukses!', description: `Berhasil bergabung dengan proyek!` });
       onOpenChange(false); // Close dialog on success
-      router.push(`/proyek/${projectId}/observasi`); // Redirect to the joined project page
+      router.push(`/proyek/${projectToJoin.id}/observasi`); // Redirect to the joined project page
     } catch (error: any) {
       let description = 'Terjadi kesalahan tak terduga.';
       if (error.message === 'Project not found') {
@@ -181,7 +186,7 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
                         </div>
                         <Button
                             size="sm"
-                            onClick={() => onJoin(project.id)}
+                            onClick={() => onJoin(project)}
                             disabled={!!joiningProjectId}
                         >
                             {joiningProjectId === project.id ? (

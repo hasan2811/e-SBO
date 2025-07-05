@@ -23,6 +23,7 @@ import { db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { CustomListInput } from './custom-list-input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
+import { useProjects } from '@/hooks/use-projects';
 
 const formSchema = z.object({
   name: z.string().min(3, { message: 'Nama proyek minimal harus 3 karakter.' }),
@@ -39,6 +40,7 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const { addProject } = useProjects();
   const [isCreating, setIsCreating] = React.useState(false);
   const formId = React.useId();
 
@@ -61,7 +63,7 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
     setIsCreating(true);
     try {
       const projectsCollection = collection(db, 'projects');
-      const newProjectRef = await addDoc(projectsCollection, {
+      const newProjectData = {
         name: values.name,
         ownerUid: user.uid,
         memberUids: [user.uid],
@@ -69,13 +71,18 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
         isOpen: true,
         customCompanies: customCompanies,
         customLocations: customLocations,
-      });
+      };
+      
+      const newProjectRef = await addDoc(projectsCollection, newProjectData);
       
       const userDocRef = doc(db, 'users', user.uid);
       await updateDoc(userDocRef, {
           projectIds: arrayUnion(newProjectRef.id)
       });
       
+      // Manually add project to local state to prevent race conditions
+      addProject({ ...newProjectData, id: newProjectRef.id });
+
       toast({ title: 'Sukses!', description: `Proyek "${values.name}" berhasil dibuat.` });
       onOpenChange(false);
       router.push(`/proyek/${newProjectRef.id}/observasi`);
