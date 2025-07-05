@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -31,7 +32,7 @@ interface JoinProjectDialogProps {
 }
 
 export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogProps) {
-  const { user, userProfile, loading: authLoading } = useAuth();
+  const { user, userProfile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const { addProject } = useProjects();
@@ -41,16 +42,9 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
 
   React.useEffect(() => {
     // Wait until the user profile is fully loaded before fetching projects.
-    if (!isOpen || authLoading) {
+    if (!isOpen || !userProfile) {
       if (isOpen) setLoadingProjects(true);
       return;
-    }
-
-    // If not logged in, there's nothing to show.
-    if (!user || !userProfile) {
-        setLoadingProjects(false);
-        setJoinableProjects([]);
-        return;
     }
     
     const fetchJoinableProjects = async () => {
@@ -89,7 +83,7 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
 
     fetchJoinableProjects();
     
-  }, [isOpen, user, userProfile, authLoading, toast]);
+  }, [isOpen, userProfile, toast]);
 
   const onJoin = async (projectToJoin: JoinableProject) => {
     if (!user || !userProfile) {

@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { collection, addDoc, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { CustomListInput } from './custom-list-input';
@@ -63,35 +63,44 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
     }
 
     setIsCreating(true);
+    
+    const projectsCollection = collection(db, 'projects');
+    const newProjectRef = doc(projectsCollection);
+    
+    const newProjectData = {
+      id: newProjectRef.id,
+      name: values.name,
+      ownerUid: user.uid,
+      memberUids: [user.uid],
+      createdAt: new Date().toISOString(),
+      isOpen: true,
+      customCompanies: customCompanies,
+      customLocations: customLocations,
+      customObservationCategories: customCategories,
+    };
+    
     try {
-      const projectsCollection = collection(db, 'projects');
-      const newProjectData = {
-        name: values.name,
-        ownerUid: user.uid,
-        memberUids: [user.uid],
-        createdAt: new Date().toISOString(),
-        isOpen: true,
-        customCompanies: customCompanies,
-        customLocations: customLocations,
-        customObservationCategories: customCategories,
-      };
-      
-      const newProjectRef = await addDoc(projectsCollection, newProjectData);
-      
-      const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, {
-          projectIds: arrayUnion(newProjectRef.id)
+      await runTransaction(db, async (transaction) => {
+        const userDocRef = doc(db, 'users', user.uid);
+        
+        // 1. Set the new project document
+        transaction.set(newProjectRef, newProjectData);
+        
+        // 2. Update the user's project list
+        transaction.update(userDocRef, {
+            projectIds: arrayUnion(newProjectRef.id)
+        });
       });
       
-      // Manually add project to local state to prevent race conditions
-      addProject({ ...newProjectData, id: newProjectRef.id });
+      // Manually add project to local state for immediate UI update
+      addProject(newProjectData);
 
       toast({ title: 'Sukses!', description: `Proyek "${values.name}" berhasil dibuat.` });
       onOpenChange(false);
       router.push(`/proyek/${newProjectRef.id}/observasi`);
     } catch (error) {
       console.error("Failed to create project:", error);
-      toast({ variant: 'destructive', title: 'Gagal Membuat Proyek', description: 'Terjadi kesalahan tak terduga.' });
+      toast({ variant: 'destructive', title: 'Gagal Membuat Proyek', description: 'Terjadi kesalahan tak terduga saat menyimpan proyek.' });
     } finally {
       setIsCreating(false);
     }
@@ -153,8 +162,8 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
                         <CustomListInput
                             inputId="custom-categories-create"
                             title="Kategori Observasi Kustom"
-                            description="Jika kosong, akan menggunakan daftar default: Open, Close."
-                            placeholder="Contoh: Perbaikan Sementara"
+                            description="Jika kosong, akan menggunakan daftar default: Unsafe Act, Unsafe Condition, dll."
+                            placeholder="Contoh: Pelanggaran Prosedur"
                             items={customCategories}
                             setItems={setCustomCategories}
                         />
