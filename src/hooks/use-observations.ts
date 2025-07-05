@@ -25,23 +25,35 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
   const [hasMore, setHasMore] = React.useState(true);
   const [isFetchingMore, setIsFetchingMore] = React.useState(false);
   const unsubscribeRef = React.useRef<Unsubscribe | null>(null);
+  
+  // Use a ref to track the current context (project + filter) to prevent unnecessary full reloads.
+  const contextKeyRef = React.useRef<string | null>(null);
+
 
   React.useEffect(() => {
     if (unsubscribeRef.current) {
         unsubscribeRef.current();
     }
 
-    if (!projectId || !user || !itemTypeFilter) {
+    const newContextKey = `${projectId}-${itemTypeFilter}`;
+    const contextHasChanged = contextKeyRef.current !== newContextKey;
+
+    if (!projectId || !user) {
+      if (items.length > 0) setItems([]);
       setIsLoading(false);
-      setItems([]);
       return;
     }
-
-    setIsLoading(true);
-    setItems([]); // Always start with a clean slate when dependencies change
-    setError(null);
+    
+    // Only perform a full, destructive reset if the user has navigated to a new context.
+    if (contextHasChanged) {
+        contextKeyRef.current = newContextKey;
+        setIsLoading(true);
+        setItems([]);
+        setError(null);
+    }
     
     const collectionName = `${itemTypeFilter}s`;
+    
     const q = query(
         collection(db, collectionName),
         where('projectId', '==', projectId),
@@ -49,40 +61,36 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
         limit(ITEMS_PER_PAGE)
     );
 
-    // This flag helps distinguish the very first data snapshot from subsequent real-time updates.
-    let isInitialLoad = true;
+    let isInitialLoadForQuery = true;
 
     unsubscribeRef.current = onSnapshot(q, (snapshot) => {
-        if (isInitialLoad) {
-            // For the very first load, just set the items directly.
+        // On first load of a *new context*, set the items directly.
+        if (contextHasChanged && isInitialLoadForQuery) {
             const initialItems: AllItems[] = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AllItems));
             setItems(initialItems);
-            isInitialLoad = false;
+            isInitialLoadForQuery = false;
         } else {
-            // For all subsequent real-time updates, process changes granularly.
+             // For subsequent real-time updates within the same context, process changes granularly.
             snapshot.docChanges().forEach((change) => {
                 const changedItem = { ...change.doc.data(), id: change.doc.id } as AllItems;
 
                 if (change.type === "added") {
-                    // Handles new items from others AND confirms our optimistic items.
                     setItems(prevItems => {
-                        // Remove the corresponding optimistic item if it exists.
                         const itemsWithoutOptimistic = prevItems.filter(item => 
                             !(item.optimisticState === 'uploading' && item.referenceId === changedItem.referenceId)
                         );
-                        // Add the new server-confirmed item, ensuring no duplicates.
-                        const finalItems = [changedItem, ...itemsWithoutOptimistic.filter(i => i.id !== changedItem.id)];
-                        // Re-sort to maintain chronological order.
+                        if (itemsWithoutOptimistic.some(i => i.id === changedItem.id)) {
+                          return itemsWithoutOptimistic; // Item already exists, prevent duplication.
+                        }
+                        const finalItems = [changedItem, ...itemsWithoutOptimistic];
                         finalItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
                         return finalItems;
                     });
                 }
                 if (change.type === "modified") {
-                    // An item was updated (e.g., status change, AI analysis completed).
                     updateItem(changedItem);
                 }
                 if (change.type === "removed") {
-                    // An item was deleted.
                     removeItem(changedItem.id);
                 }
             });
@@ -102,7 +110,10 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
             unsubscribeRef.current();
         }
     };
-  }, [projectId, user, itemTypeFilter, setItems, setIsLoading, setError, updateItem, removeItem]);
+  // Using user.uid is critical to prevent re-renders when the user object reference changes.
+  // We disable exhaustive-deps because the context setters (setItems, etc.) are stable and don't need to be dependencies.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, itemTypeFilter, user?.uid]);
 
   const loadMore = React.useCallback(async () => {
     if (isFetchingMore || !hasMore || !lastVisible || !projectId || !itemTypeFilter) {
