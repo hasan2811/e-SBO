@@ -49,7 +49,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface FollowUpInspectionDialogProps {
   isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
+  onOpenChange: (open: boolean) => void;
   inspection?: Inspection;
 }
 

@@ -60,6 +60,8 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const mode: Scope = pathname.startsWith('/proyek') ? 'project' : pathname.startsWith('/public') ? 'public' : 'private';
   const projectId = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/)?.[1] || null;
 
+  // Explicit state update functions. To be called AFTER a server action is successful.
+  // This provides immediate UI feedback while the onSnapshot listener eventually provides the final consistency.
   const updateItem = React.useCallback((updatedItem: AllItems) => {
     setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
   }, []);
@@ -81,7 +83,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     let baseQuery = query(collection(db, collectionName));
 
     if (mode === 'public') {
-      baseQuery = query(baseQuery, where('scope', '==', 'public'));
+      baseQuery = query(baseQuery, where('isSharedPublicly', '==', true));
     } else if (mode === 'project' && projectId) {
       baseQuery = query(baseQuery, where('projectId', '==', projectId));
     } else if (mode === 'private' && user) {
@@ -99,7 +101,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     );
     
     const unsubscribe = onSnapshot(finalQuery, (snapshot) => {
-        const newItems: AllItems[] = snapshot.docs.map(d => ({ ...d.data(), id: d.id, itemType: viewType.slice(0, -1) as any }));
+        const newItems: AllItems[] = snapshot.docs.map(d => ({ ...d.data(), id: d.id }) as AllItems);
         setItems(newItems);
         setHasMore(newItems.length === PAGE_SIZE);
         setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
@@ -129,7 +131,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     const collectionName = viewTypeInfo[viewType].collection;
     
     let baseQuery = query(collection(db, collectionName));
-    if (mode === 'public') baseQuery = query(baseQuery, where('scope', '==', 'public'));
+    if (mode === 'public') baseQuery = query(baseQuery, where('isSharedPublicly', '==', true));
     else if (mode === 'project' && projectId) baseQuery = query(baseQuery, where('projectId', '==', projectId));
     else if (mode === 'private' && user) baseQuery = query(baseQuery, where('scope', '==', 'private'), where('userId', '==', user.uid));
     else return;
@@ -157,15 +159,30 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
   const handleLikeToggle = React.useCallback(async (observationId: string) => {
     if (!user) return;
+    // Optimistic update for snappy UI
+    setItems(prevItems => 
+        prevItems.map(item => {
+            if (item.id === observationId && item.itemType === 'observation') {
+                const likes = item.likes || [];
+                const hasLiked = likes.includes(user.uid);
+                const newLikes = hasLiked ? likes.filter(uid => uid !== user.uid) : [...likes, user.uid];
+                return { ...item, likes: newLikes, likeCount: newLikes.length };
+            }
+            return item;
+        })
+    );
     try {
         const updatedObservation = await toggleLike({ docId: observationId, userId: user.uid, collectionName: 'observations' });
+        // Sync with server state
         updateItem(updatedObservation);
     } catch (error) {
         console.error("Failed to sync like with server:", error);
+        // Revert optimistic update on error if needed, but it might be complex
     }
   }, [user, updateItem]);
   
   const handleViewCount = React.useCallback((observationId: string) => {
+      // This is a fire-and-forget action, no need for complex state management here
       incrementViewCount({ docId: observationId, collectionName: 'observations' }).catch(console.error);
   }, []);
   

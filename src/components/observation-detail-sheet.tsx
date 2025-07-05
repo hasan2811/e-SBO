@@ -200,7 +200,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                 )}
             </div>
             
-            {observation.scope !== 'public' && observation.isSharedPublicly && (
+            {observation.isSharedPublicly && observation.scope !== 'public' && (
               <Alert className="bg-primary/10 border-primary/20 text-primary-foreground">
                 <Globe className="h-4 w-4 text-primary" />
                 <AlertTitle className="text-primary font-semibold">Laporan ini bersifat Publik</AlertTitle>

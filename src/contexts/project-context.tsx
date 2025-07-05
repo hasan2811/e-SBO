@@ -10,9 +10,6 @@ import type { Project } from '@/lib/types';
 interface ProjectContextType {
   projects: Project[];
   loading: boolean;
-  addProject: (project: Project) => void;
-  updateProject: (project: Project) => void;
-  removeProject: (projectId: string) => void;
 }
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -22,40 +19,29 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
   
-  // Explicit state manipulation functions for instant UI feedback
-  const addProject = React.useCallback((project: Project) => {
-    setProjects(prev => [project, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-  }, []);
-
-  const updateProject = React.useCallback((updatedProject: Project) => {
-    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
-  }, []);
-  
-  const removeProject = React.useCallback((projectId: string) => {
-    setProjects(prev => prev.filter(p => p.id !== projectId));
-  }, []);
-
-
   React.useEffect(() => {
     let unsubscribe: Unsubscribe = () => {};
 
+    // Start loading as soon as the effect runs and auth is still loading.
     if (authLoading) {
       setLoading(true);
       return;
     }
     
+    // If auth is done and there's no user, stop loading and clear projects.
     if (!user) {
       setProjects([]);
       setLoading(false);
       return;
     }
 
+    // Auth is done and we have a user, so start fetching projects.
     setLoading(true);
 
     const projectsCollection = collection(db, 'projects');
     const q = isAdmin 
-        ? query(projectsCollection)
-        : query(projectsCollection, where('memberUids', 'array-contains', user.uid));
+        ? query(projectsCollection) // Admin gets all projects
+        : query(projectsCollection, where('memberUids', 'array-contains', user.uid)); // Users get projects they are members of
 
     unsubscribe = onSnapshot(q, (snapshot) => {
       const serverProjects = snapshot.docs.map(doc => ({
@@ -71,10 +57,11 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [user, isAdmin, authLoading]);
 
-  const value = { projects, loading, addProject, updateProject, removeProject };
+  const value = { projects, loading };
 
   return (
     <ProjectContext.Provider value={value}>
