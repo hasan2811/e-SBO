@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePathname } from 'next/navigation';
-import { DEFAULT_LOCATIONS, DEFAULT_COMPANIES } from '@/lib/types';
+import { DEFAULT_LOCATIONS, DEFAULT_COMPANIES, OBSERVATION_CATEGORIES, RISK_LEVELS } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const formSchema = z.object({
@@ -38,6 +38,8 @@ const formSchema = z.object({
   company: z.string({ required_error: "Company is required." }).min(1, "Company is required."),
   findings: z.string().min(10, { message: 'Temuan harus diisi minimal 10 karakter.' }),
   recommendation: z.string().optional(),
+  category: z.string().min(1, "Category is required."),
+  riskLevel: z.enum(RISK_LEVELS),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -70,6 +72,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : DEFAULT_LOCATIONS,
   [project]);
   
+  const categoryOptions = React.useMemo(() =>
+    (project?.customObservationCategories && project.customObservationCategories.length > 0) ? project.customObservationCategories : OBSERVATION_CATEGORIES,
+  [project]);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -112,6 +118,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         photo: undefined,
         location: locationOptions[0],
         company: companyOptions[0],
+        category: categoryOptions[0],
+        riskLevel: RISK_LEVELS[0],
         findings: '',
         recommendation: '',
     });
@@ -121,7 +129,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     if (fileInputRef.current) {
         fileInputRef.current.value = '';
     }
-  }, [form, locationOptions, companyOptions]);
+  }, [form, locationOptions, companyOptions, categoryOptions]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -181,8 +189,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             scope,
             projectId,
             referenceId,
-            category: (aiSuggestions?.suggestedCategory as ObservationCategory) || 'Supervision',
-            riskLevel: (aiSuggestions?.suggestedRiskLevel as RiskLevel) || 'Low',
+            category: values.category as ObservationCategory,
+            riskLevel: values.riskLevel,
             status: 'Pending',
             aiStatus: isAiEnabled ? 'processing' : 'n/a',
         };
@@ -225,7 +233,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           </DialogTitle>
           <DialogDescription>
             {isAiEnabled
-              ? "Cukup isi temuan Anda. AI akan membantu menganalisis kategori dan risiko nanti."
+              ? "Isi laporan Anda. AI akan memberikan saran dan analisis mendalam."
               : "Isi detail di bawah untuk menambahkan laporan observasi baru."
             }
           </DialogDescription>
@@ -303,6 +311,41 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                 />
               </div>
 
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kategori</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>{renderSelectItems(categoryOptions)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="riskLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tingkat Risiko</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Pilih tingkat risiko" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>{renderSelectItems(RISK_LEVELS)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
                 name="findings"
@@ -329,6 +372,20 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                       <Sparkles className="h-4 w-4 text-primary" />
                       <AlertTitle className="text-primary font-semibold">Saran Asisten AI</AlertTitle>
                       <AlertDescription className="text-primary/90 space-y-3 mt-2">
+                          <div className='space-y-2'>
+                            {aiSuggestions.suggestedCategory && (
+                              <div className="flex items-center justify-between">
+                                <p>Saran Kategori: <span className="font-semibold">{aiSuggestions.suggestedCategory}</span></p>
+                                <Button type="button" size="sm" variant="outline" onClick={() => form.setValue('category', aiSuggestions.suggestedCategory as ObservationCategory)}>Terapkan</Button>
+                              </div>
+                            )}
+                             {aiSuggestions.suggestedRiskLevel && (
+                              <div className="flex items-center justify-between">
+                                <p>Saran Risiko: <span className="font-semibold">{aiSuggestions.suggestedRiskLevel}</span></p>
+                                <Button type="button" size="sm" variant="outline" onClick={() => form.setValue('riskLevel', aiSuggestions.suggestedRiskLevel as RiskLevel)}>Terapkan</Button>
+                              </div>
+                            )}
+                          </div>
                          {aiSuggestions.improvedFindings && (
                            <div>
                               <p className="mb-1">Saran Perbaikan Temuan:</p>

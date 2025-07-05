@@ -41,6 +41,7 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
   const { toast } = useToast();
   const [customCompanies, setCustomCompanies] = React.useState<string[]>([]);
   const [customLocations, setCustomLocations] = React.useState<string[]>([]);
+  const [customCategories, setCustomCategories] = React.useState<string[]>([]);
   const [isProjectOpen, setIsProjectOpen] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
 
@@ -50,6 +51,7 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
   React.useEffect(() => {
     setCustomCompanies(project.customCompanies || []);
     setCustomLocations(project.customLocations || []);
+    setCustomCategories(project.customObservationCategories || []);
     setIsProjectOpen(project.isOpen ?? true);
   }, [project]);
 
@@ -57,8 +59,9 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
     setIsSaving(true);
     const projectRef = doc(db, 'projects', project.id);
     const updatedData = {
-        customCompanies: customCompanies,
-        customLocations: customLocations,
+        customCompanies,
+        customLocations,
+        customObservationCategories: customCategories,
         isOpen: isProjectOpen,
     };
     try {
@@ -109,6 +112,14 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
             <CardDescription>Kelola opsi dropdown untuk formulir di proyek ini.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+            <CustomListInput
+                inputId="custom-categories-manage"
+                title="Kategori Observasi Kustom"
+                description="Jika kosong, akan menggunakan daftar default: Open, Close."
+                placeholder="Masukkan nama kategori baru"
+                items={customCategories}
+                setItems={setCustomCategories}
+            />
             <CustomListInput
                 inputId="custom-companies-manage"
                 title="Perusahaan Kustom"
@@ -312,16 +323,16 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
                                 {isOwner && <TabsTrigger value="settings">Pengaturan</TabsTrigger>}
                             </TabsList>
                             
-                            <ScrollArea className="flex-1 mt-4">
-                                <TabsContent value="members" className="mt-0 pr-4">
+                            <div className="flex-1 mt-4 -mr-6 pr-6 overflow-y-auto">
+                                <TabsContent value="members" className="mt-0">
                                     <MemberList project={currentProject} onMemberRemoved={handleMemberRemoved} />
                                 </TabsContent>
                                 {isOwner && (
-                                    <TabsContent value="settings" className="mt-0 pr-4">
+                                    <TabsContent value="settings" className="mt-0">
                                         <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
                                     </TabsContent>
                                 )}
-                            </ScrollArea>
+                            </div>
                         </Tabs>
                     </div>
 

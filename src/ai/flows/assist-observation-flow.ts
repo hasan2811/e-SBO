@@ -88,7 +88,7 @@ const assistObservationFlow = ai.defineFlow(
     // Sanitize and validate the output to make the flow more resilient
     const sanitizedOutput = {
       ...output,
-      suggestedCategory: findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'General'),
+      suggestedCategory: findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'Open'),
       suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
     };
     
@@ -99,7 +99,7 @@ const assistObservationFlow = ai.defineFlow(
 export async function assistObservation(input: AssistObservationInput, userProfile: UserProfile): Promise<AssistObservationOutput> {
   if (!userProfile.aiEnabled) {
     return {
-      suggestedCategory: 'Supervision',
+      suggestedCategory: 'Open',
       suggestedRiskLevel: 'Low',
       improvedFindings: input.findings,
       suggestedRecommendation: 'AI is disabled.',

@@ -4,7 +4,6 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Observation, Inspection, UserProfile } from '@/lib/types';
 import { 
-    runFastClassification, 
     analyzeDeeperObservation, 
     analyzeDeeperInspection, 
     analyzeInspectionData 
@@ -28,7 +27,7 @@ async function getUserProfile(userId: string): Promise<UserProfile | null> {
 }
 
 /**
- * Triggers the initial, fast AI analysis for a new observation.
+ * Triggers the AI analysis for a new observation.
  * This function is fire-and-forget. It updates the document in the background.
  * It respects the user's AI-enabled setting.
  * @param observation The newly created observation object.
@@ -43,28 +42,8 @@ export async function triggerObservationAnalysis(observation: Observation, userP
   }
 
   await docRef.update({ aiStatus: 'processing' });
-
-  const observationData = `Temuan: ${observation.findings}\nRekomendasi: ${observation.recommendation}\nLokasi: ${observation.location}\nPerusahaan: ${observation.company}`;
-
-  try {
-    const classification = await runFastClassification({ observationData }, userProfile);
-    const docExists = (await docRef.get()).exists;
-    if (docExists) {
-        await docRef.update({
-            category: classification.suggestedCategory,
-            riskLevel: classification.suggestedRiskLevel,
-            aiSuggestedRiskLevel: classification.suggestedRiskLevel,
-        });
-    }
-  } catch (error) {
-    console.error(`Fast classification failed for obs ${observation.id}:`, error);
-    const docExists = (await docRef.get()).exists;
-    if (docExists) {
-        await docRef.update({ aiStatus: 'failed' });
-    }
-    return;
-  }
   
+  // Immediately trigger smart notify if it's a project observation
   if (observation.scope === 'project' && observation.projectId) {
     triggerSmartNotify({
       observationId: observation.id,
@@ -73,6 +52,34 @@ export async function triggerObservationAnalysis(observation: Observation, userP
       findings: observation.findings,
       submittedBy: observation.submittedBy.split(' (')[0],
     }, userProfile).catch(err => console.error(`Smart-notify failed for obs ${observation.id}`, err));
+  }
+
+  // Now, run the deeper analysis in the background
+  try {
+    const observationData = `Temuan: ${observation.findings}\nRekomendasi: ${observation.recommendation}\nKategori Awal: ${observation.category}\nTingkat Risiko: ${observation.riskLevel}`;
+    const deepAnalysis = await analyzeDeeperObservation({ observationData }, userProfile);
+    
+    // Check if the document still exists before updating
+    const docExists = (await docRef.get()).exists;
+    if (docExists) {
+        const updatePayload: Partial<Observation> = {
+            aiStatus: 'completed',
+            aiSummary: deepAnalysis.summary,
+            aiObserverSkillRating: deepAnalysis.aiObserverSkillRating,
+            aiObserverSkillExplanation: deepAnalysis.aiObserverSkillExplanation,
+            aiRisks: deepAnalysis.risks,
+            aiSuggestedActions: deepAnalysis.suggestedActions,
+            aiRootCauseAnalysis: deepAnalysis.rootCauseAnalysis,
+            aiRelevantRegulations: deepAnalysis.relevantRegulations,
+        };
+        await docRef.update(updatePayload);
+    }
+  } catch (error) {
+    console.error(`Deeper analysis failed for obs ${observation.id}:`, error);
+    const docExists = (await docRef.get()).exists;
+    if (docExists) {
+        await docRef.update({ aiStatus: 'failed' });
+    }
   }
 }
 

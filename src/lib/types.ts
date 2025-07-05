@@ -21,27 +21,8 @@ export const DEFAULT_COMPANIES: readonly string[] = ['Tambang', 'Migas', 'Konstr
 
 // Updated list to reflect Life-Saving Rules (LSR) as categories
 export const OBSERVATION_CATEGORIES = [
-  'Safe Zone Position',
-  'Permit to Work',
-  'Isolation',
-  'Confined Space Entry',
-  'Lifting Operations',
-  'Fit to Work',
-  'Working at Height',
-  'Personal Flotation Device',
-  'System Override',
-  'Asset Integrity',
-  'Driving Safety',
-  'Environment',
-  'Signage & Warning',
-  'Personal Protective Equipment (PPE)',
-  'Emergency Response Preparedness',
-  'Management of Change (MOC)',
-  'Incident Reporting & Investigation',
-  'Safety Communication',
-  'Excavation Management',
-  'Competence & Training',
-  'Supervision',
+  'Open',
+  'Close',
 ] as const;
 
 export type ObservationCategory = (typeof OBSERVATION_CATEGORIES)[number];
@@ -81,6 +62,7 @@ export type Project = {
     isOpen?: boolean; // Controls if non-members can see it in the "Join" dialog.
     customCompanies?: string[];
     customLocations?: string[];
+    customObservationCategories?: string[];
     // Enriched client-side
     owner?: UserProfile; 
     members?: UserProfile[];

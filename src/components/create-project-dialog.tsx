@@ -47,6 +47,7 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
 
   const [customCompanies, setCustomCompanies] = React.useState<string[]>([]);
   const [customLocations, setCustomLocations] = React.useState<string[]>([]);
+  const [customCategories, setCustomCategories] = React.useState<string[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -72,6 +73,7 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
         isOpen: true,
         customCompanies: customCompanies,
         customLocations: customLocations,
+        customObservationCategories: customCategories,
       };
       
       const newProjectRef = await addDoc(projectsCollection, newProjectData);
@@ -100,6 +102,7 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
       form.reset();
       setCustomCompanies([]);
       setCustomLocations([]);
+      setCustomCategories([]);
     }
     onOpenChange(open);
   };
@@ -147,6 +150,14 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
                         <CardDescription>Tambahkan opsi dropdown khusus yang akan digunakan di formulir observasi pada proyek ini.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
+                        <CustomListInput
+                            inputId="custom-categories-create"
+                            title="Kategori Observasi Kustom"
+                            description="Jika kosong, akan menggunakan daftar default: Open, Close."
+                            placeholder="Contoh: Perbaikan Sementara"
+                            items={customCategories}
+                            setItems={setCustomCategories}
+                        />
                         <CustomListInput
                             inputId="custom-companies-create"
                             title="Perusahaan Kustom"

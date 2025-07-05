@@ -11,8 +11,6 @@ import {ai} from '@/ai/genkit';
 import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 import { 
-    RISK_LEVELS,
-    OBSERVATION_CATEGORIES,
     SummarizeObservationDataInput,
     SummarizeObservationDataInputSchema,
     AnalyzeInspectionInput,
@@ -23,25 +21,6 @@ import {
     UserProfileSchema
 } from '@/lib/types';
 
-/**
- * Finds the best match for a given value from a list of options, or returns a default.
- * It's case-insensitive and checks for partial matches.
- * @param value The string value to match.
- * @param options The list of valid options.
- * @param defaultValue The default value to return if no match is found.
- * @returns The best matching option or the default value.
- */
-function findClosestMatch<T extends string>(value: string | undefined, options: readonly T[], defaultValue: T): T {
-    if (!value) return defaultValue;
-    const lowerValue = value.toLowerCase().trim();
-    const exactMatch = options.find(opt => opt.toLowerCase() === lowerValue);
-    if (exactMatch) return exactMatch;
-    const partialMatch = options.find(opt => lowerValue.includes(opt.toLowerCase()));
-    if (partialMatch) return partialMatch;
-    const fuzzyMatch = options.find(opt => opt.toLowerCase().includes(lowerValue));
-    if (fuzzyMatch) return fuzzyMatch;
-    return defaultValue;
-}
 
 /**
  * Parses a rating value which might be a string or number, and ensures it's within the 1-5 range.
@@ -57,67 +36,7 @@ function parseAndClampRating(value: string | number | undefined): number {
 
 
 // =================================================================================
-// 1. FAST OBSERVATION CLASSIFICATION FLOW (Category & Risk)
-// =================================================================================
-
-const FastClassificationOutputSchema = z.object({
-  suggestedCategory: z.enum(OBSERVATION_CATEGORIES),
-  suggestedRiskLevel: z.enum(RISK_LEVELS),
-});
-export type FastClassificationOutput = z.infer<typeof FastClassificationOutputSchema>;
-
-
-const fastClassificationPrompt = ai.definePrompt({
-    name: 'fastClassificationPrompt',
-    model: 'googleai/gemini-1.5-flash-latest',
-    input: { schema: SummarizeObservationDataInputSchema },
-    output: { schema: FastClassificationOutputSchema },
-    config: {
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-        ],
-    },
-    prompt: `You are an ultra-fast HSSE AI. Your ONLY job is to classify the following report. Provide ONLY the most likely 'suggestedCategory' and 'suggestedRiskLevel'. Your response MUST be a raw JSON object and nothing else.
-
-Category Options: ${OBSERVATION_CATEGORIES.join(', ')}
-Risk Level Options: ${RISK_LEVELS.join(', ')}
-
-Report:
-{{{observationData}}}
-`,
-});
-
-const fastClassificationFlow = ai.defineFlow(
-  {
-    name: 'fastClassificationFlow',
-    inputSchema: z.object({ payload: SummarizeObservationDataInputSchema, userProfile: UserProfileSchema }),
-    outputSchema: FastClassificationOutputSchema,
-  },
-  async ({ payload, userProfile }) => {
-    const model = userProfile.googleAiApiKey 
-        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
-        : 'googleai/gemini-1.5-flash-latest';
-    
-    const response = await fastClassificationPrompt(payload, { model });
-    const output = response.output;
-    if (!output) throw new Error('Fast AI classification returned no structured output.');
-    
-    return {
-      suggestedCategory: findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'Supervision'),
-      suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
-    };
-  }
-);
-
-// This is the main exported function for the initial, fast analysis.
-export async function runFastClassification(input: SummarizeObservationDataInput, userProfile: UserProfile): Promise<FastClassificationOutput> {
-  return fastClassificationFlow({ payload: input, userProfile });
-}
-
-
-// =================================================================================
-// 2. BACKGROUND/DEEPER OBSERVATION ANALYSIS FLOW
+// 1. BACKGROUND/DEEPER OBSERVATION ANALYSIS FLOW
 // =================================================================================
 
 const DeeperAnalysisOutputSchema = z.object({
@@ -189,7 +108,7 @@ export async function analyzeDeeperObservation(input: SummarizeObservationDataIn
 
 
 // =================================================================================
-// 3. FAST INSPECTION ANALYSIS FLOW
+// 2. FAST INSPECTION ANALYSIS FLOW
 // =================================================================================
 
 const FastSummarizeInspectionOutputSchema = z.object({
@@ -241,7 +160,7 @@ export async function analyzeInspectionData(input: AnalyzeInspectionInput, userP
 
 
 // =================================================================================
-// 4. DEEP INSPECTION ANALYSIS FLOW (ON-DEMAND)
+// 3. DEEP INSPECTION ANALYSIS FLOW (ON-DEMAND)
 // =================================================================================
 
 const deeperAnalysisInspectionPrompt = ai.definePrompt({

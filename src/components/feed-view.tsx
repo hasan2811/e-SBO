@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel } from '@/lib/types';
-import { InspectionStatusBadge, PtwStatusBadge, StatusBadge } from '@/components/status-badges';
+import { InspectionStatusBadge, PtwStatusBadge, StatusBadge, ObservationCategoryBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
 import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -76,19 +76,19 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
                     <Eye className="h-10 w-10 text-muted-foreground/50" />
                 )}
             </div>
-            <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex justify-between items-start gap-2">
-                    <p className="text-xs text-primary font-semibold truncate pr-2">{observation.category}</p>
+                    <ObservationCategoryBadge category={observation.category} />
                     {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
                         <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
                     )}
                 </div>
                 <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
-                <div className="flex flex-wrap items-center gap-2">
-                    {observation.status !== 'Pending' && <StatusBadge status={observation.status} />}
-                </div>
-                <div className="text-xs text-muted-foreground pt-1 truncate">
-                    {observation.company} &bull; {observation.location} &bull; {format(new Date(observation.date), 'd MMM yy')}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
+                    <StatusBadge status={observation.status} />
+                    <div className="text-xs text-muted-foreground truncate">
+                        {observation.company} &bull; {observation.location} &bull; {format(new Date(observation.date), 'd MMM yy')}
+                    </div>
                 </div>
             </div>
         </ListItemWrapper>
