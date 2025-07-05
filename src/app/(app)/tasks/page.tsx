@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { cn } from '@/lib/utils';
 
 const ChartContainer = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartContainer), {
   ssr: false,
@@ -55,7 +56,7 @@ const riskPieChartConfig = {
     Critical: { label: "Critical", color: "hsl(var(--destructive))", icon: 'circle' },
 };
 
-const AiAnalysisCard = ({ icon: Icon, title, content, color, loading }: { icon: React.ElementType, title: string, content: string, color: string, loading: boolean }) => {
+const AiAnalysisCard = ({ icon: Icon, title, content, color, loading }: { icon: React.ElementType; title: string; content: string; color: 'primary' | 'destructive' | 'chart-2'; loading: boolean; }) => {
   if (loading) {
     return (
       <Card>
@@ -73,17 +74,34 @@ const AiAnalysisCard = ({ icon: Icon, title, content, color, loading }: { icon: 
 
   if (!content) return null;
 
+  const colorStyles = {
+    primary: {
+      card: 'bg-primary/5 border-primary/20',
+      text: 'text-primary',
+    },
+    destructive: {
+      card: 'bg-destructive/5 border-destructive/20',
+      text: 'text-destructive',
+    },
+    'chart-2': {
+      card: 'bg-chart-2/5 border-chart-2/20',
+      text: 'text-chart-2',
+    },
+  };
+
+  const styles = colorStyles[color];
+
   return (
-    <Card className={`bg-${color}/5 border-${color}/20`}>
+    <Card className={styles.card}>
       <CardHeader className="flex flex-row items-center gap-2 pb-2">
-        <Icon className={`h-5 w-5 text-${color}`} />
-        <CardTitle className={`text-base text-${color}`}>{title}</CardTitle>
+        <Icon className={cn('h-5 w-5', styles.text)} />
+        <CardTitle className={cn('text-base', styles.text)}>{title}</CardTitle>
       </CardHeader>
       <CardContent className="pt-2">
         <ul className="space-y-1 pl-1">
           {content.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((item, index) => (
             <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-              <span className={`text-${color} mt-1`}>&bull;</span>
+              <span className={cn('mt-1', styles.text)}>&bull;</span>
               <span>{item.replace(/^- /, '')}</span>
             </li>
           ))}
