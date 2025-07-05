@@ -1,13 +1,94 @@
 
 'use client';
 
-// This component is obsolete as of the new navigation redesign.
-// Its functionality has been integrated into the BottomNavBar for mobile
-// and the DashboardHeader for desktop. This file is kept to avoid breaking
-// imports but is no longer used in the main layout.
-
 import * as React from 'react';
+import { Plus, ClipboardList, Wrench, FileSignature } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from './ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
-export function MultiActionButton() {
-  return null;
+interface MultiActionButtonProps {
+  onNewObservation: () => void;
+  onNewInspection: () => void;
+  onNewPtw: () => void;
+}
+
+export function MultiActionButton({ onNewObservation, onNewInspection, onNewPtw }: MultiActionButtonProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  const parentVariants = {
+    closed: { rotate: 0 },
+    open: { rotate: 45 },
+  };
+
+  const childVariants = {
+    closed: { opacity: 0, y: 20, scale: 0.5 },
+    open: { opacity: 1, y: 0, scale: 1 },
+  };
+
+  const actions = [
+    { label: 'Buat Observasi', icon: ClipboardList, action: onNewObservation, color: 'bg-accent' },
+    { label: 'Buat Inspeksi', icon: Wrench, action: onNewInspection, color: 'bg-primary' },
+    { label: 'Buat PTW', icon: FileSignature, action: onNewPtw, color: 'bg-chart-5' },
+  ];
+
+  return (
+    <div className="fixed bottom-20 right-4 z-50 md:hidden">
+       <TooltipProvider delayDuration={200}>
+      <div className="relative flex flex-col items-center gap-3">
+        <AnimatePresence>
+          {isOpen && actions.map((item, index) => (
+            <motion.div
+              key={item.label}
+              variants={childVariants}
+              initial="closed"
+              animate="open"
+              exit="closed"
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+            >
+              <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        size="icon"
+                        className={`rounded-full h-12 w-12 shadow-lg ${item.color} text-white hover:${item.color}/90`}
+                        onClick={() => {
+                          item.action();
+                          setIsOpen(false);
+                        }}
+                    >
+                        <item.icon className="h-6 w-6" />
+                        <span className="sr-only">{item.label}</span>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                    <p>{item.label}</p>
+                </TooltipContent>
+              </Tooltip>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        
+        <motion.div
+            variants={parentVariants}
+            animate={isOpen ? 'open' : 'closed'}
+            transition={{ duration: 0.3 }}
+        >
+          <Button
+            size="icon"
+            className="rounded-full h-16 w-16 shadow-2xl"
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            <Plus className="h-8 w-8 transition-transform" />
+            <span className="sr-only">{isOpen ? 'Tutup menu aksi' : 'Buka menu aksi'}</span>
+          </Button>
+        </motion.div>
+      </div>
+       </TooltipProvider>
+    </div>
+  );
 }

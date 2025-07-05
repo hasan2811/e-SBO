@@ -2,11 +2,10 @@
 'use client';
 
 import * as React from 'react';
-import { FilePlus2, ChevronDown, ChevronsUpDown, Check, Folder } from 'lucide-react';
+import { ChevronsUpDown, Check, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserAccountSheet } from '@/components/user-account-sheet';
 import { AppLogo } from '@/components/app-logo';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { NotificationSheet } from './notification-sheet';
@@ -14,13 +13,6 @@ import { useProjects } from '@/hooks/use-projects';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-
-interface DashboardHeaderProps {
-  projectName: string | null;
-  onNewObservation: () => void;
-  onNewInspection: () => void;
-  onNewPtw: () => void;
-}
 
 function ProjectSwitcher() {
   const [open, setOpen] = React.useState(false);
@@ -32,20 +24,20 @@ function ProjectSwitcher() {
   const selectedProject = projects.find((p) => p.id === projectId);
 
   if (loading) {
-    return <Button variant="outline" role="combobox" className="w-[200px] justify-between" disabled>Loading...</Button>;
+    return <Button variant="ghost" className="w-full sm:w-[250px] justify-start" disabled>Loading...</Button>;
   }
   
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           role="combobox"
           aria-expanded={open}
-          className="w-full sm:w-[200px] justify-between"
+          className="w-full sm:w-auto text-lg font-bold p-1 sm:p-2 h-auto justify-start"
         >
-          <span className="truncate">
-            {selectedProject ? selectedProject.name : "Pilih Proyek..."}
+          <span className="truncate max-w-[200px] sm:max-w-[300px]">
+            {selectedProject ? selectedProject.name : "HSSE Tech"}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -63,7 +55,7 @@ function ProjectSwitcher() {
                   }}
                   className="cursor-pointer"
                 >
-                  <Folder className={cn("mr-2 h-4 w-4", !projectId ? "opacity-100" : "opacity-0")} />
+                  <Folder className={cn("mr-2 h-4 w-4")} />
                   Project Hub
                </CommandItem>
               {projects.map((project) => (
@@ -94,45 +86,25 @@ function ProjectSwitcher() {
 }
 
 
-export function DashboardHeader({ onNewObservation, onNewInspection, onNewPtw }: DashboardHeaderProps) {
+export function DashboardHeader() {
   return (
-    <>
-      <header className="bg-card border-b sticky top-0 z-30">
+    <header className="bg-card border-b sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Link href="/beranda" aria-label="Home">
-                <AppLogo />
-              </Link>
-              <div className="hidden sm:block">
-                <ProjectSwitcher />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-               <div className="hidden md:block">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button>
-                        <FilePlus2 className="mr-2" />
-                        Buat Laporan
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={onNewObservation}>Laporan Observasi Baru</DropdownMenuItem>
-                      <DropdownMenuItem onClick={onNewInspection}>Laporan Inspeksi Baru</DropdownMenuItem>
-                      <DropdownMenuItem onClick={onNewPtw}>Izin Kerja (PTW) Baru</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            <div className="flex items-center justify-between h-16">
+                <div className="flex items-center gap-2 sm:gap-4">
+                    <Link href="/beranda" aria-label="Home" className="flex-shrink-0">
+                        <AppLogo />
+                    </Link>
+                    <div className="border-l pl-2 sm:pl-4">
+                       <ProjectSwitcher />
+                    </div>
                 </div>
-              <NotificationSheet />
-              <UserAccountSheet />
+                <div className="flex items-center gap-2">
+                    <NotificationSheet />
+                    <UserAccountSheet />
+                </div>
             </div>
-          </div>
-          <div className="sm:hidden flex items-center pb-3">
-             <ProjectSwitcher />
-          </div>
         </div>
-      </header>
-    </>
+    </header>
   );
 }
