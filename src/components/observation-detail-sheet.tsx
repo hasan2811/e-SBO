@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -77,7 +76,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   if (!observation) return null;
   
   const isAiEnabled = userProfile?.aiEnabled ?? false;
-  const canTakeAction = observation.status !== 'Completed' && user?.uid === observation.userId;
+  const canTakeAction = observation.status !== 'Completed';
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
   const hasDeepAnalysis = observation.aiRisks && observation.aiObserverSkillRating;
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -78,7 +77,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   
   const isAiEnabled = userProfile?.aiEnabled ?? false;
   const projectName = inspection.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
-  const canFollowUp = (inspection.status === 'Fail' || inspection.status === 'Needs Repair') && user?.uid === inspection.userId;
+  const canFollowUp = (inspection.status === 'Fail' || inspection.status === 'Needs Repair');
   const hasDeepAnalysis = inspection.aiRisks && inspection.aiSuggestedActions;
 
   const handleSuccessfulDelete = () => {

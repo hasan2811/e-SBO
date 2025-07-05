@@ -1,8 +1,7 @@
-
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, Check, Folder, FileCog, FolderPlus, LogIn, Download, Trash2, LogOut } from 'lucide-react';
+import { ChevronsUpDown, Check, Folder, FileCog, FolderPlus, LogIn, Download, Trash2, LogOut, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserAccountSheet } from '@/components/user-account-sheet';
 import { AppLogo } from '@/components/app-logo';
@@ -42,7 +41,7 @@ function ProjectSwitcher() {
             className="w-full sm:w-auto text-lg font-bold p-1 sm:p-2 h-auto justify-start text-left"
           >
             <span className="truncate max-w-[200px] sm:max-w-[300px]">
-              {selectedProject ? selectedProject.name : "HSSE Tech"}
+              {selectedProject ? selectedProject.name : "Project Hub"}
             </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
@@ -70,6 +69,10 @@ function ProjectSwitcher() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
                  <DropdownMenuLabel>Aksi Umum</DropdownMenuLabel>
+                 <DropdownMenuItem onSelect={() => router.push('/beranda')}>
+                    <Home className="mr-2"/>
+                    <span>Project Hub</span>
+                 </DropdownMenuItem>
                  <DropdownMenuItem onSelect={() => setCreateOpen(true)}>
                     <FolderPlus className="mr-2"/>
                     <span>Buat Proyek Baru</span>
