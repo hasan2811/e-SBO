@@ -10,27 +10,83 @@ import { JoinProjectDialog } from '@/components/join-project-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Folder, FolderPlus, LogIn, Users, Crown } from 'lucide-react';
+import { Folder, FolderPlus, LogIn, Users, Crown, MoreVertical, FileCog, LogOut, Trash2 } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { ManageProjectDialog } from '@/components/manage-project-dialog';
+import { LeaveProjectDialog } from '@/components/leave-project-dialog';
+import { DeleteProjectDialog } from '@/components/delete-project-dialog';
 
-const ProjectCard = ({ project }: { project: Project }) => {
+const ProjectCard = ({ 
+  project, 
+  onManage,
+  onLeave,
+  onDelete
+}: { 
+  project: Project,
+  onManage: (project: Project) => void,
+  onLeave: (project: Project) => void,
+  onDelete: (project: Project) => void,
+}) => {
   const router = useRouter();
   const { user } = useAuth();
   const isOwner = project.ownerUid === user?.uid;
 
+  const handleCardClick = () => {
+    router.push(`/proyek/${project.id}/observasi`);
+  }
+
+  const handleActionClick = (e: React.MouseEvent, action: () => void) => {
+    e.stopPropagation();
+    action();
+  }
+
   return (
     <Card 
-      className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50 flex flex-col"
-      onClick={() => router.push(`/proyek/${project.id}/observasi`)}
+      className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50 flex flex-col group"
+      onClick={handleCardClick}
     >
       <CardHeader>
-        <div className="flex items-start gap-4">
-          <Folder className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
-          <div>
-            <CardTitle>{project.name}</CardTitle>
-            <CardDescription>Click to open this project.</CardDescription>
+        <div className="flex justify-between items-start">
+          <div className="flex items-start gap-4">
+            <Folder className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
+            <div>
+              <CardTitle>{project.name}</CardTitle>
+              <CardDescription>Click to open this project.</CardDescription>
+            </div>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-4 w-4" />
+                <span className="sr-only">Project Actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onSelect={() => onManage(project)}>
+                <FileCog className="mr-2" />
+                <span>Kelola Proyek</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {isOwner ? (
+                <DropdownMenuItem onSelect={() => onDelete(project)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                  <Trash2 className="mr-2" />
+                  <span>Hapus Proyek</span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => onLeave(project)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                  <LogOut className="mr-2" />
+                  <span>Keluar dari Proyek</span>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
       <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6 mt-auto">
@@ -74,6 +130,12 @@ export default function ProjectHubPage() {
   const { projects, loading: projectsLoading } = useProjects();
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
   const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
+  const router = useRouter();
+  
+  // State for management dialogs
+  const [projectToManage, setProjectToManage] = React.useState<Project | null>(null);
+  const [projectToLeave, setProjectToLeave] = React.useState<Project | null>(null);
+  const [projectToDelete, setProjectToDelete] = React.useState<Project | null>(null);
 
   const isLoading = projectsLoading || authLoading;
 
@@ -85,6 +147,13 @@ export default function ProjectHubPage() {
     projects.filter(p => p.ownerUid !== userProfile?.uid),
   [projects, userProfile]);
 
+  const handleActionSuccess = () => {
+    setProjectToManage(null);
+    setProjectToLeave(null);
+    setProjectToDelete(null);
+    // The context listener will handle UI updates automatically.
+    // A redirect might be too jarring if they want to manage another project.
+  };
 
   if (isLoading) {
     return (
@@ -140,7 +209,13 @@ export default function ProjectHubPage() {
                 </div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {ownedProjects.map((project) => (
-                    <ProjectCard key={project.id} project={project} />
+                    <ProjectCard 
+                      key={project.id} 
+                      project={project}
+                      onManage={setProjectToManage}
+                      onLeave={setProjectToLeave}
+                      onDelete={setProjectToDelete}
+                    />
                   ))}
                 </div>
               </section>
@@ -156,7 +231,13 @@ export default function ProjectHubPage() {
                 </div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {memberProjects.map((project) => (
-                    <ProjectCard key={project.id} project={project} />
+                     <ProjectCard 
+                      key={project.id} 
+                      project={project}
+                      onManage={setProjectToManage}
+                      onLeave={setProjectToLeave}
+                      onDelete={setProjectToDelete}
+                    />
                   ))}
                 </div>
               </section>
@@ -184,6 +265,30 @@ export default function ProjectHubPage() {
 
       <JoinProjectDialog isOpen={isJoinDialogOpen} onOpenChange={setJoinDialogOpen} />
       <CreateProjectDialog isOpen={isCreateDialogOpen} onOpenChange={setCreateDialogOpen} />
+
+      {projectToManage && (
+        <ManageProjectDialog 
+          isOpen={!!projectToManage} 
+          onOpenChange={() => setProjectToManage(null)} 
+          project={projectToManage} 
+        />
+      )}
+      {projectToLeave && (
+        <LeaveProjectDialog 
+          isOpen={!!projectToLeave}
+          onOpenChange={() => setProjectToLeave(null)}
+          project={projectToLeave}
+          onSuccess={handleActionSuccess}
+        />
+      )}
+      {projectToDelete && (
+         <DeleteProjectDialog 
+          isOpen={!!projectToDelete}
+          onOpenChange={() => setProjectToDelete(null)}
+          project={projectToDelete}
+          onSuccess={handleActionSuccess}
+        />
+      )}
     </>
   );
 }

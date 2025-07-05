@@ -1,15 +1,16 @@
+
 'use client';
 
 import * as React from 'react';
-import type { Project, UserProfile } from '@/lib/types';
+import type { Project, UserProfile, AllItems } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Crown, User, UserX, Loader2, Trash2, LogOut, ArrowRightLeft } from 'lucide-react';
+import { Crown, User, UserX, Loader2, Trash2, LogOut, Download } from 'lucide-react';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -22,7 +23,7 @@ import { CustomListInput } from './custom-list-input';
 import { DeleteProjectDialog } from './delete-project-dialog';
 import { LeaveProjectDialog } from './leave-project-dialog';
 import { useRouter } from 'next/navigation';
-
+import { exportToExcel } from '@/lib/export';
 
 const getInitials = (name: string | null | undefined): string => {
     if (!name?.trim()) return 'U';
@@ -36,6 +37,75 @@ const getInitials = (name: string | null | undefined): string => {
     return 'U';
 };
 
+const ExportCard = ({ project }: { project: Project }) => {
+    const { toast } = useToast();
+    const [isExporting, setIsExporting] = React.useState(false);
+
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            const itemTypes = ['observations', 'inspections', 'ptws'];
+            const fetchPromises = itemTypes.map(type => 
+                getDocs(query(collection(db, type), where("projectId", "==", project.id)))
+            );
+            
+            const snapshots = await Promise.all(fetchPromises);
+            const allItems = snapshots.flatMap(snapshot => 
+                snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AllItems))
+            );
+
+            if (allItems.length === 0) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Tidak Ada Data untuk Diekspor',
+                    description: `Tidak ada laporan di proyek ${project.name}.`
+                });
+                return;
+            }
+
+            const fileName = `Export_${project.name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}`;
+            const success = exportToExcel(allItems, fileName);
+
+            if (success) {
+                toast({
+                    title: 'Ekspor Berhasil',
+                    description: `Laporan untuk ${project.name} sedang diunduh.`
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Ekspor Gagal',
+                    description: 'Tidak ada data valid yang ditemukan untuk diekspor.'
+                });
+            }
+        } catch (error) {
+            console.error("Export failed:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Ekspor Gagal',
+                description: 'Terjadi kesalahan saat mengambil data untuk ekspor.'
+            });
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Ekspor Data Laporan</CardTitle>
+                <CardDescription>Unduh semua data observasi, inspeksi, dan PTW dari proyek ini ke dalam file Excel.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button onClick={handleExport} disabled={isExporting} className="w-full sm:w-auto">
+                    {isExporting ? <Loader2 className="mr-2" /> : <Download className="mr-2" />}
+                    Mulai Ekspor
+                </Button>
+            </CardContent>
+        </Card>
+    );
+}
+
 const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onProjectUpdate: (updatedData: Partial<Project>) => void }) => {
   const { toast } = useToast();
   const [customCompanies, setCustomCompanies] = React.useState<string[]>([]);
@@ -44,9 +114,6 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
   const [isProjectOpen, setIsProjectOpen] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
 
-  // This effect ensures that the local state of this component is always
-  // in sync with the `project` prop, which comes from the global context.
-  // This prevents stale data from being shown in the settings form.
   React.useEffect(() => {
     setCustomCompanies(project.customCompanies || []);
     setCustomLocations(project.customLocations || []);
@@ -69,7 +136,7 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
         title: 'Settings Saved',
         description: 'Your project settings have been updated.',
       });
-      onProjectUpdate(updatedData); // Notify parent component of the change
+      onProjectUpdate(updatedData);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -138,6 +205,8 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
             />
         </CardContent>
       </Card>
+
+      <ExportCard project={project} />
 
       <div className="flex justify-end pt-4">
           <Button onClick={handleSave} disabled={isSaving}>

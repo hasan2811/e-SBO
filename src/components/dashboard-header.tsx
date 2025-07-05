@@ -19,60 +19,19 @@ import { ManageProjectDialog } from '@/components/manage-project-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { exportToExcel } from '@/lib/export';
-import { useObservations } from '@/hooks/use-observations';
+
 
 function ProjectSwitcher() {
   const { user } = useAuth();
   const { projects, loading } = useProjects();
   const router = useRouter();
   const pathname = usePathname();
-  const { toast } = useToast();
   
   const [isCreateOpen, setCreateOpen] = React.useState(false);
   const [isJoinOpen, setJoinOpen] = React.useState(false);
-  const [isManageOpen, setManageOpen] = React.useState(false);
 
   const projectId = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/)?.[1] || null;
-  const { items: allProjectItems } = useObservations(projectId, 'observation'); // Assuming export is based on observations, can be adjusted
   const selectedProject = projects.find((p) => p.id === projectId);
-  
-  const isOwner = selectedProject && user && selectedProject.ownerUid === user.uid;
-
-  const handleExport = () => {
-    if (!selectedProject) return;
-    
-    // Combine all item types for a comprehensive export
-    const { items: observations } = useObservations(projectId, 'observation');
-    const { items: inspections } = useObservations(projectId, 'inspection');
-    const { items: ptws } = useObservations(projectId, 'ptw');
-    const allItems = [...observations, ...inspections, ...ptws];
-
-    if (allItems.length === 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Tidak Ada Data untuk Diekspor',
-        description: `Tidak ada laporan di proyek ${selectedProject.name}.`
-      });
-      return;
-    }
-
-    const fileName = `Export_${selectedProject.name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}`;
-    const success = exportToExcel(allItems, fileName);
-
-    if (success) {
-      toast({
-        title: 'Ekspor Berhasil',
-        description: `Laporan untuk ${selectedProject.name} sedang diunduh.`
-      });
-    } else {
-       toast({
-        variant: 'destructive',
-        title: 'Ekspor Gagal',
-        description: 'Tidak ada data valid yang ditemukan untuk diekspor.'
-      });
-    }
-  };
   
   return (
     <>
@@ -108,23 +67,6 @@ function ProjectSwitcher() {
                 </ScrollArea>
             </DropdownMenuGroup>
           
-            {selectedProject && (
-                <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                        <DropdownMenuLabel>Aksi Proyek</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => setManageOpen(true)}>
-                            <FileCog className="mr-2"/>
-                            <span>Kelola Proyek & Anggota</span>
-                        </DropdownMenuItem>
-                         <DropdownMenuItem onSelect={handleExport}>
-                            <Download className="mr-2"/>
-                            <span>Export Laporan</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuGroup>
-                </>
-            )}
-
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
                  <DropdownMenuLabel>Aksi Umum</DropdownMenuLabel>
@@ -142,13 +84,6 @@ function ProjectSwitcher() {
 
       <CreateProjectDialog isOpen={isCreateOpen} onOpenChange={setCreateOpen} />
       <JoinProjectDialog isOpen={isJoinOpen} onOpenChange={setJoinOpen} />
-      {selectedProject && (
-        <ManageProjectDialog
-          isOpen={isManageOpen}
-          onOpenChange={setManageOpen}
-          project={selectedProject}
-        />
-      )}
     </>
   );
 }
