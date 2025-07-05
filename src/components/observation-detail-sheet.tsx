@@ -19,7 +19,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DeleteObservationDialog } from './delete-observation-dialog';
-import { useObservationData } from '@/hooks/use-observation-data';
+import { ObservationContext } from '@/contexts/observation-context';
 import { runDeeperAnalysis, retryAiAnalysis } from '@/lib/actions/ai-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -54,15 +54,24 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
   const { userProfile } = useAuth();
-  const { getObservationById } = useObservationData(); // Use the getter from the context
+  const { getObservationById } = React.useContext(ObservationContext)!;
   const { toast } = useToast();
 
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
+  const [observation, setObservation] = React.useState<Observation | null>(null);
   
-  // Get the observation directly from the context on each render.
-  const observation = observationId ? getObservationById(observationId) : null;
+  React.useEffect(() => {
+    if (observationId) {
+      const foundObservation = getObservationById(observationId);
+      if (foundObservation) {
+        setObservation(foundObservation);
+      }
+    } else {
+      setObservation(null);
+    }
+  }, [observationId, getObservationById]);
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);

@@ -15,7 +15,6 @@ import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { DeleteInspectionDialog } from './delete-inspection-dialog';
-import { useObservationData } from '@/hooks/use-observation-data';
 import { FollowUpInspectionDialog } from './follow-up-inspection-dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +22,7 @@ import { runDeeperInspectionAnalysis, retryAiAnalysis } from '@/lib/actions/ai-a
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { ObservationContext } from '@/contexts/observation-context';
 
 
 interface InspectionDetailSheetProps {
@@ -55,15 +55,24 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
   const { userProfile } = useAuth();
-  const { getInspectionById } = useObservationData();
+  const { getInspectionById } = React.useContext(ObservationContext)!;
   const { toast } = useToast();
   
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
+  const [inspection, setInspection] = React.useState<Inspection | null>(null);
 
-  // Get the inspection directly from the context on each render.
-  const inspection = inspectionId ? getInspectionById(inspectionId) : null;
+  React.useEffect(() => {
+    if (inspectionId) {
+      const foundInspection = getInspectionById(inspectionId);
+      if (foundInspection) {
+        setInspection(foundInspection);
+      }
+    } else {
+      setInspection(null);
+    }
+  }, [inspectionId, getInspectionById]);
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);

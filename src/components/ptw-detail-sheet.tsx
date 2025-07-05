@@ -14,11 +14,11 @@ import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { DeletePtwDialog } from './delete-ptw-dialog';
-import { useObservationData } from '@/hooks/use-observation-data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ApprovePtwDialog } from './approve-ptw-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import { ObservationContext } from '@/contexts/observation-context';
 
 interface PtwDetailSheetProps {
     ptwId: string | null;
@@ -41,10 +41,19 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
   
   const { projects } = useProjects();
-  const { getPtwById } = useObservationData();
+  const { getPtwById } = React.useContext(ObservationContext)!;
+  const [ptw, setPtw] = React.useState<Ptw | null>(null);
 
-  // Get the PTW directly from the context on each render.
-  const ptw = ptwId ? getPtwById(ptwId) : null;
+  React.useEffect(() => {
+    if (ptwId) {
+      const foundPtw = getPtwById(ptwId);
+      if (foundPtw) {
+        setPtw(foundPtw);
+      }
+    } else {
+      setPtw(null);
+    }
+  }, [ptwId, getPtwById]);
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);
