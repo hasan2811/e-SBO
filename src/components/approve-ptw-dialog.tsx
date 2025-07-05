@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -16,7 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, PenSquare, Trash2 } from 'lucide-react';
-import { approvePtwAndStampPdf } from '@/lib/actions/ptw-actions'; // Import server action
+import { approvePtwAndStampPdf } from '@/lib/actions/ptw-actions'; 
 
 interface ApprovePtwDialogProps {
   isOpen: boolean;
@@ -49,7 +48,6 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialog
       const signatureDataUrl = sigCanvasRef.current?.getTrimmedCanvas().toDataURL('image/png') || '';
       const approverName = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
 
-      // Call the server action instead of updating DB from client
       await approvePtwAndStampPdf(ptw, approverName, signatureDataUrl);
 
       toast({
