@@ -3,7 +3,6 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
@@ -22,21 +21,21 @@ import { DeleteProjectDialog } from '@/components/delete-project-dialog';
 
 const ProjectCard = ({ 
   project, 
-  onManage,
-  onLeave,
-  onDelete
+  onManageClick,
+  onLeaveClick,
+  onDeleteClick
 }: { 
   project: Project,
-  onManage: (project: Project) => void,
-  onLeave: (project: Project) => void,
-  onDelete: (project: Project) => void,
+  onManageClick: () => void,
+  onLeaveClick: () => void,
+  onDeleteClick: () => void,
 }) => {
   const { user } = useAuth();
   const isOwner = project.ownerUid === user?.uid;
 
   const handleActionClick = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevents the Link from navigating
-    e.stopPropagation(); // Good practice to also stop bubbling
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   return (
@@ -48,7 +47,7 @@ const ProjectCard = ({
               <Folder className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
               <div className="flex-1 overflow-hidden">
                 <CardTitle className="truncate">{project.name}</CardTitle>
-                <CardDescription>Click to open project.</CardDescription>
+                <CardDescription>Klik untuk membuka proyek.</CardDescription>
               </div>
             </div>
             
@@ -57,30 +56,26 @@ const ProjectCard = ({
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
-                    size="icon" 
-                    className="opacity-70 group-hover:opacity-100 transition-opacity"
+                    size="icon"
                   >
-                    <MoreVertical className="h-4 w-4" />
-                    <span className="sr-only">Project Actions</span>
+                    <MoreVertical />
+                    <span className="sr-only">Tindakan Proyek</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => onManage(project)}>
-                    <FileCog className="mr-2" />
+                  <DropdownMenuItem onSelect={onManageClick}>
+                    <FileCog />
                     <span>Kelola Proyek</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {isOwner ? (
-                    <DropdownMenuItem onSelect={() => onDelete(project)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                      <Trash2 className="mr-2" />
-                      <span>Hapus Proyek</span>
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem onSelect={() => onLeave(project)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                      <LogOut className="mr-2" />
-                      <span>Keluar dari Proyek</span>
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem onSelect={onLeaveClick}>
+                    <LogOut />
+                    <span>Keluar dari Proyek</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={onDeleteClick} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                    <Trash2 />
+                    <span>Hapus Proyek</span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -89,12 +84,12 @@ const ProjectCard = ({
         <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6 mt-auto">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Users className="h-4 w-4" />
-            <span>{project.memberUids.length} Member(s)</span>
+            <span>{project.memberUids.length} Anggota</span>
           </div>
           {isOwner && (
             <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold">
               <Crown className="h-4 w-4 text-amber-500" />
-              <span>Owner</span>
+              <span>Pemilik</span>
             </div>
           )}
         </CardFooter>
@@ -197,11 +192,11 @@ export default function ProjectHubPage() {
           </div>
           <div className="flex-shrink-0 flex gap-2 sm:gap-4">
             <Button onClick={() => setCreateDialogOpen(true)}>
-              <FolderPlus className="mr-2" />
+              <FolderPlus />
               Buat Proyek
             </Button>
             <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
-              <LogIn className="mr-2" />
+              <LogIn />
               Gabung Proyek
             </Button>
           </div>
@@ -224,10 +219,10 @@ export default function ProjectHubPage() {
                   {ownedProjects.map((project) => (
                     <motion.div key={project.id} variants={itemVariants} className="h-full">
                         <ProjectCard 
-                        project={project}
-                        onManage={setProjectToManage}
-                        onLeave={setProjectToLeave}
-                        onDelete={setProjectToDelete}
+                          project={project}
+                          onManageClick={() => setProjectToManage(project)}
+                          onLeaveClick={() => setProjectToLeave(project)}
+                          onDeleteClick={() => setProjectToDelete(project)}
                         />
                     </motion.div>
                   ))}
@@ -252,10 +247,10 @@ export default function ProjectHubPage() {
                   {memberProjects.map((project) => (
                     <motion.div key={project.id} variants={itemVariants} className="h-full">
                         <ProjectCard 
-                        project={project}
-                        onManage={setProjectToManage}
-                        onLeave={setProjectToLeave}
-                        onDelete={setProjectToDelete}
+                          project={project}
+                          onManageClick={() => setProjectToManage(project)}
+                          onLeaveClick={() => setProjectToLeave(project)}
+                          onDeleteClick={() => setProjectToDelete(project)}
                         />
                     </motion.div>
                   ))}

@@ -2,27 +2,24 @@
 'use client';
 
 import * as React from 'react';
-import type { Project, UserProfile, AllItems } from '@/lib/types';
+import type { Project, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Crown, User, UserX, Loader2, Trash2, LogOut, Download, FileCog } from 'lucide-react';
+import { UserX, Loader2, Download, FileCog } from 'lucide-react';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import { CustomListInput } from './custom-list-input';
-import { DeleteProjectDialog } from './delete-project-dialog';
-import { LeaveProjectDialog } from './leave-project-dialog';
-import { useRouter } from 'next/navigation';
 import { exportToExcel } from '@/lib/export';
+import type { AllItems } from '@/lib/types';
 
 const getInitials = (name: string | null | undefined): string => {
     if (!name?.trim()) return 'U';
@@ -97,7 +94,7 @@ const ExportCard = ({ project }: { project: Project }) => {
             </CardHeader>
             <CardContent>
                 <Button onClick={handleExport} disabled={isExporting} className="w-full sm:w-auto">
-                    {isExporting ? <Loader2 className="mr-2" /> : <Download className="mr-2" />}
+                    {isExporting ? <Loader2 /> : <Download />}
                     Mulai Ekspor
                 </Button>
             </CardContent>
@@ -207,7 +204,7 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
       
       <div className="flex justify-end pt-4">
           <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSaving && <Loader2 />}
             Simpan Semua Pengaturan
           </Button>
       </div>
@@ -215,36 +212,13 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
   );
 };
 
-const MemberList = ({ members, isLoading, projectOwnerUid, currentUid, onRemoveClick }: { 
+const MemberList = ({ members, onRemoveClick }: { 
     members: UserProfile[], 
-    isLoading: boolean,
-    projectOwnerUid: string,
-    currentUid: string | undefined,
     onRemoveClick: (member: UserProfile) => void,
 }) => {
-    
-    if (isLoading) {
-        return <div className="grid gap-4 md:grid-cols-2 p-1">
-            {Array.from({ length: 2 }).map((_, index) => (
-                <Card key={index} className="flex flex-col">
-                <CardHeader className="flex flex-row items-center gap-4">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                    </div>
-                </CardHeader>
-                <CardFooter className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
-                    <Skeleton className="h-5 w-1/3" />
-                </CardFooter>
-                </Card>
-            ))}
-        </div>;
-    }
-
     return (
         <div className="grid gap-4 md:grid-cols-2 p-1">
-            {members.sort((a, b) => (a.uid === projectOwnerUid ? -1 : 1)).map(member => (
+            {members.map(member => (
                 <Card key={member.uid} className="flex flex-col">
                   <CardHeader className="flex flex-row items-center gap-4 pb-4">
                       <Avatar className="h-12 w-12">
@@ -256,19 +230,15 @@ const MemberList = ({ members, isLoading, projectOwnerUid, currentUid, onRemoveC
                         <CardDescription className="truncate">{member.position || 'No Position'}</CardDescription>
                       </div>
                   </CardHeader>
-                  <CardFooter className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
-                      <div className="flex items-center gap-2 text-sm font-semibold">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">Member</span>
-                      </div>
+                  <CardFooter className="flex justify-end items-center bg-muted/50 p-3 mt-auto">
                       <Button
                           variant="ghost"
                           size="sm"
                           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                           onClick={() => onRemoveClick(member)}
                       >
-                          <UserX className="mr-2 h-4 w-4" />
-                          Remove
+                          <UserX />
+                          Keluarkan
                       </Button>
                   </CardFooter>
                 </Card>
@@ -277,6 +247,25 @@ const MemberList = ({ members, isLoading, projectOwnerUid, currentUid, onRemoveC
     );
 }
 
+const MemberListSkeleton = () => (
+    <div className="grid gap-4 md:grid-cols-2 p-1">
+        {Array.from({ length: 2 }).map((_, index) => (
+            <Card key={index} className="flex flex-col">
+            <CardHeader className="flex flex-row items-center gap-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+                </div>
+            </CardHeader>
+            <CardFooter className="flex justify-end items-center bg-muted/50 p-3 mt-auto">
+                <Skeleton className="h-9 w-24 rounded-md" />
+            </CardFooter>
+            </Card>
+        ))}
+    </div>
+);
+
 interface ManageProjectDialogProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
@@ -284,8 +273,6 @@ interface ManageProjectDialogProps {
 }
 
 export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProject }: ManageProjectDialogProps) {
-    const { user } = useAuth();
-    const router = useRouter();
     const { toast } = useToast();
 
     const [currentProject, setCurrentProject] = React.useState(initialProject);
@@ -293,18 +280,13 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
     const [isLoadingData, setIsLoadingData] = React.useState(true);
     
     const [memberToRemove, setMemberToRemove] = React.useState<UserProfile | null>(null);
-    const [isLeaveOpen, setIsLeaveOpen] = React.useState(false);
-    const [isDeleteOpen, setDeleteOpen] = React.useState(false);
 
     React.useEffect(() => {
-        if (!isOpen) {
-            return;
-        }
+        if (!isOpen) return;
 
         const fetchData = async () => {
             setIsLoadingData(true);
             try {
-                // Fetch the latest project data to get the current memberUids
                 const projectRef = doc(db, 'projects', initialProject.id);
                 const projectSnap = await getDoc(projectRef);
 
@@ -316,12 +298,14 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                 const projectData = projectSnap.data() as Project;
                 setCurrentProject(projectData);
 
-                // Fetch member profiles based on the latest memberUids
                 if (projectData.memberUids?.length > 0) {
                     const memberDocs = await Promise.all(
                         projectData.memberUids.map(uid => getDoc(doc(db, 'users', uid)))
                     );
-                    const memberProfiles = memberDocs.map(snap => snap.data() as UserProfile).filter(Boolean);
+                    const memberProfiles = memberDocs
+                        .map(snap => snap.data() as UserProfile)
+                        .filter(Boolean)
+                        .sort((a, b) => (a.uid === projectData.ownerUid ? -1 : 1));
                     setMembers(memberProfiles);
                 } else {
                     setMembers([]);
@@ -350,20 +334,13 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
         setMemberToRemove(null);
     };
 
-    const handleActionSuccess = () => {
-        setIsLeaveOpen(false);
-        setDeleteOpen(false);
-        onOpenChange(false);
-        router.push('/beranda');
-    };
-
     return (
         <>
             <Dialog open={isOpen} onOpenChange={onOpenChange}>
                 <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-0">
                     <DialogHeader className="p-6 pb-2">
                         <DialogTitle className="flex items-center gap-2">
-                          <FileCog className="h-5 w-5"/>
+                          <FileCog />
                           Kelola "{currentProject.name}"
                         </DialogTitle>
                         <DialogDescription>
@@ -381,13 +358,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                             
                             <ScrollArea className="flex-1 mt-4 -mr-6 pr-6">
                                 <TabsContent value="members" className="mt-0">
-                                    <MemberList 
-                                        members={members} 
-                                        isLoading={isLoadingData}
-                                        projectOwnerUid={currentProject.ownerUid}
-                                        currentUid={user?.uid}
-                                        onRemoveClick={setMemberToRemove}
-                                    />
+                                    {isLoadingData ? <MemberListSkeleton /> : <MemberList members={members} onRemoveClick={setMemberToRemove} />}
                                 </TabsContent>
                                 <TabsContent value="settings" className="mt-0">
                                     <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
@@ -398,15 +369,6 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                             </ScrollArea>
                         </Tabs>
                     </div>
-
-                    <DialogFooter className="p-6 pt-4 border-t flex-shrink-0 justify-between">
-                         <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-                            <Trash2 className="mr-2"/> Hapus Proyek
-                        </Button>
-                        <Button variant="outline" onClick={() => setIsLeaveOpen(true)}>
-                            <LogOut className="mr-2"/> Tinggalkan Proyek
-                        </Button>
-                    </DialogFooter>
                 </DialogContent>
             </Dialog>
             
@@ -419,18 +381,6 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                 onSuccess={handleMemberRemoved}
               />
             )}
-            <LeaveProjectDialog
-                isOpen={isLeaveOpen}
-                onOpenChange={setIsLeaveOpen}
-                project={currentProject}
-                onSuccess={handleActionSuccess}
-            />
-             <DeleteProjectDialog
-                isOpen={isDeleteOpen}
-                onOpenChange={setDeleteOpen}
-                project={currentProject}
-                onSuccess={handleActionSuccess}
-            />
         </>
     );
 }

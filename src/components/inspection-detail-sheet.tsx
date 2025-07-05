@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -116,7 +117,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2" onClick={() => onOpenChange(false)}>
-                  <ArrowLeft className="h-5 w-5" />
+                  <ArrowLeft />
                 </Button>
                 <div className="flex flex-col">
                   <SheetTitle>Detail Inspeksi</SheetTitle>
@@ -124,7 +125,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                 </div>
               </div>
               <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Inspeksi">
-                <Trash2 className="h-4 w-4" />
+                <Trash2 />
               </Button>
             </div>
           </SheetHeader>
@@ -202,7 +203,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                     
                     {inspection.aiStatus === 'failed' && (
                         <Alert variant="destructive">
-                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTriangle />
                             <AlertTitle>Analisis Gagal</AlertTitle>
                             <AlertDescription>
                                 Analisis AI tidak dapat diselesaikan.
@@ -293,7 +294,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
            {canFollowUp && (
               <SheetFooter className="p-4 border-t mt-auto">
                 <Button type="button" onClick={() => setFollowUpOpen(true)} className="w-full">
-                  <Gavel className="mr-2 h-4 w-4" />
+                  <Gavel />
                   Tindak Lanjut & Selesaikan
                 </Button>
               </SheetFooter>

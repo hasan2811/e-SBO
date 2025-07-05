@@ -7,7 +7,7 @@ import type { Ptw } from '@/lib/types';
 import { PtwStatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Gavel, ArrowLeft, FileText, User, Building, MapPin, Calendar, ExternalLink, PenSquare, Check, Folder, Trash2, Loader2 } from 'lucide-react';
+import { Check, ArrowLeft, FileText, User, Building, MapPin, Calendar, ExternalLink, Trash2, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
@@ -39,7 +39,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   const [localPtw, setLocalPtw] = React.useState<Ptw | null>(null);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const { projects } = useProjects();
-  const { user, userProfile } = useAuth();
+  const { userProfile } = useAuth();
   const { getPtwById } = useObservations();
   const [isApproving, setIsApproving] = React.useState(false);
   const { toast } = useToast();
@@ -68,7 +68,6 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
     const result = await stampAndApprovePtw(ptw.id, userProfile);
     if (result.success) {
         toast({ title: 'Success!', description: result.message });
-        // The real-time listener will update the sheet, no need to close it manually.
     } else {
         toast({ variant: 'destructive', title: 'Approval Failed', description: result.message });
     }
@@ -86,7 +85,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                   <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2" onClick={() => onOpenChange(false)}>
-                      <ArrowLeft className="h-5 w-5" />
+                      <ArrowLeft />
                   </Button>
                   <div className="flex flex-col">
                       <SheetTitle>Detail Izin Kerja</SheetTitle>
@@ -94,7 +93,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                   </div>
               </div>
               <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus PTW">
-                <Trash2 className="h-4 w-4" />
+                <Trash2 />
               </Button>
             </div>
           </SheetHeader>
@@ -151,9 +150,9 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                 <CardContent>
                   <Button asChild variant="outline" className="w-full">
                     <a href={ptw.jsaPdfUrl} target="_blank" rel="noopener noreferrer">
-                      <FileText className="mr-2 h-4 w-4" />
+                      <FileText />
                       Lihat JSA (PDF)
-                      <ExternalLink className="ml-auto h-4 w-4 text-muted-foreground" />
+                      <ExternalLink className="ml-auto" />
                     </a>
                   </Button>
                 </CardContent>
@@ -163,7 +162,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
            {canApprove && (
             <SheetFooter className="p-4 border-t mt-auto">
               <Button type="button" onClick={handleApprove} className="w-full" disabled={isApproving}>
-                {isApproving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                {isApproving ? <Loader2 /> : <Check />}
                 Setujui Izin
               </Button>
             </SheetFooter>

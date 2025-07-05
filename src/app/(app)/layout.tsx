@@ -36,15 +36,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const projectId = getProjectIdFromPath();
 
   const currentProject = React.useMemo(() => {
-    if (!projectId || projectsLoading) return null;
+    if (!projectId) return null;
     return projects.find(p => p.id === projectId) ?? null;
-  }, [projectId, projects, projectsLoading]);
+  }, [projectId, projects]);
 
   // --- Redirection Logic ---
   React.useEffect(() => {
-    // This effect now ONLY handles authentication status and profile completion.
-    // All project-related routing decisions have been moved to specific pages for better performance.
-    
     if (authLoading) return; // Wait until authentication check is complete
 
     // 1. If not authenticated, redirect to login page.

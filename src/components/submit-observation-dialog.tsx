@@ -64,7 +64,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   // AI Assistant State
   const [aiSuggestions, setAiSuggestions] = React.useState<AssistObservationOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
-  const isAiEnabled = userProfile?.aiEnabled ?? true;
+  const isAiEnabled = userProfile?.aiEnabled ?? false;
 
   const companyOptions = React.useMemo(() => 
     (project?.customCompanies && project.customCompanies.length > 0) ? project.customCompanies : DEFAULT_COMPANIES,
@@ -294,7 +294,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isSubmitting}
                     >
-                      <Upload className="mr-2 h-4 w-4" />
+                      <Upload />
                       {photoPreview ? 'Ganti Foto' : 'Pilih Foto'}
                     </Button>
                     {photoPreview && (
@@ -426,7 +426,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                            <div>
                               <p className="mb-1">Saran Rekomendasi:</p>
                                <Button type="button" size="sm" variant="outline" className="w-full justify-start text-left h-auto whitespace-normal" onClick={() => form.setValue('recommendation', aiSuggestions.suggestedRecommendation)}>
-                                  <Wand2 className="mr-2 h-4 w-4 flex-shrink-0" /> {aiSuggestions.suggestedRecommendation}
+                                  <Wand2 /> {aiSuggestions.suggestedRecommendation}
                                </Button>
                            </div>
                          )}
@@ -459,7 +459,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
               Batal
             </Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting && <Loader2 />}
               Kirim Laporan
             </Button>
           </div>

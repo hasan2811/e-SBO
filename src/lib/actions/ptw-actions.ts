@@ -28,7 +28,6 @@ export async function stampAndApprovePtw(ptwId: string, userProfile: UserProfile
         // 1. Download the original PDF from Storage
         const bucket = adminStorage.bucket();
         
-        // Correctly parse the file path from the full download URL
         const urlParts = ptw.jsaPdfUrl.split('/o/');
         if (urlParts.length < 2) {
             return { success: false, message: 'Invalid JSA PDF URL format.' };
@@ -94,5 +93,3 @@ export async function stampAndApprovePtw(ptwId: string, userProfile: UserProfile
         return { success: false, message: errorMessage };
     }
 }
-
-    

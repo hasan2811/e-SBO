@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -116,7 +117,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2" onClick={() => onOpenChange(false)}>
-                        <ArrowLeft className="h-5 w-5" />
+                        <ArrowLeft />
                     </Button>
                     <div className="flex flex-col">
                         <SheetTitle>Detail Observasi</SheetTitle>
@@ -126,7 +127,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                 
                 <div className="flex items-center gap-2">
                     <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Observasi">
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 />
                     </Button>
                 </div>
             </div>
@@ -198,7 +199,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                   )}
                   {observation.aiStatus === 'failed' && (
                       <Alert variant="destructive">
-                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTriangle />
                           <AlertTitle>Analisis Gagal</AlertTitle>
                           <AlertDescription>
                               Analisis AI tidak dapat diselesaikan.
@@ -298,7 +299,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
         {canTakeAction && (
           <SheetFooter className="p-4 border-t mt-auto">
             <Button type="button" onClick={() => setActionDialogOpen(true)} className="w-full">
-              <Gavel className="mr-2 h-4 w-4" />
+              <Gavel />
               Ambil Tindakan & Selesaikan
             </Button>
           </SheetFooter>
