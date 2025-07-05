@@ -34,7 +34,7 @@ function ProjectSwitcher() {
   const [isManageOpen, setManageOpen] = React.useState(false);
 
   const projectId = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/)?.[1] || null;
-  const { items: allProjectItems } = useObservations(projectId);
+  const { items: allProjectItems } = useObservations(projectId, 'observation'); // Assuming export is based on observations, can be adjusted
   const selectedProject = projects.find((p) => p.id === projectId);
   
   const isOwner = selectedProject && user && selectedProject.ownerUid === user.uid;
@@ -42,7 +42,13 @@ function ProjectSwitcher() {
   const handleExport = () => {
     if (!selectedProject) return;
     
-    if (allProjectItems.length === 0) {
+    // Combine all item types for a comprehensive export
+    const { items: observations } = useObservations(projectId, 'observation');
+    const { items: inspections } = useObservations(projectId, 'inspection');
+    const { items: ptws } = useObservations(projectId, 'ptw');
+    const allItems = [...observations, ...inspections, ...ptws];
+
+    if (allItems.length === 0) {
       toast({
         variant: 'destructive',
         title: 'Tidak Ada Data untuk Diekspor',
@@ -52,7 +58,7 @@ function ProjectSwitcher() {
     }
 
     const fileName = `Export_${selectedProject.name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}`;
-    const success = exportToExcel(allProjectItems, fileName);
+    const success = exportToExcel(allItems, fileName);
 
     if (success) {
       toast({
@@ -107,12 +113,10 @@ function ProjectSwitcher() {
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
                         <DropdownMenuLabel>Aksi Proyek</DropdownMenuLabel>
-                        {isOwner && (
-                            <DropdownMenuItem onSelect={() => setManageOpen(true)}>
-                                <FileCog className="mr-2"/>
-                                <span>Kelola Proyek & Anggota</span>
-                            </DropdownMenuItem>
-                        )}
+                        <DropdownMenuItem onSelect={() => setManageOpen(true)}>
+                            <FileCog className="mr-2"/>
+                            <span>Kelola Proyek & Anggota</span>
+                        </DropdownMenuItem>
                          <DropdownMenuItem onSelect={handleExport}>
                             <Download className="mr-2"/>
                             <span>Export Laporan</span>
