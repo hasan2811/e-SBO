@@ -55,7 +55,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (hasProjects) {
       // If user has projects but is on a non-project page (e.g., /beranda), redirect them.
       if (!isProjectPage) {
-        router.replace(`/proyek/${projects[0].id}`);
+        router.replace(`/proyek/${projects[0].id}/observasi`);
       }
     } else {
       // If user has NO projects, they should only be on the welcome page.
@@ -81,7 +81,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
   
   if (!user) {
-     return null; // or a loading spinner, handled by the redirection logic
+     return <PageSkeleton />; // Show skeleton during redirect to login
   }
 
   const variants = {
