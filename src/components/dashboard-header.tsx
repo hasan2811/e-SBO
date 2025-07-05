@@ -127,18 +127,6 @@ function ProjectSwitcher() {
                             <Download className="mr-2"/>
                             <span>Export Laporan</span>
                         </DropdownMenuItem>
-                        {isOwner ? (
-                            <DropdownMenuItem onSelect={() => setDeleteOpen(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                <Trash2 className="mr-2"/>
-                                <span>Hapus Proyek</span>
-                            </DropdownMenuItem>
-                        ) : (
-                             <DropdownMenuItem onSelect={() => setLeaveOpen(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                <LogOut className="mr-2"/>
-                                <span>Tinggalkan Proyek</span>
-                            </DropdownMenuItem>
-                        )}
-
                     </DropdownMenuGroup>
                 </>
             )}
