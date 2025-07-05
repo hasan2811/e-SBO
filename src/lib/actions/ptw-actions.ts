@@ -27,8 +27,14 @@ export async function stampAndApprovePtw(ptwId: string, userProfile: UserProfile
 
         // 1. Download the original PDF from Storage
         const bucket = adminStorage.bucket();
-        // Decode the URL-encoded file path and extract the path after the bucket name
-        const filePath = decodeURIComponent(ptw.jsaPdfUrl.split(`${bucket.name}/`)[1].split('?')[0]);
+        
+        // Correctly parse the file path from the full download URL
+        const urlParts = ptw.jsaPdfUrl.split('/o/');
+        if (urlParts.length < 2) {
+            return { success: false, message: 'Invalid JSA PDF URL format.' };
+        }
+        const filePath = decodeURIComponent(urlParts[1].split('?')[0]);
+        
         const file = bucket.file(filePath);
         const [pdfBytes] = await file.download();
 
@@ -88,3 +94,5 @@ export async function stampAndApprovePtw(ptwId: string, userProfile: UserProfile
         return { success: false, message: errorMessage };
     }
 }
+
+    

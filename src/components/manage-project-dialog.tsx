@@ -16,7 +16,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import { CustomListInput } from './custom-list-input';
@@ -104,7 +103,7 @@ const ExportCard = ({ project }: { project: Project }) => {
             </CardContent>
         </Card>
     );
-}
+};
 
 const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onProjectUpdate: (updatedData: Partial<Project>) => void }) => {
   const { toast } = useToast();
@@ -205,7 +204,7 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
             />
         </CardContent>
       </Card>
-
+      
       <div className="flex justify-end pt-4">
           <Button onClick={handleSave} disabled={isSaving}>
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -216,7 +215,6 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
   );
 };
 
-// Simplified "dumb" component for displaying the member list
 const MemberList = ({ members, isLoading, projectOwnerUid, currentUid, onRemoveClick }: { 
     members: UserProfile[], 
     isLoading: boolean,
@@ -260,19 +258,9 @@ const MemberList = ({ members, isLoading, projectOwnerUid, currentUid, onRemoveC
                   </CardHeader>
                   <CardFooter className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
                       <div className="flex items-center gap-2 text-sm font-semibold">
-                      {member.uid === projectOwnerUid ? (
-                          <>
-                          <Crown className="h-4 w-4 text-amber-500" />
-                          <span className="text-amber-600">Owner</span>
-                          </>
-                      ) : (
-                          <>
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Member</span>
-                          </>
-                      )}
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Member</span>
                       </div>
-                      {member.uid !== currentUid && (
                       <Button
                           variant="ghost"
                           size="sm"
@@ -282,7 +270,6 @@ const MemberList = ({ members, isLoading, projectOwnerUid, currentUid, onRemoveC
                           <UserX className="mr-2 h-4 w-4" />
                           Remove
                       </Button>
-                      )}
                   </CardFooter>
                 </Card>
             ))}
@@ -303,51 +290,54 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
 
     const [currentProject, setCurrentProject] = React.useState(initialProject);
     const [members, setMembers] = React.useState<UserProfile[]>([]);
-    const [isLoadingMembers, setIsLoadingMembers] = React.useState(true);
+    const [isLoadingData, setIsLoadingData] = React.useState(true);
     
     const [memberToRemove, setMemberToRemove] = React.useState<UserProfile | null>(null);
     const [isLeaveOpen, setIsLeaveOpen] = React.useState(false);
     const [isDeleteOpen, setDeleteOpen] = React.useState(false);
 
-    // Centralized data fetching, runs only when dialog opens.
     React.useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen) {
+            return;
+        }
 
-        // Reset state on open
-        setCurrentProject(initialProject);
-        setMembers([]);
-        setIsLoadingMembers(true);
-
-        const fetchMembers = async () => {
-            if (!initialProject?.memberUids || initialProject.memberUids.length === 0) {
-                setMembers([]);
-                setIsLoadingMembers(false);
-                return;
-            }
+        const fetchData = async () => {
+            setIsLoadingData(true);
             try {
-                const memberDocs = await Promise.all(
-                    initialProject.memberUids.map(uid => getDoc(doc(db, 'users', uid)))
-                );
-                const memberProfiles: UserProfile[] = [];
-                memberDocs.forEach(docSnap => {
-                    if (docSnap.exists()) {
-                        memberProfiles.push(docSnap.data() as UserProfile);
-                    }
-                });
-                setMembers(memberProfiles);
+                // Fetch the latest project data to get the current memberUids
+                const projectRef = doc(db, 'projects', initialProject.id);
+                const projectSnap = await getDoc(projectRef);
+
+                if (!projectSnap.exists()) {
+                    toast({ variant: 'destructive', title: 'Error', description: 'Project not found.' });
+                    onOpenChange(false);
+                    return;
+                }
+                const projectData = projectSnap.data() as Project;
+                setCurrentProject(projectData);
+
+                // Fetch member profiles based on the latest memberUids
+                if (projectData.memberUids?.length > 0) {
+                    const memberDocs = await Promise.all(
+                        projectData.memberUids.map(uid => getDoc(doc(db, 'users', uid)))
+                    );
+                    const memberProfiles = memberDocs.map(snap => snap.data() as UserProfile).filter(Boolean);
+                    setMembers(memberProfiles);
+                } else {
+                    setMembers([]);
+                }
             } catch (error) {
-                console.error("Failed to fetch project members:", error);
-                toast({ variant: 'destructive', title: 'Could not load members.' });
+                console.error("Failed to fetch project data:", error);
+                toast({ variant: 'destructive', title: 'Could not load project data.' });
             } finally {
-                setIsLoadingMembers(false);
+                setIsLoadingData(false);
             }
         };
 
-        fetchMembers();
-    }, [isOpen, initialProject, toast]);
+        fetchData();
+    }, [isOpen, initialProject.id, toast, onOpenChange]);
 
 
-    // Update local state to reflect changes without a full refetch
     const handleProjectUpdate = (updatedData: Partial<Project>) => {
         setCurrentProject(prev => ({ ...prev, ...updatedData }));
     };
@@ -393,7 +383,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                                 <TabsContent value="members" className="mt-0">
                                     <MemberList 
                                         members={members} 
-                                        isLoading={isLoadingMembers}
+                                        isLoading={isLoadingData}
                                         projectOwnerUid={currentProject.ownerUid}
                                         currentUid={user?.uid}
                                         onRemoveClick={setMemberToRemove}
@@ -402,7 +392,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                                 <TabsContent value="settings" className="mt-0">
                                     <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
                                 </TabsContent>
-                                 <TabsContent value="export" className="mt-0 p-1">
+                                <TabsContent value="export" className="mt-0 p-1">
                                     <ExportCard project={currentProject} />
                                 </TabsContent>
                             </ScrollArea>
@@ -444,3 +434,5 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
         </>
     );
 }
+
+    
