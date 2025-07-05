@@ -6,7 +6,7 @@ import Image from 'next/image';
 import type { AllItems, Observation, Inspection, Ptw } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge, StatusBadge, RiskBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { Sparkles, Loader2, Search, Eye, Trash2, X, ArrowLeft, Building, MapPin, Calendar, SearchCheck, Folder, ClipboardList, Wrench, FileSignature } from 'lucide-react';
+import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { useObservations } from '@/hooks/use-observations';
-import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const ListItemWrapper = ({ children, onSelect }: { children: React.ReactNode, onSelect: () => void }) => {
     const handleItemClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -126,7 +126,7 @@ interface FeedViewProps {
   description: string;
 }
 
-export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title, description }: FeedViewProps) {
+export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title }: FeedViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -138,6 +138,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   const [selectedPtwId, setSelectedPtwId] = React.useState<string | null>(null);
   
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [isSearchVisible, setIsSearchVisible] = React.useState(false);
 
   const triggeredOpen = React.useRef(false);
   React.useEffect(() => {
@@ -210,26 +211,41 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h1 className="text-2xl font-bold tracking-tight flex-1">{title}</h1>
             
-            <div className="relative hidden sm:block">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Cari laporan..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-48 lg:w-64" />
-                {searchTerm && (
-                  <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
-                    <X className="h-4 w-4"/>
-                  </Button>
-                )}
+            <div className="flex items-center gap-2 self-end sm:self-center">
+                 <Button variant="ghost" size="icon" onClick={() => setIsSearchVisible(prev => !prev)}>
+                    <Search className="h-5 w-5"/>
+                    <span className="sr-only">Cari</span>
+                </Button>
             </div>
         </div>
         
-        <div className="relative sm:hidden">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Cari laporan..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-full" />
-            {searchTerm && (
-              <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
-                <X className="h-4 w-4"/>
-              </Button>
-            )}
-        </div>
+        <AnimatePresence>
+        {isSearchVisible && (
+            <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+            >
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Cari berdasarkan temuan, lokasi, perusahaan..." 
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)} 
+                        className="pl-9 w-full" 
+                        autoFocus
+                    />
+                    {searchTerm && (
+                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
+                        <X className="h-4 w-4"/>
+                    </Button>
+                    )}
+                </div>
+            </motion.div>
+        )}
+        </AnimatePresence>
 
       <main className="mt-6">
         {isLoading && items.length === 0 ? (
@@ -274,5 +290,3 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
    </>
   );
 }
-
-    

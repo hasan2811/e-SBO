@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, Check, Folder, FileCog, UserPlus, FolderPlus, LogIn, Download, Trash2, LogOut, Crown } from 'lucide-react';
+import { ChevronsUpDown, Check, Folder, FileCog, FolderPlus, LogIn, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserAccountSheet } from '@/components/user-account-sheet';
 import { AppLogo } from '@/components/app-logo';
@@ -25,7 +25,6 @@ import { useObservations } from '@/hooks/use-observations';
 function ProjectSwitcher() {
   const { user } = useAuth();
   const { projects, loading } = useProjects();
-  const { items: observations } = useObservations();
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -35,18 +34,36 @@ function ProjectSwitcher() {
   const [isManageOpen, setManageOpen] = React.useState(false);
 
   const projectId = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/)?.[1] || null;
+  const { items: allProjectItems } = useObservations(projectId);
   const selectedProject = projects.find((p) => p.id === projectId);
-  const isOwner = user && selectedProject && selectedProject.ownerUid === user.uid;
 
   const handleExport = () => {
     if (!selectedProject) return;
-    const projectObservations = observations.filter(item => item.itemType === 'observation' && item.projectId === selectedProject.id);
-     if (projectObservations.length === 0) {
-      toast({ variant: 'destructive', title: 'Tidak Ada Data untuk Diekspor' });
+    
+    if (allProjectItems.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Tidak Ada Data untuk Diekspor',
+        description: `Tidak ada laporan di proyek ${selectedProject.name}.`
+      });
       return;
     }
+
     const fileName = `Export_${selectedProject.name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}`;
-    exportToExcel(projectObservations, fileName);
+    const success = exportToExcel(allProjectItems, fileName);
+
+    if (success) {
+      toast({
+        title: 'Ekspor Berhasil',
+        description: `Laporan untuk ${selectedProject.name} sedang diunduh.`
+      });
+    } else {
+       toast({
+        variant: 'destructive',
+        title: 'Ekspor Gagal',
+        description: 'Tidak ada data valid yang ditemukan untuk diekspor.'
+      });
+    }
   };
   
   return (
@@ -71,7 +88,7 @@ function ProjectSwitcher() {
                         <DropdownMenuItem disabled>Memuat...</DropdownMenuItem>
                     ) : projects.length > 0 ? (
                         projects.map((project) => (
-                            <DropdownMenuItem key={project.id} onSelect={() => router.push(`/proyek/${project.id}`)}>
+                            <DropdownMenuItem key={project.id} onSelect={() => router.push(`/proyek/${project.id}/observasi`)}>
                                 <Folder className="mr-2"/>
                                 <span>{project.name}</span>
                                 {project.id === selectedProject?.id && <Check className="ml-auto h-4 w-4" />}
@@ -94,7 +111,7 @@ function ProjectSwitcher() {
                         </DropdownMenuItem>
                          <DropdownMenuItem onSelect={handleExport}>
                             <Download className="mr-2"/>
-                            <span>Export (Observasi)</span>
+                            <span>Export Laporan</span>
                         </DropdownMenuItem>
                     </DropdownMenuGroup>
                 </>

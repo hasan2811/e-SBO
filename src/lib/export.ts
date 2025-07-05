@@ -1,72 +1,117 @@
+
 'use client';
 
 import * as XLSX from 'xlsx';
-import type { Observation } from './types';
+import type { Observation, Inspection, Ptw, AllItems } from './types';
 import { format } from 'date-fns';
 
-export const exportToExcel = (observations: Observation[], fileName: string) => {
-  if (observations.length === 0) {
-    return false; // Indicate failure
+export const exportToExcel = (items: AllItems[], fileName: string): boolean => {
+  if (items.length === 0) {
+    return false;
   }
 
-  // Map observations to a simpler format for the sheet with user-friendly headers
-  const dataToExport = observations.map(obs => ({
-    'Reference ID': obs.referenceId || obs.id,
-    'Date': obs.date ? format(new Date(obs.date), 'yyyy-MM-dd HH:mm') : '',
-    'Submitted By': obs.submittedBy,
-    'Company': obs.company,
-    'Location': obs.location,
-    'Category': obs.category,
-    'Status': obs.status,
-    'Risk Level': obs.riskLevel,
-    'Findings': obs.findings,
-    'Recommendation': obs.recommendation,
-    'Photo URL': obs.photoUrl || '',
-    'Action Taken': obs.actionTakenDescription || '',
-    'Closed By': obs.closedBy || '',
-    'Closed Date': obs.closedDate ? format(new Date(obs.closedDate), 'yyyy-MM-dd HH:mm') : '',
-    'Action Photo URL': obs.actionTakenPhotoUrl || '',
-    'AI Summary': obs.aiSummary || '',
-    'AI Risks': obs.aiRisks || '',
-    'AI Suggested Actions': obs.aiSuggestedActions || '',
-    'AI Regulations': obs.aiRelevantRegulations || '',
-    'AI Suggested Risk': obs.aiSuggestedRiskLevel || '',
-    'AI Root Cause': obs.aiRootCauseAnalysis || '',
-    'AI Observer Rating': obs.aiObserverSkillRating || '',
-    'AI Observer Explanation': obs.aiObserverSkillExplanation || '',
-  }));
+  const observations = items.filter(item => item.itemType === 'observation') as Observation[];
+  const inspections = items.filter(item => item.itemType === 'inspection') as Inspection[];
+  const ptws = items.filter(item => item.itemType === 'ptw') as Ptw[];
 
-  const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Observations');
+  const wb = XLSX.utils.book_new();
 
-  // Set column widths for better readability
-  worksheet['!cols'] = [
-    { wch: 20 }, // Reference ID
-    { wch: 18 }, // Date
-    { wch: 25 }, // Submitted By
-    { wch: 15 }, // Company
-    { wch: 15 }, // Location
-    { wch: 15 }, // Category
-    { wch: 15 }, // Status
-    { wch: 15 }, // Risk Level
-    { wch: 50 }, // Findings
-    { wch: 50 }, // Recommendation
-    { wch: 50 }, // Photo URL
-    { wch: 50 }, // Action Taken
-    { wch: 25 }, // Closed By
-    { wch: 18 }, // Closed Date
-    { wch: 50 }, // Action Photo URL
-    { wch: 50 }, // AI Summary
-    { wch: 50 }, // AI Risks
-    { wch: 50 }, // AI Suggested Actions
-    { wch: 50 }, // AI Regulations
-    { wch: 15 }, // AI Suggested Risk
-    { wch: 50 }, // AI Root Cause
-    { wch: 15 }, // AI Observer Rating
-    { wch: 50 }, // AI Observer Explanation
-  ];
+  // 1. Process Observations
+  if (observations.length > 0) {
+    const obsData = observations.map(obs => ({
+      'Reference ID': obs.referenceId || obs.id,
+      'Date': obs.date ? format(new Date(obs.date), 'yyyy-MM-dd HH:mm') : '',
+      'Submitted By': obs.submittedBy,
+      'Company': obs.company,
+      'Location': obs.location,
+      'Category': obs.category,
+      'Status': obs.status,
+      'Risk Level': obs.riskLevel,
+      'Findings': obs.findings,
+      'Recommendation': obs.recommendation,
+      'Photo URL': obs.photoUrl || '',
+      'Action Taken': obs.actionTakenDescription || '',
+      'Closed By': obs.closedBy || '',
+      'Closed Date': obs.closedDate ? format(new Date(obs.closedDate), 'yyyy-MM-dd HH:mm') : '',
+      'Action Photo URL': obs.actionTakenPhotoUrl || '',
+      'AI Summary': obs.aiSummary || '',
+      'AI Risks': obs.aiRisks || '',
+      'AI Suggested Actions': obs.aiSuggestedActions || '',
+      'AI Regulations': obs.aiRelevantRegulations || '',
+      'AI Suggested Risk': obs.aiSuggestedRiskLevel || '',
+      'AI Root Cause': obs.aiRootCauseAnalysis || '',
+      'AI Observer Rating': obs.aiObserverSkillRating || '',
+      'AI Observer Explanation': obs.aiObserverSkillExplanation || '',
+    }));
+    const obsSheet = XLSX.utils.json_to_sheet(obsData);
+    obsSheet['!cols'] = [
+        { wch: 20 }, { wch: 18 }, { wch: 25 }, { wch: 15 }, { wch: 15 },
+        { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 50 }, { wch: 50 },
+        { wch: 50 }, { wch: 50 }, { wch: 25 }, { wch: 18 }, { wch: 50 },
+        { wch: 50 }, { wch: 50 }, { wch: 50 }, { wch: 50 }, { wch: 15 },
+        { wch: 50 }, { wch: 15 }, { wch: 50 },
+    ];
+    XLSX.utils.book_append_sheet(wb, obsSheet, 'Observations');
+  }
 
-  XLSX.writeFile(workbook, `${fileName}.xlsx`);
-  return true; // Indicate success
+  // 2. Process Inspections
+  if (inspections.length > 0) {
+    const inspData = inspections.map(insp => ({
+      'Reference ID': insp.referenceId || insp.id,
+      'Date': insp.date ? format(new Date(insp.date), 'yyyy-MM-dd HH:mm') : '',
+      'Submitted By': insp.submittedBy,
+      'Location': insp.location,
+      'Equipment Name': insp.equipmentName,
+      'Equipment Type': insp.equipmentType,
+      'Status': insp.status,
+      'Findings': insp.findings,
+      'Recommendation': insp.recommendation || '',
+      'Photo URL': insp.photoUrl || '',
+      'Action Taken': insp.actionTakenDescription || '',
+      'Closed By': insp.closedBy || '',
+      'Closed Date': insp.closedDate ? format(new Date(insp.closedDate), 'yyyy-MM-dd HH:mm') : '',
+      'Action Photo URL': insp.actionTakenPhotoUrl || '',
+      'AI Summary': insp.aiSummary || '',
+      'AI Risks': insp.aiRisks || '',
+      'AI Suggested Actions': insp.aiSuggestedActions || '',
+    }));
+    const inspSheet = XLSX.utils.json_to_sheet(inspData);
+    inspSheet['!cols'] = [
+        { wch: 20 }, { wch: 18 }, { wch: 25 }, { wch: 15 }, { wch: 25 },
+        { wch: 20 }, { wch: 15 }, { wch: 50 }, { wch: 50 }, { wch: 50 },
+        { wch: 50 }, { wch: 25 }, { wch: 18 }, { wch: 50 }, { wch: 50 },
+        { wch: 50 }, { wch: 50 },
+    ];
+    XLSX.utils.book_append_sheet(wb, inspSheet, 'Inspections');
+  }
+
+  // 3. Process PTWs
+  if (ptws.length > 0) {
+    const ptwData = ptws.map(ptw => ({
+      'Reference ID': ptw.referenceId || ptw.id,
+      'Date': ptw.date ? format(new Date(ptw.date), 'yyyy-MM-dd HH:mm') : '',
+      'Submitted By': ptw.submittedBy,
+      'Location': ptw.location,
+      'Contractor': ptw.contractor,
+      'Work Description': ptw.workDescription,
+      'Status': ptw.status,
+      'JSA PDF URL': ptw.jsaPdfUrl,
+      'Approver': ptw.approver || '',
+      'Approved Date': ptw.approvedDate ? format(new Date(ptw.approvedDate), 'yyyy-MM-dd HH:mm') : '',
+    }));
+    const ptwSheet = XLSX.utils.json_to_sheet(ptwData);
+    ptwSheet['!cols'] = [
+        { wch: 20 }, { wch: 18 }, { wch: 25 }, { wch: 15 }, { wch: 25 },
+        { wch: 50 }, { wch: 20 }, { wch: 50 }, { wch: 25 }, { wch: 18 },
+    ];
+    XLSX.utils.book_append_sheet(wb, ptwSheet, 'PTW');
+  }
+  
+  // Only write file if at least one sheet was created
+  if (wb.SheetNames.length > 0) {
+    XLSX.writeFile(wb, `${fileName}.xlsx`);
+    return true; // Indicate success
+  } else {
+    return false; // No data to export
+  }
 };
