@@ -19,6 +19,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from './ui/badge';
 import { ListItemSkeleton } from './list-item-skeleton';
 
+const ITEMS_PER_PAGE = 10;
+
 // Lazy load detail sheets to reduce initial bundle size
 const ObservationDetailSheet = dynamic(() => import('@/components/observation-detail-sheet').then(mod => mod.ObservationDetailSheet), { ssr: false });
 const InspectionDetailSheet = dynamic(() => import('@/components/inspection-detail-sheet').then(mod => mod.InspectionDetailSheet), { ssr: false });
@@ -200,7 +202,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   const pathname = usePathname();
   const { toast } = useToast();
   
-  const { items, isLoading, getObservationById, loadMore, hasMore, isFetchingMore } = useObservations(projectId, itemTypeFilter);
+  const { items, isLoading, getObservationById } = useObservations(projectId, itemTypeFilter);
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -208,6 +210,9 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isSearchVisible, setIsSearchVisible] = React.useState(false);
+  
+  // Client-side pagination state
+  const [visibleCount, setVisibleCount] = React.useState(ITEMS_PER_PAGE);
 
   const triggeredOpen = React.useRef(false);
   React.useEffect(() => {
@@ -228,18 +233,26 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   }, [observationIdToOpen, isLoading, getObservationById, pathname, router, toast]);
 
   const filteredData = React.useMemo(() => {
-    let data = items;
-    
-    if (!searchTerm) return data;
+    if (!searchTerm) return items;
     
     const lowercasedSearch = searchTerm.toLowerCase();
-    return data.filter(item => {
+    return items.filter(item => {
         if (item.itemType === 'observation') return item.findings.toLowerCase().includes(lowercasedSearch) || item.recommendation.toLowerCase().includes(lowercasedSearch) || item.company.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
         if (item.itemType === 'inspection') return item.findings.toLowerCase().includes(lowercasedSearch) || item.equipmentName.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
         if (item.itemType === 'ptw') return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
         return false;
     });
   }, [items, searchTerm]);
+
+  const itemsToDisplay = React.useMemo(() => {
+      return filteredData.slice(0, visibleCount);
+  }, [filteredData, visibleCount]);
+
+  const hasMore = visibleCount < filteredData.length;
+
+  const loadMore = () => {
+      setVisibleCount(prev => prev + ITEMS_PER_PAGE);
+  };
 
   function EmptyState() {
     const messages = {
@@ -321,9 +334,9 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
       <main className="mt-6">
         {isLoading && items.length === 0 ? (
           <FeedSkeleton />
-        ) : filteredData.length > 0 ? (
+        ) : itemsToDisplay.length > 0 ? (
           <ul className="space-y-3">
-             {filteredData.map(item => {
+             {itemsToDisplay.map(item => {
                 switch(item.itemType) {
                   case 'observation':
                     return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} />;
@@ -342,8 +355,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
 
         {hasMore && (
             <div className="flex justify-center mt-6">
-                <Button onClick={loadMore} disabled={isFetchingMore} variant="outline">
-                    {isFetchingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button onClick={loadMore} variant="outline">
                     Load More
                 </Button>
             </div>

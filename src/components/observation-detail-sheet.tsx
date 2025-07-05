@@ -54,22 +54,15 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
   const { userProfile } = useAuth();
-  const { items } = useObservationData();
+  const { getObservationById } = useObservationData(); // Use the getter from the context
   const { toast } = useToast();
 
-  const [observation, setObservation] = React.useState<Observation | null>(null);
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   
-  React.useEffect(() => {
-    if (observationId) {
-      const foundObservation = items.find(item => item.id === observationId && item.itemType === 'observation') as Observation | undefined;
-      setObservation(foundObservation || null);
-    } else {
-      setObservation(null);
-    }
-  }, [observationId, items]);
+  // Get the observation directly from the context on each render.
+  const observation = observationId ? getObservationById(observationId) : null;
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);

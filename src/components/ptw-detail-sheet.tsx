@@ -39,19 +39,12 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, labe
 export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetProps) {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
-  const [ptw, setPtw] = React.useState<Ptw | null>(null);
   
   const { projects } = useProjects();
-  const { items } = useObservationData();
+  const { getPtwById } = useObservationData();
 
-  React.useEffect(() => {
-    if (ptwId) {
-      const foundPtw = items.find(item => item.id === ptwId && item.itemType === 'ptw') as Ptw | undefined;
-      setPtw(foundPtw || null);
-    } else {
-      setPtw(null);
-    }
-  }, [ptwId, items]);
+  // Get the PTW directly from the context on each render.
+  const ptw = ptwId ? getPtwById(ptwId) : null;
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);
