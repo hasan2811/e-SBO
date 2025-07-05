@@ -48,6 +48,11 @@ function ProjectSwitcher() {
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-64" align="start">
             <DropdownMenuGroup>
+                 <DropdownMenuItem onSelect={() => router.push('/beranda')}>
+                    <Home className="mr-2"/>
+                    <span>Project Hub</span>
+                 </DropdownMenuItem>
+                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>Pilih Proyek</DropdownMenuLabel>
                 <ScrollArea className="max-h-48">
                     {loading ? (
@@ -69,10 +74,6 @@ function ProjectSwitcher() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
                  <DropdownMenuLabel>Aksi Umum</DropdownMenuLabel>
-                 <DropdownMenuItem onSelect={() => router.push('/beranda')}>
-                    <Home className="mr-2"/>
-                    <span>Project Hub</span>
-                 </DropdownMenuItem>
                  <DropdownMenuItem onSelect={() => setCreateOpen(true)}>
                     <FolderPlus className="mr-2"/>
                     <span>Buat Proyek Baru</span>

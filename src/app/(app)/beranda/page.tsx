@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -86,12 +85,10 @@ const ProjectCard = ({
             <Users className="h-4 w-4" />
             <span>{project.memberUids.length} Anggota</span>
           </div>
-          {isOwner && (
-            <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold">
+          <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold">
               <Crown className="h-4 w-4 text-amber-500" />
               <span>Pemilik</span>
             </div>
-          )}
         </CardFooter>
       </Card>
     </Link>
@@ -204,59 +201,16 @@ export default function ProjectHubPage() {
 
         {projects.length > 0 ? (
           <div className="space-y-8">
-            {ownedProjects.length > 0 && (
-              <section>
-                <div className="flex items-center gap-3 mb-4">
-                   <Crown className="h-6 w-6 text-amber-500" />
-                   <h2 className="text-xl font-semibold tracking-tight">Proyek Saya</h2>
-                </div>
-                <motion.div 
-                    className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                >
-                  {ownedProjects.map((project) => (
-                    <motion.div key={project.id} variants={itemVariants} className="h-full">
-                        <ProjectCard 
-                          project={project}
-                          onManageClick={() => setProjectToManage(project)}
-                          onLeaveClick={() => setProjectToLeave(project)}
-                          onDeleteClick={() => setProjectToDelete(project)}
-                        />
-                    </motion.div>
-                  ))}
+            {projects.map((project) => (
+                <motion.div key={project.id} variants={itemVariants} className="h-full">
+                    <ProjectCard 
+                      project={project}
+                      onManageClick={() => setProjectToManage(project)}
+                      onLeaveClick={() => setProjectToLeave(project)}
+                      onDeleteClick={() => setProjectToDelete(project)}
+                    />
                 </motion.div>
-              </section>
-            )}
-
-            {ownedProjects.length > 0 && memberProjects.length > 0 && <Separator />}
-
-            {memberProjects.length > 0 && (
-              <section>
-                <div className="flex items-center gap-3 mb-4">
-                   <Users className="h-6 w-6 text-primary" />
-                   <h2 className="text-xl font-semibold tracking-tight">Proyek Tim</h2>
-                </div>
-                <motion.div 
-                    className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                >
-                  {memberProjects.map((project) => (
-                    <motion.div key={project.id} variants={itemVariants} className="h-full">
-                        <ProjectCard 
-                          project={project}
-                          onManageClick={() => setProjectToManage(project)}
-                          onLeaveClick={() => setProjectToLeave(project)}
-                          onDeleteClick={() => setProjectToDelete(project)}
-                        />
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </section>
-            )}
+              ))}
           </div>
         ) : (
           <div className="flex h-full items-center justify-center pt-16">
