@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -50,7 +51,7 @@ export function DeletePtwDialog({
       removeItem(ptw.id);
       toast({
         title: 'Berhasil Dihapus',
-        description: `Izin Kerja (PTW) telah berhasil dihapus.`,
+        description: `Izin Kerja telah berhasil dihapus.`,
       });
       onSuccess();
       onOpenChange(false);

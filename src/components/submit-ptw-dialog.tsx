@@ -138,7 +138,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
       <DialogContent className="sm:max-w-[525px] p-0 flex flex-col max-h-[90dvh]">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-2"><FileSignature className="h-5 w-5" /> Submit New PTW</DialogTitle>
-          <DialogDescription>Isi detail di bawah untuk mengajukan Izin Kerja (Permit to Work) baru.</DialogDescription>
+          <DialogDescription>Isi detail di bawah untuk mengajukan Izin Kerja baru.</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <Form {...form}>

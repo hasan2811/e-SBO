@@ -38,7 +38,7 @@ export default function ProjectPtwPage() {
     <FeedView 
       projectId={projectId} 
       itemTypeFilter="ptw"
-      title="Permit to Work (PTW)"
+      title="Permit to Work"
     />
   );
 }
