@@ -21,14 +21,22 @@ export function useObservations(projectId: string | null) {
 
   const { setItems, setIsLoading, setError } = context;
 
+  // By using a ref, we can compare the current projectId with the previous one
+  // to avoid re-fetching data and clearing items unnecessarily on every re-render.
+  const previousProjectIdRef = React.useRef<string | null>();
+
   React.useEffect(() => {
-    // Clear previous project's items and set loading state immediately.
-    // This ensures a clean slate when switching projects.
-    setItems([]);
-    setIsLoading(true);
+    // Only clear items and set loading state if the project has actually changed.
+    if (previousProjectIdRef.current !== projectId) {
+      setItems([]);
+      setIsLoading(true);
+    }
+    previousProjectIdRef.current = projectId;
 
     if (!projectId || !user) {
       setIsLoading(false); // No project/user, so stop loading.
+      // Clear items if we navigate away from a project (e.g., to /beranda)
+      if(projectId === null) setItems([]); 
       return;
     }
 
@@ -38,7 +46,7 @@ export function useObservations(projectId: string | null) {
     const unsubscribes: Unsubscribe[] = [];
     
     // A map to hold all items from all collections, keyed by ID
-    let allData = new Map<string, AllItems>();
+    const allData = new Map<string, AllItems>();
 
     const processAndSetData = () => {
       const sortedData = Array.from(allData.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
