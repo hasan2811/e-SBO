@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -6,9 +7,8 @@ import type { Ptw } from '@/lib/types';
 import { PtwStatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Gavel, ArrowLeft, FileText, User, Building, MapPin, Calendar, ExternalLink, PenSquare, Check, Folder, Trash2 } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { ApprovePtwDialog } from './approve-ptw-dialog';
+import { Gavel, ArrowLeft, FileText, User, Building, MapPin, Calendar, ExternalLink, PenSquare, Check, Folder, Trash2, Loader2 } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
@@ -16,6 +16,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { DeletePtwDialog } from './delete-ptw-dialog';
 import { useObservations } from '@/hooks/use-observations';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { stampAndApprovePtw } from '@/lib/actions/ptw-actions';
+import { useToast } from '@/hooks/use-toast';
 
 interface PtwDetailSheetProps {
     ptwId: string | null;
@@ -35,11 +37,12 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, labe
 
 export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetProps) {
   const [localPtw, setLocalPtw] = React.useState<Ptw | null>(null);
-  const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
   const { getPtwById } = useObservations();
+  const [isApproving, setIsApproving] = React.useState(false);
+  const { toast } = useToast();
   
   React.useEffect(() => {
     if (isOpen && ptwId) {
@@ -59,8 +62,21 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
     setDeleteDialogOpen(false);
   };
 
+  const handleApprove = async () => {
+    if (!ptw || !userProfile) return;
+    setIsApproving(true);
+    const result = await stampAndApprovePtw(ptw.id, userProfile);
+    if (result.success) {
+        toast({ title: 'Success!', description: result.message });
+        // The real-time listener will update the sheet, no need to close it manually.
+    } else {
+        toast({ variant: 'destructive', title: 'Approval Failed', description: result.message });
+    }
+    setIsApproving(false);
+  };
+
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
-  const canApprove = ptw.status === 'Pending Approval' && user?.uid !== ptw.userId;
+  const canApprove = ptw.status === 'Pending Approval' && userProfile && user?.uid !== ptw.userId;
   
   return (
     <>
@@ -73,7 +89,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                       <ArrowLeft className="h-5 w-5" />
                   </Button>
                   <div className="flex flex-col">
-                      <SheetTitle>Detail PTW</SheetTitle>
+                      <SheetTitle>Detail Izin Kerja</SheetTitle>
                       <SheetDescription>{ptw.referenceId || ptw.id}</SheetDescription>
                   </div>
               </div>
@@ -122,14 +138,6 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                   <CardContent className="space-y-4">
                       <DetailRow icon={Check} label="Disetujui Oleh" value={ptw.approver} />
                       <DetailRow icon={Calendar} label="Tanggal Disetujui" value={ptw.approvedDate ? format(new Date(ptw.approvedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale }) : ''} />
-                      {ptw.signatureDataUrl && (
-                          <div>
-                              <span className="text-sm font-medium">Tanda Tangan</span>
-                               <div className="mt-2 p-2 border bg-secondary rounded-md flex justify-center">
-                                  <Image src={ptw.signatureDataUrl} alt="Signature" width={200} height={100} className="h-auto" data-ai-hint="signature" />
-                              </div>
-                          </div>
-                      )}
                     </CardContent>
                 </Card>
               )}
@@ -150,26 +158,18 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                   </Button>
                 </CardContent>
               </Card>
-              
-              {canApprove && (
-                <div className="pt-6 mt-6 border-t">
-                  <Button type="button" onClick={() => setApproveDialogOpen(true)} className="w-full">
-                    <PenSquare className="mr-2 h-4 w-4" />
-                    Review & Setujui PTW
-                  </Button>
-                </div>
-              )}
             </div>
           </ScrollArea>
+           {canApprove && (
+            <SheetFooter className="p-4 border-t mt-auto">
+              <Button type="button" onClick={handleApprove} className="w-full" disabled={isApproving}>
+                {isApproving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                Setujui Izin
+              </Button>
+            </SheetFooter>
+          )}
         </SheetContent>
       </Sheet>
-      {ptw && userProfile && (
-          <ApprovePtwDialog 
-              isOpen={isApproveDialogOpen}
-              onOpenChange={setApproveDialogOpen}
-              ptw={ptw}
-          />
-      )}
       <DeletePtwDialog
         isOpen={isDeleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}

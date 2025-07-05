@@ -244,7 +244,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
     const messages = {
         observation: { icon: ClipboardList, title: 'Belum Ada Observasi', text: 'Belum ada laporan observasi untuk proyek ini.' },
         inspection: { icon: Wrench, title: 'Belum Ada Inspeksi', text: 'Belum ada laporan inspeksi untuk proyek ini.' },
-        ptw: { icon: FileSignature, title: 'Belum Ada PTW', text: 'Belum ada izin kerja untuk proyek ini.' },
+        ptw: { icon: FileSignature, title: 'Belum Ada Izin Kerja', text: 'Belum ada izin kerja untuk proyek ini.' },
     };
 
     if (searchTerm) {
@@ -270,7 +270,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   }
 
   const FeedSkeleton = () => (
-    <ul className="space-y-4">
+    <ul className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
             <ListItemSkeleton key={i} />
         ))}
@@ -321,7 +321,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
         {isLoading && items.length === 0 ? (
           <FeedSkeleton />
         ) : filteredData.length > 0 ? (
-          <ul className="space-y-4">
+          <ul className="space-y-3">
              {filteredData.map(item => {
                 switch(item.itemType) {
                   case 'observation':
