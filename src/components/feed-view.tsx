@@ -6,7 +6,7 @@ import Image from 'next/image';
 import type { AllItems, Observation, Inspection, Ptw } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge, StatusBadge, RiskBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { ChevronRight, Download, FileSignature as PtwIcon, Sparkles, Loader2, Filter, Search, Globe, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical, UserCheck, X, ArrowLeft, Building, MapPin, Calendar } from 'lucide-react';
+import { ChevronRight, Download, FileSignature as PtwIcon, Sparkles, Loader2, Filter, Search, Globe, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical, UserCheck, X, ArrowLeft, Building, MapPin, Calendar, SearchCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -191,7 +191,7 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const { items, isLoading, hasMore, fetchMoreItems, viewType, setViewType, getObservationById } = useObservations();
+  const { items, isLoading, hasMore, fetchMoreItems, viewType, setViewType, getObservationById, handleLikeToggle } = useObservations();
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
