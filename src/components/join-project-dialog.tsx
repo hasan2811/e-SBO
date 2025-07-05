@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -14,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,14 +43,17 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
       const fetchJoinableProjects = async () => {
         setLoadingProjects(true);
         try {
-          // Query only for projects that are open for joining
-          const projectsQuery = query(collection(db, 'projects'), where("isOpen", "==", true));
+          // Fetch all projects to handle legacy data without an `isOpen` field.
+          const projectsQuery = query(collection(db, 'projects'));
           const projectsSnapshot = await getDocs(projectsQuery);
-          const openProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
+          const allProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
 
           const userProjectIds = userProfile.projectIds || [];
-          // Filter out projects the user is already a member of
-          const projectsToFetch = openProjects.filter(p => !userProjectIds.includes(p.id));
+
+          // Filter on the client:
+          // 1. Project must not be explicitly closed (isOpen !== false). This treats `true` and `undefined` as open.
+          // 2. User must not already be a member.
+          const projectsToFetch = allProjects.filter(p => (p.isOpen !== false) && !userProjectIds.includes(p.id));
 
           const projectsWithOwners = await Promise.all(
             projectsToFetch.map(async project => {
@@ -95,7 +99,8 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
           throw new Error('Project not found');
         }
         
-        if (projectSnap.data()?.isOpen !== true) {
+        // Check if the project is explicitly closed. `undefined` is treated as open.
+        if (projectSnap.data()?.isOpen === false) {
             throw new Error('Project is not open for joining.');
         }
 
