@@ -18,6 +18,7 @@ import { useObservations } from '@/hooks/use-observations';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ApprovePtwDialog } from './approve-ptw-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
 
 interface PtwDetailSheetProps {
     ptwId: string | null;
@@ -65,7 +66,6 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
 
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
   const canApprove = ptw.status === 'Pending Approval';
-  const pdfUrlToView = ptw.stampedPdfUrl || ptw.jsaPdfUrl;
   
   return (
     <>
@@ -145,22 +145,47 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                 </Card>
               )}
 
-
               <Card>
                 <CardHeader>
-                    <CardTitle>Dokumen JSA</CardTitle>
-                    <CardDescription>{ptw.stampedPdfUrl ? "Dokumen yang telah disetujui dan dicap." : "Job Safety Analysis yang dilampirkan."}</CardDescription>
+                    <CardTitle>Dokumen Terlampir</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <Button asChild variant="outline" className="w-full">
-                    <a href={pdfUrlToView} target="_blank" rel="noopener noreferrer">
-                      <FileText />
-                      {ptw.stampedPdfUrl ? "Lihat JSA (Telah Dicap)" : "Lihat JSA (Asli)"}
-                      <ExternalLink className="ml-auto" />
-                    </a>
-                  </Button>
+                <CardContent className="space-y-4">
+                    <div>
+                        <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Dokumen JSA Asli</h4>
+                        <Button asChild variant="secondary" className="w-full">
+                            <a href={ptw.jsaPdfUrl} target="_blank" rel="noopener noreferrer">
+                                <FileText />
+                                Lihat JSA (Asli)
+                                <ExternalLink className="ml-auto" />
+                            </a>
+                        </Button>
+                    </div>
+
+                    {(ptw.status === 'Approved' || ptw.status === 'Closed') && (
+                        <>
+                            <Separator />
+                            <div>
+                                <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Dokumen yang Telah Disetujui</h4>
+                                {ptw.stampedPdfUrl ? (
+                                    <Button asChild variant="outline" className="w-full">
+                                        <a href={ptw.stampedPdfUrl} target="_blank" rel="noopener noreferrer">
+                                            <Check className="text-green-500"/>
+                                            Lihat JSA (Telah Dicap)
+                                            <ExternalLink className="ml-auto" />
+                                        </a>
+                                    </Button>
+                                ) : (
+                                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted text-muted-foreground">
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        <p className="text-sm">Sedang memproses stempel dokumen...</p>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </CardContent>
               </Card>
+
             </div>
           </ScrollArea>
            {canApprove && (
