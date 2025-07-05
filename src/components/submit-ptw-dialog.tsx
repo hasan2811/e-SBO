@@ -22,8 +22,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePathname } from 'next/navigation';
+import { DEFAULT_LOCATIONS } from '@/lib/types';
 
-const LOCATIONS = ['International', 'National', 'Local', 'Regional'] as const;
 
 const formSchema = z.object({
   location: z.string().min(1),
@@ -53,7 +53,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const locationOptions = React.useMemo(() => 
-    (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : LOCATIONS,
+    (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : DEFAULT_LOCATIONS,
   [project]);
 
   const form = useForm<FormValues>({
@@ -121,7 +121,6 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
         };
 
         await addDoc(collection(db, 'ptws'), newPtwData);
-        // No longer call addItem here. The onSnapshot listener will handle it.
         
         toast({ title: 'PTW Diajukan', description: `Izin kerja Anda telah berhasil disimpan.` });
         onOpenChange(false);

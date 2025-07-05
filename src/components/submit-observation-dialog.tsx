@@ -185,7 +185,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             riskLevel: (aiSuggestions?.suggestedRiskLevel as RiskLevel) || 'Low',
             status: 'Pending',
             aiStatus: isAiEnabled ? 'processing' : 'n/a',
-            likes: [], likeCount: 0, commentCount: 0, viewCount: 0,
         };
         
         const docRef = await addDoc(collection(db, "observations"), newObservationData);
