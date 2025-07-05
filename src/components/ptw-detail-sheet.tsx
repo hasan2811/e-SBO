@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -35,15 +34,30 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, labe
 );
 
 export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetProps) {
+  const [localPtw, setLocalPtw] = React.useState<Ptw | null>(null);
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
   const { getPtwById } = useObservations();
   
-  const ptw = ptwId ? getPtwById(ptwId) : null;
+  React.useEffect(() => {
+    if (isOpen && ptwId) {
+      const ptwData = getPtwById(ptwId);
+      if (ptwData) {
+        setLocalPtw(ptwData);
+      }
+    }
+  }, [isOpen, ptwId, getPtwById]);
+
+  const ptw = localPtw;
 
   if (!ptw) return null;
+
+  const handleSuccessfulDelete = () => {
+    onOpenChange(false);
+    setDeleteDialogOpen(false);
+  };
 
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
   const canApprove = ptw.status === 'Pending Approval' && user?.uid !== ptw.userId;
@@ -160,6 +174,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
         isOpen={isDeleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         ptw={ptw}
+        onSuccess={handleSuccessfulDelete}
       />
     </>
   );

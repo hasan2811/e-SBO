@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -81,12 +80,23 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const { getObservationById } = useObservations();
   const { toast } = useToast();
 
-  const observation = observationId ? getObservationById(observationId) : null;
-  
+  const [localObservation, setLocalObservation] = React.useState<Observation | null>(null);
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   
+  React.useEffect(() => {
+    if (isOpen && observationId) {
+      const obs = getObservationById(observationId);
+      if (obs) {
+        setLocalObservation(obs);
+      }
+    }
+  }, [isOpen, observationId, getObservationById]);
+
+  // Use the local state for rendering to prevent unmounting during deletion.
+  const observation = localObservation;
+
   if (!observation) return null;
   
   const isAiEnabled = userProfile?.aiEnabled ?? false;
@@ -94,6 +104,11 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
   const categoryDefinition = categoryDefinitions[observation.category];
   const hasDeepAnalysis = observation.aiRisks && observation.aiObserverSkillRating;
+
+  const handleSuccessfulDelete = () => {
+    onOpenChange(false); // Close the main detail sheet
+    setDeleteDialogOpen(false); // Ensure the delete dialog is also marked as closed
+  };
 
   const handleRetryAnalysis = async () => {
     if (!observation) return;
@@ -332,6 +347,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
         isOpen={isDeleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         observation={observation}
+        onSuccess={handleSuccessfulDelete}
     />
 
     <TakeActionDialog

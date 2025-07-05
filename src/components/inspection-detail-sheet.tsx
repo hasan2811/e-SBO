@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -58,19 +57,33 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   const { getInspectionById } = useObservations();
   const { toast } = useToast();
   
-  const inspection = inspectionId ? getInspectionById(inspectionId) : null;
-  
+  const [localInspection, setLocalInspection] = React.useState<Inspection | null>(null);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
 
+  React.useEffect(() => {
+    if (isOpen && inspectionId) {
+      const insp = getInspectionById(inspectionId);
+      if (insp) {
+        setLocalInspection(insp);
+      }
+    }
+  }, [isOpen, inspectionId, getInspectionById]);
+
+  const inspection = localInspection;
+
   if (!inspection) return null;
   
   const isAiEnabled = userProfile?.aiEnabled ?? false;
-
   const projectName = inspection.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
   const canFollowUp = (inspection.status === 'Fail' || inspection.status === 'Needs Repair') && user?.uid === inspection.userId;
   const hasDeepAnalysis = inspection.aiRisks && inspection.aiSuggestedActions;
+
+  const handleSuccessfulDelete = () => {
+    onOpenChange(false); // Close the main detail sheet
+    setDeleteDialogOpen(false);
+  };
 
   const handleRetry = async () => {
     if (!inspection) return;
@@ -291,6 +304,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
         isOpen={isDeleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         inspection={inspection}
+        onSuccess={handleSuccessfulDelete}
       />
       {inspection && (
         <FollowUpInspectionDialog

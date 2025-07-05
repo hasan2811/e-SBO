@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -24,12 +23,14 @@ interface DeleteObservationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   observation: Observation;
+  onSuccess: () => void;
 }
 
 export function DeleteObservationDialog({
   isOpen,
   onOpenChange,
   observation,
+  onSuccess,
 }: DeleteObservationDialogProps) {
   const { toast } = useToast();
   const { removeItem } = useObservations();
@@ -56,6 +57,7 @@ export function DeleteObservationDialog({
         title: 'Berhasil Dihapus',
         description: `Laporan observasi telah berhasil dihapus.`,
       });
+      onSuccess();
       onOpenChange(false);
     } catch (error) {
       toast({
