@@ -8,10 +8,11 @@ import * as admin from 'firebase-admin';
 // Check if the app is already initialized to prevent errors in hot-reloading environments.
 if (!admin.apps.length) {
   try {
-    // By calling initializeApp() with no arguments, the Admin SDK can automatically
-    // discover the correct credentials and configuration from the App Hosting environment.
-    // This is the most robust and recommended method for production.
-    admin.initializeApp();
+    // Explicitly configure with the correct storage bucket to match the client config.
+    // This is the definitive fix for server-side file access errors (500 Internal Server Error).
+    admin.initializeApp({
+      storageBucket: 'hssetech-e1710.firebasestorage.app',
+    });
   } catch (e) {
     console.error('Firebase admin initialization error', e);
   }
