@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -38,12 +39,14 @@ const getInitials = (name: string | null | undefined): string => {
 
 const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onProjectUpdate: (updatedData: Partial<Project>) => void }) => {
   const { toast } = useToast();
-  const [customCompanies, setCustomCompanies] = React.useState(project.customCompanies || []);
-  const [customLocations, setCustomLocations] = React.useState(project.customLocations || []);
-  const [isProjectOpen, setIsProjectOpen] = React.useState(project.isOpen ?? true);
+  const [customCompanies, setCustomCompanies] = React.useState<string[]>([]);
+  const [customLocations, setCustomLocations] = React.useState<string[]>([]);
+  const [isProjectOpen, setIsProjectOpen] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
 
-  // Update local state if the project prop changes
+  // This effect ensures that the local state of this component is always
+  // in sync with the `project` prop, which comes from the global context.
+  // This prevents stale data from being shown in the settings form.
   React.useEffect(() => {
     setCustomCompanies(project.customCompanies || []);
     setCustomLocations(project.customLocations || []);

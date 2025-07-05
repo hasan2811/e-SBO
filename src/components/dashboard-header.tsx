@@ -121,7 +121,7 @@ function ProjectSwitcher() {
                         <DropdownMenuLabel>Aksi Proyek</DropdownMenuLabel>
                         <DropdownMenuItem onSelect={() => setManageOpen(true)}>
                             <FileCog className="mr-2"/>
-                            <span>Kelola Anggota</span>
+                            <span>Kelola Proyek & Anggota</span>
                         </DropdownMenuItem>
                          <DropdownMenuItem onSelect={handleExport}>
                             <Download className="mr-2"/>
