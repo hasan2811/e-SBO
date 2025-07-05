@@ -45,30 +45,48 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Wait until authentication and project data are fully loaded before making any navigation decisions.
     if (authLoading || (user && projectsLoading)) return;
 
-    // 1. If not authenticated, the user must be on the login page.
+    // 1. If not authenticated, redirect to login page.
     if (!user) {
       router.push('/login');
       return;
     }
     
     // From here, we know the user is authenticated.
+    // Now, handle routing based on their project status for a streamlined UX.
 
-    // 2. The root path '/' should always redirect to the project hub.
-    if (pathname === '/') {
+    const projectCount = projects.length;
+    const isAtHub = pathname === '/beranda';
+    const isAtRoot = pathname === '/';
+
+    // Case 1: User has NO projects.
+    // They must be on the hub page to create or join a project.
+    if (projectCount === 0) {
+      if (!isAtHub) {
         router.replace('/beranda');
+      }
+      return;
+    }
+
+    // Case 2: User has EXACTLY ONE project.
+    // Redirect them straight to their project, bypassing the hub for a faster workflow.
+    if (projectCount === 1) {
+       // Only redirect if they are on the hub or root, allowing them to visit other app pages if needed in future.
+      if (isAtHub || isAtRoot) {
+        router.replace(`/proyek/${projects[0].id}/observasi`);
         return;
-    }
-    
-    const hasProjects = projects.length > 0;
-
-    // 3. A user without any projects should always be on the hub page to create or join one.
-    // If they land anywhere else (e.g., a stale bookmark), redirect them.
-    if (!hasProjects && pathname !== '/beranda') {
-        router.replace('/beranda');
+      }
     }
 
-    // 4. (No action needed) If a user has projects, they are free to navigate
-    // between their projects (/proyek/*) and the hub (/beranda).
+    // Case 3: User has MULTIPLE projects.
+    // The hub is their main entry point. Redirect from root to hub.
+    if (projectCount > 1 && isAtRoot) {
+      router.replace('/beranda');
+      return;
+    }
+
+    // Note: The logic for handling invalid project IDs is managed within
+    // the specific project pages, which redirect to '/beranda' if a project isn't found.
+    // This keeps concerns separated.
 
   }, [user, authLoading, projects, projectsLoading, pathname, router]);
 
