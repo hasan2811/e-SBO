@@ -6,10 +6,10 @@ import * as admin from 'firebase-admin';
 // Check if the app is already initialized to prevent errors in hot-reloading environments.
 if (!admin.apps.length) {
   try {
-    // Explicitly use the Application Default Credentials.
-    // This is more robust in various server environments and resolves token refresh issues.
+    // Simplified initialization: In a managed Google Cloud environment (like App Hosting),
+    // the SDK can often automatically discover the necessary credentials and project details.
+    // We explicitly provide the storage bucket to be certain.
     admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
       storageBucket: 'hssetech-e1710.appspot.com',
     });
   } catch (e) {

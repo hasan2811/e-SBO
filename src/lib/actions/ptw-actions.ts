@@ -16,7 +16,8 @@ import { format } from 'date-fns';
  */
 export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, signatureDataUrl: string): Promise<{ stampedPdfUrl: string }> {
   try {
-    const bucket = adminStorage.bucket();
+    // Explicitly select the bucket to ensure there is no ambiguity.
+    const bucket = adminStorage.bucket('hssetech-e1710.appspot.com');
 
     // 1. Get the original PDF file from storage using the robust storage path
     if (!ptw.jsaPdfStoragePath) {
@@ -98,8 +99,14 @@ export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, sign
     return { stampedPdfUrl: publicUrl };
 
   } catch (error) {
-    console.error('Failed to approve and stamp PTW:', error);
-    // This makes sure we pass a more useful error to the client.
+    // Add more detailed logging for future debugging.
+    console.error('CRITICAL: PTW Stamping Failed.', {
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : 'No stack available',
+        ptwId: ptw.id,
+        jsaPdfStoragePath: ptw.jsaPdfStoragePath,
+    });
+
     if (error instanceof Error) {
         throw new Error(`Server-side stamping failed: ${error.message}`);
     }
