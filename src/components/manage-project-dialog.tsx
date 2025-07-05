@@ -6,9 +6,9 @@ import type { Project, UserProfile, AllItems } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Crown, User, UserX, Loader2, Trash2, LogOut, Download } from 'lucide-react';
+import { Crown, User, UserX, Loader2, Trash2, LogOut, Download, FileCog } from 'lucide-react';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -206,8 +206,6 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
         </CardContent>
       </Card>
 
-      <ExportCard project={project} />
-
       <div className="flex justify-end pt-4">
           <Button onClick={handleSave} disabled={isSaving}>
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -218,46 +216,15 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
   );
 };
 
-
-const MemberList = ({ project, onMemberRemoved }: { project: Project, onMemberRemoved: (removedMemberId: string) => void }) => {
-    const { user } = useAuth();
-    const { toast } = useToast();
-    const [members, setMembers] = React.useState<UserProfile[]>([]);
-    const [isLoadingMembers, setIsLoadingMembers] = React.useState(true);
-    const [memberToRemove, setMemberToRemove] = React.useState<UserProfile | null>(null);
-
-    const isOwner = user && project && project.ownerUid === user.uid;
-
-    React.useEffect(() => {
-        if (!project?.memberUids || project.memberUids.length === 0) {
-            setMembers([]);
-            setIsLoadingMembers(false);
-            return;
-        }
-
-        const fetchMembers = async () => {
-            setIsLoadingMembers(true);
-            try {
-                const memberDocs = await Promise.all(
-                    project.memberUids.map(uid => getDoc(doc(db, 'users', uid)))
-                );
-                const memberProfiles: UserProfile[] = [];
-                memberDocs.forEach(docSnap => {
-                    if (docSnap.exists()) {
-                        memberProfiles.push(docSnap.data() as UserProfile);
-                    }
-                });
-                setMembers(memberProfiles);
-            } catch (error) {
-                console.error("Failed to fetch project members:", error);
-                toast({ variant: 'destructive', title: 'Could not load members.' });
-            } finally {
-                setIsLoadingMembers(false);
-            }
-        };
-
-        fetchMembers();
-    }, [project?.memberUids, toast]);
+// Simplified "dumb" component for displaying the member list
+const MemberList = ({ members, isLoading, projectOwnerUid, currentUid, onRemoveClick }: { 
+    members: UserProfile[], 
+    isLoading: boolean,
+    projectOwnerUid: string,
+    currentUid: string | undefined,
+    onRemoveClick: (member: UserProfile) => void,
+}) => {
+    const isCurrentUserOwner = currentUid === projectOwnerUid;
 
     const renderSkeleton = () => (
       Array.from({ length: 2 }).map((_, index) => (
@@ -275,64 +242,56 @@ const MemberList = ({ project, onMemberRemoved }: { project: Project, onMemberRe
         </Card>
       ))
     );
+    
+    if (isLoading) {
+        return <div className="grid gap-4 md:grid-cols-2 p-1">{renderSkeleton()}</div>;
+    }
 
     return (
-        <>
-            <div className="grid gap-4 md:grid-cols-2 p-1">
-                {isLoadingMembers ? renderSkeleton() : members.sort((a,b) => (a.uid === project.ownerUid ? -1 : 1)).map(member => (
-                    <Card key={member.uid} className="flex flex-col">
-                      <CardHeader className="flex flex-row items-center gap-4 pb-4">
-                          <Avatar className="h-12 w-12">
-                            <AvatarImage src={member.photoURL ?? undefined} data-ai-hint="person face" />
-                            <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <CardTitle className="truncate">{member.displayName || 'Unknown User'}</CardTitle>
-                            <CardDescription className="truncate">{member.position || 'No Position'}</CardDescription>
-                          </div>
-                      </CardHeader>
-                      <CardFooter className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                          {member.uid === project.ownerUid ? (
-                              <>
-                              <Crown className="h-4 w-4 text-amber-500" />
-                              <span className="text-amber-600">Owner</span>
-                              </>
-                          ) : (
-                              <>
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-muted-foreground">Member</span>
-                              </>
-                          )}
-                          </div>
-                          {isOwner && member.uid !== user?.uid && (
-                          <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                              onClick={() => setMemberToRemove(member)}
-                          >
-                              <UserX className="mr-2 h-4 w-4" />
-                              Remove
-                          </Button>
-                          )}
-                      </CardFooter>
-                    </Card>
-                ))}
-            </div>
-             {memberToRemove && project && (
-                <RemoveMemberDialog
-                isOpen={!!memberToRemove}
-                onOpenChange={(open) => !open && setMemberToRemove(null)}
-                project={project}
-                member={memberToRemove}
-                onSuccess={onMemberRemoved}
-                />
-            )}
-        </>
+        <div className="grid gap-4 md:grid-cols-2 p-1">
+            {members.sort((a, b) => (a.uid === projectOwnerUid ? -1 : 1)).map(member => (
+                <Card key={member.uid} className="flex flex-col">
+                  <CardHeader className="flex flex-row items-center gap-4 pb-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={member.photoURL ?? undefined} data-ai-hint="person face" />
+                        <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <CardTitle className="truncate">{member.displayName || 'Unknown User'}</CardTitle>
+                        <CardDescription className="truncate">{member.position || 'No Position'}</CardDescription>
+                      </div>
+                  </CardHeader>
+                  <CardFooter className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                      {member.uid === projectOwnerUid ? (
+                          <>
+                          <Crown className="h-4 w-4 text-amber-500" />
+                          <span className="text-amber-600">Owner</span>
+                          </>
+                      ) : (
+                          <>
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Member</span>
+                          </>
+                      )}
+                      </div>
+                      {isCurrentUserOwner && member.uid !== currentUid && (
+                      <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => onRemoveClick(member)}
+                      >
+                          <UserX className="mr-2 h-4 w-4" />
+                          Remove
+                      </Button>
+                      )}
+                  </CardFooter>
+                </Card>
+            ))}
+        </div>
     );
-};
-
+}
 
 interface ManageProjectDialogProps {
     isOpen: boolean;
@@ -343,34 +302,70 @@ interface ManageProjectDialogProps {
 export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManageProjectDialogProps) {
     const { user } = useAuth();
     const router = useRouter();
-    const isOwner = user && project && project.ownerUid === user.uid;
+    const { toast } = useToast();
+
     const [currentProject, setCurrentProject] = React.useState(project);
+    const [members, setMembers] = React.useState<UserProfile[]>([]);
+    const [isLoadingMembers, setIsLoadingMembers] = React.useState(true);
+    
+    const [memberToRemove, setMemberToRemove] = React.useState<UserProfile | null>(null);
     const [isLeaveOpen, setIsLeaveOpen] = React.useState(false);
     const [isDeleteOpen, setDeleteOpen] = React.useState(false);
 
-    React.useEffect(() => {
-        setCurrentProject(project);
-    }, [project]);
+    const isOwner = user?.uid === project.ownerUid;
 
+    // Centralized data fetching, runs only when dialog opens.
+    React.useEffect(() => {
+        if (!isOpen) return;
+
+        const fetchMembers = async () => {
+            setIsLoadingMembers(true);
+            if (!currentProject?.memberUids || currentProject.memberUids.length === 0) {
+                setMembers([]);
+                setIsLoadingMembers(false);
+                return;
+            }
+            try {
+                const memberDocs = await Promise.all(
+                    currentProject.memberUids.map(uid => getDoc(doc(db, 'users', uid)))
+                );
+                const memberProfiles: UserProfile[] = [];
+                memberDocs.forEach(docSnap => {
+                    if (docSnap.exists()) {
+                        memberProfiles.push(docSnap.data() as UserProfile);
+                    }
+                });
+                setMembers(memberProfiles);
+            } catch (error) {
+                console.error("Failed to fetch project members:", error);
+                toast({ variant: 'destructive', title: 'Could not load members.' });
+            } finally {
+                setIsLoadingMembers(false);
+            }
+        };
+
+        fetchMembers();
+    }, [isOpen, currentProject.memberUids, toast]);
+
+
+    // Update local state to reflect changes without a full refetch
     const handleProjectUpdate = (updatedData: Partial<Project>) => {
         setCurrentProject(prev => ({ ...prev, ...updatedData }));
     };
     
+    const handleMemberRemoved = (removedMemberId: string) => {
+        setCurrentProject(prev => ({
+            ...prev,
+            memberUids: prev.memberUids.filter(uid => uid !== removedMemberId)
+        }));
+        setMembers(prev => prev.filter(member => member.uid !== removedMemberId));
+    };
+
     const handleActionSuccess = () => {
         setIsLeaveOpen(false);
         setDeleteOpen(false);
-        onOpenChange(false); // Close the manage dialog
+        onOpenChange(false);
         router.push('/beranda');
-    };
-
-    const handleMemberRemoved = (removedMemberId: string) => {
-        setCurrentProject(prev => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                memberUids: prev.memberUids.filter(uid => uid !== removedMemberId)
-            };
-        });
     };
 
     return (
@@ -378,29 +373,44 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
             <Dialog open={isOpen} onOpenChange={onOpenChange}>
                 <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-0">
                     <DialogHeader className="p-6 pb-2">
-                        <DialogTitle>Kelola "{currentProject.name}"</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2">
+                          <FileCog className="h-5 w-5"/>
+                          Kelola "{currentProject.name}"
+                        </DialogTitle>
                         <DialogDescription>
-                            Lihat anggota dan kelola pengaturan proyek.
+                            Lihat anggota, kelola pengaturan, dan ekspor data proyek.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="flex-1 flex flex-col overflow-hidden px-6 pb-4">
                         <Tabs defaultValue="members" className="flex-1 flex flex-col overflow-hidden">
-                            <TabsList className={cn("grid w-full shrink-0", isOwner ? "grid-cols-2" : "grid-cols-1")}>
+                            <TabsList className={cn("grid w-full shrink-0", isOwner ? "grid-cols-3" : "grid-cols-1")}>
                                 <TabsTrigger value="members">Anggota ({currentProject.memberUids?.length || 0})</TabsTrigger>
                                 {isOwner && <TabsTrigger value="settings">Pengaturan</TabsTrigger>}
+                                {isOwner && <TabsTrigger value="export">Ekspor</TabsTrigger>}
                             </TabsList>
                             
-                            <div className="flex-1 mt-4 -mr-6 pr-6 overflow-y-auto">
+                            <ScrollArea className="flex-1 mt-4 -mr-6 pr-6">
                                 <TabsContent value="members" className="mt-0">
-                                    <MemberList project={currentProject} onMemberRemoved={handleMemberRemoved} />
+                                    <MemberList 
+                                        members={members} 
+                                        isLoading={isLoadingMembers}
+                                        projectOwnerUid={currentProject.ownerUid}
+                                        currentUid={user?.uid}
+                                        onRemoveClick={setMemberToRemove}
+                                    />
                                 </TabsContent>
                                 {isOwner && (
                                     <TabsContent value="settings" className="mt-0">
                                         <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
                                     </TabsContent>
                                 )}
-                            </div>
+                                 {isOwner && (
+                                    <TabsContent value="export" className="mt-0 p-1">
+                                        <ExportCard project={currentProject} />
+                                    </TabsContent>
+                                )}
+                            </ScrollArea>
                         </Tabs>
                     </div>
 
@@ -417,7 +427,16 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
+            
+            {memberToRemove && (
+              <RemoveMemberDialog
+                isOpen={!!memberToRemove}
+                onOpenChange={(open) => !open && setMemberToRemove(null)}
+                project={currentProject}
+                member={memberToRemove}
+                onSuccess={handleMemberRemoved}
+              />
+            )}
             <LeaveProjectDialog
                 isOpen={isLeaveOpen}
                 onOpenChange={setIsLeaveOpen}
