@@ -9,7 +9,7 @@ if (!admin.apps.length) {
     // In a Google Cloud environment (like App Hosting or Cloud Workstations),
     // the SDK automatically finds the project's service account credentials.
     admin.initializeApp({
-      storageBucket: 'hssetech-e1710.firebasestorage.app',
+      storageBucket: 'hssetech-e1710.appspot.com', // CORRECTED
     });
   } catch (e) {
     console.error('Firebase admin initialization error', e);
