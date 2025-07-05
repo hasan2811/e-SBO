@@ -30,8 +30,10 @@ export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, sign
     const firstPage = pages[0];
 
     // --- Define paths and URLs before stamping ---
-    const stampedFileName = `${ptw.referenceId || ptw.id}.pdf`; // Use reference ID for file name
-    const stampedFilePath = `stamped-jsa/${ptw.projectId}/${stampedFileName}`;
+    // Standardize storage path and use the unique referenceId for the filename
+    const stampedFileName = `${ptw.referenceId}.pdf`;
+    const stampedFilePath = `projects/${ptw.projectId}/stamped-jsa/${stampedFileName}`;
+
     // Construct the public URL manually for the QR code.
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${stampedFilePath}`;
 

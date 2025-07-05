@@ -121,7 +121,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                     </Button>
                     <div className="flex flex-col">
                         <SheetTitle>Detail Observasi</SheetTitle>
-                        <SheetDescription>{observation.referenceId || observation.id}</SheetDescription>
+                        <SheetDescription>{observation.referenceId}</SheetDescription>
                     </div>
                 </div>
                 

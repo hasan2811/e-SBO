@@ -19,7 +19,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ApprovePtwDialog } from './approve-ptw-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
-import QRCode from 'react-qr-code';
 
 interface PtwDetailSheetProps {
     ptwId: string | null;
@@ -70,7 +69,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                   </Button>
                   <div className="flex flex-col">
                       <SheetTitle>Detail Izin Kerja</SheetTitle>
-                      <SheetDescription>{ptw.referenceId || ptw.id}</SheetDescription>
+                      <SheetDescription>{ptw.referenceId}</SheetDescription>
                   </div>
               </div>
               <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus PTW">

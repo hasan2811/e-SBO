@@ -77,7 +77,7 @@ export type Project = {
 export type Observation = {
   id: string;
   itemType: 'observation';
-  referenceId?: string; // Professional, user-facing ID
+  referenceId: string; // Professional, user-facing ID
   userId: string;
   location: Location;
   submittedBy: string;
@@ -115,7 +115,7 @@ export type Observation = {
 export type Inspection = {
   id: string;
   itemType: 'inspection';
-  referenceId?: string;
+  referenceId: string;
   userId: string;
   submittedBy: string;
   date: string;
@@ -145,7 +145,7 @@ export type Inspection = {
 export type Ptw = {
   id: string;
   itemType: 'ptw';
-  referenceId?: string;
+  referenceId: string;
   userId: string;
   submittedBy: string;
   date: string;

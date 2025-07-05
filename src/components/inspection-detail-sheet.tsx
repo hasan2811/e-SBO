@@ -121,7 +121,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                 </Button>
                 <div className="flex flex-col">
                   <SheetTitle>Detail Inspeksi</SheetTitle>
-                  <SheetDescription>{inspection.referenceId || inspection.id}</SheetDescription>
+                  <SheetDescription>{inspection.referenceId}</SheetDescription>
                 </div>
               </div>
               <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Inspeksi">
