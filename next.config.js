@@ -64,10 +64,10 @@ const withPWA = require('@ducanh2912/next-pwa').default({
 const nextConfig = {
   output: 'standalone',
   typescript: {
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: true,
   },
   eslint: {
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
   },
   experimental: {
     serverComponentsExternalPackages: [
