@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -32,7 +31,7 @@ interface JoinProjectDialogProps {
 }
 
 export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogProps) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const { addProject } = useProjects();
@@ -41,48 +40,56 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
   const [joinableProjects, setJoinableProjects] = React.useState<JoinableProject[]>([]);
 
   React.useEffect(() => {
-    if (isOpen && user && userProfile) {
-      const fetchJoinableProjects = async () => {
-        setLoadingProjects(true);
-        try {
-          // Fetch all projects to handle legacy data without an `isOpen` field.
-          const projectsQuery = query(collection(db, 'projects'));
-          const projectsSnapshot = await getDocs(projectsQuery);
-          const allProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
-
-          const userProjectIds = userProfile.projectIds || [];
-
-          // Filter on the client:
-          // 1. Project must not be explicitly closed (isOpen !== false). This treats `true` and `undefined` as open.
-          // 2. User must not already be a member.
-          const projectsToFetch = allProjects.filter(p => (p.isOpen !== false) && !userProjectIds.includes(p.id));
-
-          const projectsWithOwners = await Promise.all(
-            projectsToFetch.map(async project => {
-              let owner: UserProfile | null = null;
-              if (project.ownerUid) {
-                const userDocRef = doc(db, 'users', project.ownerUid);
-                const userDocSnap = await getDoc(userDocRef);
-                if (userDocSnap.exists()) {
-                  owner = userDocSnap.data() as UserProfile;
-                }
-              }
-              return { ...project, owner };
-            })
-          );
-
-          setJoinableProjects(projectsWithOwners);
-        } catch (error) {
-          console.error("Failed to fetch joinable projects:", error);
-          toast({ variant: 'destructive', title: 'Gagal Memuat Proyek', description: 'Tidak dapat mengambil daftar proyek yang tersedia.' });
-        } finally {
-          setLoadingProjects(false);
-        }
-      };
-
-      fetchJoinableProjects();
+    // Wait until the user profile is fully loaded before fetching projects.
+    if (!isOpen || authLoading) {
+      if (isOpen) setLoadingProjects(true);
+      return;
     }
-  }, [isOpen, user, userProfile, toast]);
+
+    // If not logged in, there's nothing to show.
+    if (!user || !userProfile) {
+        setLoadingProjects(false);
+        setJoinableProjects([]);
+        return;
+    }
+    
+    const fetchJoinableProjects = async () => {
+      setLoadingProjects(true);
+      try {
+        const projectsQuery = query(collection(db, 'projects'));
+        const projectsSnapshot = await getDocs(projectsQuery);
+        const allProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
+
+        const userProjectIds = userProfile.projectIds || [];
+
+        const projectsToFetch = allProjects.filter(p => (p.isOpen !== false) && !userProjectIds.includes(p.id));
+
+        const projectsWithOwners = await Promise.all(
+          projectsToFetch.map(async project => {
+            let owner: UserProfile | null = null;
+            if (project.ownerUid) {
+              const userDocRef = doc(db, 'users', project.ownerUid);
+              const userDocSnap = await getDoc(userDocRef);
+              if (userDocSnap.exists()) {
+                owner = userDocSnap.data() as UserProfile;
+              }
+            }
+            return { ...project, owner };
+          })
+        );
+
+        setJoinableProjects(projectsWithOwners);
+      } catch (error) {
+        console.error("Failed to fetch joinable projects:", error);
+        toast({ variant: 'destructive', title: 'Gagal Memuat Proyek', description: 'Tidak dapat mengambil daftar proyek yang tersedia.' });
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+
+    fetchJoinableProjects();
+    
+  }, [isOpen, user, userProfile, authLoading, toast]);
 
   const onJoin = async (projectToJoin: JoinableProject) => {
     if (!user || !userProfile) {
