@@ -39,12 +39,19 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, labe
 export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetProps) {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
+  const [ptw, setPtw] = React.useState<Ptw | null>(null);
   
   const { projects } = useProjects();
-  const { getPtwById } = useObservationData();
+  const { items } = useObservationData();
 
-  // Directly get the PTW from the central context. No local state needed.
-  const ptw = ptwId ? getPtwById(ptwId) : null;
+  React.useEffect(() => {
+    if (ptwId) {
+      const foundPtw = items.find(item => item.id === ptwId && item.itemType === 'ptw') as Ptw | undefined;
+      setPtw(foundPtw || null);
+    } else {
+      setPtw(null);
+    }
+  }, [ptwId, items]);
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);

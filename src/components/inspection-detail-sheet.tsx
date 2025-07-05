@@ -55,15 +55,22 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
   const { userProfile } = useAuth();
-  const { getInspectionById } = useObservationData();
+  const { items } = useObservationData();
   const { toast } = useToast();
   
+  const [inspection, setInspection] = React.useState<Inspection | null>(null);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
 
-  // Directly get the inspection from the central context. No local state needed.
-  const inspection = inspectionId ? getInspectionById(inspectionId) : null;
+  React.useEffect(() => {
+    if (inspectionId) {
+      const foundInspection = items.find(item => item.id === inspectionId && item.itemType === 'inspection') as Inspection | undefined;
+      setInspection(foundInspection || null);
+    } else {
+      setInspection(null);
+    }
+  }, [inspectionId, items]);
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);
