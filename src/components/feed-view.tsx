@@ -29,10 +29,8 @@ const riskColorMap: Record<RiskLevel, string> = {
 };
 
 const ListItemWrapper = ({ children, onSelect, item }: { children: React.ReactNode, onSelect: () => void, item: AllItems }) => {
-    const handleItemClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        const target = e.target as HTMLElement;
-        if (target.closest('button, a, [data-prevent-item-click]')) return;
-        onSelect();
+    const preventBubble = (e: React.MouseEvent) => {
+        e.stopPropagation();
     };
 
     const isPending = item.status === 'Pending' || item.status === 'Pending Approval';
@@ -41,13 +39,13 @@ const ListItemWrapper = ({ children, onSelect, item }: { children: React.ReactNo
 
     return (
         <Card 
-          onClick={handleItemClick}
+          onClick={onSelect}
           className="transition-all cursor-pointer hover:border-primary/50 relative overflow-hidden"
         >
             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${riskColor}`} />
             
             {isPending && (
-                <div className="absolute top-2 right-2 text-muted-foreground" data-prevent-item-click>
+                <div className="absolute top-2 right-2 text-muted-foreground" onClick={preventBubble}>
                     <TooltipProvider delayDuration={100}>
                       <Tooltip>
                         <TooltipTrigger>
