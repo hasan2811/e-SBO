@@ -42,27 +42,36 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // --- Redirection Logic ---
   React.useEffect(() => {
-    if (authLoading || projectsLoading) return;
+    // Wait until authentication and project data are fully loaded before making any navigation decisions.
+    if (authLoading || (user && projectsLoading)) return;
 
+    // 1. If not authenticated, the user must be on the login page.
     if (!user) {
       router.push('/login');
       return;
     }
     
-    // Redirect from root to the hub.
+    // From here, we know the user is authenticated.
+
+    // 2. The root path '/' should always redirect to the project hub.
     if (pathname === '/') {
         router.replace('/beranda');
         return;
     }
     
     const hasProjects = projects.length > 0;
-    // If the user has no projects and is NOT on the hub page, redirect them there.
+
+    // 3. A user without any projects should always be on the hub page to create or join one.
+    // If they land anywhere else (e.g., a stale bookmark), redirect them.
     if (!hasProjects && pathname !== '/beranda') {
         router.replace('/beranda');
     }
-    // No other redirects are necessary. A user with projects can be on /beranda or /proyek/*
+
+    // 4. (No action needed) If a user has projects, they are free to navigate
+    // between their projects (/proyek/*) and the hub (/beranda).
 
   }, [user, authLoading, projects, projectsLoading, pathname, router]);
+
 
   React.useEffect(() => {
     if (userProfile && (userProfile.position === 'Not Set' || !userProfile.position)) {
