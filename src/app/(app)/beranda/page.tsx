@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton';
 import { Folder, FolderPlus, LogIn, Users, Crown } from 'lucide-react';
 import type { Project } from '@/lib/types';
+import { Separator } from '@/components/ui/separator';
 
 const ProjectCard = ({ project }: { project: Project }) => {
   const router = useRouter();
@@ -56,6 +57,15 @@ export default function ProjectHubPage() {
 
   const isLoading = projectsLoading || authLoading;
 
+  const ownedProjects = React.useMemo(() => 
+    projects.filter(p => p.ownerUid === userProfile?.uid),
+  [projects, userProfile]);
+
+  const memberProjects = React.useMemo(() =>
+    projects.filter(p => p.ownerUid !== userProfile?.uid),
+  [projects, userProfile]);
+
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -98,10 +108,36 @@ export default function ProjectHubPage() {
         </div>
 
         {projects.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
+          <div className="space-y-8">
+            {ownedProjects.length > 0 && (
+              <section>
+                <div className="flex items-center gap-3 mb-4">
+                   <Crown className="h-6 w-6 text-amber-500" />
+                   <h2 className="text-xl font-semibold tracking-tight">Proyek Saya</h2>
+                </div>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {ownedProjects.map((project) => (
+                    <ProjectCard key={project.id} project={project} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {ownedProjects.length > 0 && memberProjects.length > 0 && <Separator />}
+
+            {memberProjects.length > 0 && (
+              <section>
+                <div className="flex items-center gap-3 mb-4">
+                   <Users className="h-6 w-6 text-primary" />
+                   <h2 className="text-xl font-semibold tracking-tight">Proyek Tim</h2>
+                </div>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {memberProjects.map((project) => (
+                    <ProjectCard key={project.id} project={project} />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         ) : (
           <div className="flex h-full items-center justify-center pt-16">
