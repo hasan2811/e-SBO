@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -60,11 +59,6 @@ export function RemoveMemberDialog({
       const memberUserRef = doc(db, 'users', member.uid);
 
       await runTransaction(db, async (transaction) => {
-        const projectSnap = await transaction.get(projectRef);
-        if (!projectSnap.exists() || projectSnap.data()?.ownerUid !== user.uid) {
-          throw new Error('Hanya pemilik proyek yang dapat mengeluarkan anggota.');
-        }
-        
         // Remove member from project's member list
         transaction.update(projectRef, {
           memberUids: arrayRemove(member.uid),

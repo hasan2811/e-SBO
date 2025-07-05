@@ -224,27 +224,24 @@ const MemberList = ({ members, isLoading, projectOwnerUid, currentUid, onRemoveC
     currentUid: string | undefined,
     onRemoveClick: (member: UserProfile) => void,
 }) => {
-    const isCurrentUserOwner = currentUid === projectOwnerUid;
-
-    const renderSkeleton = () => (
-      Array.from({ length: 2 }).map((_, index) => (
-        <Card key={index} className="flex flex-col">
-          <CardHeader className="flex flex-row items-center gap-4">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
-            </div>
-          </CardHeader>
-          <CardFooter className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
-            <Skeleton className="h-5 w-1/3" />
-          </CardFooter>
-        </Card>
-      ))
-    );
     
     if (isLoading) {
-        return <div className="grid gap-4 md:grid-cols-2 p-1">{renderSkeleton()}</div>;
+        return <div className="grid gap-4 md:grid-cols-2 p-1">
+            {Array.from({ length: 2 }).map((_, index) => (
+                <Card key={index} className="flex flex-col">
+                <CardHeader className="flex flex-row items-center gap-4">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                    </div>
+                </CardHeader>
+                <CardFooter className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
+                    <Skeleton className="h-5 w-1/3" />
+                </CardFooter>
+                </Card>
+            ))}
+        </div>;
     }
 
     return (
@@ -275,7 +272,7 @@ const MemberList = ({ members, isLoading, projectOwnerUid, currentUid, onRemoveC
                           </>
                       )}
                       </div>
-                      {isCurrentUserOwner && member.uid !== currentUid && (
+                      {member.uid !== currentUid && (
                       <Button
                           variant="ghost"
                           size="sm"
@@ -299,12 +296,12 @@ interface ManageProjectDialogProps {
     project: Project;
 }
 
-export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManageProjectDialogProps) {
+export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProject }: ManageProjectDialogProps) {
     const { user } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
 
-    const [currentProject, setCurrentProject] = React.useState(project);
+    const [currentProject, setCurrentProject] = React.useState(initialProject);
     const [members, setMembers] = React.useState<UserProfile[]>([]);
     const [isLoadingMembers, setIsLoadingMembers] = React.useState(true);
     
@@ -312,22 +309,24 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
     const [isLeaveOpen, setIsLeaveOpen] = React.useState(false);
     const [isDeleteOpen, setDeleteOpen] = React.useState(false);
 
-    const isOwner = user?.uid === project.ownerUid;
-
     // Centralized data fetching, runs only when dialog opens.
     React.useEffect(() => {
         if (!isOpen) return;
 
+        // Reset state on open
+        setCurrentProject(initialProject);
+        setMembers([]);
+        setIsLoadingMembers(true);
+
         const fetchMembers = async () => {
-            setIsLoadingMembers(true);
-            if (!currentProject?.memberUids || currentProject.memberUids.length === 0) {
+            if (!initialProject?.memberUids || initialProject.memberUids.length === 0) {
                 setMembers([]);
                 setIsLoadingMembers(false);
                 return;
             }
             try {
                 const memberDocs = await Promise.all(
-                    currentProject.memberUids.map(uid => getDoc(doc(db, 'users', uid)))
+                    initialProject.memberUids.map(uid => getDoc(doc(db, 'users', uid)))
                 );
                 const memberProfiles: UserProfile[] = [];
                 memberDocs.forEach(docSnap => {
@@ -345,7 +344,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
         };
 
         fetchMembers();
-    }, [isOpen, currentProject.memberUids, toast]);
+    }, [isOpen, initialProject, toast]);
 
 
     // Update local state to reflect changes without a full refetch
@@ -354,11 +353,11 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
     };
     
     const handleMemberRemoved = (removedMemberId: string) => {
-        setCurrentProject(prev => ({
-            ...prev,
-            memberUids: prev.memberUids.filter(uid => uid !== removedMemberId)
-        }));
-        setMembers(prev => prev.filter(member => member.uid !== removedMemberId));
+        const updatedMembers = members.filter(m => m.uid !== removedMemberId);
+        const updatedUids = currentProject.memberUids.filter(uid => uid !== removedMemberId);
+        setMembers(updatedMembers);
+        setCurrentProject(prev => ({ ...prev, memberUids: updatedUids }));
+        setMemberToRemove(null);
     };
 
     const handleActionSuccess = () => {
@@ -384,10 +383,10 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
 
                     <div className="flex-1 flex flex-col overflow-hidden px-6 pb-4">
                         <Tabs defaultValue="members" className="flex-1 flex flex-col overflow-hidden">
-                            <TabsList className={cn("grid w-full shrink-0", isOwner ? "grid-cols-3" : "grid-cols-1")}>
+                            <TabsList className="grid w-full shrink-0 grid-cols-3">
                                 <TabsTrigger value="members">Anggota ({currentProject.memberUids?.length || 0})</TabsTrigger>
-                                {isOwner && <TabsTrigger value="settings">Pengaturan</TabsTrigger>}
-                                {isOwner && <TabsTrigger value="export">Ekspor</TabsTrigger>}
+                                <TabsTrigger value="settings">Pengaturan</TabsTrigger>
+                                <TabsTrigger value="export">Ekspor</TabsTrigger>
                             </TabsList>
                             
                             <ScrollArea className="flex-1 mt-4 -mr-6 pr-6">
@@ -400,30 +399,23 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
                                         onRemoveClick={setMemberToRemove}
                                     />
                                 </TabsContent>
-                                {isOwner && (
-                                    <TabsContent value="settings" className="mt-0">
-                                        <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
-                                    </TabsContent>
-                                )}
-                                 {isOwner && (
-                                    <TabsContent value="export" className="mt-0 p-1">
-                                        <ExportCard project={currentProject} />
-                                    </TabsContent>
-                                )}
+                                <TabsContent value="settings" className="mt-0">
+                                    <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
+                                </TabsContent>
+                                 <TabsContent value="export" className="mt-0 p-1">
+                                    <ExportCard project={currentProject} />
+                                </TabsContent>
                             </ScrollArea>
                         </Tabs>
                     </div>
 
-                    <DialogFooter className="p-6 pt-4 border-t flex-shrink-0">
-                        {isOwner ? (
-                             <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-                                <Trash2 className="mr-2"/> Hapus Proyek
-                            </Button>
-                        ) : (
-                            <Button variant="destructive" onClick={() => setIsLeaveOpen(true)}>
-                                <LogOut className="mr-2"/> Tinggalkan Proyek
-                            </Button>
-                        )}
+                    <DialogFooter className="p-6 pt-4 border-t flex-shrink-0 justify-between">
+                         <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+                            <Trash2 className="mr-2"/> Hapus Proyek
+                        </Button>
+                        <Button variant="outline" onClick={() => setIsLeaveOpen(true)}>
+                            <LogOut className="mr-2"/> Tinggalkan Proyek
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -24,10 +24,6 @@ export async function stampAndApprovePtw(ptwId: string, userProfile: UserProfile
         if (ptw.status !== 'Pending Approval') {
             return { success: false, message: `Permit is already ${ptw.status}.` };
         }
-        
-        if (ptw.userId === userProfile.uid) {
-            return { success: false, message: 'You cannot approve your own permit.' };
-        }
 
         // 1. Download the original PDF from Storage
         const bucket = adminStorage.bucket();

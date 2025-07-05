@@ -46,11 +46,6 @@ export function LeaveProjectDialog({
       });
       return;
     }
-    
-    if (project.ownerUid === user.uid) {
-      toast({ variant: 'destructive', title: 'Tindakan Ditolak', description: 'Pemilik proyek tidak dapat keluar. Harap hapus proyek sebagai gantinya.' });
-      return;
-    }
 
     setIsLeaving(true);
     try {

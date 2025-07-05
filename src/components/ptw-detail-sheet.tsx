@@ -76,7 +76,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   };
 
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
-  const canApprove = ptw.status === 'Pending Approval' && userProfile && user?.uid !== ptw.userId;
+  const canApprove = ptw.status === 'Pending Approval';
   
   return (
     <>
