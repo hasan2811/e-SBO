@@ -22,8 +22,7 @@ import { collection, addDoc, doc, updateDoc, arrayUnion } from 'firebase/firesto
 import { db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { CustomListInput } from './custom-list-input';
-import { ScrollArea } from './ui/scroll-area';
-import { Separator } from './ui/separator';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 
 const formSchema = z.object({
   name: z.string().min(3, { message: 'Nama proyek minimal harus 3 karakter.' }),
@@ -106,50 +105,62 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
             Buat Proyek Baru
           </DialogTitle>
           <DialogDescription>
-            Masukkan nama proyek dan (opsional) konfigurasikan opsi formulir khusus untuk perusahaan dan lokasi.
+            Isi detail proyek dan konfigurasikan opsi formulir khusus.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="pr-6 -mr-6">
-            <div className="space-y-6">
-                <Form {...form}>
-                <form id={formId} onSubmit={form.handleSubmit(onCreate)} className="space-y-4">
-                    <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Nama Proyek *</FormLabel>
-                        <FormControl>
-                            <Input placeholder="Contoh: Proyek Konstruksi Jembatan" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                </form>
-                </Form>
+        <div className="flex-1 overflow-y-auto pr-6 -mr-6">
+            <Form {...form}>
+            <form id={formId} onSubmit={form.handleSubmit(onCreate)} className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Detail Proyek</CardTitle>
+                        <CardDescription>Nama proyek wajib diisi. Nama ini akan terlihat oleh semua anggota proyek.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Nama Proyek *</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Contoh: Proyek Konstruksi Jembatan" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    </CardContent>
+                </Card>
                 
-                <Separator/>
-                
-                <div className="space-y-4">
-                    <CustomListInput
-                        title="Perusahaan Kustom (Opsional)"
-                        description="Tambahkan opsi perusahaan untuk formulir di proyek ini. Jika kosong, akan menggunakan daftar default."
-                        placeholder="Contoh: PT. Subkontraktor"
-                        items={customCompanies}
-                        setItems={setCustomCompanies}
-                    />
-                    <CustomListInput
-                        title="Lokasi Kustom (Opsional)"
-                        description="Tambahkan opsi lokasi untuk formulir di proyek ini. Jika kosong, akan menggunakan daftar default."
-                        placeholder="Contoh: Area Fabrikasi"
-                        items={customLocations}
-                        setItems={setCustomLocations}
-                    />
-                </div>
-            </div>
-        </ScrollArea>
-        <DialogFooter className="pt-4 border-t">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Kustomisasi Formulir (Opsional)</CardTitle>
+                        <CardDescription>Tambahkan opsi dropdown khusus yang akan digunakan di formulir observasi pada proyek ini.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <CustomListInput
+                            inputId="custom-companies-create"
+                            title="Perusahaan Kustom"
+                            description="Jika kosong, akan menggunakan daftar default aplikasi."
+                            placeholder="Contoh: PT. Subkontraktor"
+                            items={customCompanies}
+                            setItems={setCustomCompanies}
+                        />
+                        <CustomListInput
+                            inputId="custom-locations-create"
+                            title="Lokasi Kustom"
+                            description="Jika kosong, akan menggunakan daftar default aplikasi."
+                            placeholder="Contoh: Area Fabrikasi"
+                            items={customLocations}
+                            setItems={setCustomLocations}
+                        />
+                    </CardContent>
+                </Card>
+            </form>
+            </Form>
+        </div>
+        <DialogFooter className="pt-4 border-t flex-shrink-0">
           <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isCreating}>
             Batal
           </Button>

@@ -77,15 +77,15 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
     <div className="space-y-6 p-1">
       <Card>
         <CardHeader>
-            <CardTitle>Project Access</CardTitle>
-            <CardDescription>Control who can join this project.</CardDescription>
+            <CardTitle>Akses Proyek</CardTitle>
+            <CardDescription>Kontrol siapa yang dapat bergabung dengan proyek ini.</CardDescription>
         </CardHeader>
         <CardContent>
             <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
                 <div className="space-y-0.5">
-                    <Label htmlFor="project-open" className="font-medium">Open to Join</Label>
+                    <Label htmlFor="project-open" className="font-medium">Buka untuk Bergabung</Label>
                     <p className="text-xs text-muted-foreground">
-                        If enabled, any user can join this project from the "Join Project" list.
+                        Jika diaktifkan, pengguna mana pun dapat melihat dan bergabung dengan proyek ini.
                     </p>
                 </div>
                 <Switch
@@ -97,26 +97,36 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
         </CardContent>
       </Card>
       
-      <CustomListInput
-        title="Manage Custom Companies"
-        description="Add or remove company options for observation forms in this project."
-        placeholder="Enter a new company name"
-        items={customCompanies}
-        setItems={setCustomCompanies}
-      />
-      
-      <CustomListInput
-        title="Manage Custom Locations"
-        description="Add or remove location options for observation forms in this project."
-        placeholder="Enter a new location name"
-        items={customLocations}
-        setItems={setCustomLocations}
-      />
+      <Card>
+        <CardHeader>
+            <CardTitle>Opsi Formulir Kustom</CardTitle>
+            <CardDescription>Kelola opsi dropdown untuk formulir di proyek ini.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <CustomListInput
+                inputId="custom-companies-manage"
+                title="Perusahaan Kustom"
+                description="Tambahkan atau hapus opsi perusahaan untuk formulir."
+                placeholder="Masukkan nama perusahaan baru"
+                items={customCompanies}
+                setItems={setCustomCompanies}
+            />
+            
+            <CustomListInput
+                inputId="custom-locations-manage"
+                title="Lokasi Kustom"
+                description="Tambahkan atau hapus opsi lokasi untuk formulir."
+                placeholder="Masukkan nama lokasi baru"
+                items={customLocations}
+                setItems={setCustomLocations}
+            />
+        </CardContent>
+      </Card>
 
       <div className="flex justify-end pt-4">
           <Button onClick={handleSave} disabled={isSaving}>
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save All Settings
+            Simpan Semua Pengaturan
           </Button>
       </div>
     </div>
