@@ -10,7 +10,7 @@ if (!admin.apps.length) {
     // initializing with the storageBucket explicitly defined is the most robust method.
     // This resolves token refresh issues by removing any ambiguity about the target bucket.
     admin.initializeApp({
-        storageBucket: 'hssetech-e1710.appspot.com',
+        storageBucket: 'hssetech-e1710.firebasestorage.app',
     });
   } catch (e) {
     console.error('Firebase admin initialization error', e);
