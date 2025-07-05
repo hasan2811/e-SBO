@@ -2,11 +2,13 @@
 
 import * as React from 'react';
 import { useContext } from 'react';
-import { collection, query, orderBy, where, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, query, orderBy, where, onSnapshot, Unsubscribe, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { AllItems } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { ObservationContext } from '@/contexts/observation-context';
+
+const ITEMS_PER_PAGE = 20; // Load the 20 most recent items per collection
 
 export function useObservations(projectId: string | null) {
   const context = useContext(ObservationContext);
@@ -46,7 +48,8 @@ export function useObservations(projectId: string | null) {
         const q = query(
             collection(db, collName), 
             where('projectId', '==', projectId),
-            orderBy('date', 'desc')
+            orderBy('date', 'desc'),
+            limit(ITEMS_PER_PAGE)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
