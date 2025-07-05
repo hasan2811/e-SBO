@@ -2,7 +2,9 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
@@ -29,83 +31,79 @@ const ProjectCard = ({
   onLeave: (project: Project) => void,
   onDelete: (project: Project) => void,
 }) => {
-  const router = useRouter();
   const { user } = useAuth();
   const isOwner = project.ownerUid === user?.uid;
 
-  const handleCardClick = () => {
-    router.push(`/proyek/${project.id}/observasi`);
-  }
-
-  const handleActionClick = (e: React.MouseEvent, action: () => void) => {
-    e.stopPropagation();
-    action();
-  }
+  const handleActionClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevents the Link from navigating
+    e.stopPropagation(); // Good practice to also stop bubbling
+  };
 
   return (
-    <Card 
-      className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50 flex flex-col group"
-      onClick={handleCardClick}
-    >
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div className="flex items-start gap-4">
-            <Folder className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
-            <div>
-              <CardTitle>{project.name}</CardTitle>
-              <CardDescription>Click to open this project.</CardDescription>
+    <Link href={`/proyek/${project.id}/observasi`} className="h-full flex flex-col">
+      <Card className="transition-all hover:shadow-md hover:border-primary/50 flex flex-col group w-full flex-1">
+        <CardHeader>
+          <div className="flex justify-between items-start gap-2">
+            <div className="flex items-start gap-4 flex-1 overflow-hidden">
+              <Folder className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
+              <div className="flex-1 overflow-hidden">
+                <CardTitle className="truncate">{project.name}</CardTitle>
+                <CardDescription>Click to open project.</CardDescription>
+              </div>
+            </div>
+            
+            <div onClick={handleActionClick} className="flex-shrink-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                    <span className="sr-only">Project Actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => onManage(project)}>
+                    <FileCog className="mr-2" />
+                    <span>Kelola Proyek</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {isOwner ? (
+                    <DropdownMenuItem onSelect={() => onDelete(project)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                      <Trash2 className="mr-2" />
+                      <span>Hapus Proyek</span>
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onSelect={() => onLeave(project)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                      <LogOut className="mr-2" />
+                      <span>Keluar dari Proyek</span>
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreVertical className="h-4 w-4" />
-                <span className="sr-only">Project Actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem onSelect={() => onManage(project)}>
-                <FileCog className="mr-2" />
-                <span>Kelola Proyek</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {isOwner ? (
-                <DropdownMenuItem onSelect={() => onDelete(project)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                  <Trash2 className="mr-2" />
-                  <span>Hapus Proyek</span>
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onSelect={() => onLeave(project)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                  <LogOut className="mr-2" />
-                  <span>Keluar dari Proyek</span>
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardHeader>
-      <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6 mt-auto">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Users className="h-4 w-4" />
-          <span>{project.memberUids.length} Member(s)</span>
-        </div>
-        {isOwner && (
-          <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold">
-            <Crown className="h-4 w-4 text-amber-500" />
-            <span>Owner</span>
+        </CardHeader>
+        <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6 mt-auto">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Users className="h-4 w-4" />
+            <span>{project.memberUids.length} Member(s)</span>
           </div>
-        )}
-      </CardFooter>
-    </Card>
+          {isOwner && (
+            <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold">
+              <Crown className="h-4 w-4 text-amber-500" />
+              <span>Owner</span>
+            </div>
+          )}
+        </CardFooter>
+      </Card>
+    </Link>
   );
 };
 
-// High-fidelity skeleton for a project card
+
 const ProjectCardSkeleton = () => (
   <Card className="flex flex-col">
     <CardHeader>
@@ -132,7 +130,6 @@ export default function ProjectHubPage() {
   const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
   const router = useRouter();
   
-  // State for management dialogs
   const [projectToManage, setProjectToManage] = React.useState<Project | null>(null);
   const [projectToLeave, setProjectToLeave] = React.useState<Project | null>(null);
   const [projectToDelete, setProjectToDelete] = React.useState<Project | null>(null);
@@ -151,9 +148,21 @@ export default function ProjectHubPage() {
     setProjectToManage(null);
     setProjectToLeave(null);
     setProjectToDelete(null);
-    // The context listener will handle UI updates automatically.
-    // A redirect might be too jarring if they want to manage another project.
   };
+  
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { y: 10, opacity: 0 },
+    visible: { y: 0, opacity: 1 },
+  };
+
 
   if (isLoading) {
     return (
@@ -207,17 +216,23 @@ export default function ProjectHubPage() {
                    <Crown className="h-6 w-6 text-amber-500" />
                    <h2 className="text-xl font-semibold tracking-tight">Proyek Saya</h2>
                 </div>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <motion.div 
+                    className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                >
                   {ownedProjects.map((project) => (
-                    <ProjectCard 
-                      key={project.id} 
-                      project={project}
-                      onManage={setProjectToManage}
-                      onLeave={setProjectToLeave}
-                      onDelete={setProjectToDelete}
-                    />
+                    <motion.div key={project.id} variants={itemVariants} className="h-full">
+                        <ProjectCard 
+                        project={project}
+                        onManage={setProjectToManage}
+                        onLeave={setProjectToLeave}
+                        onDelete={setProjectToDelete}
+                        />
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               </section>
             )}
 
@@ -229,17 +244,23 @@ export default function ProjectHubPage() {
                    <Users className="h-6 w-6 text-primary" />
                    <h2 className="text-xl font-semibold tracking-tight">Proyek Tim</h2>
                 </div>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <motion.div 
+                    className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                >
                   {memberProjects.map((project) => (
-                     <ProjectCard 
-                      key={project.id} 
-                      project={project}
-                      onManage={setProjectToManage}
-                      onLeave={setProjectToLeave}
-                      onDelete={setProjectToDelete}
-                    />
+                    <motion.div key={project.id} variants={itemVariants} className="h-full">
+                        <ProjectCard 
+                        project={project}
+                        onManage={setProjectToManage}
+                        onLeave={setProjectToLeave}
+                        onDelete={setProjectToDelete}
+                        />
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               </section>
             )}
           </div>
