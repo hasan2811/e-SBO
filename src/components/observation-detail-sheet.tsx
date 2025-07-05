@@ -53,28 +53,24 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
-  const { user, userProfile } = useAuth();
+  const { userProfile } = useAuth();
   const { getObservationById } = useObservationData();
   const { toast } = useToast();
 
-  const [localObservation, setLocalObservation] = React.useState<Observation | null>(null);
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
+
+  // Directly get the observation on each render. If it's gone, the sheet will simply not render.
+  const observation = isOpen && observationId ? getObservationById(observationId) : null;
   
-  React.useEffect(() => {
-    if (isOpen && observationId) {
-      const obs = getObservationById(observationId);
-      if (obs) {
-        setLocalObservation(obs);
-      }
+  if (!observation) {
+    // If the observation is not found (e.g., deleted), ensure the sheet closes.
+    if (isOpen) {
+      onOpenChange(false);
     }
-  }, [isOpen, observationId, getObservationById]);
-
-  // Use the local state for rendering to prevent unmounting during deletion.
-  const observation = localObservation;
-
-  if (!observation) return null;
+    return null;
+  }
   
   const isAiEnabled = userProfile?.aiEnabled ?? false;
   const canTakeAction = observation.status !== 'Completed';

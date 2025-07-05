@@ -54,27 +54,22 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 
 export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
-  const { user, userProfile } = useAuth();
+  const { userProfile } = useAuth();
   const { getInspectionById } = useObservationData();
   const { toast } = useToast();
   
-  const [localInspection, setLocalInspection] = React.useState<Inspection | null>(null);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
 
-  React.useEffect(() => {
-    if (isOpen && inspectionId) {
-      const insp = getInspectionById(inspectionId);
-      if (insp) {
-        setLocalInspection(insp);
-      }
+  const inspection = isOpen && inspectionId ? getInspectionById(inspectionId) : null;
+  
+  if (!inspection) {
+    if (isOpen) {
+      onOpenChange(false);
     }
-  }, [isOpen, inspectionId, getInspectionById]);
-
-  const inspection = localInspection;
-
-  if (!inspection) return null;
+    return null;
+  }
   
   const isAiEnabled = userProfile?.aiEnabled ?? false;
   const projectName = inspection.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
