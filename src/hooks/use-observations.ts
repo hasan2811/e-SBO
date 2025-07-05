@@ -22,31 +22,33 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
     throw new Error('useObservations must be used within an ObservationProvider');
   }
 
-  const { items, setItems, isLoading, setIsLoading, setError } = context;
+  const { setItems, setIsLoading, setError } = context;
 
   const unsubscribeRef = React.useRef<Unsubscribe | null>(null);
   
   React.useEffect(() => {
-    // Stop listening to the old query when the component unmounts or dependencies change.
+    // Stop listening to any previous query when dependencies change.
     if (unsubscribeRef.current) {
         unsubscribeRef.current();
     }
 
-    // If there is no authenticated user, always clear the data and stop.
+    // If the user is not logged in, we must clear the data and stop.
     if (!user) {
       setItems([]);
       setIsLoading(false);
       return;
     }
-    
-    // If there is a user but no projectId, it means we are not in a project context.
-    // We should not clear the data here, as it might be a temporary state during navigation.
-    // Simply stop and wait for a valid projectId.
+
+    // If there is a user, but no project is selected (e.g., on the project hub or during navigation),
+    // we should NOT fetch anything. We also DON'T clear the data here, which is the key fix.
+    // This allows for seamless navigation back and forth.
     if (!projectId) {
+      // Intentionally do not clear items here.
       setIsLoading(false);
       return;
     }
     
+    // Start loading only when we are sure we are fetching for a valid project.
     setIsLoading(true);
     
     const collectionName = `${itemTypeFilter}s`;
@@ -71,6 +73,7 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
         setIsLoading(false);
     });
 
+    // Cleanup function to unsubscribe when the component unmounts or dependencies change.
     return () => {
         if (unsubscribeRef.current) {
             unsubscribeRef.current();
