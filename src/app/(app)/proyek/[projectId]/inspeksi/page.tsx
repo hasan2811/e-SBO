@@ -38,7 +38,7 @@ export default function ProjectInspectionPage() {
     <FeedView 
       projectId={projectId} 
       itemTypeFilter="inspection"
-      title="Inspeksi Proyek"
+      title="Inspeksi"
     />
   );
 }

@@ -3,14 +3,12 @@
 
 import * as React from 'react';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel } from '@/lib/types';
 import { PtwStatusBadge, InspectionStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
 import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
-import { InspectionDetailSheet } from '@/components/inspection-detail-sheet';
-import { PtwDetailSheet } from '@/components/ptw-detail-sheet';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { usePathname, useRouter } from 'next/navigation';
@@ -21,6 +19,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from './ui/badge';
 import { ListItemSkeleton } from './list-item-skeleton';
 
+// Lazy load detail sheets to reduce initial bundle size
+const ObservationDetailSheet = dynamic(() => import('@/components/observation-detail-sheet').then(mod => mod.ObservationDetailSheet), { ssr: false });
+const InspectionDetailSheet = dynamic(() => import('@/components/inspection-detail-sheet').then(mod => mod.InspectionDetailSheet), { ssr: false });
+const PtwDetailSheet = dynamic(() => import('@/components/ptw-detail-sheet').then(mod => mod.PtwDetailSheet), { ssr: false });
+
+
 const riskColorMap: Record<RiskLevel, string> = {
     Low: 'bg-chart-2',
     Medium: 'bg-chart-4',
@@ -28,7 +32,8 @@ const riskColorMap: Record<RiskLevel, string> = {
     Critical: 'bg-destructive',
 };
 
-const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
+// Memoize list items to prevent unnecessary re-renders
+const ObservationListItem = React.memo(function ObservationListItem({ observation, onSelect }: { observation: Observation, onSelect: () => void }) {
     if (observation.optimisticState === 'uploading') {
         return <ListItemSkeleton key={observation.id} />;
     }
@@ -78,10 +83,10 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
             </CardContent>
         </Card>
     );
-};
+});
 
 
-const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, onSelect: () => void }) => {
+const InspectionListItem = React.memo(function InspectionListItem({ inspection, onSelect }: { inspection: Inspection, onSelect: () => void }) {
     if (inspection.optimisticState === 'uploading') {
         return <ListItemSkeleton key={inspection.id} />;
     }
@@ -132,9 +137,9 @@ const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, 
             </CardContent>
         </Card>
     );
-};
+});
 
-const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => {
+const PtwListItem = React.memo(function PtwListItem({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) {
     if (ptw.optimisticState === 'uploading') {
         return <ListItemSkeleton key={ptw.id} />;
     }
@@ -181,11 +186,11 @@ const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => {
             </CardContent>
         </Card>
     )
-};
+});
 
 interface FeedViewProps {
   projectId: string;
-  itemTypeFilter?: 'observation' | 'inspection' | 'ptw';
+  itemTypeFilter: 'observation' | 'inspection' | 'ptw';
   observationIdToOpen?: string | null;
   title: string;
 }
@@ -195,7 +200,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   const pathname = usePathname();
   const { toast } = useToast();
   
-  const { items, isLoading, getObservationById } = useObservations(projectId);
+  const { items, isLoading, getObservationById, loadMore, hasMore, isFetchingMore } = useObservations(projectId, itemTypeFilter);
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -224,10 +229,6 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
 
   const filteredData = React.useMemo(() => {
     let data = items;
-
-    if (itemTypeFilter) {
-      data = data.filter(item => item.itemType === itemTypeFilter);
-    }
     
     if (!searchTerm) return data;
     
@@ -238,7 +239,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
         if (item.itemType === 'ptw') return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
         return false;
     });
-  }, [items, searchTerm, itemTypeFilter]);
+  }, [items, searchTerm]);
 
   function EmptyState() {
     const messages = {
@@ -337,6 +338,15 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
           </ul>
         ) : (
           <EmptyState />
+        )}
+
+        {hasMore && (
+            <div className="flex justify-center mt-6">
+                <Button onClick={loadMore} disabled={isFetchingMore} variant="outline">
+                    {isFetchingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Load More
+                </Button>
+            </div>
         )}
       </main>
     </div>

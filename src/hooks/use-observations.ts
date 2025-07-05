@@ -2,16 +2,16 @@
 'use client';
 
 import * as React from 'react';
-import { useContext } from 'react';
-import { collection, query, orderBy, where, onSnapshot, Unsubscribe, limit } from 'firebase/firestore';
+import { useContext }from 'react';
+import { collection, query, orderBy, where, getDocs, limit, startAfter, type QueryDocumentSnapshot, type DocumentData } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { AllItems } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { ObservationContext } from '@/contexts/observation-context';
 
-const ITEMS_PER_PAGE = 20; // Load the 20 most recent items per collection
+const ITEMS_PER_PAGE = 10; // Smaller page size for faster loads
 
-export function useObservations(projectId: string | null) {
+export function useObservations(projectId: string | null, itemTypeFilter: AllItems['itemType']) {
   const context = useContext(ObservationContext);
   const { user } = useAuth();
   
@@ -19,82 +19,90 @@ export function useObservations(projectId: string | null) {
     throw new Error('useObservations must be used within an ObservationProvider');
   }
 
-  const { setItems, setIsLoading, setError } = context;
+  const { items, setItems, isLoading, setIsLoading, setError } = context;
 
-  // By using a ref, we can compare the current projectId with the previous one
-  // to avoid re-fetching data and clearing items unnecessarily on every re-render.
-  const previousProjectIdRef = React.useRef<string | null>();
+  const [lastVisible, setLastVisible] = React.useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMore, setHasMore] = React.useState(true);
+  const [isFetchingMore, setIsFetchingMore] = React.useState(false);
+
+  // Use a ref to prevent re-fetching on every render if projectId/filter haven't changed
+  const lastFetchedRef = React.useRef<{ projectId: string | null; itemTypeFilter: string | null }>({ projectId: null, itemTypeFilter: null });
 
   React.useEffect(() => {
-    // Only clear items and set loading state if the project has actually changed.
-    if (previousProjectIdRef.current !== projectId) {
-      setItems([]);
-      setIsLoading(true);
-    }
-    previousProjectIdRef.current = projectId;
+    // Initial fetch logic. It runs only when the component mounts or critical dependencies change.
+    const initialFetch = async () => {
+        if (!projectId || !user || !itemTypeFilter) {
+            setIsLoading(false);
+            return;
+        }
 
-    if (!projectId || !user) {
-      setIsLoading(false); // No project/user, so stop loading.
-      // Clear items if we navigate away from a project (e.g., to /beranda)
-      if(projectId === null) setItems([]); 
-      return;
-    }
+        // Only re-fetch if project or filter has truly changed from the last fetch for this instance.
+        if (lastFetchedRef.current.projectId === projectId && lastFetchedRef.current.itemTypeFilter === itemTypeFilter) {
+            setIsLoading(false); // Already loaded this data
+            return;
+        }
 
-    setError(null);
+        setIsLoading(true);
+        setError(null);
+        setItems([]); // Clear previous project's items
 
-    const collectionsToQuery = ['observations', 'inspections', 'ptws'];
-    const unsubscribes: Unsubscribe[] = [];
-    
-    // A map to hold all items from all collections, keyed by ID
-    const allData = new Map<string, AllItems>();
+        try {
+            const collectionName = `${itemTypeFilter}s`;
+            const q = query(
+                collection(db, collectionName),
+                where('projectId', '==', projectId),
+                orderBy('date', 'desc'),
+                limit(ITEMS_PER_PAGE)
+            );
 
-    const processAndSetData = () => {
-      const sortedData = Array.from(allData.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setItems(sortedData);
+            const documentSnapshots = await getDocs(q);
+            const newItems = documentSnapshots.docs.map(doc => ({ ...doc.data(), id: doc.id })) as AllItems[];
+
+            setItems(newItems);
+            setLastVisible(documentSnapshots.docs[documentSnapshots.docs.length - 1] || null);
+            setHasMore(documentSnapshots.docs.length === ITEMS_PER_PAGE);
+            lastFetchedRef.current = { projectId, itemTypeFilter }; // Mark as fetched
+        } catch (err) {
+            console.error(err);
+            setError(`Failed to load ${itemTypeFilter}s.`);
+        } finally {
+            setIsLoading(false);
+        }
     };
-
-    let initialLoadsPending = collectionsToQuery.length;
     
-    collectionsToQuery.forEach(collName => {
+    initialFetch();
+
+  }, [projectId, user, itemTypeFilter, setItems, setIsLoading, setError]);
+
+  const loadMore = React.useCallback(async () => {
+    if (isFetchingMore || !hasMore || !lastVisible || !projectId || !itemTypeFilter) {
+        return;
+    }
+    
+    setIsFetchingMore(true);
+    try {
+        const collectionName = `${itemTypeFilter}s`;
         const q = query(
-            collection(db, collName), 
+            collection(db, collectionName),
             where('projectId', '==', projectId),
             orderBy('date', 'desc'),
+            startAfter(lastVisible),
             limit(ITEMS_PER_PAGE)
         );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
-              if (change.type === "removed") {
-                allData.delete(change.doc.id);
-              } else {
-                allData.set(change.doc.id, { ...change.doc.data(), id: change.doc.id } as AllItems);
-              }
-            });
-            
-            processAndSetData();
-            
-            // Only stop the main loading spinner after the first fetch from all collections completes.
-            if (initialLoadsPending > 0) {
-              initialLoadsPending--;
-              if (initialLoadsPending === 0) {
-                setIsLoading(false);
-              }
-            }
+        const documentSnapshots = await getDocs(q);
+        const newItems = documentSnapshots.docs.map(doc => ({ ...doc.data(), id: doc.id })) as AllItems[];
 
-        }, (err) => {
-            console.error(`Error on snapshot for ${collName}:`, err);
-            setError(`Failed to load ${collName}.`);
-            setIsLoading(false);
-        });
-        unsubscribes.push(unsubscribe);
-    });
-    
-    // Cleanup on component unmount or when dependencies change
-    return () => {
-      unsubscribes.forEach(unsub => unsub());
-    };
-  }, [projectId, user, setItems, setIsLoading, setError]);
+        setItems(prevItems => [...prevItems, ...newItems]);
+        setLastVisible(documentSnapshots.docs[documentSnapshots.docs.length - 1] || null);
+        setHasMore(documentSnapshots.docs.length === ITEMS_PER_PAGE);
+    } catch (err) {
+        console.error(err);
+        setError(`Failed to load more ${itemTypeFilter}s.`);
+    } finally {
+        setIsFetchingMore(false);
+    }
+  }, [isFetchingMore, hasMore, lastVisible, projectId, itemTypeFilter, setItems, setError]);
 
-  return context;
+  return { ...context, loadMore, hasMore, isFetchingMore };
 }

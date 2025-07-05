@@ -28,24 +28,30 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
   const updateItem = React.useCallback((updatedItem: AllItems) => {
     setItems(prevItems => {
-        // Find and remove the optimistic placeholder if it exists.
-        // It's identified by having an `optimisticState` and a matching `referenceId`.
-        const filteredItems = prevItems.filter(item => 
-            !(item.optimisticState && item.referenceId && item.referenceId === updatedItem.referenceId)
-        );
-
-        // Now, find the real item's index in the filtered list.
-        const index = filteredItems.findIndex(item => item.id === updatedItem.id);
-
-        if (index === -1) {
-            // If the item doesn't exist, it's a new item. Add it.
-            return [...filteredItems, updatedItem].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        }
+        // First, check if the real item already exists.
+        const existingIndex = prevItems.findIndex(item => item.id === updatedItem.id);
         
-        // It's an update to an existing item, so replace it at its index.
-        const newItems = [...filteredItems];
-        newItems[index] = updatedItem;
-        return newItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        if (existingIndex !== -1) {
+            // It's a simple update.
+            const newItems = [...prevItems];
+            newItems[existingIndex] = updatedItem;
+            return newItems;
+        }
+
+        // If it doesn't exist, it's a new item replacing an optimistic one.
+        // Find and replace the optimistic placeholder.
+        const optimisticIndex = prevItems.findIndex(item => 
+            item.optimisticState && item.referenceId && item.referenceId === updatedItem.referenceId
+        );
+        
+        if (optimisticIndex !== -1) {
+            const newItems = [...prevItems];
+            newItems[optimisticIndex] = updatedItem;
+            return newItems;
+        }
+
+        // If no existing or optimistic item is found, add it as a new one.
+        return [...prevItems, updatedItem].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     });
   }, []);
 
@@ -54,7 +60,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, []);
   
   const addItem = React.useCallback((newItem: AllItems) => {
-    // This function is now specifically for adding optimistic items.
+    // This function is specifically for adding optimistic items.
     setItems(prev => {
       if (prev.some(item => item.id === newItem.id)) {
           return prev; // Prevent adding duplicate optimistic items
