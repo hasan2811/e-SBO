@@ -4,7 +4,7 @@
  * @fileOverview An AI flow to identify and notify relevant project members about a new observation.
  *
  * This flow uses a tool to fetch project members and then asks the AI to determine
- * who should be notified based on company and name mentions in the observation.
+ * who should be notified and crafts a personalized message for each recipient.
  *
  * - triggerSmartNotify: A function that initiates the notification process.
  */
@@ -79,8 +79,9 @@ const smartNotifyPrompt = ai.definePrompt({
   tools: [getProjectMembersTool],
   input: { schema: SmartNotifyInputSchema },
   output: { schema: SmartNotifyOutputSchema },
-  prompt: `You are an intelligent notification routing system for an HSSE application.
-Your task is to determine which project members should be notified about a new observation.
+  prompt: `You are an intelligent notification routing system for an HSSE application. Your response MUST be a raw JSON object only.
+
+Your task is to determine which project members should be notified about a new observation and craft a personalized notification for each.
 
 First, use the 'getProjectMembers' tool to get the list of members for the project: {{{projectId}}}.
 
@@ -95,7 +96,13 @@ A member should be notified if they meet ANY of the following criteria:
 
 IMPORTANT: Do NOT notify the user who submitted the observation. Their name is "{{{submittedBy}}}".
 
-Return a JSON object containing a list of UIDs for all the members who should be notified.
+For EACH member that you identify, you must generate a personalized and concise notification message in Bahasa Indonesia. The message must explain WHY the user is being notified.
+
+Examples:
+- For company match: "Perusahaan Anda, [Company Name], disebut dalam temuan baru oleh ${submittedBy}: '[findings snippet]...'"
+- For name mention: "Nama Anda disebut dalam temuan baru oleh ${submittedBy}: '[findings snippet]...'"
+
+Return a JSON object containing a list of these notifications. Each notification object in the list must have a 'uid' and a 'message'.
 `,
 });
 
@@ -109,29 +116,27 @@ const smartNotifyFlow = ai.defineFlow(
     outputSchema: z.void(), // The flow itself doesn't return to the client, it writes to DB.
   },
   async ({ payload, userProfile }) => {
-    const { observationId, projectId, findings, submittedBy } = payload;
+    const { observationId, projectId } = payload;
     
     const model = userProfile.googleAiApiKey
         ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
         : 'googleai/gemini-1.5-flash-latest';
 
-    // Let the AI determine who to notify.
+    // Let the AI determine who to notify and generate the messages.
     const { output } = await smartNotifyPrompt(payload, { model });
 
-    if (!output?.notifiedUserUids || output.notifiedUserUids.length === 0) {
+    if (!output?.notifications || output.notifications.length === 0) {
       console.log(`[smartNotifyFlow] No users identified for notification for observation ${observationId}.`);
       return;
     }
 
-    const notificationMessage = `Anda disebut dalam temuan baru oleh ${submittedBy}: "${findings.substring(0, 50)}..."`;
-
-    // Create a notification document for each identified user.
-    const notificationPromises = output.notifiedUserUids.map(userId => {
+    // Create a notification document for each identified user with their personalized message.
+    const notificationPromises = output.notifications.map(notification => {
       const notificationData = {
-        userId,
+        userId: notification.uid,
         observationId,
         projectId,
-        message: notificationMessage,
+        message: notification.message, // Use the AI-generated message
         isRead: false,
         createdAt: new Date().toISOString(),
       };
@@ -139,7 +144,7 @@ const smartNotifyFlow = ai.defineFlow(
     });
 
     await Promise.all(notificationPromises);
-    console.log(`[smartNotifyFlow] Created ${output.notifiedUserUids.length} notifications for observation ${observationId}.`);
+    console.log(`[smartNotifyFlow] Created ${output.notifications.length} notifications for observation ${observationId}.`);
   }
 );
 

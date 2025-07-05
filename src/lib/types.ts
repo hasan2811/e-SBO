@@ -264,6 +264,9 @@ export const SmartNotifyInputSchema = z.object({
 export type SmartNotifyInput = z.infer<typeof SmartNotifyInputSchema>;
 
 export const SmartNotifyOutputSchema = z.object({
-  notifiedUserUids: z.array(z.string()).describe('A list of user UIDs that should be notified about this observation.'),
+  notifications: z.array(z.object({
+    uid: z.string().describe("The UID of the user to notify."),
+    message: z.string().describe("The personalized notification message for this user, in Bahasa Indonesia.")
+  })).describe('A list of personalized notifications to be sent.'),
 });
 export type SmartNotifyOutput = z.infer<typeof SmartNotifyOutputSchema>;
