@@ -40,7 +40,7 @@ const ProjectCard = ({
   };
 
   return (
-    <Link href={`/proyek/${project.id}/observasi`} className="h-full flex flex-col">
+    <Link href={`/proyek/${project.id}/observasi`} className="h-full flex flex-col" prefetch={true}>
       <Card className="transition-all hover:shadow-md hover:border-primary/50 flex flex-col group w-full flex-1">
         <CardHeader>
           <div className="flex justify-between items-start gap-2">
@@ -128,7 +128,6 @@ export default function ProjectHubPage() {
   const { projects, loading: projectsLoading } = useProjects();
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
   const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
-  const router = useRouter();
   
   const [projectToManage, setProjectToManage] = React.useState<Project | null>(null);
   const [projectToLeave, setProjectToLeave] = React.useState<Project | null>(null);

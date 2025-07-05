@@ -1,14 +1,14 @@
-'use client';
 
-import { PageSkeleton } from '@/components/page-skeleton';
+import { redirect } from 'next/navigation';
 
 /**
- * The root app page. It now acts as a loading placeholder.
- * Redirection logic is handled centrally and consistently by the AppLayout
- * based on the user's authentication and project status.
+ * The root app page. It now acts as a simple, server-side redirector.
+ * It ensures that any authenticated user trying to access the root '/'
+ * is immediately sent to their main project hub at '/beranda'.
+ *
+ * This simplifies the app's routing logic and removes complex,
+ * performance-harming client-side redirection from the main layout.
  */
 export default function RootPage() {
-  // The layout will handle redirection, so we just show a loading state
-  // until the redirection logic in the layout completes.
-  return <PageSkeleton withHeader />;
+  redirect('/beranda');
 }

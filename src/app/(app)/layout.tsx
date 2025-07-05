@@ -42,55 +42,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // --- Redirection Logic ---
   React.useEffect(() => {
-    // Wait until authentication and project data are fully loaded before making any navigation decisions.
-    if (authLoading || (user && projectsLoading)) return;
+    // This effect now ONLY handles authentication status and profile completion.
+    // All project-related routing decisions have been moved to specific pages for better performance.
+    
+    if (authLoading) return; // Wait until authentication check is complete
 
     // 1. If not authenticated, redirect to login page.
     if (!user) {
       router.push('/login');
       return;
     }
-    
-    // From here, we know the user is authenticated.
-    // Now, handle routing based on their project status for a streamlined UX.
 
-    const projectCount = projects.length;
-    const isAtHub = pathname === '/beranda';
-    const isAtRoot = pathname === '/';
-
-    // Case 1: User has NO projects.
-    // They must be on the hub page to create or join a project.
-    if (projectCount === 0) {
-      if (!isAtHub) {
-        router.replace('/beranda');
-      }
-      return;
-    }
-
-    // Case 2: User has projects.
-    // The hub is their main entry point. Redirect from root to hub.
-    if (isAtRoot) {
-      router.replace('/beranda');
-      return;
-    }
-
-    // Note: The logic for handling invalid project IDs is managed within
-    // the specific project pages, which redirect to '/beranda' if a project isn't found.
-    // This keeps concerns separated.
-
-  }, [user, authLoading, projects, projectsLoading, pathname, router]);
-
-
-  React.useEffect(() => {
+    // 2. If authenticated, check if profile needs completion.
     if (userProfile && (userProfile.position === 'Not Set' || !userProfile.position)) {
       setProfileDialogOpen(true);
     } else {
       setProfileDialogOpen(false);
     }
-  }, [userProfile]);
+  }, [user, userProfile, authLoading, router]);
+
 
   const isAppLoading = authLoading || (user && projectsLoading);
-  const showMainContent = !isAppLoading && user;
 
   if (isAppLoading) {
     return <PageSkeleton withHeader />;
@@ -128,7 +100,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   variants={variants}
                   transition={{ duration: 0.2, ease: 'easeInOut' }}
                 >
-                  {showMainContent && !isProfileDialogOpen && children}
+                  {!isAppLoading && !isProfileDialogOpen && children}
                 </motion.div>
               </AnimatePresence>
             </div>
