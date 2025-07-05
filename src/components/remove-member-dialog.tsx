@@ -25,6 +25,7 @@ interface RemoveMemberDialogProps {
   onOpenChange: (open: boolean) => void;
   project: Project | null;
   member: UserProfile | null;
+  onSuccess?: (removedMemberId: string) => void;
 }
 
 export function RemoveMemberDialog({
@@ -32,6 +33,7 @@ export function RemoveMemberDialog({
   onOpenChange,
   project,
   member,
+  onSuccess,
 }: RemoveMemberDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -75,6 +77,7 @@ export function RemoveMemberDialog({
       });
 
       toast({ title: 'Anggota Dikeluarkan', description: 'Anggota telah berhasil dikeluarkan dari proyek.' });
+      onSuccess?.(member.uid);
       onOpenChange(false);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga saat mengeluarkan anggota.';

@@ -137,7 +137,7 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
 };
 
 
-const MemberList = ({ project }: { project: Project }) => {
+const MemberList = ({ project, onMemberRemoved }: { project: Project, onMemberRemoved: (removedMemberId: string) => void }) => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [members, setMembers] = React.useState<UserProfile[]>([]);
@@ -147,7 +147,8 @@ const MemberList = ({ project }: { project: Project }) => {
     const isOwner = user && project && project.ownerUid === user.uid;
 
     React.useEffect(() => {
-        if (!project?.memberUids) {
+        if (!project?.memberUids || project.memberUids.length === 0) {
+            setMembers([]);
             setIsLoadingMembers(false);
             return;
         }
@@ -243,6 +244,7 @@ const MemberList = ({ project }: { project: Project }) => {
                 onOpenChange={(open) => !open && setMemberToRemove(null)}
                 project={project}
                 member={memberToRemove}
+                onSuccess={onMemberRemoved}
                 />
             )}
         </>
@@ -279,6 +281,16 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
         router.push('/beranda');
     };
 
+    const handleMemberRemoved = (removedMemberId: string) => {
+        setCurrentProject(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                memberUids: prev.memberUids.filter(uid => uid !== removedMemberId)
+            };
+        });
+    };
+
     return (
         <>
             <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -298,7 +310,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
                             <div className="flex-1 mt-4 overflow-hidden">
                             <ScrollArea className="h-full pr-4 -mr-4">
                                 <TabsContent value="members" className="mt-0">
-                                    <MemberList project={currentProject} />
+                                    <MemberList project={currentProject} onMemberRemoved={handleMemberRemoved} />
                                 </TabsContent>
                                 {isOwner && (
                                     <TabsContent value="settings" className="mt-0">
