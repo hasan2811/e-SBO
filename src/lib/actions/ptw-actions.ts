@@ -8,24 +8,6 @@ import type { Ptw } from '@/lib/types';
 import { format } from 'date-fns';
 
 /**
- * Converts a Firebase Storage HTTPS URL to a gs:// URI path for the admin SDK.
- * @param url The public HTTPS URL.
- * @returns The file path within the bucket.
- */
-function httpsUrlToFilePath(url: string): string {
-    // First, remove any query parameters (like ?alt=media&token=...)
-    const baseUrl = url.split('?')[0];
-    const urlObject = new URL(baseUrl);
-    // Pathname will be like /v0/b/bucket-name/o/path%2Fto%2Ffile.pdf
-    // Then, decode the URL-encoded path segments.
-    const path = decodeURIComponent(urlObject.pathname);
-    // Finally, extract the path after the /o/ part, which is the actual file path.
-    const filePath = path.substring(path.indexOf('/o/') + 3);
-    return filePath;
-}
-
-
-/**
  * Approves a PTW, stamps the associated JSA PDF with a signature and approver info,
  * and updates the Firestore document.
  * @param ptw The PTW object being approved.
@@ -36,9 +18,11 @@ export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, sign
   try {
     const bucket = adminStorage.bucket();
 
-    // 1. Get the original PDF file from storage
-    const originalFilePath = httpsUrlToFilePath(ptw.jsaPdfUrl);
-    const originalFile = bucket.file(originalFilePath);
+    // 1. Get the original PDF file from storage using the robust storage path
+    if (!ptw.jsaPdfStoragePath) {
+      throw new Error('Original JSA PDF path is missing. Cannot process approval.');
+    }
+    const originalFile = bucket.file(ptw.jsaPdfStoragePath);
     const [originalPdfBuffer] = await originalFile.download();
 
     // 2. Load the PDF with pdf-lib
@@ -106,6 +90,7 @@ export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, sign
       approver: approverName,
       approvedDate: new Date().toISOString(),
       stampedPdfUrl: publicUrl,
+      stampedPdfStoragePath: stampedFilePath,
       signatureDataUrl: signatureDataUrl, // Also save the signature data for display
     };
     await ptwDocRef.update(updateData);

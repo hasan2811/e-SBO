@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -42,13 +43,13 @@ export function DeleteObservationDialog({
       const docRef = doc(db, 'observations', observation.id);
       await deleteDoc(docRef);
 
-      // Delete associated photos
-      if (observation.photoUrl) {
-        const photoRef = ref(storage, observation.photoUrl);
+      // Delete associated photos using their storage paths for reliability
+      if (observation.photoStoragePath) {
+        const photoRef = ref(storage, observation.photoStoragePath);
         await deleteObject(photoRef).catch(err => console.error("Non-blocking: Failed to delete main photo", err));
       }
-      if (observation.actionTakenPhotoUrl) {
-          const actionPhotoRef = ref(storage, observation.actionTakenPhotoUrl);
+      if (observation.actionTakenPhotoStoragePath) {
+          const actionPhotoRef = ref(storage, observation.actionTakenPhotoStoragePath);
           await deleteObject(actionPhotoRef).catch(err => console.error("Non-blocking: Failed to delete action photo", err));
       }
 

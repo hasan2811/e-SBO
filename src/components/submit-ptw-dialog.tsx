@@ -117,6 +117,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
       workDescription: values.workDescription,
       contractor: values.contractor,
       jsaPdfUrl: '', // Placeholder
+      jsaPdfStoragePath: '', // Placeholder
       status: 'uploading',
       scope: project ? 'project' : 'private',
       projectId: project?.id || null,
@@ -137,7 +138,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
           const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
           const projectId = match ? match[1] : null;
 
-          const jsaPdfUrl = await uploadFile(values.jsaPdf!, 'ptw-jsa', userProfile.uid, () => {}, projectId);
+          const { downloadURL, storagePath } = await uploadFile(values.jsaPdf!, 'ptw-jsa', userProfile.uid, () => {}, projectId);
 
           const scope: Scope = projectId ? 'project' : 'private';
           
@@ -149,7 +150,8 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
               location: values.location as Location,
               workDescription: values.workDescription,
               contractor: values.contractor,
-              jsaPdfUrl: jsaPdfUrl,
+              jsaPdfUrl: downloadURL,
+              jsaPdfStoragePath: storagePath,
               scope,
               projectId,
               referenceId,

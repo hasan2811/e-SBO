@@ -171,6 +171,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
       findings: values.findings,
       recommendation: values.recommendation,
       photoUrl: photoPreview || undefined,
+      photoStoragePath: undefined,
       scope: project ? 'project' : 'private',
       projectId: project?.id || null,
       aiStatus: 'n/a',
@@ -191,7 +192,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
           const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
           const projectId = match ? match[1] : null;
 
-          const photoUrl = await uploadFile(values.photo!, 'inspections', userProfile.uid, () => {}, projectId);
+          const { downloadURL, storagePath } = await uploadFile(values.photo!, 'inspections', userProfile.uid, () => {}, projectId);
           
           const scope: Scope = projectId ? 'project' : 'private';
 
@@ -206,7 +207,8 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
               status: values.status,
               findings: values.findings,
               recommendation: values.recommendation,
-              photoUrl: photoUrl,
+              photoUrl: downloadURL,
+              photoStoragePath: storagePath,
               scope,
               projectId,
               referenceId,

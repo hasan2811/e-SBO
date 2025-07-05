@@ -148,7 +148,8 @@ export function FollowUpInspectionDialog({
       actionTakenDescription: values.actionTakenDescription,
       closedBy: closerName,
       closedDate: new Date().toISOString(),
-      actionTakenPhotoUrl: photoPreview || inspection.actionTakenPhotoUrl
+      actionTakenPhotoUrl: photoPreview || inspection.actionTakenPhotoUrl,
+      actionTakenPhotoStoragePath: undefined,
     };
     const optimisticallyUpdatedInspection = { ...inspection, ...optimisticUpdate };
     
@@ -160,8 +161,11 @@ export function FollowUpInspectionDialog({
     const handleBackgroundUpdate = async () => {
       try {
         let actionTakenPhotoUrl: string | undefined;
+        let actionTakenPhotoStoragePath: string | undefined;
         if (values.actionTakenPhoto) {
-          actionTakenPhotoUrl = await uploadFile(values.actionTakenPhoto, 'actions', user.uid, () => {}, inspection.projectId);
+          const uploadResult = await uploadFile(values.actionTakenPhoto, 'actions', user.uid, () => {}, inspection.projectId);
+          actionTakenPhotoUrl = uploadResult.downloadURL;
+          actionTakenPhotoStoragePath = uploadResult.storagePath;
         }
 
         const inspectionDocRef = doc(db, 'inspections', inspection.id);
@@ -173,6 +177,7 @@ export function FollowUpInspectionDialog({
         };
         if (actionTakenPhotoUrl) {
           finalUpdateData.actionTakenPhotoUrl = actionTakenPhotoUrl;
+          finalUpdateData.actionTakenPhotoStoragePath = actionTakenPhotoStoragePath;
         }
 
         // This update will be caught by the real-time listener.

@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project, AllItems, UserProfile } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { doc, runTransaction, arrayRemove, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, runTransaction, arrayRemove, collection, query, where, getDocs, writeBatch, getDoc } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, deleteObject } from 'firebase/storage';
 
@@ -69,13 +69,20 @@ export function DeleteProjectDialog({
           const item = itemDoc.data() as AllItems;
           batch.delete(itemDoc.ref);
           
-          if ((item.itemType === 'observation' || item.itemType === 'inspection')) {
-              if(item.photoUrl) storageDeletePromises.push(deleteObject(ref(storage, item.photoUrl)).catch(e => console.error(e)));
-              if ('actionTakenPhotoUrl' in item && item.actionTakenPhotoUrl) {
-                  storageDeletePromises.push(deleteObject(ref(storage, item.actionTakenPhotoUrl)).catch(e => console.error(e)));
-              }
-          } else if (item.itemType === 'ptw' && item.jsaPdfUrl) {
-              storageDeletePromises.push(deleteObject(ref(storage, item.jsaPdfUrl)).catch(e => console.error(e)));
+          if (item.itemType === 'observation' || item.itemType === 'inspection') {
+            if('photoStoragePath' in item && item.photoStoragePath) {
+              storageDeletePromises.push(deleteObject(ref(storage, item.photoStoragePath)).catch(e => console.error(`Failed to delete ${item.photoStoragePath}:`, e)));
+            }
+            if ('actionTakenPhotoStoragePath' in item && item.actionTakenPhotoStoragePath) {
+              storageDeletePromises.push(deleteObject(ref(storage, item.actionTakenPhotoStoragePath)).catch(e => console.error(`Failed to delete ${item.actionTakenPhotoStoragePath}:`, e)));
+            }
+          } else if (item.itemType === 'ptw') {
+            if('jsaPdfStoragePath' in item && item.jsaPdfStoragePath) {
+              storageDeletePromises.push(deleteObject(ref(storage, item.jsaPdfStoragePath)).catch(e => console.error(`Failed to delete ${item.jsaPdfStoragePath}:`, e)));
+            }
+            if('stampedPdfStoragePath' in item && item.stampedPdfStoragePath) {
+              storageDeletePromises.push(deleteObject(ref(storage, item.stampedPdfStoragePath)).catch(e => console.error(`Failed to delete ${item.stampedPdfStoragePath}:`, e)));
+            }
           }
         });
       }

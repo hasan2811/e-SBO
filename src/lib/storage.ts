@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ref, getDownloadURL, uploadBytesResumable, type UploadTask } from 'firebase/storage';
@@ -12,7 +11,7 @@ import { storage } from '@/lib/firebase';
  * @param userId The UID of the user uploading the file.
  * @param onProgress A callback function to report upload progress (0-100).
  * @param projectId Optional. If provided, the file is stored in a project-specific folder.
- * @returns A promise that resolves with the public download URL of the file.
+ * @returns A promise that resolves with an object containing the public download URL and the storage path of the file.
  */
 export function uploadFile(
   file: File,
@@ -20,7 +19,7 @@ export function uploadFile(
   userId: string,
   onProgress: (progress: number) => void,
   projectId: string | null = null
-): Promise<string> {
+): Promise<{ downloadURL: string; storagePath: string; }> {
   return new Promise((resolve, reject) => {
     if (!file || !userId) {
       return reject(new Error('File or user ID is missing.'));
@@ -45,7 +44,7 @@ export function uploadFile(
         let errorMessage = 'Gagal mengunggah file. Silakan periksa koneksi Anda.';
         // This is a critical error message to guide the user on the most likely unfixable-by-code issue.
         if (error.code === 'storage/unauthorized' || error.code === 'storage/unknown') {
-            errorMessage = `UPLOAD GAGAL: MASALAH KONFIGURASI SERVER. Aplikasi web ini tidak diizinkan untuk mengunggah file. Ini BUKAN masalah koneksi. Untuk memperbaiki, jalankan perintah berikut di terminal Anda: gsutil cors set cors.json gs://hssetech-e1710.firebasestorage.app`;
+            errorMessage = `UPLOAD GAGAL: MASALAH KONFIGURASI SERVER. Aplikasi web ini tidak diizinkan untuk mengunggah file. Ini BUKAN masalah koneksi. Untuk memperbaiki, jalankan perintah berikut di terminal Anda: gsutil cors set cors.json gs://hssetech-e1710.appspot.com`;
         } else if (error.code === 'storage/canceled') {
             errorMessage = 'Upload telah dibatalkan.';
         }
@@ -54,7 +53,7 @@ export function uploadFile(
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve(downloadURL);
+          resolve({ downloadURL, storagePath });
         } catch (error) {
           console.error('Firebase Storage get URL error:', error);
           reject(new Error('Gagal mendapatkan URL unduhan setelah unggah selesai.'));

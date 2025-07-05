@@ -43,15 +43,15 @@ export function DeletePtwDialog({
       const docRef = doc(db, 'ptws', ptw.id);
       await deleteDoc(docRef);
 
-      // Delete original JSA PDF
-      if (ptw.jsaPdfUrl) {
-        const fileRef = ref(storage, ptw.jsaPdfUrl);
+      // Delete original JSA PDF using its storage path
+      if (ptw.jsaPdfStoragePath) {
+        const fileRef = ref(storage, ptw.jsaPdfStoragePath);
         await deleteObject(fileRef).catch(err => console.error("Non-blocking: Failed to delete JSA PDF", err));
       }
       
-      // Delete stamped JSA PDF if it exists
-      if (ptw.stampedPdfUrl) {
-        const stampedFileRef = ref(storage, ptw.stampedPdfUrl);
+      // Delete stamped JSA PDF if it exists, using its storage path
+      if (ptw.stampedPdfStoragePath) {
+        const stampedFileRef = ref(storage, ptw.stampedPdfStoragePath);
         await deleteObject(stampedFileRef).catch(err => console.error("Non-blocking: Failed to delete stamped JSA PDF", err));
       }
 

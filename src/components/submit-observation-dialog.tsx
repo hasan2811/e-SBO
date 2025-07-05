@@ -183,6 +183,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         findings: values.findings,
         recommendation: values.recommendation || '',
         photoUrl: photoPreview,
+        photoStoragePath: undefined,
         scope: project ? 'project' : 'private',
         projectId: project?.id || null,
         category: values.category as ObservationCategory,
@@ -207,8 +208,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           const projectId = match ? match[1] : null;
           
           let photoUrl: string | null = null;
+          let photoStoragePath: string | undefined = undefined;
           if (values.photo) {
-            photoUrl = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, projectId);
+            const uploadResult = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, projectId);
+            photoUrl = uploadResult.downloadURL;
+            photoStoragePath = uploadResult.storagePath;
           }
 
           const scope: Scope = projectId ? 'project' : 'private';
@@ -223,6 +227,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
               findings: values.findings,
               recommendation: values.recommendation || '',
               photoUrl: photoUrl,
+              photoStoragePath: photoStoragePath,
               scope,
               projectId,
               referenceId,

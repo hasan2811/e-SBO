@@ -39,6 +39,7 @@ export type UserProfile = {
   position: string;
   company?: string;
   photoURL?: string | null;
+  photoStoragePath?: string;
   projectIds?: string[];
   aiEnabled?: boolean;
   googleAiApiKey?: string;
@@ -52,6 +53,7 @@ export const UserProfileSchema = z.object({
   position: z.string(),
   company: z.string().optional(),
   photoURL: z.string().url().nullable().optional(),
+  photoStoragePath: z.string().optional(),
   projectIds: z.array(z.string()).optional(),
   aiEnabled: z.boolean().optional(),
   googleAiApiKey: z.string().optional(),
@@ -87,10 +89,12 @@ export type Observation = {
   category: ObservationCategory;
   company: Company;
   photoUrl?: string | null;
+  photoStoragePath?: string;
   scope: Scope;
   projectId: string | null;
   actionTakenDescription?: string;
   actionTakenPhotoUrl?: string;
+  actionTakenPhotoStoragePath?: string;
   closedBy?: string;
   closedDate?: string;
   optimisticState?: 'uploading';
@@ -122,6 +126,7 @@ export type Inspection = {
   status: InspectionStatus;
   recommendation?: string;
   photoUrl?: string;
+  photoStoragePath?: string;
   scope: Scope;
   projectId: string | null;
   optimisticState?: 'uploading';
@@ -132,6 +137,7 @@ export type Inspection = {
   // Fields for follow-up actions
   actionTakenDescription?: string;
   actionTakenPhotoUrl?: string;
+  actionTakenPhotoStoragePath?: string;
   closedBy?: string;
   closedDate?: string;
 };
@@ -147,7 +153,9 @@ export type Ptw = {
   workDescription: string;
   contractor: string;
   jsaPdfUrl: string;
+  jsaPdfStoragePath: string;
   stampedPdfUrl?: string;
+  stampedPdfStoragePath?: string;
   status: PtwStatus;
   scope: Scope;
   projectId: string | null;

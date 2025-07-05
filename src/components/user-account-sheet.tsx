@@ -100,8 +100,8 @@ export function UserAccountSheet() {
     setIsUploadingPhoto(true);
     try {
       // Use a specific, non-project-related path for profile photos
-      const photoURL = await uploadFile(file, `profile-photos/${user.uid}`, user.uid, () => {});
-      await updateUserProfile(user.uid, { photoURL });
+      const { downloadURL, storagePath } = await uploadFile(file, `profile-photos/${user.uid}`, user.uid, () => {});
+      await updateUserProfile(user.uid, { photoURL: downloadURL, photoStoragePath: storagePath });
       toast({ title: 'Photo Updated!', description: 'Your new profile photo has been saved.' });
     } catch (error) {
       console.error(error);

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -42,13 +43,13 @@ export function DeleteInspectionDialog({
       const docRef = doc(db, 'inspections', inspection.id);
       await deleteDoc(docRef);
 
-      // Delete associated photos
-      if (inspection.photoUrl) {
-        const photoRef = ref(storage, inspection.photoUrl);
+      // Delete associated photos using their storage paths
+      if (inspection.photoStoragePath) {
+        const photoRef = ref(storage, inspection.photoStoragePath);
         await deleteObject(photoRef).catch(err => console.error("Non-blocking: Failed to delete main photo", err));
       }
-      if (inspection.actionTakenPhotoUrl) {
-          const actionPhotoRef = ref(storage, inspection.actionTakenPhotoUrl);
+      if (inspection.actionTakenPhotoStoragePath) {
+          const actionPhotoRef = ref(storage, inspection.actionTakenPhotoStoragePath);
           await deleteObject(actionPhotoRef).catch(err => console.error("Non-blocking: Failed to delete action photo", err));
       }
 

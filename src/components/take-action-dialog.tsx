@@ -149,6 +149,7 @@ export function TakeActionDialog({
       closedBy: closerName,
       closedDate: new Date().toISOString(),
       actionTakenPhotoUrl: photoPreview || observation.actionTakenPhotoUrl,
+      actionTakenPhotoStoragePath: undefined,
     };
     const optimisticallyUpdatedObservation = { ...observation, ...optimisticUpdate };
     
@@ -160,8 +161,11 @@ export function TakeActionDialog({
     const handleBackgroundUpdate = async () => {
       try {
         let actionTakenPhotoUrl: string | undefined;
+        let actionTakenPhotoStoragePath: string | undefined;
         if (values.actionTakenPhoto) {
-          actionTakenPhotoUrl = await uploadFile(values.actionTakenPhoto, 'actions', user.uid, () => {}, observation.projectId);
+          const uploadResult = await uploadFile(values.actionTakenPhoto, 'actions', user.uid, () => {}, observation.projectId);
+          actionTakenPhotoUrl = uploadResult.downloadURL;
+          actionTakenPhotoStoragePath = uploadResult.storagePath;
         }
         
         const observationDocRef = doc(db, 'observations', observation.id);
@@ -173,6 +177,7 @@ export function TakeActionDialog({
         };
         if (actionTakenPhotoUrl) {
           finalUpdateData.actionTakenPhotoUrl = actionTakenPhotoUrl;
+          finalUpdateData.actionTakenPhotoStoragePath = actionTakenPhotoStoragePath;
         }
         
         // This update will be caught by the real-time listener, ensuring the UI is consistent.
