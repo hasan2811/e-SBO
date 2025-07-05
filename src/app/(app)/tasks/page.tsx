@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import type { Observation, RiskLevel, Company, Location } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useProjects } from '@/hooks/use-projects';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FolderPlus, TrendingUp, AlertTriangle, CheckCircle, Sparkles } from 'lucide-react';
 import { analyzeDashboardData, AnalyzeDashboardDataOutput } from '@/ai/flows/analyze-dashboard-data';
@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const ChartContainer = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartContainer), {
   ssr: false,
@@ -56,83 +55,44 @@ const riskPieChartConfig = {
     Critical: { label: "Critical", color: "hsl(var(--destructive))", icon: 'circle' },
 };
 
-const AiAnalysisCard = ({ analysis, loading }: { analysis: AnalyzeDashboardDataOutput | null, loading: boolean }) => {
-    if (loading) {
-      return (
-        <Card className="bg-primary/5 border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-primary">
-              <Sparkles className="h-5 w-5" />
-              <span>Analisis Tren AI</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-1/3" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-5/6" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-1/3" />
-              <Skeleton className="h-4 w-4/5" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-1/3" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-  
-    if (!analysis) return null;
+const AiAnalysisCard = ({ icon: Icon, title, content, color, loading }: { icon: React.ElementType, title: string, content: string, color: string, loading: boolean }) => {
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center gap-2 pb-2">
+          <Skeleton className="h-6 w-6 rounded-full" />
+          <Skeleton className="h-5 w-1/3" />
+        </CardHeader>
+        <CardContent className="space-y-2 pt-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+        </CardContent>
+      </Card>
+    );
+  }
 
-    const renderInsightList = (text: string) => (
+  if (!content) return null;
+
+  return (
+    <Card className={`bg-${color}/5 border-${color}/20`}>
+      <CardHeader className="flex flex-row items-center gap-2 pb-2">
+        <Icon className={`h-5 w-5 text-${color}`} />
+        <CardTitle className={`text-base text-${color}`}>{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-2">
         <ul className="space-y-1 pl-1">
-          {text.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((item, index) => (
+          {content.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((item, index) => (
             <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-              <span className="text-primary mt-1">&bull;</span>
+              <span className={`text-${color} mt-1`}>&bull;</span>
               <span>{item.replace(/^- /, '')}</span>
             </li>
           ))}
         </ul>
-    );
-  
-    return (
-      <Card className="bg-primary/5 border-primary/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-primary">
-            <Sparkles className="h-5 w-5" />
-            <span>Analisis Tren AI</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h4 className="font-semibold flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4" />
-              Tren Utama
-            </h4>
-            {renderInsightList(analysis.keyTrends)}
-          </div>
-          <div>
-            <h4 className="font-semibold flex items-center gap-2 mb-1">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              Potensi Risiko
-            </h4>
-            {renderInsightList(analysis.emergingRisks)}
-          </div>
-          <div>
-            <h4 className="font-semibold flex items-center gap-2 mb-1">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              Perkembangan Positif
-            </h4>
-            {renderInsightList(analysis.positiveHighlights)}
-          </div>
-        </CardContent>
-      </Card>
-    );
+      </CardContent>
+    </Card>
+  );
 };
+
 
 const RadialChartCard = ({ loading, value, title, count, color }: { loading: boolean; value: number; title: string; count: number; color: string }) => {
   if (loading) {
@@ -476,8 +436,36 @@ export default function DashboardPage() {
         <h2 className="text-2xl font-bold tracking-tight">Dashboard Proyek</h2>
       </div>
 
-      {!loading && projectObservations.length > 0 && isAiEnabled && (
-         <AiAnalysisCard analysis={analysis} loading={analysisLoading} />
+      {isAiEnabled && (!loading || analysis) && (
+        <>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-6 w-6 text-primary" />
+            <h3 className="text-xl font-semibold">Wawasan Analisis AI</h3>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <AiAnalysisCard 
+              loading={analysisLoading}
+              icon={TrendingUp}
+              title="Tren Utama"
+              content={analysis?.keyTrends ?? ''}
+              color="primary"
+            />
+            <AiAnalysisCard 
+              loading={analysisLoading}
+              icon={AlertTriangle}
+              title="Potensi Risiko"
+              content={analysis?.emergingRisks ?? ''}
+              color="destructive"
+            />
+            <AiAnalysisCard 
+              loading={analysisLoading}
+              icon={CheckCircle}
+              title="Perkembangan Positif"
+              content={analysis?.positiveHighlights ?? ''}
+              color="chart-2"
+            />
+          </div>
+        </>
       )}
       
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -501,6 +489,7 @@ export default function DashboardPage() {
          <Card className="col-span-1 lg:col-span-1">
             <CardHeader>
                 <CardTitle>Detail Risiko</CardTitle>
+                <CardDescription>Distribusi laporan berdasarkan tingkat risiko.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="h-[220px] sm:h-[250px] w-full">
@@ -540,7 +529,8 @@ export default function DashboardPage() {
         
         <Card className="col-span-1 lg:col-span-1">
             <CardHeader>
-            <CardTitle>Tren Observasi Harian (7 Hari Terakhir)</CardTitle>
+            <CardTitle>Tren Observasi Harian</CardTitle>
+            <CardDescription>Jumlah laporan selesai vs. pending selama 7 hari terakhir.</CardDescription>
             </CardHeader>
             <CardContent>
             <div className="h-[220px] sm:h-[250px] w-full">

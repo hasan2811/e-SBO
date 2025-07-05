@@ -3,10 +3,10 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import type { AllItems, Observation, Inspection, Ptw, RiskLevel, ObservationStatus } from '@/lib/types';
-import { InspectionStatusBadge, PtwStatusBadge } from '@/components/status-badges';
+import type { AllItems, Observation, Inspection, Ptw } from '@/lib/types';
+import { InspectionStatusBadge, PtwStatusBadge, StatusBadge, RiskBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { ChevronRight, Download, FileSignature as PtwIcon, Sparkles, Loader2, Filter, Search, Globe, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical, UserCheck, X, ArrowLeft } from 'lucide-react';
+import { ChevronRight, Download, FileSignature as PtwIcon, Sparkles, Loader2, Filter, Search, Globe, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical, UserCheck, X, ArrowLeft, Building, MapPin, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteMultipleDialog } from './delete-multiple-dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
 import { useObservations } from '@/hooks/use-observations';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -41,37 +41,10 @@ const viewTypeInfo = {
     ptws: { label: 'PTW', icon: PtwIcon, collection: 'ptws' },
 };
 
-const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelected, onToggleSelect, onLikeToggle, mode }: { observation: Observation, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void, onLikeToggle: (observationId: string) => void, mode: 'public' | 'private' | 'project' }) => {
-    const { user } = useAuth();
-
-    const riskColorStyles: Record<RiskLevel, string> = {
-        Low: 'border-l-chart-2',
-        Medium: 'border-l-chart-4',
-        High: 'border-l-chart-5',
-        Critical: 'border-l-destructive',
-    };
-    
-    const statusIcons: Record<ObservationStatus, { icon: React.ElementType, className: string, label: string }> = {
-        'Pending': { icon: CircleAlert, className: 'text-chart-5', label: 'Pending' },
-        'In Progress': { icon: RefreshCw, className: 'text-chart-4 animate-spin-slow', label: 'In Progress' },
-        'Completed': { icon: CheckCircle2, className: 'text-chart-2', label: 'Completed' },
-    };
-
-    const statusInfo = statusIcons[observation.status] || statusIcons['Pending'];
-    const StatusIcon = statusInfo.icon;
-    const statusClassName = statusInfo.className;
-    const statusLabel = statusInfo.label;
-
-    const hasLiked = user && observation.likes?.includes(user.uid);
-
-    const handleLikeClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        onLikeToggle(observation.id);
-    };
-    
-    const handleItemClick = (e: React.MouseEvent<HTMLLIElement>) => {
+const ListItemWrapper = ({ children, onSelect, isSelectionMode, isSelected, onToggleSelect }: { children: React.ReactNode, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
+    const handleItemClick = (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
-        if (target.closest('button, a')) return;
+        if (target.closest('button, a, [data-prevent-item-click]')) return;
 
         if (isSelectionMode) {
             onToggleSelect();
@@ -81,177 +54,125 @@ const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelecte
     };
 
     return (
-      <li onClick={handleItemClick} className={cn("flex items-center gap-3 bg-card p-3 rounded-lg shadow-sm transition-all cursor-pointer", isSelectionMode && 'pr-4')}>
-        {isSelectionMode && (
-             <Checkbox
-                checked={isSelected}
-                onCheckedChange={onToggleSelect}
-                aria-label={`Select observation ${observation.referenceId}`}
-                className="h-5 w-5 ml-1"
-              />
-        )}
-        <div className={cn(
-            "flex-1 p-3 -m-3 rounded-lg overflow-hidden border-l-4 transition-colors",
-            riskColorStyles[observation.riskLevel] || 'border-l-muted',
-            isSelected ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50'
-        )}>
-          <div className="flex items-start gap-3">
-              <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
+        <Card 
+          onClick={handleItemClick}
+          className={cn(
+            "transition-all cursor-pointer", 
+            isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:border-primary/50'
+          )}
+        >
+            <CardContent className="p-3 flex items-start gap-3">
+                {isSelectionMode && (
+                    <div className="flex items-center h-full pt-1">
+                        <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={onToggleSelect}
+                            aria-label="Select item"
+                            className="h-5 w-5"
+                        />
+                    </div>
+                )}
+                {children}
+            </CardContent>
+        </Card>
+    )
+};
+
+
+const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelected, onToggleSelect, onLikeToggle, mode }: { observation: Observation, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void, onLikeToggle: (observationId: string) => void, mode: 'public' | 'private' | 'project' }) => {
+    const { user } = useAuth();
+    const hasLiked = user && observation.likes?.includes(user.uid);
+
+    return (
+        <ListItemWrapper onSelect={onSelect} isSelectionMode={isSelectionMode} isSelected={isSelected} onToggleSelect={onToggleSelect}>
+            <div className="relative h-24 w-24 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
                 {observation.photoUrl ? (
-                    <Image src={observation.photoUrl} alt={observation.findings} fill sizes="64px" className="object-cover" data-ai-hint="site observation" />
+                    <Image src={observation.photoUrl} alt={observation.findings} fill sizes="96px" className="object-cover" data-ai-hint="site observation" />
                 ) : (
-                    <Image src="/logo.svg" alt="Default observation image" width={40} height={40} className="opacity-50" />
+                    <Eye className="h-10 w-10 text-muted-foreground/50" />
                 )}
-                
-                {observation.aiStatus === 'completed' && (
-                    <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
-                        <Sparkles className="h-3 w-3 text-primary-foreground" />
-                    </div>
-                )}
-              </div>
-      
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start">
+            </div>
+            <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex justify-between items-start gap-2">
                     <p className="text-xs text-primary font-semibold truncate pr-2">{observation.category}</p>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                        {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
-                             <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger>
-                                        <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>Observer Rating: {observation.aiObserverSkillRating}/5</p></TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
-                        {mode !== 'public' && observation.isSharedPublicly && (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger>
-                                        <Globe className="h-4 w-4 text-primary" />
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>Dibagikan ke Publik</p></TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
+                    {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
+                        <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
+                    )}
+                </div>
+                <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                    <RiskBadge riskLevel={observation.riskLevel} />
+                    <StatusBadge status={observation.status} />
+                     {mode !== 'public' && observation.isSharedPublicly && (
                         <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger>
-                                    <StatusIcon className={cn("h-4 w-4", statusClassName)} />
-                                </TooltipTrigger>
-                                <TooltipContent><p>{statusLabel}</p></TooltipContent>
-                            </Tooltip>
+                            <Tooltip><TooltipTrigger><Globe className="h-4 w-4 text-primary" /></TooltipTrigger><TooltipContent><p>Dibagikan ke Publik</p></TooltipContent></Tooltip>
                         </TooltipProvider>
+                    )}
+                </div>
+                 {mode === 'public' ? (
+                    <div className="flex items-center gap-4 text-xs pt-1 text-muted-foreground" data-prevent-item-click>
+                        <button onClick={(e) => { e.stopPropagation(); onLikeToggle(observation.id); }} className={cn("flex items-center gap-1.5 hover:text-primary transition-colors", hasLiked && "text-primary font-semibold")}>
+                            <ThumbsUp className={cn("h-3.5 w-3.5", hasLiked && "fill-current")} />
+                            <span>{observation.likeCount || 0}</span>
+                        </button>
+                        <div className="flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5" /><span>{observation.commentCount || 0}</span></div>
+                        <div className="flex items-center gap-1.5 ml-auto"><Eye className="h-3.5 w-3.5" /><span>{observation.viewCount || 0}</span></div>
                     </div>
-                </div>
-                <p className="font-semibold leading-snug line-clamp-2 mt-0.5">{observation.findings}</p>
-                 {mode === 'public' && observation.sharedBy ? (
-                    <div className="text-xs text-muted-foreground mt-1.5 truncate">
-                        <Share2 className="inline-block h-3 w-3 mr-1.5 align-middle text-primary"/>
-                        <span className="align-middle">
-                            Dibagikan oleh <strong>{observation.sharedBy.split(' ')[0]}</strong>
-                            {observation.sharedByPosition && ` (${observation.sharedByPosition})`}
-                        </span>
+                 ) : (
+                    <div className="text-xs text-muted-foreground pt-1 truncate">
+                      {observation.company} &bull; {observation.location} &bull; {format(new Date(observation.date), 'd MMM yy')}
                     </div>
-                 ) : null}
-              </div>
-          </div>
-          
-          <div className="flex items-center gap-4 text-xs pt-2 mt-2 border-t border-border/50">
-            {mode === 'public' ? (
-              <>
-                <button
-                  onClick={handleLikeClick}
-                  className={cn(
-                    "flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors",
-                    hasLiked && "text-primary font-semibold"
-                  )}
-                >
-                  <ThumbsUp className={cn("h-3.5 w-3.5", hasLiked && "fill-current")} />
-                  <span>{observation.likeCount || 0}</span>
-                </button>
-                <div className="flex items-center gap-1.5 text-muted-foreground cursor-pointer hover:text-primary">
-                  <MessageCircle className="h-3.5 w-3.5" />
-                  <span>{observation.commentCount || 0}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-muted-foreground ml-auto">
-                  <Eye className="h-3.5 w-3.5" />
-                  <span>{observation.viewCount || 0}</span>
-                </div>
-              </>
-            ) : (
-                <div className="flex justify-between w-full">
-                    <span className="font-medium text-muted-foreground truncate pr-2">{observation.company} &bull; {observation.location}</span>
-                    <span className="text-muted-foreground flex-shrink-0">{format(new Date(observation.date), 'd MMM yy, HH:mm')}</span>
-                </div>
-            )}
-          </div>
-        </div>
-      </li>
+                 )}
+            </div>
+        </ListItemWrapper>
     );
-  };
+};
 
 const InspectionListItem = ({ inspection, onSelect, isSelectionMode, isSelected, onToggleSelect }: { inspection: Inspection, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
-    const handleItemClick = (e: React.MouseEvent<HTMLLIElement>) => {
-        if (isSelectionMode) onToggleSelect(); else onSelect();
-    };
-
-  return (
-    <li onClick={handleItemClick} className={cn("flex items-center gap-3 bg-card p-3 rounded-lg shadow-sm transition-all cursor-pointer", isSelectionMode && 'pr-4')}>
-        {isSelectionMode && <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} className="h-5 w-5 ml-1"/>}
-        <div className={cn("flex-1 p-3 -m-3 flex items-start gap-3 rounded-lg overflow-hidden transition-colors", isSelected ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50')}>
-            <div className="relative h-20 w-20 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
-            {inspection.photoUrl ? (
-                <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="80px" className="object-cover" data-ai-hint="equipment inspection" />
-            ) : (
-                <Image src="/logo.svg" alt="Default inspection image" width={48} height={48} className="opacity-50" />
-            )}
-            {inspection.aiStatus === 'completed' && (
-                <div className="absolute bottom-1 right-1 bg-primary/80 backdrop-blur-sm rounded-full p-1">
-                    <Sparkles className="h-3 w-3 text-primary-foreground" />
+    return (
+        <ListItemWrapper onSelect={onSelect} isSelectionMode={isSelectionMode} isSelected={isSelected} onToggleSelect={onToggleSelect}>
+            <div className="relative h-24 w-24 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
+                {inspection.photoUrl ? (
+                    <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="96px" className="object-cover" data-ai-hint="equipment inspection" />
+                ) : (
+                    <SearchCheck className="h-10 w-10 text-muted-foreground/50" />
+                )}
+            </div>
+            <div className="flex-1 min-w-0 space-y-2">
+                <p className="text-xs text-primary font-semibold truncate pr-2">{inspection.equipmentType}</p>
+                <p className="font-semibold leading-snug line-clamp-2">{inspection.equipmentName}</p>
+                <p className="text-sm text-muted-foreground line-clamp-1">{inspection.findings}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                    <InspectionStatusBadge status={inspection.status} />
+                    <span className="text-xs text-muted-foreground">{inspection.location} &bull; {format(new Date(inspection.date), 'd MMM yy')}</span>
                 </div>
-            )}
             </div>
-            
-            <div className="flex-1 space-y-1 self-start">
-            <p className="text-xs text-muted-foreground">
-                <span className="font-semibold text-foreground">{format(new Date(inspection.date), 'd MMM yyyy, HH:mm')}</span> - {inspection.equipmentType}
-            </p>
-            <p className="font-semibold leading-snug line-clamp-2">{inspection.equipmentName}</p>
-            <p className="text-sm text-muted-foreground line-clamp-1">{inspection.findings}</p>
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-                <InspectionStatusBadge status={inspection.status} />
-                <span className="text-xs text-muted-foreground">{inspection.location}</span>
-            </div>
-            </div>
-        </div>
-    </li>
-  );
+        </ListItemWrapper>
+    );
 };
 
 const PtwListItem = ({ ptw, onSelect, isSelectionMode, isSelected, onToggleSelect }: { ptw: Ptw, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
-    const handleItemClick = (e: React.MouseEvent<HTMLLIElement>) => {
-        if (isSelectionMode) onToggleSelect(); else onSelect();
-    };
     return (
-        <li onClick={handleItemClick} className={cn("flex items-center gap-3 bg-card p-3 rounded-lg shadow-sm transition-all cursor-pointer", isSelectionMode && 'pr-4')}>
-            {isSelectionMode && <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} className="h-5 w-5 ml-1"/>}
-            <div className={cn("flex-1 p-3 -m-3 relative flex items-center rounded-lg overflow-hidden transition-colors", isSelected ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50')}>
-                <div className="flex-1 space-y-2 pr-4">
-                    <p className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">{format(new Date(ptw.date), 'd MMM yyyy, HH:mm')}</span> - {ptw.contractor}
-                    </p>
-                    <p className="font-semibold leading-snug line-clamp-2">{ptw.workDescription}</p>
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <PtwStatusBadge status={ptw.status} />
-                    <span className="text-xs text-muted-foreground">{ptw.location}</span>
-                    </div>
+        <ListItemWrapper onSelect={onSelect} isSelectionMode={isSelectionMode} isSelected={isSelected} onToggleSelect={onToggleSelect}>
+            <div className="flex-shrink-0 rounded-md bg-muted flex items-center justify-center h-24 w-24">
+                <FileSignature className="h-10 w-10 text-muted-foreground/50" />
+            </div>
+            <div className="flex-1 min-w-0 space-y-2 self-stretch flex flex-col justify-between">
+                <div>
+                    <p className="text-xs text-primary font-semibold truncate pr-2">Permit to Work</p>
+                    <p className="font-semibold leading-snug line-clamp-2 mt-1">{ptw.workDescription}</p>
                 </div>
-                <div className="ml-auto flex items-center pl-2">
-                    <ChevronRight className="h-6 w-6 text-muted-foreground" />
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                      <PtwStatusBadge status={ptw.status} />
+                      <span className="text-xs text-muted-foreground">{ptw.location}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    {ptw.contractor} &bull; {format(new Date(ptw.date), 'd MMM yy')}
+                  </div>
                 </div>
             </div>
-        </li>
+        </ListItemWrapper>
     )
 };
 
@@ -270,7 +191,7 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const { items, isLoading, hasMore, fetchMoreItems, viewType, setViewType, handleLikeToggle, getObservationById } = useObservations();
+  const { items, isLoading, hasMore, fetchMoreItems, viewType, setViewType, getObservationById } = useObservations();
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -483,7 +404,16 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
         {isLoading && items.length === 0 ? (
           <ul className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <li key={i}><div className="flex items-start bg-card p-3 rounded-lg shadow-sm h-[124px]"><Skeleton className="h-16 w-16 rounded-md" /><div className="flex-1 space-y-2 ml-3"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-full" /><Skeleton className="h-4 w-2/3" /></div></div></li>
+               <Card key={i} className="p-3">
+                    <div className="flex items-start gap-3">
+                        <Skeleton className="h-24 w-24 rounded-md" />
+                        <div className="flex-1 space-y-3 pt-1">
+                            <Skeleton className="h-4 w-1/3" />
+                            <Skeleton className="h-5 w-full" />
+                            <Skeleton className="h-4 w-2/3" />
+                        </div>
+                    </div>
+               </Card>
             ))}
           </ul>
         ) : filteredData.length > 0 ? (

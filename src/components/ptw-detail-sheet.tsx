@@ -8,7 +8,7 @@ import { PtwStatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Gavel, ArrowLeft, FileText, User, Building, MapPin, Calendar, ExternalLink, PenSquare, Check, Folder, Trash2 } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ApprovePtwDialog } from './approve-ptw-dialog';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
@@ -16,12 +16,23 @@ import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { DeletePtwDialog } from './delete-ptw-dialog';
 import { useObservations } from '@/hooks/use-observations';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 interface PtwDetailSheetProps {
     ptwId: string | null;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
 }
+
+const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) => (
+    <div className="flex items-start gap-3 text-sm">
+        <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+        <div className="flex flex-col">
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-semibold text-foreground">{value || '-'}</span>
+        </div>
+    </div>
+);
 
 export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetProps) {
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
@@ -40,16 +51,6 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
 
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
   const canApprove = ptw.status === 'Pending Approval' && user?.uid !== ptw.userId;
-  
-  const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) => (
-    <div className="flex items-start gap-4">
-        <Icon className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-        <div className="flex flex-col">
-            <span className="text-sm text-muted-foreground">{label}</span>
-            <span className="font-semibold">{value || '-'}</span>
-        </div>
-    </div>
-  );
   
   return (
     <>
@@ -73,57 +74,72 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
           </SheetHeader>
           
           <ScrollArea className="flex-1">
-            <div className="space-y-6 p-6">
-              
-              <div className="space-y-4 bg-card p-4 rounded-lg border">
-                  <DetailRow icon={Calendar} label="Tanggal Kirim" value={format(new Date(ptw.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />
+            <div className="space-y-6 p-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Detail Izin Kerja</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <DetailRow icon={User} label="Dikirim Oleh" value={ptw.submittedBy} />
+                  <DetailRow icon={Calendar} label="Tanggal Kirim" value={format(new Date(ptw.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />
                   <DetailRow icon={Building} label="Kontraktor" value={ptw.contractor} />
                   <DetailRow icon={MapPin} label="Lokasi" value={ptw.location} />
-                  {projectName && (
-                      <DetailRow icon={Folder} label="Proyek" value={projectName} />
-                  )}
-              </div>
+                  {projectName && <DetailRow icon={Folder} label="Proyek" value={projectName} />}
+                </CardContent>
+              </Card>
 
-              <div className="space-y-2">
-                <h4 className="font-semibold">Deskripsi Pekerjaan</h4>
-                <p className="text-sm text-muted-foreground">{ptw.workDescription}</p>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="font-semibold">Status</h4>
-                <PtwStatusBadge status={ptw.status} />
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Deskripsi & Status</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">Deskripsi Pekerjaan</h4>
+                    <p className="text-sm text-muted-foreground">{ptw.workDescription}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">Status</h4>
+                    <PtwStatusBadge status={ptw.status} />
+                  </div>
+                </CardContent>
+              </Card>
 
                {ptw.status === 'Approved' && (
-                <div className="space-y-4 pt-4 mt-4 border-t">
-                    <h4 className="font-semibold">Detail Persetujuan</h4>
-                    <div className="space-y-4 bg-card p-4 rounded-lg border border-green-200">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Detail Persetujuan</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                       <DetailRow icon={Check} label="Disetujui Oleh" value={ptw.approver} />
                       <DetailRow icon={Calendar} label="Tanggal Disetujui" value={ptw.approvedDate ? format(new Date(ptw.approvedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale }) : ''} />
                       {ptw.signatureDataUrl && (
                           <div>
-                              <span className="text-sm text-muted-foreground">Tanda Tangan</span>
+                              <span className="text-sm font-medium">Tanda Tangan</span>
                                <div className="mt-2 p-2 border bg-secondary rounded-md flex justify-center">
                                   <Image src={ptw.signatureDataUrl} alt="Signature" width={200} height={100} className="h-auto" data-ai-hint="signature" />
                               </div>
                           </div>
                       )}
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
               )}
 
 
-              <div className="space-y-4 pt-4 mt-4 border-t">
-                <h4 className="font-semibold">Dokumen JSA</h4>
-                <Button asChild variant="outline" className="w-full">
-                  <a href={ptw.jsaPdfUrl} target="_blank" rel="noopener noreferrer">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Lihat JSA (PDF)
-                    <ExternalLink className="ml-auto h-4 w-4 text-muted-foreground" />
-                  </a>
-                </Button>
-              </div>
+              <Card>
+                <CardHeader>
+                    <CardTitle>Dokumen JSA</CardTitle>
+                    <CardDescription>Job Safety Analysis yang dilampirkan.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button asChild variant="outline" className="w-full">
+                    <a href={ptw.jsaPdfUrl} target="_blank" rel="noopener noreferrer">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Lihat JSA (PDF)
+                      <ExternalLink className="ml-auto h-4 w-4 text-muted-foreground" />
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
               
               {canApprove && (
                 <div className="pt-6 mt-6 border-t">

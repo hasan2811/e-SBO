@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -95,8 +96,8 @@ const ProjectSettings = ({ project }: { project: Project }) => {
             />
             <Button onClick={handleAddCompany}>Add</Button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {customCompanies.map(company => (
+          <div className="flex flex-wrap gap-2 rounded-md border p-3 min-h-[40px]">
+            {customCompanies.length > 0 ? customCompanies.map(company => (
               <Badge key={company} variant="secondary" className="text-base py-1 pl-3 pr-2">
                 {company}
                 <button onClick={() => handleRemoveCompany(company)} className="ml-2 rounded-full hover:bg-muted-foreground/20 p-0.5">
@@ -104,7 +105,7 @@ const ProjectSettings = ({ project }: { project: Project }) => {
                   <span className="sr-only">Remove {company}</span>
                 </button>
               </Badge>
-            ))}
+            )) : <span className="text-sm text-muted-foreground">No custom companies added.</span>}
           </div>
         </CardContent>
       </Card>
@@ -124,8 +125,8 @@ const ProjectSettings = ({ project }: { project: Project }) => {
             />
             <Button onClick={handleAddLocation}>Add</Button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {customLocations.map(location => (
+          <div className="flex flex-wrap gap-2 rounded-md border p-3 min-h-[40px]">
+            {customLocations.length > 0 ? customLocations.map(location => (
               <Badge key={location} variant="secondary" className="text-base py-1 pl-3 pr-2">
                 {location}
                 <button onClick={() => handleRemoveLocation(location)} className="ml-2 rounded-full hover:bg-muted-foreground/20 p-0.5">
@@ -133,16 +134,17 @@ const ProjectSettings = ({ project }: { project: Project }) => {
                   <span className="sr-only">Remove {location}</span>
                 </button>
               </Badge>
-            ))}
+            )) : <span className="text-sm text-muted-foreground">No custom locations added.</span>}
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end border-t pt-6">
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save All Settings
-            </Button>
-        </CardFooter>
       </Card>
+
+      <div className="flex justify-end pt-4">
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save All Settings
+          </Button>
+      </div>
     </div>
   );
 };
@@ -197,9 +199,9 @@ const MemberList = ({ project }: { project: Project }) => {
               <Skeleton className="h-3 w-1/2" />
             </div>
           </CardHeader>
-          <CardContent className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
+          <CardFooter className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
             <Skeleton className="h-5 w-1/3" />
-          </CardContent>
+          </CardFooter>
         </Card>
       ))
     );
@@ -209,42 +211,42 @@ const MemberList = ({ project }: { project: Project }) => {
             <div className="grid gap-4 md:grid-cols-2">
                 {isLoadingMembers ? renderSkeleton() : members.sort((a,b) => (a.uid === project.ownerUid ? -1 : 1)).map(member => (
                     <Card key={member.uid} className="flex flex-col">
-                    <CardHeader className="flex flex-row items-center gap-4">
-                        <Avatar className="h-12 w-12">
-                        <AvatarImage src={member.photoURL ?? undefined} data-ai-hint="person face" />
-                        <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                        <CardTitle className="truncate">{member.displayName || 'Unknown User'}</CardTitle>
-                        <CardDescription className="truncate">{member.position || 'No Position'}</CardDescription>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
-                        <div className="flex items-center gap-2 text-sm font-semibold">
-                        {member.uid === project.ownerUid ? (
-                            <>
-                            <Crown className="h-4 w-4 text-amber-500" />
-                            <span className="text-amber-600">Owner</span>
-                            </>
-                        ) : (
-                            <>
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">Member</span>
-                            </>
-                        )}
-                        </div>
-                        {isOwner && member.uid !== user?.uid && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => setMemberToRemove(member)}
-                        >
-                            <UserX className="mr-2 h-4 w-4" />
-                            Remove
-                        </Button>
-                        )}
-                    </CardContent>
+                      <CardHeader className="flex flex-row items-center gap-4 pb-4">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={member.photoURL ?? undefined} data-ai-hint="person face" />
+                            <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <CardTitle className="truncate">{member.displayName || 'Unknown User'}</CardTitle>
+                            <CardDescription className="truncate">{member.position || 'No Position'}</CardDescription>
+                          </div>
+                      </CardHeader>
+                      <CardFooter className="flex justify-between items-center bg-muted/50 p-3 mt-auto">
+                          <div className="flex items-center gap-2 text-sm font-semibold">
+                          {member.uid === project.ownerUid ? (
+                              <>
+                              <Crown className="h-4 w-4 text-amber-500" />
+                              <span className="text-amber-600">Owner</span>
+                              </>
+                          ) : (
+                              <>
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground">Member</span>
+                              </>
+                          )}
+                          </div>
+                          {isOwner && member.uid !== user?.uid && (
+                          <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => setMemberToRemove(member)}
+                          >
+                              <UserX className="mr-2 h-4 w-4" />
+                              Remove
+                          </Button>
+                          )}
+                      </CardFooter>
                     </Card>
                 ))}
             </div>

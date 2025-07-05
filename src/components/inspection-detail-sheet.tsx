@@ -8,8 +8,8 @@ import { InspectionStatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft, Folder, Trash2, Gavel, SearchCheck, User } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose, SheetFooter } from '@/components/ui/sheet';
+import { Sparkles, ShieldAlert, ListChecks, CheckCircle2, Loader2, RefreshCw, AlertTriangle, ArrowLeft, Folder, Trash2, Gavel, SearchCheck, User, Calendar, MapPin, Wrench } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
@@ -21,12 +21,36 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { runDeeperInspectionAnalysis, retryAiAnalysis } from '@/lib/actions/item-actions';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+
 
 interface InspectionDetailSheetProps {
     inspectionId: string | null;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
 }
+
+const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) => (
+    <div className="flex items-start gap-3 text-sm">
+        <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+        <div className="flex flex-col">
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-semibold text-foreground">{value || '-'}</span>
+        </div>
+    </div>
+);
+
+const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
+    <div className="pl-4 space-y-2">
+        {text.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((item, index) => (
+        <div key={index} className="flex items-start gap-3 text-sm text-muted-foreground">
+            <Icon className={`h-4 w-4 flex-shrink-0 mt-0.5 ${iconClassName}`} />
+            <span>{item.replace(/^- /, '')}</span>
+        </div>
+        ))}
+    </div>
+);
 
 export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
@@ -76,17 +100,6 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
     }
   };
 
-  const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName: string) => (
-    <div className="pl-8 space-y-2">
-      {text.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((item, index) => (
-        <div key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-          <Icon className={`h-4 w-4 flex-shrink-0 mt-0.5 ${iconClassName}`} />
-          <span>{item.replace(/^- /, '')}</span>
-        </div>
-      ))}
-    </div>
-  );
-
   return (
     <>
       <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -109,7 +122,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
           </SheetHeader>
           
           <ScrollArea className="flex-1">
-            <div className="space-y-6 p-6">
+            <div className="space-y-6 p-4">
               <div className={cn(
                   "relative w-full aspect-video rounded-md overflow-hidden border",
                   !inspection.photoUrl && "bg-muted/20 flex items-center justify-center"
@@ -127,54 +140,56 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                       <Image src="/logo.svg" alt="Default inspection image" width={80} height={80} className="opacity-50" />
                   )}
               </div>
-              <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-center">
-                <div className="font-semibold text-muted-foreground">Tanggal Kirim</div>
-                <div>{format(new Date(inspection.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
 
-                <div className="font-semibold text-muted-foreground">Dikirim Oleh</div>
-                <div>{inspection.submittedBy}</div>
-                
-                <div className="font-semibold text-muted-foreground">Lokasi</div>
-                <div>{inspection.location}</div>
-                
-                {projectName && (
-                  <>
-                    <div className="font-semibold text-muted-foreground flex items-center gap-1.5"><Folder className="h-4 w-4"/>Proyek</div>
-                    <div>{projectName}</div>
-                  </>
-                )}
+              <Card>
+                <CardHeader>
+                    <CardTitle>Detail Laporan</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <DetailRow icon={Wrench} label="Peralatan" value={`${inspection.equipmentName} (${inspection.equipmentType})`} />
+                  <DetailRow icon={User} label="Dikirim Oleh" value={inspection.submittedBy} />
+                  <DetailRow icon={Calendar} label="Tanggal Kirim" value={format(new Date(inspection.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />
+                  <DetailRow icon={MapPin} label="Lokasi" value={inspection.location} />
+                  {projectName && <DetailRow icon={Folder} label="Proyek" value={projectName} />}
+                </CardContent>
+              </Card>
 
-                <div className="font-semibold text-muted-foreground">Peralatan</div>
-                <div>{inspection.equipmentName} ({inspection.equipmentType})</div>
-
-                <div className="font-semibold text-muted-foreground">Status</div>
-                <div><InspectionStatusBadge status={inspection.status} /></div>
-              </div>
-
-              <div className="space-y-1">
-                <h4 className="font-semibold">Temuan</h4>
-                <p className="text-sm text-muted-foreground">{inspection.findings}</p>
-              </div>
-              
-              {inspection.recommendation && (
-                <div className="space-y-1">
-                  <h4 className="font-semibold">Rekomendasi</h4>
-                  <p className="text-sm text-muted-foreground">{inspection.recommendation}</p>
-                </div>
-              )}
+              <Card>
+                 <CardHeader>
+                    <CardTitle>Status & Temuan</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Status</h4>
+                    <InspectionStatusBadge status={inspection.status} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Temuan</h4>
+                    <p className="text-sm text-foreground">{inspection.findings}</p>
+                  </div>
+                  {inspection.recommendation && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-1">Rekomendasi</h4>
+                      <p className="text-sm text-foreground">{inspection.recommendation}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {isAiViewerEnabled && inspection.aiStatus !== 'n/a' && (
-                <div className="space-y-4 pt-4 mt-4 border-t">
-                    <h3 className="font-semibold text-base flex items-center gap-2">
+                <Card>
+                  <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
                         <Sparkles className="h-5 w-5 text-primary" />
                         Analisis HSSE Tech
-                    </h3>
-
+                      </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     {inspection.aiStatus === 'processing' && !hasDeepAnalysis && (
-                        <div className="flex items-center gap-3 p-4 rounded-lg bg-muted">
-                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                            <p className="text-sm text-muted-foreground">Analisis awal sedang diproses...</p>
-                        </div>
+                      <div className="flex items-center gap-3 p-4 rounded-lg bg-muted">
+                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                          <p className="text-sm text-muted-foreground">Analisis awal sedang diproses...</p>
+                      </div>
                     )}
                     
                     {inspection.aiStatus === 'failed' && (
@@ -191,14 +206,15 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                     {inspection.aiStatus === 'completed' && (
                       <div className="space-y-4">
                           {inspection.aiSummary && (
-                              <div className="p-4 rounded-lg border bg-background">
+                              <div>
                                   <h4 className="text-sm font-semibold mb-2">Ringkasan Cepat</h4>
                                   <p className="text-sm text-muted-foreground">{inspection.aiSummary}</p>
                               </div>
                           )}
                           
                           {hasDeepAnalysis ? (
-                              <div className="p-4 rounded-lg border bg-background">
+                              <div>
+                                  <Separator className="my-4" />
                                   <h4 className="text-sm font-semibold mb-2">Analisis Mendalam</h4>
                                   <Accordion type="multiple" className="w-full">
                                       {inspection.aiRisks && (
@@ -210,7 +226,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                                   </Accordion>
                               </div>
                           ) : (
-                              <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed">
+                              <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed mt-4">
                                   <p className="text-sm text-muted-foreground">Jalankan analisis mendalam untuk mengidentifikasi risiko dan saran tindakan.</p>
                                   <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={isAnalyzing}>
                                       {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4" />}
@@ -220,55 +236,50 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                           )}
                       </div>
                     )}
-                </div>
+                  </CardContent>
+                </Card>
               )}
 
 
               {inspection.status === 'Pass' && inspection.actionTakenDescription && (
-                  <div className="space-y-4 pt-4 border-t mt-4">
-                    <h4 className="font-semibold text-base">Tindakan yang Diambil</h4>
-                     <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm items-start">
-                        <div className="font-semibold text-muted-foreground self-start">Deskripsi</div>
-                        <div className="text-muted-foreground">
-                            <div className="space-y-1">
-                              {inspection.actionTakenDescription.split('\n').map((line, index) => (
-                                <div key={index} className="flex items-start gap-2">
-                                  <CheckCircle2 className="h-4 w-4 flex-shrink-0 mt-0.5 text-green-600" />
-                                  <span className="break-words">{line.replace(/^- /, '')}</span>
-                                </div>
-                              ))}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Tindakan Penyelesaian</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <DetailRow icon={User} label="Diselesaikan Oleh" value={inspection.closedBy} />
+                      {inspection.closedDate && <DetailRow icon={Calendar} label="Tanggal Selesai" value={format(new Date(inspection.closedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />}
+                      
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">Deskripsi Tindakan</h4>
+                        <div className="space-y-1">
+                          {inspection.actionTakenDescription.split('\n').map((line, index) => (
+                            <div key={index} className="flex items-start gap-2 text-sm">
+                              <CheckCircle2 className="h-4 w-4 flex-shrink-0 mt-0.5 text-green-600" />
+                              <span className="break-words text-foreground">{line.replace(/^- /, '')}</span>
                             </div>
+                          ))}
                         </div>
-                       
-                       {inspection.closedDate && (
-                        <>
-                          <div className="font-semibold text-muted-foreground">Diselesaikan Pada</div>
-                          <div className="text-muted-foreground">{format(new Date(inspection.closedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })}</div>
-                        </>
-                       )}
-
-                       <div className="font-semibold text-muted-foreground">Diselesaikan Oleh</div>
-                       <div className="text-muted-foreground flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            {inspection.closedBy || '-'}
-                        </div>
-                     </div>
-                    
-                    {inspection.actionTakenPhotoUrl && (
-                      <div className="relative w-full aspect-video rounded-md overflow-hidden border mt-2">
-                        <Image
-                          src={inspection.actionTakenPhotoUrl}
-                          alt="Action taken photo"
-                          fill
-                          sizes="(max-width: 640px) 100vw, 512px"
-                          className="object-contain"
-                          data-ai-hint="fixed equipment"
-                        />
                       </div>
-                    )}
-                  </div>
-                )}
 
+                      {inspection.actionTakenPhotoUrl && (
+                        <div>
+                          <h4 className="text-sm font-medium text-muted-foreground mb-2">Foto Penyelesaian</h4>
+                          <div className="relative w-full aspect-video rounded-md overflow-hidden border mt-2">
+                            <Image
+                              src={inspection.actionTakenPhotoUrl}
+                              alt="Action taken photo"
+                              fill
+                              sizes="(max-width: 640px) 100vw, 512px"
+                              className="object-contain"
+                              data-ai-hint="fixed equipment"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
             </div>
           </ScrollArea>
            {canFollowUp && (

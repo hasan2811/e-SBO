@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -64,14 +65,14 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-secondary/50 p-4">
       <Card className="w-full max-w-sm p-4 shadow-xl">
-        <CardHeader className="text-center p-2">
+        <CardHeader className="text-center">
            <div className="flex justify-center mb-4">
               <AppLogo className="h-12 w-12" />
             </div>
           <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
           <CardDescription>Enter your credentials to access your account</CardDescription>
         </CardHeader>
-        <CardContent className="p-4 pt-6">
+        <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -107,7 +108,7 @@ export default function LoginPage() {
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="p-4 pt-2 flex justify-center">
+        <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
             Don't have an account?{' '}
             <Link href="/register" className="font-semibold text-accent hover:underline">
@@ -117,14 +118,7 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
       <div className="mt-8 text-center text-xs text-muted-foreground space-y-1">
-        <p className="font-semibold text-sm text-foreground">HSSE Tech v1.001</p>
-        <div className="pt-2">
-          <p>Copyright © 2024 CV Arzan Sirah Persada</p>
-          <p>All rights reserved.</p>
-        </div>
-        <div className="pt-2">
-          <p>Design by: Arzan (+971502861769)</p>
-        </div>
+        <p>Copyright © 2024 CV Arzan Sirah Persada. All rights reserved.</p>
       </div>
     </div>
   );

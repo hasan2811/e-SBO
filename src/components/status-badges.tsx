@@ -12,7 +12,7 @@ export const RiskBadge = ({ riskLevel }: { riskLevel: RiskLevel }) => {
     High: 'bg-chart-5 border-transparent text-secondary-foreground hover:bg-chart-5/80',
     Critical: 'bg-destructive border-transparent text-destructive-foreground hover:bg-destructive/80',
   };
-  return <Badge className={cn(riskStyles[riskLevel])}>{riskLevel}</Badge>;
+  return <Badge className={cn('font-semibold', riskStyles[riskLevel])}>{riskLevel}</Badge>;
 };
 
 export const StatusBadge = ({ status }: { status: Observation['status'] }) => {
