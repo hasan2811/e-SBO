@@ -49,6 +49,26 @@ const ProjectCard = ({ project }: { project: Project }) => {
   );
 };
 
+// High-fidelity skeleton for a project card
+const ProjectCardSkeleton = () => (
+  <Card className="flex flex-col">
+    <CardHeader>
+      <div className="flex items-start gap-4">
+        <Skeleton className="h-8 w-8 rounded-md mt-1 flex-shrink-0" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      </div>
+    </CardHeader>
+    <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6 mt-auto">
+      <Skeleton className="h-5 w-24" />
+      <Skeleton className="h-5 w-16" />
+    </CardFooter>
+  </Card>
+);
+
+
 export default function ProjectHubPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const { projects, loading: projectsLoading } = useProjects();
@@ -69,16 +89,19 @@ export default function ProjectHubPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-9 w-48" />
-          <div className="flex gap-4">
-            <Skeleton className="h-10 w-32" />
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+          <div className="flex-shrink-0 flex gap-2 sm:gap-4">
+            <Skeleton className="h-10 w-36" />
             <Skeleton className="h-10 w-32" />
           </div>
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-40 rounded-lg" />
+            <ProjectCardSkeleton key={i} />
           ))}
         </div>
       </div>
