@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -289,7 +288,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
     };
     
     const handleActionSuccess = () => {
-        setLeaveOpen(false);
+        setIsLeaveOpen(false);
         setDeleteOpen(false);
         onOpenChange(false); // Close the manage dialog
         router.push('/beranda');
@@ -342,7 +341,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
                                 <Trash2 className="mr-2"/> Hapus Proyek
                             </Button>
                         ) : (
-                            <Button variant="destructive" onClick={() => setLeaveOpen(true)}>
+                            <Button variant="destructive" onClick={() => setIsLeaveOpen(true)}>
                                 <LogOut className="mr-2"/> Tinggalkan Proyek
                             </Button>
                         )}
@@ -352,7 +351,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
 
             <LeaveProjectDialog
                 isOpen={isLeaveOpen}
-                onOpenChange={setLeaveOpen}
+                onOpenChange={setIsLeaveOpen}
                 project={currentProject}
                 onSuccess={handleActionSuccess}
             />
