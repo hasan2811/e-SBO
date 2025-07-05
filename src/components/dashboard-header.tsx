@@ -21,8 +21,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { exportToExcel } from '@/lib/export';
 import { useObservations } from '@/hooks/use-observations';
-import { LeaveProjectDialog } from './leave-project-dialog';
-import { DeleteProjectDialog } from './delete-project-dialog';
 
 function ProjectSwitcher() {
   const { user } = useAuth();
@@ -34,22 +32,12 @@ function ProjectSwitcher() {
   const [isCreateOpen, setCreateOpen] = React.useState(false);
   const [isJoinOpen, setJoinOpen] = React.useState(false);
   const [isManageOpen, setManageOpen] = React.useState(false);
-  const [isLeaveOpen, setLeaveOpen] = React.useState(false);
-  const [isDeleteOpen, setDeleteOpen] = React.useState(false);
-
 
   const projectId = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/)?.[1] || null;
   const { items: allProjectItems } = useObservations(projectId);
   const selectedProject = projects.find((p) => p.id === projectId);
   
   const isOwner = selectedProject && user && selectedProject.ownerUid === user.uid;
-
-  const handleActionSuccess = () => {
-    setManageOpen(false);
-    setLeaveOpen(false);
-    setDeleteOpen(false);
-    router.push('/beranda');
-  };
 
   const handleExport = () => {
     if (!selectedProject) return;
@@ -119,10 +107,12 @@ function ProjectSwitcher() {
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
                         <DropdownMenuLabel>Aksi Proyek</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => setManageOpen(true)}>
-                            <FileCog className="mr-2"/>
-                            <span>Kelola Proyek & Anggota</span>
-                        </DropdownMenuItem>
+                        {isOwner && (
+                            <DropdownMenuItem onSelect={() => setManageOpen(true)}>
+                                <FileCog className="mr-2"/>
+                                <span>Kelola Proyek & Anggota</span>
+                            </DropdownMenuItem>
+                        )}
                          <DropdownMenuItem onSelect={handleExport}>
                             <Download className="mr-2"/>
                             <span>Export Laporan</span>
@@ -155,22 +145,6 @@ function ProjectSwitcher() {
           project={selectedProject}
         />
       )}
-       {selectedProject && (
-        <LeaveProjectDialog
-          isOpen={isLeaveOpen}
-          onOpenChange={setLeaveOpen}
-          project={selectedProject}
-          onSuccess={handleActionSuccess}
-        />
-       )}
-        {selectedProject && (
-        <DeleteProjectDialog
-          isOpen={isDeleteOpen}
-          onOpenChange={setDeleteOpen}
-          project={selectedProject}
-          onSuccess={handleActionSuccess}
-        />
-       )}
     </>
   );
 }
