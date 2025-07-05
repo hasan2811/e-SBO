@@ -39,7 +39,6 @@ export default function ProjectPtwPage() {
       projectId={projectId} 
       itemTypeFilter="ptw"
       title="Permit to Work (PTW)"
-      description={`Semua izin kerja untuk proyek ${project.name}.`}
     />
   );
 }

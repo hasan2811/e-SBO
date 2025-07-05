@@ -148,10 +148,9 @@ interface FeedViewProps {
   itemTypeFilter?: 'observation' | 'inspection' | 'ptw';
   observationIdToOpen?: string | null;
   title: string;
-  description: string;
 }
 
-export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title, description }: FeedViewProps) {
+export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title }: FeedViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -236,7 +235,6 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex-1">
                 <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-                <p className="text-sm text-muted-foreground mt-1">{description}</p>
             </div>
             
             <div className="flex items-center gap-2 self-end sm:self-center">

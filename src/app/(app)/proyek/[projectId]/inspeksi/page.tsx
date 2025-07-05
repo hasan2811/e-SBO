@@ -39,7 +39,6 @@ export default function ProjectInspectionPage() {
       projectId={projectId} 
       itemTypeFilter="inspection"
       title="Inspeksi Proyek"
-      description={`Semua laporan inspeksi untuk proyek ${project.name}.`}
     />
   );
 }

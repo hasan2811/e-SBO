@@ -24,14 +24,12 @@ interface DeletePtwDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   ptw: Ptw;
-  onSuccess?: () => void;
 }
 
 export function DeletePtwDialog({
   isOpen,
   onOpenChange,
   ptw,
-  onSuccess,
 }: DeletePtwDialogProps) {
   const { toast } = useToast();
   const { removeItem } = useObservations();
@@ -53,7 +51,6 @@ export function DeletePtwDialog({
         title: 'Berhasil Dihapus',
         description: `Izin Kerja (PTW) telah berhasil dihapus.`,
       });
-      onSuccess?.();
       onOpenChange(false);
     } catch (error) {
       toast({

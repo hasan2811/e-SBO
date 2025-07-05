@@ -43,10 +43,6 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   
   const ptw = ptwId ? getPtwById(ptwId) : null;
 
-  const handleCloseSheet = () => {
-    onOpenChange(false);
-  };
-
   if (!ptw) return null;
 
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
@@ -59,7 +55,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
           <SheetHeader className="p-4 border-b">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2" onClick={handleCloseSheet}>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2" onClick={() => onOpenChange(false)}>
                       <ArrowLeft className="h-5 w-5" />
                   </Button>
                   <div className="flex flex-col">
@@ -164,7 +160,6 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
         isOpen={isDeleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         ptw={ptw}
-        onSuccess={() => onOpenChange(false)}
       />
     </>
   );

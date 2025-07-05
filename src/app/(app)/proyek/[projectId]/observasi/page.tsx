@@ -42,7 +42,6 @@ export default function ProjectObservationPage() {
       itemTypeFilter="observation"
       observationIdToOpen={observationIdToOpen}
       title="Observasi Proyek"
-      description={`Semua laporan observasi untuk proyek ${project.name}.`}
     />
   );
 }

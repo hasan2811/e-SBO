@@ -24,14 +24,12 @@ interface DeleteInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   inspection: Inspection;
-  onSuccess?: () => void;
 }
 
 export function DeleteInspectionDialog({
   isOpen,
   onOpenChange,
   inspection,
-  onSuccess,
 }: DeleteInspectionDialogProps) {
   const { toast } = useToast();
   const { removeItem } = useObservations();
@@ -58,7 +56,6 @@ export function DeleteInspectionDialog({
         title: 'Berhasil Dihapus',
         description: `Laporan inspeksi telah berhasil dihapus.`,
       });
-      onSuccess?.();
       onOpenChange(false);
     } catch (error) {
       toast({

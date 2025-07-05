@@ -64,10 +64,6 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
 
-  const handleCloseSheet = () => {
-    onOpenChange(false);
-  };
-
   if (!inspection) return null;
   
   const isAiEnabled = userProfile?.aiEnabled ?? false;
@@ -106,7 +102,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
           <SheetHeader className="p-4 border-b">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2" onClick={handleCloseSheet}>
+                <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2" onClick={() => onOpenChange(false)}>
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div className="flex flex-col">
@@ -295,7 +291,6 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
         isOpen={isDeleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         inspection={inspection}
-        onSuccess={handleCloseSheet}
       />
       {inspection && (
         <FollowUpInspectionDialog
