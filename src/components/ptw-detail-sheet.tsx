@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
+import QRCode from 'react-qr-code';
 import type { Ptw } from '@/lib/types';
 import { PtwStatusBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
@@ -66,6 +67,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
 
   const projectName = ptw.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
   const canApprove = ptw.status === 'Pending Approval';
+  const showQrCode = (ptw.status === 'Approved' || ptw.status === 'Closed') && ptw.stampedPdfUrl;
   
   return (
     <>
@@ -185,6 +187,25 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                     )}
                 </CardContent>
               </Card>
+
+              {showQrCode && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Akses Cepat (QR Code)</CardTitle>
+                        <CardDescription>Pindai kode ini untuk membuka dokumen PDF yang telah disetujui.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex justify-center">
+                        <div className="p-4 bg-white rounded-md border" style={{ height: "auto", margin: "0 auto", maxWidth: 180, width: "100%" }}>
+                            <QRCode
+                                size={256}
+                                style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                                value={ptw.stampedPdfUrl!}
+                                viewBox={`0 0 256 256`}
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+              )}
 
             </div>
           </ScrollArea>
