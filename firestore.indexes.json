@@ -5,32 +5,7 @@
       "collectionGroup": "observations",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "scope", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "observations",
-      "queryScope": "COLLECTION",
-      "fields": [
         { "fieldPath": "projectId", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "observations",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "scope", "order": "ASCENDING" },
-        { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "inspections",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "scope", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "DESCENDING" }
       ]
     },
@@ -43,23 +18,6 @@
       ]
     },
     {
-      "collectionGroup": "inspections",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "scope", "order": "ASCENDING" },
-        { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "ptws",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "scope", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "ptws",
       "queryScope": "COLLECTION",
       "fields": [
@@ -68,12 +26,11 @@
       ]
     },
     {
-      "collectionGroup": "ptws",
+      "collectionGroup": "notifications",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "scope", "order": "ASCENDING" },
         { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],
