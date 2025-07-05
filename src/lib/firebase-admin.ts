@@ -15,7 +15,7 @@ if (!admin.apps.length) {
 
 // Export the admin services to be used in server actions.
 const adminDb = admin.firestore();
-// Explicitly get the default bucket to ensure correct access.
+// Explicitly get the default bucket instance to ensure correct access and prevent module resolution issues.
 const adminStorage = admin.storage().bucket('hssetech-e1710.firebasestorage.app');
 
 export { adminDb, adminStorage };

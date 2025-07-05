@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDb, adminStorage } from '@/lib/firebase-admin';
@@ -16,7 +17,8 @@ import QRCode from 'qrcode';
  */
 export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, signatureDataUrl: string): Promise<{ stampedPdfUrl: string }> {
   try {
-    const bucket = adminStorage.bucket();
+    // adminStorage is now the bucket instance itself, imported directly.
+    const bucket = adminStorage;
 
     if (!ptw.jsaPdfStoragePath) {
       throw new Error('Original JSA PDF path is missing. Cannot process approval.');
