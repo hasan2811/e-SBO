@@ -232,17 +232,12 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   return (
     <>
      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex-1">
-                <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-            </div>
-            
-            <div className="flex items-center gap-2 self-end sm:self-center">
-                 <Button variant="ghost" size="icon" onClick={() => setIsSearchVisible(prev => !prev)}>
-                    <Search className="h-5 w-5"/>
-                    <span className="sr-only">Cari</span>
-                </Button>
-            </div>
+        <div className="flex justify-between items-center gap-4">
+          <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+          <Button variant="ghost" size="icon" onClick={() => setIsSearchVisible(prev => !prev)}>
+            <Search className="h-5 w-5"/>
+            <span className="sr-only">Cari</span>
+          </Button>
         </div>
         
         <AnimatePresence>
