@@ -304,26 +304,27 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
                             Lihat anggota dan kelola pengaturan proyek.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 overflow-hidden px-6">
-                        <Tabs defaultValue="members" key={`${currentProject.id}-members`} className="flex flex-col h-full">
-                            <TabsList className={cn("grid w-full", isOwner ? "grid-cols-2" : "grid-cols-1")}>
+
+                    <div className="flex-1 flex flex-col overflow-hidden px-6 pb-4">
+                        <Tabs defaultValue="members" className="flex-1 flex flex-col overflow-hidden">
+                            <TabsList className={cn("grid w-full shrink-0", isOwner ? "grid-cols-2" : "grid-cols-1")}>
                                 <TabsTrigger value="members">Anggota ({currentProject.memberUids?.length || 0})</TabsTrigger>
                                 {isOwner && <TabsTrigger value="settings">Pengaturan</TabsTrigger>}
                             </TabsList>
-                            <div className="flex-1 mt-4 overflow-hidden">
-                            <ScrollArea className="h-full pr-4 -mr-4">
-                                <TabsContent value="members" className="mt-0">
+                            
+                            <ScrollArea className="flex-1 mt-4">
+                                <TabsContent value="members" className="mt-0 pr-4">
                                     <MemberList project={currentProject} onMemberRemoved={handleMemberRemoved} />
                                 </TabsContent>
                                 {isOwner && (
-                                    <TabsContent value="settings" className="mt-0">
+                                    <TabsContent value="settings" className="mt-0 pr-4">
                                         <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
                                     </TabsContent>
                                 )}
                             </ScrollArea>
-                            </div>
                         </Tabs>
                     </div>
+
                     <DialogFooter className="p-6 pt-4 border-t flex-shrink-0">
                         {isOwner ? (
                              <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
