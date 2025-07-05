@@ -21,31 +21,49 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const { projects, loading: projectsLoading } = useProjects();
 
   const [isObservationDialogOpen, setObservationDialogOpen] = React.useState(false);
   const [isInspectionDialogOpen, setInspectionDialogOpen] = React.useState(false);
   const [isPtwDialogOpen, setPtwDialogOpen] = React.useState(false);
   const [isProfileDialogOpen, setProfileDialogOpen] = React.useState(false);
 
-  const { projects, loading: projectsLoading } = useProjects();
-  
   const getProjectIdFromPath = () => {
     const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
     return match ? match[1] : null;
   }
+  
+  const projectId = getProjectIdFromPath();
 
   const currentProject = React.useMemo(() => {
-    const projectId = getProjectIdFromPath();
     if (!projectId || projectsLoading) return null;
     return projects.find(p => p.id === projectId) ?? null;
-  }, [pathname, projects, projectsLoading]);
+  }, [projectId, projects, projectsLoading]);
 
-
+  // --- Redirection Logic ---
   React.useEffect(() => {
-    if (!authLoading && !user) {
+    if (authLoading || projectsLoading) return; // Wait until all auth/project data is loaded
+
+    if (!user) {
       router.push('/login');
+      return;
     }
-  }, [user, authLoading, router]);
+
+    const hasProjects = projects.length > 0;
+    const isProjectPage = pathname.startsWith('/proyek/');
+
+    if (hasProjects) {
+      // If user has projects but is on a non-project page (e.g., /beranda), redirect them.
+      if (!isProjectPage) {
+        router.replace(`/proyek/${projects[0].id}`);
+      }
+    } else {
+      // If user has NO projects, they should only be on the welcome page.
+      if (pathname !== '/beranda') {
+        router.replace('/beranda');
+      }
+    }
+  }, [user, authLoading, projects, projectsLoading, pathname, router]);
 
   React.useEffect(() => {
     if (userProfile && (userProfile.position === 'Not Set' || !userProfile.position)) {
@@ -55,33 +73,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [userProfile]);
 
-  const isAppLoading = authLoading || (!!user && projectsLoading);
+  const isAppLoading = authLoading || (user && projectsLoading);
+  const showMainContent = !isAppLoading && user && (projects.length > 0 || pathname === '/beranda');
 
   if (isAppLoading) {
-    return (
-       <div className="flex flex-col min-h-screen">
-        <DashboardHeader />
-        <div className="flex-1 md:grid md:grid-cols-[220px_1fr]">
-          <Sidebar />
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 overflow-y-auto">
-            <div className="max-w-7xl mx-auto h-full">
-              <PageSkeleton />
-            </div>
-          </main>
-        </div>
-        <BottomNavBar />
-      </div>
-    );
+    return <PageSkeleton withHeader />;
   }
-
+  
   if (!user) {
-    return null;
+     return null; // or a loading spinner, handled by the redirection logic
   }
 
   const variants = {
-    initial: { opacity: 0, x: 20 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: -20 },
+    initial: { opacity: 0, y: 15 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -15 },
   };
   
   return (
@@ -91,10 +97,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onProfileComplete={() => setProfileDialogOpen(false)}
       />
 
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen bg-secondary/50">
         <DashboardHeader />
         <div className="flex-1 md:grid md:grid-cols-[220px_1fr]">
-          <Sidebar />
+          {projectId && <Sidebar projectId={projectId} />}
           <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 overflow-y-auto">
             <div className="max-w-7xl mx-auto h-full">
               <AnimatePresence mode="wait">
@@ -104,37 +110,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   animate="animate"
                   exit="exit"
                   variants={variants}
-                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
                 >
-                  {!isProfileDialogOpen && children}
+                  {showMainContent && !isProfileDialogOpen && children}
                 </motion.div>
               </AnimatePresence>
             </div>
           </main>
         </div>
-        <MultiActionButton
-            onNewObservation={() => setObservationDialogOpen(true)}
-            onNewInspection={() => setInspectionDialogOpen(true)}
-            onNewPtw={() => setPtwDialogOpen(true)}
-        />
-        <BottomNavBar />
+        
+        {projectId && (
+          <>
+            <MultiActionButton
+                onNewObservation={() => setObservationDialogOpen(true)}
+                onNewInspection={() => setInspectionDialogOpen(true)}
+                onNewPtw={() => setPtwDialogOpen(true)}
+            />
+            <BottomNavBar projectId={projectId} />
+          </>
+        )}
       </div>
       
-      <SubmitObservationDialog
-        isOpen={isObservationDialogOpen}
-        onOpenChange={setObservationDialogOpen}
-        project={currentProject}
-      />
-      <SubmitInspectionDialog
-        isOpen={isInspectionDialogOpen}
-        onOpenChange={setInspectionDialogOpen}
-        project={currentProject}
-      />
-      <SubmitPtwDialog
-        isOpen={isPtwDialogOpen}
-        onOpenChange={setPtwDialogOpen}
-        project={currentProject}
-      />
+      {currentProject && (
+          <>
+            <SubmitObservationDialog
+                isOpen={isObservationDialogOpen}
+                onOpenChange={setObservationDialogOpen}
+                project={currentProject}
+            />
+            <SubmitInspectionDialog
+                isOpen={isInspectionDialogOpen}
+                onOpenChange={setInspectionDialogOpen}
+                project={currentProject}
+            />
+            <SubmitPtwDialog
+                isOpen={isPtwDialogOpen}
+                onOpenChange={setPtwDialogOpen}
+                project={currentProject}
+            />
+          </>
+      )}
     </>
   );
 }

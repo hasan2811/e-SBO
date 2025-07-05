@@ -4,24 +4,25 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, User, Briefcase } from 'lucide-react';
+import { ClipboardList, Wrench, FileSignature } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const navItems = [
-  { href: '/beranda', label: 'Project Hub', icon: Briefcase },
-  { href: '/private', label: 'Feed Pribadi', icon: User },
-];
-
-export function BottomNavBar() {
+export function BottomNavBar({ projectId }: { projectId: string }) {
   const pathname = usePathname();
+
+  const navItems = [
+    { href: `/proyek/${projectId}/observasi`, label: 'Observasi', icon: ClipboardList },
+    { href: `/proyek/${projectId}/inspeksi`, label: 'Inspeksi', icon: Wrench },
+    { href: `/proyek/${projectId}/ptw`, label: 'PTW', icon: FileSignature },
+  ];
+
+  if (!projectId) return null;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 z-40 w-full h-16 bg-card border-t">
-      <div className="grid h-full max-w-lg grid-cols-2 mx-auto font-medium">
+      <div className="grid h-full max-w-lg grid-cols-3 mx-auto font-medium">
         {navItems.map((item) => {
-          const isActive = item.href === '/beranda'
-            ? pathname.startsWith('/beranda') || pathname.startsWith('/proyek/')
-            : pathname === item.href;
+          const isActive = pathname === item.href;
           return (
             <Link
               key={item.label}

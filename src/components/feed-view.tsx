@@ -6,7 +6,7 @@ import Image from 'next/image';
 import type { AllItems, Observation, Inspection, Ptw } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge, StatusBadge, RiskBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { ChevronRight, Download, FileSignature, Sparkles, Loader2, Filter, Search, Globe, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical, UserCheck, X, ArrowLeft, Building, MapPin, Calendar, SearchCheck, Folder } from 'lucide-react';
+import { Download, Sparkles, Loader2, Filter, Search, Globe, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical, UserCheck, X, ArrowLeft, Building, MapPin, Calendar, SearchCheck, Folder, ClipboardList, Wrench, FileSignature } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -15,12 +15,7 @@ import { PtwDetailSheet } from '@/components/ptw-detail-sheet';
 import { StarRating } from '@/components/star-rating';
 import { exportToExcel } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
-import { 
-    DropdownMenu, 
-    DropdownMenuContent, 
-    DropdownMenuItem, 
-    DropdownMenuTrigger, 
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,6 +24,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useObservations } from '@/hooks/use-observations';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
+import { toggleLike, incrementViewCount } from '@/lib/actions/interaction-actions';
 
 const ListItemWrapper = ({ children, onSelect, isSelectionMode, isSelected, onToggleSelect }: { children: React.ReactNode, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
     const handleItemClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -146,20 +142,19 @@ const PtwListItem = ({ ptw, onSelect, isSelectionMode, isSelected, onToggleSelec
 };
 
 interface FeedViewProps {
-  mode: 'private' | 'project';
-  projectId?: string;
+  projectId: string;
+  itemTypeFilter?: 'observation' | 'inspection' | 'ptw';
   observationIdToOpen?: string | null;
   title: string;
   description: string;
-  showBackButton?: boolean;
 }
 
-export function FeedView({ mode, projectId, observationIdToOpen, title, description, showBackButton }: FeedViewProps) {
+export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title, description }: FeedViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
   
-  const { items, isLoading, getObservationById, getInspectionById, getPtwById } = useObservations();
+  const { items, isLoading, getObservationById, getInspectionById, getPtwById } = useObservations(projectId);
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -192,25 +187,22 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   }, [observationIdToOpen, isLoading, getObservationById, pathname, router, toast]);
 
   const filteredData = React.useMemo(() => {
-    if (!searchTerm) return items;
+    let data = items;
+
+    if (itemTypeFilter) {
+      data = data.filter(item => item.itemType === itemTypeFilter);
+    }
+    
+    if (!searchTerm) return data;
+    
     const lowercasedSearch = searchTerm.toLowerCase();
-    return items.filter(item => {
+    return data.filter(item => {
         if (item.itemType === 'observation') return item.findings.toLowerCase().includes(lowercasedSearch) || item.recommendation.toLowerCase().includes(lowercasedSearch) || item.company.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
         if (item.itemType === 'inspection') return item.findings.toLowerCase().includes(lowercasedSearch) || item.equipmentName.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
         if (item.itemType === 'ptw') return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
         return false;
     });
-  }, [items, searchTerm]);
-  
-  const handleExport = () => {
-    const dataToExport = filteredData.filter(item => item.itemType === 'observation') as Observation[];
-    if (dataToExport.length === 0) {
-      toast({ variant: 'destructive', title: 'Tidak Ada Data Observasi untuk Diekspor' });
-      return;
-    }
-    const fileName = `Export_${mode}_${new Date().toISOString()}`;
-    exportToExcel(dataToExport, fileName);
-  };
+  }, [items, searchTerm, itemTypeFilter]);
   
   const handleToggleSelection = (id: string) => {
     setSelectedIds(prev => {
@@ -236,15 +228,30 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   const canSelect = !isLoading && filteredData.length > 0;
 
   function EmptyState() {
-    let Icon = mode === 'project' ? Briefcase : User;
-    let titleText = searchTerm ? 'Tidak Ada Hasil' : (mode === 'project' ? 'Proyek Kosong' : 'Feed Pribadi Kosong');
-    let text = searchTerm ? 'Tidak ada laporan yang cocok dengan pencarian Anda.' : (mode === 'project' ? 'Belum ada laporan untuk proyek ini.' : 'Anda belum membuat laporan pribadi.');
+    const messages = {
+        observation: { icon: ClipboardList, title: 'Belum Ada Observasi', text: 'Belum ada laporan observasi untuk proyek ini.' },
+        inspection: { icon: Wrench, title: 'Belum Ada Inspeksi', text: 'Belum ada laporan inspeksi untuk proyek ini.' },
+        ptw: { icon: FileSignature, title: 'Belum Ada PTW', text: 'Belum ada izin kerja untuk proyek ini.' },
+    };
+
+    if (searchTerm) {
+      return (
+         <div className="text-center py-16 text-muted-foreground bg-card rounded-lg border-dashed">
+            <Search className="mx-auto h-12 w-12" />
+            <h3 className="mt-4 text-xl font-semibold">Tidak Ada Hasil</h3>
+            <p className="mt-2 text-sm max-w-xs mx-auto">Tidak ada laporan yang cocok dengan pencarian Anda.</p>
+        </div>
+      )
+    }
+
+    const currentType = itemTypeFilter ? messages[itemTypeFilter] : messages.observation;
+    const Icon = currentType.icon;
   
     return (
       <div className="text-center py-16 text-muted-foreground bg-card rounded-lg border-dashed">
         <Icon className="mx-auto h-12 w-12" />
-        <h3 className="mt-4 text-xl font-semibold">{titleText}</h3>
-        <p className="mt-2 text-sm max-w-xs mx-auto">{text}</p>
+        <h3 className="mt-4 text-xl font-semibold">{currentType.title}</h3>
+        <p className="mt-2 text-sm max-w-xs mx-auto">{currentType.text}</p>
       </div>
     );
   }
@@ -252,30 +259,26 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
   return (
     <>
      <div className="space-y-4">
-        <div className="flex justify-between items-start gap-4 min-h-[40px]">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-h-[40px]">
           {isSelectionMode ? (
-            <>
+            <div className="w-full flex justify-between items-center">
               <Button variant="ghost" onClick={() => { setIsSelectionMode(false); setSelectedIds(new Set()); }}>Batal</Button>
               <p className="font-semibold self-center">{selectedIds.size} dipilih</p>
               <Button variant="destructive" size="icon" onClick={handleDeleteClick} disabled={selectedIds.size === 0}>
                 <Trash2 className="h-5 w-5" />
               </Button>
-            </>
+            </div>
           ) : (
             <>
                 <div className="flex-1">
-                  {showBackButton && (
-                    <Button variant="ghost" size="sm" className="mb-2 -ml-3" onClick={() => router.push('/beranda')}>
-                      <ArrowLeft className="mr-2" />
-                      Kembali ke Hub
-                    </Button>
-                  )}
+                  <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+                  <p className="text-muted-foreground">{description}</p>
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0 self-start">
                     <div className="relative hidden sm:block">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Cari di feed ini..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-48 lg:w-64" />
+                        <Input placeholder="Cari laporan..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-48 lg:w-64" />
                         {searchTerm && (
                           <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
                             <X className="h-4 w-4"/>
@@ -285,7 +288,7 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="outline" size="icon">
                                 <MoreVertical className="h-5 w-5" />
                                 <span className="sr-only">Opsi</span>
                             </Button>
@@ -297,10 +300,6 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
                                     <span>Pilih Item</span>
                                 </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onSelect={handleExport}>
-                                <Download className="mr-2 h-4 w-4" />
-                                <span>Export (Observasi)</span>
-                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -310,7 +309,7 @@ export function FeedView({ mode, projectId, observationIdToOpen, title, descript
         
         <div className="relative sm:hidden">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Cari di feed ini..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-full" />
+            <Input placeholder="Cari laporan..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-full" />
             {searchTerm && (
               <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
                 <X className="h-4 w-4"/>

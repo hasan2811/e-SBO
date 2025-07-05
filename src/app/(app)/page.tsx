@@ -1,10 +1,14 @@
+'use client';
 
-import { redirect } from 'next/navigation';
+import { PageSkeleton } from '@/components/page-skeleton';
 
 /**
- * This page now acts as a server-side redirect to the /beranda (Project Hub) page,
- * which is a more logical entry point for this dashboard application.
+ * The root app page. It now acts as a loading placeholder.
+ * Redirection logic is handled centrally and consistently by the AppLayout
+ * based on the user's authentication and project status.
  */
 export default function RootPage() {
-  redirect('/beranda');
+  // The layout will handle redirection, so we just show a loading state
+  // until the redirection logic in the layout completes.
+  return <PageSkeleton withHeader />;
 }

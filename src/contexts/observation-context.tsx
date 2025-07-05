@@ -2,120 +2,48 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, where, onSnapshot, getDocs, collectionGroup } from 'firebase/firestore';
+import { collection, query, orderBy, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useAuth } from '@/hooks/use-auth';
-import type { AllItems, Scope, Observation, Inspection, Ptw } from '@/lib/types';
-import { usePathname } from 'next/navigation';
+import type { AllItems, Observation, Inspection, Ptw } from '@/lib/types';
 
 interface ObservationContextType {
   items: AllItems[];
   isLoading: boolean;
   error: string | null;
-  updateItem: (item: AllItems) => void;
-  removeItem: (itemId: string) => void;
   getObservationById: (id: string) => Observation | undefined;
   getInspectionById: (id: string) => Inspection | undefined;
   getPtwById: (id: string) => Ptw | undefined;
+  updateItem: (item: AllItems) => void;
+  removeItem: (id: string) => void;
+  addItem: (item: AllItems) => void;
 }
 
-export const ObservationContext = React.createContext<ObservationContextType | undefined>(undefined);
+const ObservationContext = React.createContext<ObservationContextType | undefined>(undefined);
+
+const listeners = new Map<string, () => void>();
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
-  const { user, userProfile } = useAuth();
-  const pathname = usePathname();
-
   const [items, setItems] = React.useState<AllItems[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  
-  const mode: 'private' | 'project' = pathname.startsWith('/proyek') ? 'project' : 'private';
-  const projectId = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/)?.[1] || null;
 
   const updateItem = React.useCallback((updatedItem: AllItems) => {
-    setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
-  }, []);
-
-  const removeItem = React.useCallback((itemId: string) => {
-    setItems(prevItems => prevItems.filter(item => item.id !== itemId));
-  }, []);
-
-  React.useEffect(() => {
-    if (!user) {
-        setItems([]);
-        setIsLoading(false);
-        return;
-    }
-    
-    setIsLoading(true);
-    
-    const collectionsToQuery = ['observations', 'inspections', 'ptws'];
-    const unsubscribes: (() => void)[] = [];
-
-    const fetchData = async () => {
-        try {
-            const allPromises = collectionsToQuery.map(async (collName) => {
-                let q = query(collection(db, collName));
-                
-                if (mode === 'project' && projectId) {
-                    q = query(q, where('projectId', '==', projectId));
-                } else if (mode === 'private') {
-                    q = query(q, where('scope', '==', 'private'), where('userId', '==', user.uid));
-                } else {
-                    return []; // Don't query if conditions aren't met
-                }
-
-                const snapshot = await getDocs(q);
-                return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as AllItems);
-            });
-
-            const results = await Promise.all(allPromises);
-            const allData = results.flat();
-            allData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setItems(allData);
-
-        } catch (e: any) {
-            if (e.code === 'failed-precondition') {
-                setError("Database query failed. Please ensure all required indexes are built in the Firebase Console.");
-                console.error("Firestore index missing error. Please verify the required composite indexes.", e);
-            } else {
-                console.error("Failed to fetch items:", e);
-                setError("Failed to load data. Please check your connection.");
-            }
-            setItems([]);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    // Initial fetch
-    fetchData();
-
-    // Setup listeners for real-time updates
-    collectionsToQuery.forEach(collName => {
-      let q = query(collection(db, collName), orderBy('date', 'desc'));
-
-      if (mode === 'project' && projectId) {
-        q = query(q, where('projectId', '==', projectId));
-      } else if (mode === 'private') {
-        q = query(q, where('scope', '==', 'private'), where('userId', '==', user.uid));
-      } else {
-        return;
-      }
-      
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        // Just refetch all data to ensure sorting is correct across collections
-        fetchData();
-      }, (err) => {
-        console.error(`Error on snapshot for ${collName}:`, err);
-      });
-      unsubscribes.push(unsubscribe);
+    setItems(prevItems => {
+        const index = prevItems.findIndex(item => item.id === updatedItem.id);
+        if (index === -1) return prevItems;
+        const newItems = [...prevItems];
+        newItems[index] = updatedItem;
+        return newItems;
     });
+  }, []);
 
-
-    return () => unsubscribes.forEach(unsub => unsub());
-
-  }, [mode, projectId, user]);
+  const removeItem = React.useCallback((id: string) => {
+      setItems(prev => prev.filter(item => item.id !== id));
+  }, []);
+  
+  const addItem = React.useCallback((newItem: AllItems) => {
+    setItems(prev => [newItem, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+  }, []);
 
   const getObservationById = React.useCallback((id: string): Observation | undefined => {
     return items.find(item => item.id === id && item.itemType === 'observation') as Observation | undefined;
@@ -129,15 +57,105 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     return items.find(item => item.id === id && item.itemType === 'ptw') as Ptw | undefined;
   }, [items]);
 
-  const value = React.useMemo(() => ({
-    items, isLoading, error,
-    updateItem, removeItem,
-    getObservationById, getInspectionById, getPtwById
-  }), [
-      items, isLoading, error,
-      updateItem, removeItem,
-      getObservationById, getInspectionById, getPtwById
-  ]);
+  // This internal state is managed by the useObservations hook now
+  const internalSetters = React.useRef({
+    _setItems: setItems,
+    _setIsLoading: setIsLoading,
+    _setError: setError,
+  }).current;
 
-  return <ObservationContext.Provider value={value}>{children}</ObservationContext.Provider>;
+  const value = React.useMemo(() => ({
+    items, 
+    isLoading, 
+    error,
+    getObservationById, 
+    getInspectionById, 
+    getPtwById,
+    updateItem,
+    removeItem,
+    addItem
+  }), [items, isLoading, error, getObservationById, getInspectionById, getPtwById, updateItem, removeItem, addItem]);
+
+  return <ObservationContext.Provider value={{...value, ...internalSetters}}>{children}</ObservationContext.Provider>;
+}
+
+export function useObservations(projectId: string | null) {
+  const context = React.useContext(ObservationContext);
+  if (context === undefined) {
+    throw new Error('useObservations must be used within an ObservationProvider');
+  }
+
+  const { _setItems, _setIsLoading, _setError } = context as any;
+
+  React.useEffect(() => {
+    if (!projectId) {
+      _setItems([]);
+      _setIsLoading(false);
+      return;
+    }
+
+    if (listeners.has(projectId)) {
+      return;
+    }
+
+    _setIsLoading(true);
+
+    const collectionsToQuery = ['observations', 'inspections', 'ptws'];
+    let allData: AllItems[] = [];
+    let initialLoads = 0;
+
+    const allUnsubscribes: (() => void)[] = [];
+
+    const processSnapshot = () => {
+      allData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      _setItems([...allData]);
+    };
+    
+    collectionsToQuery.forEach(collName => {
+        // Updated query to use orderBy for performance and to match the index
+        const q = query(collection(db, collName), where('projectId', '==', projectId), orderBy('date', 'desc'));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const newDocs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as AllItems);
+            
+            // Atomically update the portion of the data for this collection
+            allData = [
+                ...allData.filter(d => d.itemType !== collName.slice(0, -1)),
+                ...newDocs
+            ];
+            
+            processSnapshot();
+
+            if (initialLoads < collectionsToQuery.length) {
+                initialLoads++;
+                if (initialLoads === collectionsToQuery.length) {
+                    _setIsLoading(false);
+                }
+            }
+        }, (err) => {
+            console.error(`Error on snapshot for ${collName}:`, err);
+            _setError(`Failed to load ${collName}.`);
+            _setIsLoading(false);
+        });
+        allUnsubscribes.push(unsubscribe);
+    });
+
+    const cleanup = () => {
+        allUnsubscribes.forEach(unsub => unsub());
+        listeners.delete(projectId);
+    };
+
+    listeners.set(projectId, cleanup);
+
+    return () => {
+      // This is the key cleanup that runs when the component unmounts or projectId changes
+      // We retrieve our specific cleanup function from the map and execute it.
+      const currentCleanup = listeners.get(projectId);
+      if (currentCleanup) {
+        currentCleanup();
+      }
+    };
+  }, [projectId, _setItems, _setIsLoading, _setError]);
+
+  return context;
 }

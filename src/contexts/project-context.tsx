@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, onSnapshot, Unsubscribe, where } from 'firebase/firestore';
+import { collection, query, onSnapshot, Unsubscribe, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
@@ -22,26 +22,24 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     let unsubscribe: Unsubscribe = () => {};
 
-    // Start loading as soon as the effect runs and auth is still loading.
     if (authLoading) {
       setLoading(true);
       return;
     }
     
-    // If auth is done and there's no user, stop loading and clear projects.
     if (!user) {
       setProjects([]);
       setLoading(false);
       return;
     }
 
-    // Auth is done and we have a user, so start fetching projects.
     setLoading(true);
 
     const projectsCollection = collection(db, 'projects');
+    // Updated queries to use orderBy for server-side sorting, matching the new indexes.
     const q = isAdmin 
-        ? query(projectsCollection) // Admin gets all projects
-        : query(projectsCollection, where('memberUids', 'array-contains', user.uid)); // Users get projects they are members of
+        ? query(projectsCollection, orderBy('createdAt', 'desc'))
+        : query(projectsCollection, where('memberUids', 'array-contains', user.uid), orderBy('createdAt', 'desc'));
 
     unsubscribe = onSnapshot(q, (snapshot) => {
       const serverProjects = snapshot.docs.map(doc => ({
@@ -49,7 +47,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         ...doc.data()
       })) as Project[];
       
-      setProjects(serverProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      // Removed client-side sorting as it's now handled by the server query.
+      setProjects(serverProjects);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching projects:", error);
@@ -57,7 +56,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [user, isAdmin, authLoading]);
 
