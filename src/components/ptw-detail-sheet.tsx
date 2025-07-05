@@ -39,13 +39,23 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, labe
 export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetProps) {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
+  const [localPtw, setLocalPtw] = React.useState<Ptw | null>(null);
 
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
   const { getPtwById } = useObservationData();
   const { toast } = useToast();
   
-  const ptw = ptwId ? getPtwById(ptwId) : null;
+  React.useEffect(() => {
+    if (isOpen && ptwId) {
+      const p = getPtwById(ptwId);
+      if (p) {
+        setLocalPtw(p);
+      }
+    }
+  }, [isOpen, ptwId, getPtwById]);
+
+  const ptw = localPtw;
 
   if (!ptw) return null;
 
