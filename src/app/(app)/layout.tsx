@@ -3,7 +3,6 @@
 
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { DashboardHeader } from '@/components/dashboard-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
@@ -16,6 +15,7 @@ import { SubmitInspectionDialog } from '@/components/submit-inspection-dialog';
 import { SubmitPtwDialog } from '@/components/submit-ptw-dialog';
 import { useProjects } from '@/hooks/use-projects';
 import type { Project } from '@/lib/types';
+import { PageSkeleton } from '@/components/page-skeleton';
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -62,8 +62,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (isAppLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+       <div className="flex flex-col min-h-screen">
+        <DashboardHeader
+          onNewObservation={() => {}}
+          onNewInspection={() => {}}
+          onNewPtw={() => {}}
+        />
+        <div className="flex-1 md:grid md:grid-cols-[220px_1fr]">
+          <Sidebar />
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 overflow-y-auto">
+            <div className="max-w-7xl mx-auto h-full">
+              <PageSkeleton />
+            </div>
+          </main>
+        </div>
+        <BottomNavBar />
       </div>
     );
   }
