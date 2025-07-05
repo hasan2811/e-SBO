@@ -6,66 +6,43 @@ import Image from 'next/image';
 import type { AllItems, Observation, Inspection, Ptw } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge, StatusBadge, RiskBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { Download, Sparkles, Loader2, Filter, Search, Globe, CheckCircle2, RefreshCw, CircleAlert, Home, Briefcase, User, Share2, ThumbsUp, MessageCircle, Eye, Trash2, MoreVertical, UserCheck, X, ArrowLeft, Building, MapPin, Calendar, SearchCheck, Folder, ClipboardList, Wrench, FileSignature } from 'lucide-react';
+import { Sparkles, Loader2, Search, Eye, Trash2, X, ArrowLeft, Building, MapPin, Calendar, SearchCheck, Folder, ClipboardList, Wrench, FileSignature } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
 import { InspectionDetailSheet } from '@/components/inspection-detail-sheet';
 import { PtwDetailSheet } from '@/components/ptw-detail-sheet';
 import { StarRating } from '@/components/star-rating';
-import { exportToExcel } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Checkbox } from '@/components/ui/checkbox';
-import { DeleteMultipleDialog } from './delete-multiple-dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { useObservations } from '@/hooks/use-observations';
-import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
-import { toggleLike, incrementViewCount } from '@/lib/actions/interaction-actions';
 
-const ListItemWrapper = ({ children, onSelect, isSelectionMode, isSelected, onToggleSelect }: { children: React.ReactNode, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
+const ListItemWrapper = ({ children, onSelect }: { children: React.ReactNode, onSelect: () => void }) => {
     const handleItemClick = (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
+        // Prevent opening the detail sheet if a button or link inside the card is clicked
         if (target.closest('button, a, [data-prevent-item-click]')) return;
-
-        if (isSelectionMode) {
-            onToggleSelect();
-        } else {
-            onSelect();
-        }
+        onSelect();
     };
 
     return (
         <Card 
           onClick={handleItemClick}
-          className={cn(
-            "transition-all cursor-pointer", 
-            isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:border-primary/50'
-          )}
+          className="transition-all cursor-pointer hover:border-primary/50"
         >
             <CardContent className="p-3 flex items-start gap-3">
-                {isSelectionMode && (
-                    <div className="flex items-center h-full pt-1">
-                        <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={onToggleSelect}
-                            aria-label="Select item"
-                            className="h-5 w-5"
-                        />
-                    </div>
-                )}
                 {children}
             </CardContent>
         </Card>
     )
 };
 
-const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelected, onToggleSelect }: { observation: Observation, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
+const ObservationListItem = ({ observation, onSelect }: { observation: Observation, onSelect: () => void }) => {
     return (
-        <ListItemWrapper onSelect={onSelect} isSelectionMode={isSelectionMode} isSelected={isSelected} onToggleSelect={onToggleSelect}>
+        <ListItemWrapper onSelect={onSelect}>
             <div className="relative h-24 w-24 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
                 {observation.photoUrl ? (
                     <Image src={observation.photoUrl} alt={observation.findings} fill sizes="96px" className="object-cover" data-ai-hint="site observation" />
@@ -93,9 +70,9 @@ const ObservationListItem = ({ observation, onSelect, isSelectionMode, isSelecte
     );
 };
 
-const InspectionListItem = ({ inspection, onSelect, isSelectionMode, isSelected, onToggleSelect }: { inspection: Inspection, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
+const InspectionListItem = ({ inspection, onSelect }: { inspection: Inspection, onSelect: () => void }) => {
     return (
-        <ListItemWrapper onSelect={onSelect} isSelectionMode={isSelectionMode} isSelected={isSelected} onToggleSelect={onToggleSelect}>
+        <ListItemWrapper onSelect={onSelect}>
             <div className="relative h-24 w-24 flex-shrink-0 rounded-md overflow-hidden border bg-muted/20 flex items-center justify-center">
                 {inspection.photoUrl ? (
                     <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="96px" className="object-cover" data-ai-hint="equipment inspection" />
@@ -116,9 +93,9 @@ const InspectionListItem = ({ inspection, onSelect, isSelectionMode, isSelected,
     );
 };
 
-const PtwListItem = ({ ptw, onSelect, isSelectionMode, isSelected, onToggleSelect }: { ptw: Ptw, onSelect: () => void, isSelectionMode: boolean, isSelected: boolean, onToggleSelect: () => void }) => {
+const PtwListItem = ({ ptw, onSelect }: { ptw: Ptw, onSelect: () => void }) => {
     return (
-        <ListItemWrapper onSelect={onSelect} isSelectionMode={isSelectionMode} isSelected={isSelected} onToggleSelect={onToggleSelect}>
+        <ListItemWrapper onSelect={onSelect}>
             <div className="flex-shrink-0 rounded-md bg-muted flex items-center justify-center h-24 w-24">
                 <FileSignature className="h-10 w-10 text-muted-foreground/50" />
             </div>
@@ -161,12 +138,6 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   const [selectedPtwId, setSelectedPtwId] = React.useState<string | null>(null);
   
   const [searchTerm, setSearchTerm] = React.useState('');
-  
-  const [isSelectionMode, setIsSelectionMode] = React.useState(false);
-  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
-  const [isDeleteMultiOpen, setDeleteMultiOpen] = React.useState(false);
-  const [itemsToDelete, setItemsToDelete] = React.useState<AllItems[]>([]);
-
 
   const triggeredOpen = React.useRef(false);
   React.useEffect(() => {
@@ -203,29 +174,6 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
         return false;
     });
   }, [items, searchTerm, itemTypeFilter]);
-  
-  const handleToggleSelection = (id: string) => {
-    setSelectedIds(prev => {
-        const newSet = new Set(prev);
-        if (newSet.has(id)) newSet.delete(id);
-        else newSet.add(id);
-        return newSet;
-    });
-  };
-
-  const handleDeleteClick = () => {
-    const toDelete = items.filter(item => selectedIds.has(item.id));
-    setItemsToDelete(toDelete);
-    setDeleteMultiOpen(true);
-  }
-  
-  const handleDeleteSuccess = () => {
-    setIsSelectionMode(false);
-    setSelectedIds(new Set());
-    setItemsToDelete([]);
-  };
-
-  const canSelect = !isLoading && filteredData.length > 0;
 
   function EmptyState() {
     const messages = {
@@ -259,52 +207,18 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   return (
     <>
      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-h-[40px]">
-          {isSelectionMode ? (
-            <div className="w-full flex justify-between items-center">
-              <Button variant="ghost" onClick={() => { setIsSelectionMode(false); setSelectedIds(new Set()); }}>Batal</Button>
-              <p className="font-semibold self-center">{selectedIds.size} dipilih</p>
-              <Button variant="destructive" size="icon" onClick={handleDeleteClick} disabled={selectedIds.size === 0}>
-                <Trash2 className="h-5 w-5" />
-              </Button>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h1 className="text-2xl font-bold tracking-tight flex-1">{title}</h1>
+            
+            <div className="relative hidden sm:block">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Cari laporan..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-48 lg:w-64" />
+                {searchTerm && (
+                  <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
+                    <X className="h-4 w-4"/>
+                  </Button>
+                )}
             </div>
-          ) : (
-            <>
-                <div className="flex-1">
-                  <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-                  <p className="text-muted-foreground">{description}</p>
-                </div>
-
-                <div className="flex items-center gap-2 flex-shrink-0 self-start">
-                    <div className="relative hidden sm:block">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Cari laporan..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-48 lg:w-64" />
-                        {searchTerm && (
-                          <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
-                            <X className="h-4 w-4"/>
-                          </Button>
-                        )}
-                    </div>
-
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="icon">
-                                <MoreVertical className="h-5 w-5" />
-                                <span className="sr-only">Opsi</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            {canSelect && (
-                                <DropdownMenuItem onSelect={() => setIsSelectionMode(true)}>
-                                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                                    <span>Pilih Item</span>
-                                </DropdownMenuItem>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            </>
-          )}
         </div>
         
         <div className="relative sm:hidden">
@@ -338,11 +252,11 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
              {filteredData.map(item => {
                 switch(item.itemType) {
                   case 'observation':
-                    return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} />;
+                    return <ObservationListItem key={item.id} observation={item} onSelect={() => setSelectedObservationId(item.id)} />;
                   case 'inspection':
-                    return <InspectionListItem key={item.id} inspection={item} onSelect={() => setSelectedInspectionId(item.id)} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} />;
+                    return <InspectionListItem key={item.id} inspection={item} onSelect={() => setSelectedInspectionId(item.id)} />;
                   case 'ptw':
-                    return <PtwListItem key={item.id} ptw={item} onSelect={() => setSelectedPtwId(item.id)} isSelectionMode={isSelectionMode} isSelected={selectedIds.has(item.id)} onToggleSelect={() => handleToggleSelection(item.id)} />;
+                    return <PtwListItem key={item.id} ptw={item} onSelect={() => setSelectedPtwId(item.id)} />;
                   default:
                     return null;
                 }
@@ -357,13 +271,8 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
     <ObservationDetailSheet isOpen={!!selectedObservationId} onOpenChange={(isOpen) => { if (!isOpen) setSelectedObservationId(null); }} observationId={selectedObservationId} />
     <InspectionDetailSheet isOpen={!!selectedInspectionId} onOpenChange={(isOpen) => { if(!isOpen) setSelectedInspectionId(null); }} inspectionId={selectedInspectionId} />
     <PtwDetailSheet isOpen={!!selectedPtwId} onOpenChange={(isOpen) => { if(!isOpen) setSelectedPtwId(null); }} ptwId={selectedPtwId} />
-    
-    <DeleteMultipleDialog 
-        isOpen={isDeleteMultiOpen} 
-        onOpenChange={setDeleteMultiOpen} 
-        itemsToDelete={itemsToDelete}
-        onSuccess={handleDeleteSuccess}
-    />
    </>
   );
 }
+
+    
