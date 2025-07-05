@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -8,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Crown, User, UserX, Loader2, Trash2, LogOut } from 'lucide-react';
+import { Crown, User, UserX, Loader2, Trash2, LogOut, ArrowRightLeft } from 'lucide-react';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -278,7 +277,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
     const isOwner = user && project && project.ownerUid === user.uid;
     const [currentProject, setCurrentProject] = React.useState(project);
     const [isLeaveOpen, setIsLeaveOpen] = React.useState(false);
-    const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
+    const [isDeleteOpen, setDeleteOpen] = React.useState(false);
 
     React.useEffect(() => {
         setCurrentProject(project);
