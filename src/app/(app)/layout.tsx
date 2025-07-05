@@ -42,27 +42,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // --- Redirection Logic ---
   React.useEffect(() => {
-    if (authLoading || projectsLoading) return; // Wait until all auth/project data is loaded
+    if (authLoading || projectsLoading) return;
 
     if (!user) {
       router.push('/login');
       return;
     }
-
-    const hasProjects = projects.length > 0;
-    const isProjectPage = pathname.startsWith('/proyek/');
-
-    if (hasProjects) {
-      // If user has projects but is on a non-project page (e.g., /beranda), redirect them.
-      if (!isProjectPage) {
-        router.replace(`/proyek/${projects[0].id}/observasi`);
-      }
-    } else {
-      // If user has NO projects, they should only be on the welcome page.
-      if (pathname !== '/beranda') {
+    
+    // Redirect from root to the hub.
+    if (pathname === '/') {
         router.replace('/beranda');
-      }
+        return;
     }
+    
+    const hasProjects = projects.length > 0;
+    // If the user has no projects and is NOT on the hub page, redirect them there.
+    if (!hasProjects && pathname !== '/beranda') {
+        router.replace('/beranda');
+    }
+    // No other redirects are necessary. A user with projects can be on /beranda or /proyek/*
+
   }, [user, authLoading, projects, projectsLoading, pathname, router]);
 
   React.useEffect(() => {
@@ -74,7 +73,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [userProfile]);
 
   const isAppLoading = authLoading || (user && projectsLoading);
-  const showMainContent = !isAppLoading && user && (projects.length > 0 || pathname === '/beranda');
+  const showMainContent = !isAppLoading && user;
 
   if (isAppLoading) {
     return <PageSkeleton withHeader />;
