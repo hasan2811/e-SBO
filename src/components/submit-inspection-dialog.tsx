@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Wrench, Sparkles, Wand2 } from 'lucide-react';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { triggerInspectionAnalysis } from '@/lib/actions/ai-actions';
@@ -62,7 +62,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   // AI Assistant State
   const [aiSuggestions, setAiSuggestions] = React.useState<AssistInspectionOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
-  const isAiEnabled = userProfile?.aiEnabled ?? true;
+  const isAiEnabled = userProfile?.aiEnabled ?? false;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -84,10 +84,10 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         setAiSuggestions(null);
         return;
       }
-      if (debouncedFindings && debouncedFindings.length > 20) {
+      if (debouncedFindings && debouncedFindings.length > 20 && userProfile) {
         setIsAiLoading(true);
         try {
-          const suggestions = await assistInspection({ findings: debouncedFindings }, userProfile!);
+          const suggestions = await assistInspection({ findings: debouncedFindings }, userProfile);
           setAiSuggestions(suggestions);
         } catch (error) {
           console.error('AI suggestion failed:', error);
@@ -179,7 +179,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         
         if (isAiEnabled) {
             const newInspection = { ...newInspectionData, id: docRef.id };
-            triggerInspectionAnalysis(newInspection).catch(error => {
+            triggerInspectionAnalysis(newInspection, userProfile).catch(error => {
                 console.error("Failed to trigger AI analysis for inspection:", error);
             });
         }
@@ -225,7 +225,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
                 <FormItem><FormLabel>Temuan</FormLabel><FormControl><Textarea placeholder="Jelaskan detail temuan inspeksi." rows={3} {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               
-              {/* AI Assistant Section */}
               {isAiEnabled && (
                 <div className="relative">
                   {isAiLoading && (

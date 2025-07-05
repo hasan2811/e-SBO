@@ -75,33 +75,25 @@ const AiAnalysisCard = ({ icon: Icon, title, content, color, loading }: { icon: 
   if (!content) return null;
 
   const colorStyles = {
-    primary: {
-      card: 'bg-primary/5 border-primary/20',
-      text: 'text-primary',
-    },
-    destructive: {
-      card: 'bg-destructive/5 border-destructive/20',
-      text: 'text-destructive',
-    },
-    'chart-2': {
-      card: 'bg-chart-2/5 border-chart-2/20',
-      text: 'text-chart-2',
-    },
+    primary: 'bg-primary/5 border-primary/20 text-primary',
+    destructive: 'bg-destructive/5 border-destructive/20 text-destructive',
+    'chart-2': 'bg-chart-2/5 border-chart-2/20 text-chart-2',
   };
 
-  const styles = colorStyles[color];
+  const cardClass = colorStyles[color];
+  const textClass = colorStyles[color];
 
   return (
-    <Card className={styles.card}>
+    <Card className={cardClass}>
       <CardHeader className="flex flex-row items-center gap-2 pb-2">
-        <Icon className={cn('h-5 w-5', styles.text)} />
-        <CardTitle className={cn('text-base', styles.text)}>{title}</CardTitle>
+        <Icon className={cn('h-5 w-5', textClass)} />
+        <CardTitle className={cn('text-base', textClass)}>{title}</CardTitle>
       </CardHeader>
       <CardContent className="pt-2">
         <ul className="space-y-1 pl-1">
           {content.split('\n').filter(line => line.trim().replace(/^- /, '').length > 0).map((item, index) => (
             <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-              <span className={cn('mt-1', styles.text)}>&bull;</span>
+              <span className={cn('mt-1', textClass)}>&bull;</span>
               <span>{item.replace(/^- /, '')}</span>
             </li>
           ))}
@@ -245,7 +237,7 @@ export default function DashboardPage() {
 
   // The main loading state for the page, true if either projects list or observations are loading.
   const loading = dataLoading || projectsLoading;
-  const isAiEnabled = userProfile?.aiEnabled ?? true;
+  const isAiEnabled = userProfile?.aiEnabled ?? false;
 
   React.useEffect(() => {
     const fetchProjectObservations = async () => {
@@ -454,7 +446,7 @@ export default function DashboardPage() {
         <h2 className="text-2xl font-bold tracking-tight">Dashboard Proyek</h2>
       </div>
 
-      {isAiEnabled && (!loading || analysis) && (
+      {isAiEnabled && (
         <>
           <div className="flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-primary" />

@@ -55,7 +55,7 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getInspectionById, updateItem } = useObservations();
+  const { getInspectionById } = useObservations();
   const { toast } = useToast();
   
   const inspection = inspectionId ? getInspectionById(inspectionId) : null;
@@ -70,7 +70,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
 
   if (!inspection) return null;
   
-  const isAiViewerEnabled = userProfile?.aiEnabled ?? true;
+  const isAiEnabled = userProfile?.aiEnabled ?? false;
 
   const projectName = inspection.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
   const canFollowUp = (inspection.status === 'Fail' || inspection.status === 'Needs Repair') && user?.uid === inspection.userId;
@@ -90,8 +90,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
     if (!inspection || !userProfile) return;
     setIsAnalyzing(true);
     try {
-        const updatedInspection = await runDeeperInspectionAnalysis(inspection.id);
-        updateItem(updatedInspection);
+        await runDeeperInspectionAnalysis(inspection.id, userProfile);
         toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.' });
@@ -176,7 +175,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                 </CardContent>
               </Card>
 
-              {isAiViewerEnabled && inspection.aiStatus !== 'n/a' && (
+              {isAiEnabled && inspection.aiStatus !== 'n/a' && (
                 <Card>
                   <CardHeader>
                       <CardTitle className="flex items-center gap-2">

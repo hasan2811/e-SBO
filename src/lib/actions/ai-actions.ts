@@ -11,12 +11,9 @@ import {
 } from '@/ai/flows/summarize-observation-data';
 import { triggerSmartNotify } from '@/ai/flows/smart-notify-flow';
 
-// ==================================
-// HELPER FUNCTIONS
-// ==================================
-
 /**
  * Gets a user's profile from Firestore.
+ * This is a helper function for server-side actions.
  * @param userId The UID of the user.
  * @returns The user profile object or null if not found.
  */
@@ -30,15 +27,19 @@ async function getUserProfile(userId: string): Promise<UserProfile | null> {
     return userSnap.data() as UserProfile;
 }
 
-
-// ==================================
-// AI ACTIONS
-// ==================================
-export async function triggerObservationAnalysis(observation: Observation) {
+/**
+ * Triggers the initial, fast AI analysis for a new observation.
+ * This function is fire-and-forget. It updates the document in the background.
+ * It respects the user's AI-enabled setting.
+ * @param observation The newly created observation object.
+ * @param userProfile The profile of the user who submitted the observation.
+ */
+export async function triggerObservationAnalysis(observation: Observation, userProfile: UserProfile) {
   const docRef = adminDb.collection('observations').doc(observation.id);
-  const userProfile = await getUserProfile(observation.userId);
-  if (!userProfile || !userProfile.aiEnabled) {
-      return docRef.update({ aiStatus: 'n/a' });
+  
+  if (!userProfile.aiEnabled) {
+      await docRef.update({ aiStatus: 'n/a' });
+      return;
   }
 
   await docRef.update({ aiStatus: 'processing' });
@@ -75,14 +76,21 @@ export async function triggerObservationAnalysis(observation: Observation) {
   }
 }
 
-export async function runDeeperAnalysis(observationId: string): Promise<Observation> {
+/**
+ * Triggers deeper, on-demand AI analysis for an observation.
+ * Returns the fully updated observation object.
+ * @param observationId The ID of the observation to analyze.
+ * @param userProfile The profile of the user requesting the analysis.
+ */
+export async function runDeeperAnalysis(observationId: string, userProfile: UserProfile): Promise<Observation> {
     const docRef = adminDb.collection('observations').doc(observationId);
     let docSnap = await docRef.get();
     if (!docSnap.exists) throw new Error("Observasi tidak ditemukan.");
     const observation = docSnap.data() as Observation;
 
-    const userProfile = await getUserProfile(observation.userId);
-    if (!userProfile || !userProfile.aiEnabled) throw new Error("AI features are disabled for this user.");
+    if (!userProfile.aiEnabled) {
+      throw new Error("Fitur AI dinonaktifkan untuk pengguna ini.");
+    }
 
     await docRef.update({ aiStatus: 'processing' });
 
@@ -96,7 +104,7 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
           return observation; 
         }
         
-        await docRef.update({
+        const updatePayload: Partial<Observation> = {
             aiStatus: 'completed',
             aiSummary: deepAnalysis.summary,
             aiObserverSkillRating: deepAnalysis.aiObserverSkillRating,
@@ -105,11 +113,11 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
             aiSuggestedActions: deepAnalysis.suggestedActions,
             aiRootCauseAnalysis: deepAnalysis.rootCauseAnalysis,
             aiRelevantRegulations: deepAnalysis.relevantRegulations,
-        });
+        };
 
-        const updatedDoc = await docRef.get();
-        const finalData = { ...updatedDoc.data(), id: updatedDoc.id } as Observation;
-        return finalData;
+        await docRef.update(updatePayload);
+
+        return { ...observation, ...updatePayload, id: observation.id };
     } catch (error) {
         console.error(`Deeper AI analysis failed for observation ${observationId}:`, error);
         docSnap = await docRef.get();
@@ -120,11 +128,17 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
     }
 }
 
-export async function triggerInspectionAnalysis(inspection: Inspection) {
+/**
+ * Triggers the initial, fast AI analysis for a new inspection.
+ * @param inspection The newly created inspection object.
+ * @param userProfile The profile of the user who submitted the inspection.
+ */
+export async function triggerInspectionAnalysis(inspection: Inspection, userProfile: UserProfile) {
   const docRef = adminDb.collection('inspections').doc(inspection.id);
-  const userProfile = await getUserProfile(inspection.userId);
-  if (!userProfile || !userProfile.aiEnabled) {
-      return docRef.update({ aiStatus: 'n/a' });
+
+  if (!userProfile.aiEnabled) {
+    await docRef.update({ aiStatus: 'n/a' });
+    return;
   }
   
   await docRef.update({ aiStatus: 'processing' });
@@ -149,14 +163,20 @@ export async function triggerInspectionAnalysis(inspection: Inspection) {
   }
 }
 
-export async function runDeeperInspectionAnalysis(inspectionId: string): Promise<Inspection> {
+/**
+ * Triggers deeper, on-demand AI analysis for an inspection.
+ * @param inspectionId The ID of the inspection to analyze.
+ * @param userProfile The profile of the user requesting the analysis.
+ */
+export async function runDeeperInspectionAnalysis(inspectionId: string, userProfile: UserProfile): Promise<Inspection> {
     const docRef = adminDb.collection('inspections').doc(inspectionId);
     let docSnap = await docRef.get();
     if (!docSnap.exists) throw new Error("Inspeksi tidak ditemukan.");
     const inspection = docSnap.data() as Inspection;
 
-    const userProfile = await getUserProfile(inspection.userId);
-    if (!userProfile || !userProfile.aiEnabled) throw new Error("AI features are disabled for this user.");
+    if (!userProfile.aiEnabled) {
+        throw new Error("Fitur AI dinonaktifkan untuk pengguna ini.");
+    }
 
     await docRef.update({ aiStatus: 'processing' });
 
@@ -170,16 +190,16 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
             return inspection;
         }
 
-        await docRef.update({
+        const updatePayload: Partial<Inspection> = {
             aiStatus: 'completed',
             aiSummary: deepAnalysis.summary,
             aiRisks: deepAnalysis.risks,
             aiSuggestedActions: deepAnalysis.suggestedActions,
-        });
+        };
+
+        await docRef.update(updatePayload);
         
-        const updatedDoc = await docRef.get();
-        const finalData = { ...updatedDoc.data(), id: updatedDoc.id } as Inspection;
-        return finalData;
+        return { ...inspection, ...updatePayload, id: inspection.id };
     } catch (error) {
         console.error(`Deeper AI analysis failed for inspection ${inspectionId}:`, error);
         docSnap = await docRef.get();
@@ -190,22 +210,20 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
     }
 }
 
-export async function retryAiAnalysis(item: Observation | Inspection): Promise<Observation | Inspection> {
-    const docRef = adminDb.collection(`${item.itemType}s`).doc(item.id);
-    const docSnap = await docRef.get();
-    if (!docSnap.exists) throw new Error("Item not found for AI retry.");
+export async function retryAiAnalysis(item: Observation | Inspection): Promise<void> {
+    const userProfile = await getUserProfile(item.userId);
+    if (!userProfile || !userProfile.aiEnabled) {
+        throw new Error("AI is disabled for the user.");
+    }
     
     if (item.itemType === 'observation') {
-      await triggerObservationAnalysis(item as Observation);
+      await triggerObservationAnalysis(item as Observation, userProfile);
     } else if (item.itemType === 'inspection') {
-      await triggerInspectionAnalysis(item as Inspection);
+      await triggerInspectionAnalysis(item as Inspection, userProfile);
     }
-    const updatedDoc = await docRef.get();
-    const finalData = { ...updatedDoc.data(), id: updatedDoc.id } as Observation | Inspection;
-    return finalData;
 }
 
-export async function shareObservationToPublic(observation: Observation, userProfile: UserProfile): Promise<{ updatedOriginal: Observation; newPublicItem: Observation }> {
+export async function shareObservationToPublic(observation: Observation, userProfile: UserProfile): Promise<void> {
     if (observation.isSharedPublicly) throw new Error("Laporan ini sudah dibagikan.");
     
     const originalDocRef = adminDb.collection('observations').doc(observation.id);
@@ -255,15 +273,4 @@ export async function shareObservationToPublic(observation: Observation, userPro
     batch.update(originalDocRef, { isSharedPublicly: true });
     
     await batch.commit();
-    
-    const updatedDocSnap = await originalDocRef.get();
-    const newPublicDocSnap = await newPublicDocRef.get();
-    if (!updatedDocSnap.exists() || !newPublicDocSnap.exists()) {
-        throw new Error("Gagal memverifikasi pembuatan laporan publik.");
-    }
-
-    const updatedOriginal = { ...updatedDocSnap.data(), id: updatedDocSnap.id } as Observation;
-    const newPublicItem = { ...newPublicDocSnap.data(), id: newPublicDocSnap.id } as Observation;
-    
-    return { updatedOriginal, newPublicItem };
 }

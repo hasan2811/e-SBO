@@ -79,7 +79,7 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getObservationById, handleLikeToggle, handleViewCount, updateItem } = useObservations();
+  const { getObservationById, handleLikeToggle, handleViewCount } = useObservations();
   const { toast } = useToast();
 
   const observation = observationId ? getObservationById(observationId) : null;
@@ -105,7 +105,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
 
   if (!observation) return null;
   
-  const isAiViewerEnabled = userProfile?.aiEnabled ?? true;
+  const isAiEnabled = userProfile?.aiEnabled ?? false;
   const mode = observation.scope;
   const canTakeAction = observation.status !== 'Completed' && mode !== 'public' && user?.uid === observation.userId;
   const projectName = observation.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
@@ -117,8 +117,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     if (!observation || !userProfile) return;
     setIsSharing(true);
     try {
-        const { updatedOriginal } = await shareObservationToPublic(observation, userProfile);
-        updateItem(updatedOriginal);
+        await shareObservationToPublic(observation, userProfile);
         toast({ title: 'Berhasil Dibagikan', description: 'Laporan Anda telah dibagikan ke feed publik.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Gagal Membagikan', description: 'Terjadi kesalahan saat mencoba membagikan.' });
@@ -141,8 +140,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     if (!observation || !userProfile) return;
     setIsAnalyzing(true);
     try {
-      const updatedObservation = await runDeeperAnalysis(observation.id);
-      updateItem(updatedObservation);
+      await runDeeperAnalysis(observation.id, userProfile);
       toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.'})
@@ -250,7 +248,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                 </CardContent>
             </Card>
 
-            {isAiViewerEnabled && observation.aiStatus !== 'n/a' && (
+            {isAiEnabled && observation.aiStatus !== 'n/a' && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">

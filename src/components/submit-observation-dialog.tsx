@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, Sparkles, Wand2 } from 'lucide-react';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { triggerObservationAnalysis } from '@/lib/actions/ai-actions';
@@ -60,7 +60,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   // AI Assistant State
   const [aiSuggestions, setAiSuggestions] = React.useState<AssistObservationOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
-  const isAiEnabled = userProfile?.aiEnabled ?? true;
+  const isAiEnabled = userProfile?.aiEnabled ?? false;
 
   const companyOptions = React.useMemo(() => 
     (project?.customCompanies && project.customCompanies.length > 0) ? project.customCompanies : DEFAULT_COMPANIES,
@@ -89,10 +89,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         return;
       }
 
-      if (debouncedFindings && debouncedFindings.length > 20) {
+      if (debouncedFindings && debouncedFindings.length > 20 && userProfile) {
         setIsAiLoading(true);
         try {
-          const suggestions = await assistObservation({ findings: debouncedFindings }, userProfile!);
+          const suggestions = await assistObservation({ findings: debouncedFindings }, userProfile);
           setAiSuggestions(suggestions);
         } catch (error) {
           console.error('AI suggestion failed:', error);
@@ -192,12 +192,12 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         
         if (isAiEnabled) {
           const finalObservation = { ...newObservationData, id: docRef.id };
-          triggerObservationAnalysis(finalObservation).catch(error => {
+          triggerObservationAnalysis(finalObservation, userProfile).catch(error => {
               console.error("Failed to trigger AI analysis:", error);
           });
         }
 
-        toast({ title: 'Laporan Terkirim', description: 'Observasi Anda berhasil disimpan. AI akan menganalisisnya.' });
+        toast({ title: 'Laporan Terkirim', description: 'Observasi Anda berhasil disimpan.' });
         onOpenChange(false);
     } catch (error) {
         console.error("Submission failed:", error);
@@ -225,7 +225,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
              Submit New Observation
           </DialogTitle>
           <DialogDescription>
-            Cukup isi temuan Anda. AI akan membantu menganalisis kategori dan risiko nanti.
+            {isAiEnabled
+              ? "Cukup isi temuan Anda. AI akan membantu menganalisis kategori dan risiko nanti."
+              : "Isi detail di bawah untuk menambahkan laporan observasi baru."
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -315,7 +318,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                 )}
               />
               
-              {/* AI Assistant Section */}
               {isAiEnabled && (
                 <div className="relative">
                   {isAiLoading && (
