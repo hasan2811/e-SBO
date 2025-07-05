@@ -10,7 +10,7 @@ import { Loader2, Upload, Wrench, Sparkles, Wand2 } from 'lucide-react';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
-import { triggerInspectionAnalysis } from '@/lib/actions/item-actions';
+import { triggerInspectionAnalysis } from '@/lib/actions/ai-actions';
 import { useDebounce } from 'use-debounce';
 import { assistInspection } from '@/ai/flows/assist-inspection-flow';
 

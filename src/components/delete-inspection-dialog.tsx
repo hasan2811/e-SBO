@@ -15,7 +15,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { Inspection } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { deleteItem as deleteItemAction } from '@/lib/actions/item-actions';
+import { deleteItem as deleteItemAction } from '@/lib/actions/db-actions';
 import { useObservations } from '@/hooks/use-observations';
 
 interface DeleteInspectionDialogProps {

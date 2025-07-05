@@ -35,7 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { updateInspectionStatus } from '@/lib/actions/item-actions';
+import { updateInspectionStatus } from '@/lib/actions/db-actions';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(1, 'Description cannot be empty.'),

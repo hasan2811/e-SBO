@@ -10,7 +10,7 @@ import { Loader2, Upload, Sparkles, Wand2 } from 'lucide-react';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
-import { triggerObservationAnalysis } from '@/lib/actions/item-actions';
+import { triggerObservationAnalysis } from '@/lib/actions/ai-actions';
 import { useDebounce } from 'use-debounce';
 import { assistObservation } from '@/ai/flows/assist-observation-flow';
 

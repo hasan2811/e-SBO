@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, PenSquare, Trash2 } from 'lucide-react';
-import { approvePtw as approvePtwAction } from '@/lib/actions/item-actions';
+import { approvePtw as approvePtwAction } from '@/lib/actions/db-actions';
 
 interface ApprovePtwDialogProps {
   isOpen: boolean;

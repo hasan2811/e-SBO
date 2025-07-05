@@ -16,7 +16,7 @@ import { Loader2, Trash2 } from 'lucide-react';
 import type { AllItems } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useObservations } from '@/hooks/use-observations';
-import { deleteMultipleItems as deleteMultipleItemsAction } from '@/lib/actions/item-actions';
+import { deleteMultipleItems as deleteMultipleItemsAction } from '@/lib/actions/db-actions';
 
 interface DeleteMultipleDialogProps {
   isOpen: boolean;

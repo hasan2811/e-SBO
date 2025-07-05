@@ -19,7 +19,7 @@ import { useObservations } from '@/hooks/use-observations';
 import { FollowUpInspectionDialog } from './follow-up-inspection-dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { runDeeperInspectionAnalysis, retryAiAnalysis } from '@/lib/actions/item-actions';
+import { runDeeperInspectionAnalysis, retryAiAnalysis } from '@/lib/actions/ai-actions';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';

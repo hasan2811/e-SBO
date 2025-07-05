@@ -21,7 +21,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DeleteObservationDialog } from './delete-observation-dialog';
 import { useObservations } from '@/hooks/use-observations';
-import { runDeeperAnalysis, shareObservationToPublic, retryAiAnalysis } from '@/lib/actions/item-actions';
+import { runDeeperAnalysis, shareObservationToPublic, retryAiAnalysis } from '@/lib/actions/ai-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
