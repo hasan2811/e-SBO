@@ -6,7 +6,7 @@ import Image from 'next/image';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel } from '@/lib/types';
 import { InspectionStatusBadge, PtwStatusBadge, StatusBadge, ObservationCategoryBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck, Clock } from 'lucide-react';
+import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ObservationDetailSheet } from '@/components/observation-detail-sheet';
@@ -34,6 +34,7 @@ const ListItemWrapper = ({ children, onSelect, item }: { children: React.ReactNo
     };
 
     const isPending = item.status === 'Pending' || item.status === 'Pending Approval';
+    const isCompleted = item.status === 'Completed' || item.status === 'Pass' || item.status === 'Approved' || item.status === 'Closed';
     const riskLevel = item.itemType === 'observation' ? item.riskLevel : undefined;
     const riskColor = riskLevel ? riskColorMap[riskLevel] : 'bg-transparent';
 
@@ -44,19 +45,20 @@ const ListItemWrapper = ({ children, onSelect, item }: { children: React.ReactNo
         >
             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${riskColor}`} />
             
-            {isPending && (
-                <div className="absolute top-2 right-2 text-muted-foreground" onClick={preventBubble}>
-                    <TooltipProvider delayDuration={100}>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Clock className="h-4 w-4" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Status: {item.status}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                </div>
+            {(isPending || isCompleted) && (
+              <div className="absolute top-2 right-2" onClick={preventBubble}>
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      {isPending && <Clock className="h-4 w-4 text-muted-foreground" />}
+                      {isCompleted && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Status: {item.status}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             )}
             
             <CardContent className="p-4 pl-6 flex items-start gap-4">
@@ -232,7 +234,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   return (
     <>
      <div className="space-y-4">
-        <div className="flex justify-between items-center gap-4">
+        <div className="flex flex-row justify-between items-center gap-4">
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
           <Button variant="ghost" size="icon" onClick={() => setIsSearchVisible(prev => !prev)}>
             <Search className="h-5 w-5"/>
