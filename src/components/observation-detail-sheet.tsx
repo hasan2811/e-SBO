@@ -22,7 +22,7 @@ import { DeleteObservationDialog } from './delete-observation-dialog';
 import { useObservations } from '@/hooks/use-observations';
 import { runDeeperAnalysis, retryAiAnalysis } from '@/lib/actions/ai-actions';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const categoryDefinitions: Record<ObservationCategory, string> = {
   'Safe Zone Position': 'Berada di posisi yang aman terlindung dari bahaya seperti peralatan bergerak, benda jatuh, atau pelepasan energi.',
@@ -180,6 +180,18 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                     <DetailRow icon={Tag} label="Kategori" value={observation.category} />
                 </CardContent>
             </Card>
+
+            {categoryDefinition && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Panduan Kategori</CardTitle>
+                        <CardDescription>{observation.category}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">{categoryDefinition}</p>
+                    </CardContent>
+                </Card>
+            )}
             
             <Card>
                 <CardHeader><CardTitle>Temuan & Rekomendasi</CardTitle></CardHeader>

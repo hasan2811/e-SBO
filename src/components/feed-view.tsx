@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -32,7 +33,7 @@ const ListItemWrapper = ({ children, onSelect }: { children: React.ReactNode, on
           onClick={handleItemClick}
           className="transition-all cursor-pointer hover:border-primary/50"
         >
-            <CardContent className="p-3 flex items-start gap-3">
+            <CardContent className="p-4 flex items-start gap-4">
                 {children}
             </CardContent>
         </Card>
@@ -125,7 +126,7 @@ interface FeedViewProps {
   description: string;
 }
 
-export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title }: FeedViewProps) {
+export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title, description }: FeedViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -207,10 +208,13 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   return (
     <>
      <div className="space-y-4">
-        <div className="flex flex-row justify-between items-center gap-4">
-            <h1 className="text-2xl font-bold tracking-tight flex-1">{title}</h1>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex-1">
+                <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+                <p className="text-sm text-muted-foreground mt-1">{description}</p>
+            </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-end sm:self-center">
                  <Button variant="ghost" size="icon" onClick={() => setIsSearchVisible(prev => !prev)}>
                     <Search className="h-5 w-5"/>
                     <span className="sr-only">Cari</span>
@@ -248,22 +252,22 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
 
       <main className="mt-6">
         {isLoading && items.length === 0 ? (
-          <ul className="space-y-3">
+          <ul className="space-y-4">
             {Array.from({ length: 4 }).map((_, i) => (
-               <Card key={i} className="p-3">
-                    <div className="flex items-start gap-3">
+               <Card key={i}>
+                    <CardContent className="p-4 flex items-start gap-4">
                         <Skeleton className="h-24 w-24 rounded-md" />
                         <div className="flex-1 space-y-3 pt-1">
                             <Skeleton className="h-4 w-1/3" />
                             <Skeleton className="h-5 w-full" />
                             <Skeleton className="h-4 w-2/3" />
                         </div>
-                    </div>
+                    </CardContent>
                </Card>
             ))}
           </ul>
         ) : filteredData.length > 0 ? (
-          <ul className="space-y-3">
+          <ul className="space-y-4">
              {filteredData.map(item => {
                 switch(item.itemType) {
                   case 'observation':
