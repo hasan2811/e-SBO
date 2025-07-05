@@ -126,6 +126,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     setPhotoPreview(null);
     setAiSuggestions(null);
     setIsAiLoading(false);
+    setIsSubmitting(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = '';
     }
@@ -158,61 +159,66 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     }
   };
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = (values: FormValues) => {
     if (!user || !userProfile) {
       toast({ variant: 'destructive', title: 'Belum Terautentikasi' });
       return;
     }
     setIsSubmitting(true);
-    try {
-        const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
-        const projectId = match ? match[1] : null;
-        
-        let photoUrl: string | null = null;
-        if (values.photo) {
-          photoUrl = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, projectId);
-        }
 
-        const scope: Scope = projectId ? 'project' : 'private';
-        const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const handleBackgroundSubmit = async () => {
+      try {
+          const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
+          const projectId = match ? match[1] : null;
+          
+          let photoUrl: string | null = null;
+          if (values.photo) {
+            photoUrl = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, projectId);
+          }
 
-        const newObservationData: Omit<Observation, 'id'> = {
-            itemType: 'observation',
-            userId: userProfile.uid,
-            date: new Date().toISOString(),
-            submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-            location: values.location as Location,
-            company: values.company as Company,
-            findings: values.findings,
-            recommendation: values.recommendation || '',
-            photoUrl: photoUrl,
-            scope,
-            projectId,
-            referenceId,
-            category: values.category as ObservationCategory,
-            riskLevel: values.riskLevel,
-            status: 'Pending',
-            aiStatus: isAiEnabled ? 'processing' : 'n/a',
-        };
-        
-        const docRef = await addDoc(collection(db, "observations"), newObservationData);
-        
-        if (isAiEnabled) {
-          const finalObservation = { ...newObservationData, id: docRef.id };
-          triggerObservationAnalysis(finalObservation, userProfile).catch(error => {
-              console.error("Failed to trigger AI analysis:", error);
-          });
-        }
+          const scope: Scope = projectId ? 'project' : 'private';
+          const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-        toast({ title: 'Laporan Terkirim', description: 'Observasi Anda berhasil disimpan.' });
-        onOpenChange(false);
-    } catch (error) {
-        console.error("Submission failed:", error);
-        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-        toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
-    } finally {
-        setIsSubmitting(false);
-    }
+          const newObservationData: Omit<Observation, 'id'> = {
+              itemType: 'observation',
+              userId: userProfile.uid,
+              date: new Date().toISOString(),
+              submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+              location: values.location as Location,
+              company: values.company as Company,
+              findings: values.findings,
+              recommendation: values.recommendation || '',
+              photoUrl: photoUrl,
+              scope,
+              projectId,
+              referenceId,
+              category: values.category as ObservationCategory,
+              riskLevel: values.riskLevel,
+              status: 'Pending',
+              aiStatus: isAiEnabled ? 'processing' : 'n/a',
+          };
+          
+          const docRef = await addDoc(collection(db, "observations"), newObservationData);
+          
+          if (isAiEnabled) {
+            const finalObservation = { ...newObservationData, id: docRef.id };
+            triggerObservationAnalysis(finalObservation, userProfile).catch(error => {
+                console.error("Failed to trigger AI analysis:", error);
+            });
+          }
+      } catch (error) {
+          console.error("Submission failed:", error);
+          const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+          toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
+      }
+    };
+    
+    // Fire and forget background task
+    handleBackgroundSubmit();
+
+    // Optimistic UI response
+    toast({ title: 'Laporan Terkirim', description: 'Observasi Anda akan segera muncul di feed.' });
+    onOpenChange(false);
   };
   
   const renderSelectItems = (items: readonly string[]) => {

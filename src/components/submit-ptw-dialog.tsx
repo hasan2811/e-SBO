@@ -73,6 +73,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
             contractor: '',
         });
         setFileName(null);
+        setIsSubmitting(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }, [isOpen, form, locationOptions]);
@@ -92,45 +93,52 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     }
   };
 
-  const onSubmit = async (values: FormValues) => {
-    if (!user || !userProfile || !values.jsaPdf) return;
+  const onSubmit = (values: FormValues) => {
+    if (!user || !userProfile || !values.jsaPdf) {
+        toast({ variant: 'destructive', title: 'Data tidak lengkap' });
+        return;
+    }
     setIsSubmitting(true);
     
-    try {
-        const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
-        const projectId = match ? match[1] : null;
+    const handleBackgroundSubmit = async () => {
+      try {
+          const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
+          const projectId = match ? match[1] : null;
 
-        const jsaPdfUrl = await uploadFile(values.jsaPdf, 'ptw-jsa', userProfile.uid, () => {}, projectId);
+          const jsaPdfUrl = await uploadFile(values.jsaPdf!, 'ptw-jsa', userProfile.uid, () => {}, projectId);
 
-        const scope: Scope = projectId ? 'project' : 'private';
-        const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-        
-        const newPtwData: Omit<Ptw, 'id'> = {
-            itemType: 'ptw',
-            userId: userProfile.uid,
-            date: new Date().toISOString(),
-            submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-            location: values.location as Location,
-            workDescription: values.workDescription,
-            contractor: values.contractor,
-            jsaPdfUrl: jsaPdfUrl,
-            scope,
-            projectId,
-            referenceId,
-            status: 'Pending Approval',
-        };
+          const scope: Scope = projectId ? 'project' : 'private';
+          const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+          
+          const newPtwData: Omit<Ptw, 'id'> = {
+              itemType: 'ptw',
+              userId: userProfile.uid,
+              date: new Date().toISOString(),
+              submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+              location: values.location as Location,
+              workDescription: values.workDescription,
+              contractor: values.contractor,
+              jsaPdfUrl: jsaPdfUrl,
+              scope,
+              projectId,
+              referenceId,
+              status: 'Pending Approval',
+          };
 
-        await addDoc(collection(db, 'ptws'), newPtwData);
-        
-        toast({ title: 'PTW Diajukan', description: `Izin kerja Anda telah berhasil disimpan.` });
-        onOpenChange(false);
-    } catch (error) {
-        console.error("Submission failed:", error);
-        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-        toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
-    } finally {
-        setIsSubmitting(false);
-    }
+          await addDoc(collection(db, 'ptws'), newPtwData);
+      } catch (error) {
+          console.error("Submission failed:", error);
+          const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+          toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
+      }
+    };
+    
+    // Fire and forget background task
+    handleBackgroundSubmit();
+
+    // Optimistic UI response
+    toast({ title: 'PTW Diajukan', description: `Izin kerja Anda akan segera muncul.` });
+    onOpenChange(false);
   };
 
   return (

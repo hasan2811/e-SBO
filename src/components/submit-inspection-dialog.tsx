@@ -118,6 +118,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     setPhotoPreview(null);
     setAiSuggestions(null);
     setIsAiLoading(false);
+    setIsSubmitting(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [form, locationOptions]);
 
@@ -144,55 +145,63 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     }
   };
 
-  const onSubmit = async (values: FormValues) => {
-    if (!user || !userProfile || !values.photo) return;
-    setIsSubmitting(true);
-    
-    try {
-        const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
-        const projectId = match ? match[1] : null;
-
-        const photoUrl = await uploadFile(values.photo, 'inspections', userProfile.uid, () => {}, projectId);
-        
-        const scope: Scope = projectId ? 'project' : 'private';
-        const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
-        const newInspectionData: Omit<Inspection, 'id'> = {
-            itemType: 'inspection',
-            userId: userProfile.uid,
-            date: new Date().toISOString(),
-            submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
-            location: values.location as Location,
-            equipmentName: values.equipmentName,
-            equipmentType: values.equipmentType,
-            status: values.status,
-            findings: values.findings,
-            recommendation: values.recommendation,
-            photoUrl: photoUrl,
-            scope,
-            projectId,
-            referenceId,
-            aiStatus: isAiEnabled ? 'processing' : 'n/a',
-        };
-
-        const docRef = await addDoc(collection(db, "inspections"), newInspectionData);
-        
-        if (isAiEnabled) {
-            const newInspection = { ...newInspectionData, id: docRef.id };
-            triggerInspectionAnalysis(newInspection, userProfile).catch(error => {
-                console.error("Failed to trigger AI analysis for inspection:", error);
-            });
-        }
-
-        toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda telah berhasil disimpan.` });
-        onOpenChange(false);
-    } catch (error) {
-        console.error("Submission failed:", error);
-        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-        toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
-    } finally {
-        setIsSubmitting(false);
+  const onSubmit = (values: FormValues) => {
+    if (!user || !userProfile || !values.photo) {
+      toast({ variant: 'destructive', title: 'Authentication Error' });
+      return;
     }
+    
+    setIsSubmitting(true);
+
+    const handleBackgroundSubmit = async () => {
+      try {
+          const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
+          const projectId = match ? match[1] : null;
+
+          const photoUrl = await uploadFile(values.photo!, 'inspections', userProfile.uid, () => {}, projectId);
+          
+          const scope: Scope = projectId ? 'project' : 'private';
+          const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+          const newInspectionData: Omit<Inspection, 'id'> = {
+              itemType: 'inspection',
+              userId: userProfile.uid,
+              date: new Date().toISOString(),
+              submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
+              location: values.location as Location,
+              equipmentName: values.equipmentName,
+              equipmentType: values.equipmentType,
+              status: values.status,
+              findings: values.findings,
+              recommendation: values.recommendation,
+              photoUrl: photoUrl,
+              scope,
+              projectId,
+              referenceId,
+              aiStatus: isAiEnabled ? 'processing' : 'n/a',
+          };
+
+          const docRef = await addDoc(collection(db, "inspections"), newInspectionData);
+          
+          if (isAiEnabled) {
+              const newInspection = { ...newInspectionData, id: docRef.id };
+              triggerInspectionAnalysis(newInspection, userProfile).catch(error => {
+                  console.error("Failed to trigger AI analysis for inspection:", error);
+              });
+          }
+      } catch (error) {
+          console.error("Submission failed:", error);
+          const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+          toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
+      }
+    };
+    
+    // Fire and forget background task
+    handleBackgroundSubmit();
+
+    // Optimistic UI response
+    toast({ title: 'Laporan Terkirim', description: `Laporan inspeksi Anda akan segera muncul.` });
+    onOpenChange(false);
   };
   
   const renderSelectItems = (items: readonly string[]) => items.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>);

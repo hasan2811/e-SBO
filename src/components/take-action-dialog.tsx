@@ -101,6 +101,7 @@ export function TakeActionDialog({
       setPhotoPreview(null);
       setCheckedActions([]);
       userHasTyped.current = false;
+      setIsSubmitting(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -133,41 +134,52 @@ export function TakeActionDialog({
     return null;
   }
 
-  const onSubmit = async (values: FormValues) => {
-    if (!user || !userProfile) {
+  const onSubmit = (values: FormValues) => {
+    if (!user || !userProfile || !observation) {
         toast({ variant: 'destructive', title: 'Not Authenticated' });
         return;
     }
     
     setIsSubmitting(true);
-    try {
-      let actionTakenPhotoUrl: string | undefined;
-      if (values.actionTakenPhoto) {
-        actionTakenPhotoUrl = await uploadFile(values.actionTakenPhoto, 'actions', user.uid, () => {}, observation?.projectId);
-      }
-      
-      const observationDocRef = doc(db, 'observations', observation.id);
-      const closerName = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
-      const updatedData: Partial<Observation> = {
-          status: 'Completed',
-          actionTakenDescription: values.actionTakenDescription,
-          closedBy: closerName,
-          closedDate: new Date().toISOString(),
-      };
-      if (actionTakenPhotoUrl) updatedData.actionTakenPhotoUrl = actionTakenPhotoUrl;
-      
-      await updateDoc(observationDocRef, updatedData);
-      
-      const updatedObservation = { ...observation, ...updatedData };
-      updateItem(updatedObservation);
 
-      toast({ title: 'Success', description: 'Observation has been marked as completed.' });
-      handleOpenChange(false);
-    } catch(error) {
-      toast({ variant: 'destructive', title: 'Update Failed', description: error instanceof Error ? error.message : "An unexpected error occurred." });
-    } finally {
-      setIsSubmitting(false);
-    }
+    // --- Optimistic Update ---
+    const closerName = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
+    const optimisticUpdate: Partial<Observation> = {
+      status: 'Completed',
+      actionTakenDescription: values.actionTakenDescription,
+      closedBy: closerName,
+      closedDate: new Date().toISOString(),
+    };
+    const optimisticallyUpdatedObservation = { ...observation, ...optimisticUpdate };
+    updateItem(optimisticallyUpdatedObservation);
+
+    toast({ title: 'Tindakan Disimpan', description: 'Laporan sedang diperbarui.' });
+    handleOpenChange(false);
+    
+    // --- Background Processing ---
+    const handleBackgroundUpdate = async () => {
+      try {
+        let actionTakenPhotoUrl: string | undefined;
+        if (values.actionTakenPhoto) {
+          actionTakenPhotoUrl = await uploadFile(values.actionTakenPhoto, 'actions', user.uid, () => {}, observation.projectId);
+        }
+        
+        const observationDocRef = doc(db, 'observations', observation.id);
+        const finalUpdateData: Partial<Observation> = { ...optimisticUpdate };
+        if (actionTakenPhotoUrl) {
+          finalUpdateData.actionTakenPhotoUrl = actionTakenPhotoUrl;
+        }
+        
+        await updateDoc(observationDocRef, finalUpdateData);
+        // The real-time listener will handle the final state synchronization.
+      } catch(error) {
+        toast({ variant: 'destructive', title: 'Update Failed', description: error instanceof Error ? error.message : "An unexpected error occurred." });
+        // Revert the optimistic update on failure
+        updateItem(observation);
+      }
+    };
+    
+    handleBackgroundUpdate();
   };
 
   return (
