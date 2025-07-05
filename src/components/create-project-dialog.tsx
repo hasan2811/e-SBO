@@ -82,6 +82,11 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
     try {
       await runTransaction(db, async (transaction) => {
         const userDocRef = doc(db, 'users', user.uid);
+        // READ FIRST for transaction safety
+        const userDoc = await transaction.get(userDocRef);
+        if (!userDoc.exists()) {
+          throw new Error("User profile does not exist. Cannot create project.");
+        }
         
         // 1. Set the new project document
         transaction.set(newProjectRef, newProjectData);
@@ -100,7 +105,8 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
       router.push(`/proyek/${newProjectRef.id}/observasi`);
     } catch (error) {
       console.error("Failed to create project:", error);
-      toast({ variant: 'destructive', title: 'Gagal Membuat Proyek', description: 'Terjadi kesalahan tak terduga saat menyimpan proyek.' });
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga saat menyimpan proyek.';
+      toast({ variant: 'destructive', title: 'Gagal Membuat Proyek', description: errorMessage });
     } finally {
       setIsCreating(false);
     }

@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query } from 'firebase/firestore';
+import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -50,16 +50,19 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
     const fetchJoinableProjects = async () => {
       setLoadingProjects(true);
       try {
-        const projectsQuery = query(collection(db, 'projects'));
+        // More efficient query: Only fetch projects that are open for joining.
+        // where("isOpen", "!=", false) gets docs where isOpen is true OR where the field doesn't exist.
+        const projectsQuery = query(collection(db, 'projects'), where("isOpen", "!=", false));
         const projectsSnapshot = await getDocs(projectsQuery);
-        const allProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
+        
+        const allOpenProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
 
+        // Filter out projects the user is already a member of on the client.
         const userProjectIds = userProfile.projectIds || [];
-
-        const projectsToFetch = allProjects.filter(p => (p.isOpen !== false) && !userProjectIds.includes(p.id));
+        const finalJoinableProjects = allOpenProjects.filter(p => !userProjectIds.includes(p.id));
 
         const projectsWithOwners = await Promise.all(
-          projectsToFetch.map(async project => {
+          finalJoinableProjects.map(async project => {
             let owner: UserProfile | null = null;
             if (project.ownerUid) {
               const userDocRef = doc(db, 'users', project.ownerUid);
@@ -97,9 +100,15 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
       const userRef = doc(db, 'users', user.uid);
 
       await runTransaction(db, async (transaction) => {
+        // READ FIRST for transaction safety
         const projectSnap = await transaction.get(projectRef);
+        const userSnap = await transaction.get(userRef);
+
         if (!projectSnap.exists()) {
           throw new Error('Project not found');
+        }
+        if (!userSnap.exists()) {
+          throw new Error("User profile not found. Cannot join project.");
         }
         
         // Check if the project is explicitly closed. `undefined` is treated as open.
@@ -129,6 +138,8 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
         description = 'Proyek dengan ID tersebut tidak ditemukan.';
       } else if (error.message === 'Project is not open for joining.') {
         description = 'Proyek ini sedang ditutup untuk anggota baru.';
+      } else {
+        description = error.message;
       }
       toast({ variant: 'destructive', title: 'Gagal Bergabung', description });
     } finally {
