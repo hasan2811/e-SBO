@@ -1,5 +1,7 @@
+
 {
-  "name": "functions",
+  "name": "functions-obsolete",
+  "description": "This directory is obsolete. The application uses direct client-side uploads and does not require Cloud Functions.",
   "scripts": {
     "lint": "eslint --ext .js,.ts .",
     "build": "tsc",

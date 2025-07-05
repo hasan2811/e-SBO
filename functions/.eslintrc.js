@@ -1,3 +1,4 @@
+
 module.exports = {
   root: true,
   env: {
@@ -20,6 +21,7 @@ module.exports = {
   ignorePatterns: [
     "/lib/**/*", // Ignore built files.
     "/generated/**/*", // Ignore generated files.
+    "index.js", // Ignore the root JS file which is not part of the TS project.
   ],
   plugins: [
     "@typescript-eslint",
