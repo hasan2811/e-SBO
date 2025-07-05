@@ -99,19 +99,19 @@ First, use the 'getProjectMembers' tool to get the list of members for the proje
 Then, analyze the observation details provided below.
 - Observation Company: {{{company}}}
 - Observation Findings: {{{findings}}}
-- Submitted By: {{{submittedBy}}}
+- Submitted By: {{{submittedByDisplayName}}}
 
 A member should be notified if they meet ANY of the following criteria:
 1.  Their profile company (from the tool output) exactly matches the "Observation Company".
 2.  Their display name (from the tool output) is mentioned anywhere in the "Observation Findings" text.
 
-IMPORTANT: Do NOT notify the user who submitted the observation. Their name is "{{{submittedBy}}}".
+IMPORTANT: Do NOT notify the user who submitted the observation. Their UID is "{{{submitterId}}}". Compare this against the 'uid' field from the 'getProjectMembers' tool results to exclude them.
 
 For EACH member that you identify, you must generate a personalized and concise notification message in Bahasa Indonesia. The message must explain WHY the user is being notified.
 
 Examples:
-- For company match: "Perusahaan Anda, [Company Name], disebut dalam temuan baru oleh ${submittedBy}: '[findings snippet]...'"
-- For name mention: "Nama Anda disebut dalam temuan baru oleh ${submittedBy}: '[findings snippet]...'"
+- For company match: "Perusahaan Anda, [Company Name], disebut dalam temuan baru oleh ${submittedByDisplayName}: '[findings snippet]...'"
+- For name mention: "Nama Anda disebut dalam temuan baru oleh ${submittedByDisplayName}: '[findings snippet]...'"
 
 Return a JSON object containing a list of these notifications. Each notification object in the list must have a 'uid' and a 'message'.
 `,
@@ -166,7 +166,7 @@ const smartNotifyFlow = ai.defineFlow(
  * @param input The details of the new observation.
  */
 async function sendBasicNotifications(input: SmartNotifyInput) {
-  const { observationId, projectId, company, findings, submittedBy } = input;
+  const { observationId, projectId, company, findings, submitterId, submittedByDisplayName } = input;
   
   const members = await getProjectMembers(projectId);
   if (members.length === 0) return;
@@ -174,12 +174,9 @@ async function sendBasicNotifications(input: SmartNotifyInput) {
   const notificationsToCreate: any[] = [];
   const lowerCaseFindings = findings.toLowerCase();
   
-  // Find the submitter's profile to exclude them
-  const submitterProfile = members.find(m => m.displayName === submittedBy);
-
   for (const member of members) {
-    // Don't notify the person who submitted the observation
-    if (submitterProfile && member.uid === submitterProfile.uid) {
+    // Don't notify the person who submitted the observation. Use the reliable UID.
+    if (member.uid === submitterId) {
         continue;
     }
 
@@ -198,7 +195,7 @@ async function sendBasicNotifications(input: SmartNotifyInput) {
     // If there's a reason to notify, create the notification object
     if (notifyReasons.length > 0) {
       const reasonText = notifyReasons.join(' dan ');
-      const message = `Anda menerima notifikasi karena ${reasonText} dalam temuan baru oleh ${submittedBy}.`;
+      const message = `Anda menerima notifikasi karena ${reasonText} dalam temuan baru oleh ${submittedByDisplayName}.`;
       
       notificationsToCreate.push({
         userId: member.uid,

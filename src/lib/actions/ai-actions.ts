@@ -50,7 +50,8 @@ export async function triggerObservationAnalysis(observation: Observation, userP
       projectId: observation.projectId,
       company: observation.company,
       findings: observation.findings,
-      submittedBy: observation.submittedBy.split(' (')[0],
+      submitterId: observation.userId,
+      submittedByDisplayName: observation.submittedBy.split(' (')[0],
     }, userProfile).catch(err => console.error(`Smart-notify failed for obs ${observation.id}`, err));
   }
 

@@ -259,7 +259,8 @@ export const SmartNotifyInputSchema = z.object({
     projectId: z.string(),
     company: z.string(),
     findings: z.string(),
-    submittedBy: z.string(),
+    submitterId: z.string().describe("The UID of the user who submitted the observation, to be excluded from notifications."),
+    submittedByDisplayName: z.string().describe("The display name of the user who submitted the observation, for use in message generation."),
 });
 export type SmartNotifyInput = z.infer<typeof SmartNotifyInputSchema>;
 
