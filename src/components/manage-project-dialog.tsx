@@ -277,8 +277,8 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project }: ManagePro
     const router = useRouter();
     const isOwner = user && project && project.ownerUid === user.uid;
     const [currentProject, setCurrentProject] = React.useState(project);
-    const [isLeaveOpen, setLeaveOpen] = React.useState(false);
-    const [isDeleteOpen, setDeleteOpen] = React.useState(false);
+    const [isLeaveOpen, setIsLeaveOpen] = React.useState(false);
+    const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
 
     React.useEffect(() => {
         setCurrentProject(project);
