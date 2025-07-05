@@ -17,11 +17,12 @@ export default function ProjectObservationPage() {
   
   const projectId = params.projectId as string;
   const observationIdToOpen = searchParams.get('openObservation');
-  const project = React.useMemo(() => projects.find(p => p.id === projectId), [projects, projectId]);
 
-  if (projectsLoading) {
+  if (projectsLoading || !projectId) {
     return <PageSkeleton />;
   }
+  
+  const project = projects.find(p => p.id === projectId);
 
   if (!project) {
     return (
