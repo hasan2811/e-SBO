@@ -28,7 +28,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
   const updateItem = React.useCallback((updatedItem: AllItems) => {
     setItems(prevItems => {
-        // First, check if the real item already exists.
+        // First, check if the real item already exists by its final ID.
         const existingIndex = prevItems.findIndex(item => item.id === updatedItem.id);
         
         if (existingIndex !== -1) {
@@ -38,10 +38,10 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             return newItems;
         }
 
-        // If it doesn't exist, it's a new item replacing an optimistic one.
-        // Find and replace the optimistic placeholder.
+        // If it doesn't exist, check if it's a server-confirmed item replacing an optimistic one.
+        // The optimistic item will have an ID starting with 'optimistic-' but the same referenceId.
         const optimisticIndex = prevItems.findIndex(item => 
-            item.optimisticState && item.referenceId && item.referenceId === updatedItem.referenceId
+            item.optimisticState === 'uploading' && item.referenceId === updatedItem.referenceId
         );
         
         if (optimisticIndex !== -1) {
@@ -50,7 +50,7 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
             return newItems;
         }
 
-        // If no existing or optimistic item is found, add it as a new one.
+        // If no existing or optimistic item is found, it's a new item from a different client. Add and sort.
         return [...prevItems, updatedItem].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     });
   }, []);
@@ -60,12 +60,13 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   }, []);
   
   const addItem = React.useCallback((newItem: AllItems) => {
-    // This function is specifically for adding optimistic items.
+    // This function is exclusively for adding optimistic items to the UI instantly.
     setItems(prev => {
+      // Prevent adding duplicate optimistic items if the user clicks submit multiple times.
       if (prev.some(item => item.id === newItem.id)) {
-          return prev; // Prevent adding duplicate optimistic items
+          return prev;
       }
-      // Add the new item and re-sort.
+      // Add the new item to the top and re-sort to ensure correct placement.
       return [newItem, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     });
   }, []);

@@ -48,7 +48,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   const [fileName, setFileName] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { addItem } = useObservations();
+  const { addItem, removeItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -103,9 +103,10 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     setIsSubmitting(true);
     
     const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const optimisticId = `optimistic-${referenceId}`;
 
     const optimisticItem: Ptw = {
-      id: `optimistic-${referenceId}`,
+      id: optimisticId,
       itemType: 'ptw',
       referenceId,
       userId: userProfile.uid,
@@ -124,6 +125,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     addItem(optimisticItem);
     onOpenChange(false);
 
+    // Fire-and-forget background submission
     const handleBackgroundSubmit = async () => {
       try {
           const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
@@ -153,6 +155,8 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
           console.error("Submission failed:", error);
           const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
           toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
+          // Remove the failed optimistic item from the UI.
+          removeItem(optimisticId);
       }
     };
     
@@ -199,7 +203,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
           <div className="flex w-full justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Batal</Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting && <Loader2 />}
               Ajukan PTW
             </Button>
           </div>

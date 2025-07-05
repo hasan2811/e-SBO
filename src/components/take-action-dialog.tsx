@@ -142,21 +142,21 @@ export function TakeActionDialog({
     
     setIsSubmitting(true);
 
-    // --- Optimistic Update ---
     const closerName = `${userProfile.displayName} (${userProfile.position || 'N/A'})`;
     const optimisticUpdate: Partial<Observation> = {
       status: 'Completed',
       actionTakenDescription: values.actionTakenDescription,
       closedBy: closerName,
       closedDate: new Date().toISOString(),
+      actionTakenPhotoUrl: photoPreview || observation.actionTakenPhotoUrl,
     };
     const optimisticallyUpdatedObservation = { ...observation, ...optimisticUpdate };
+    
     updateItem(optimisticallyUpdatedObservation);
-
-    toast({ title: 'Tindakan Disimpan', description: 'Laporan sedang diperbarui.' });
+    toast({ title: 'Tindakan Disimpan', description: 'Laporan sedang diperbarui...' });
     handleOpenChange(false);
     
-    // --- Background Processing ---
+    // Fire-and-forget background processing
     const handleBackgroundUpdate = async () => {
       try {
         let actionTakenPhotoUrl: string | undefined;
@@ -165,16 +165,21 @@ export function TakeActionDialog({
         }
         
         const observationDocRef = doc(db, 'observations', observation.id);
-        const finalUpdateData: Partial<Observation> = { ...optimisticUpdate };
+        const finalUpdateData: Partial<Observation> = {
+            status: 'Completed',
+            actionTakenDescription: values.actionTakenDescription,
+            closedBy: closerName,
+            closedDate: new Date().toISOString(),
+        };
         if (actionTakenPhotoUrl) {
           finalUpdateData.actionTakenPhotoUrl = actionTakenPhotoUrl;
         }
         
+        // This update will be caught by the real-time listener, ensuring the UI is consistent.
         await updateDoc(observationDocRef, finalUpdateData);
-        // The real-time listener will handle the final state synchronization.
       } catch(error) {
         toast({ variant: 'destructive', title: 'Update Failed', description: error instanceof Error ? error.message : "An unexpected error occurred." });
-        // Revert the optimistic update on failure
+        // Revert the optimistic update on failure by sending the original observation back.
         updateItem(observation);
       }
     };
@@ -292,7 +297,7 @@ export function TakeActionDialog({
               Cancel
             </Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || form.getValues('actionTakenDescription').length === 0 || isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting && <Loader2 />}
               Mark as Completed
             </Button>
           </div>

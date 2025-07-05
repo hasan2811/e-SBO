@@ -55,13 +55,12 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { addItem } = useObservations();
+  const { addItem, removeItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
-  // AI Assistant State
   const [aiSuggestions, setAiSuggestions] = React.useState<AssistObservationOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
   const isAiEnabled = userProfile?.aiEnabled ?? false;
@@ -169,9 +168,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     setIsSubmitting(true);
 
     const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const optimisticId = `optimistic-${referenceId}`;
 
     const optimisticItem: Observation = {
-        id: `optimistic-${referenceId}`,
+        id: optimisticId,
         itemType: 'observation',
         referenceId: referenceId,
         userId: userProfile.uid,
@@ -194,6 +194,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     addItem(optimisticItem);
     onOpenChange(false);
 
+    // Fire-and-forget background submission
     const handleBackgroundSubmit = async () => {
       try {
           const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
@@ -229,6 +230,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           
           if (isAiEnabled) {
             const finalObservation: Observation = { ...newObservationData, id: docRef.id };
+            // Do not await this. Let it run in the background.
             triggerObservationAnalysis(finalObservation, userProfile).catch(error => {
                 console.error("Failed to trigger AI analysis:", error);
             });
@@ -237,8 +239,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           console.error("Submission failed:", error);
           const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
           toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
-          // Optionally, remove the optimistic item on failure
-          // removeItem(optimisticItem.id);
+          // Remove the failed optimistic item from the UI.
+          removeItem(optimisticId);
       }
     };
     
