@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -52,8 +51,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     let q;
 
     if (isAdmin) {
-      // Admin gets all projects, ordered by creation date.
-      q = query(projectsCollection, orderBy('createdAt', 'desc'));
+      // Admin gets all projects. Sorting will happen on the client to avoid indexing issues.
+      q = query(projectsCollection);
     } else {
       const userProjectIds = userProfile.projectIds || [];
       if (userProjectIds.length === 0) {
@@ -72,10 +71,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         ...doc.data()
       })) as Project[];
       
-      // If not admin, sort client-side as 'in' query doesn't support ordering on another field.
-      if (!isAdmin) {
-        serverProjects.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      }
+      // Always sort client-side to ensure consistency and avoid indexing issues.
+      serverProjects.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
       setProjects(serverProjects);
       setLoading(false);
