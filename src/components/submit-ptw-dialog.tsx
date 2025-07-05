@@ -22,7 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { DEFAULT_LOCATIONS } from '@/lib/types';
 
 
@@ -52,6 +52,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const locationOptions = React.useMemo(() => 
@@ -96,7 +97,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   };
 
   const onSubmit = (values: FormValues) => {
-    if (!user || !userProfile || !values.jsaPdf) {
+    if (!user || !userProfile || !values.jsaPdf || !project) {
         toast({ variant: 'destructive', title: 'Data tidak lengkap' });
         return;
     }
@@ -124,6 +125,11 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
 
     addItem(optimisticItem);
     onOpenChange(false);
+
+    const targetPath = `/proyek/${project.id}/ptw`;
+    if (pathname !== targetPath) {
+      router.push(targetPath);
+    }
 
     // Fire-and-forget background submission
     const handleBackgroundSubmit = async () => {

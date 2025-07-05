@@ -26,7 +26,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { DEFAULT_LOCATIONS, DEFAULT_COMPANIES, DEFAULT_OBSERVATION_CATEGORIES, RISK_LEVELS } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -59,6 +59,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const [aiSuggestions, setAiSuggestions] = React.useState<AssistObservationOutput | null>(null);
@@ -161,8 +162,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   };
 
   const onSubmit = (values: FormValues) => {
-    if (!user || !userProfile) {
-      toast({ variant: 'destructive', title: 'Belum Terautentikasi' });
+    if (!user || !userProfile || !project) {
+      toast({ variant: 'destructive', title: 'Data tidak lengkap' });
       return;
     }
     setIsSubmitting(true);
@@ -193,6 +194,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
 
     addItem(optimisticItem);
     onOpenChange(false);
+    
+    const targetPath = `/proyek/${project.id}/observasi`;
+    if (pathname !== targetPath) {
+      router.push(targetPath);
+    }
 
     // Fire-and-forget background submission
     const handleBackgroundSubmit = async () => {

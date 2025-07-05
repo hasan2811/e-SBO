@@ -26,7 +26,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { DEFAULT_LOCATIONS, EQUIPMENT_TYPES, INSPECTION_STATUSES } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -59,6 +59,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const [aiSuggestions, setAiSuggestions] = React.useState<AssistInspectionOutput | null>(null);
@@ -147,8 +148,8 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   };
 
   const onSubmit = (values: FormValues) => {
-    if (!user || !userProfile || !values.photo) {
-      toast({ variant: 'destructive', title: 'Authentication Error' });
+    if (!user || !userProfile || !values.photo || !project) {
+      toast({ variant: 'destructive', title: 'Data tidak lengkap' });
       return;
     }
     
@@ -178,6 +179,11 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
 
     addItem(optimisticItem);
     onOpenChange(false);
+
+    const targetPath = `/proyek/${project.id}/inspeksi`;
+    if (pathname !== targetPath) {
+      router.push(targetPath);
+    }
 
     // Fire-and-forget background submission
     const handleBackgroundSubmit = async () => {
