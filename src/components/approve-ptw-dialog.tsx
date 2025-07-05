@@ -5,6 +5,7 @@ import * as React from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useObservations } from '@/hooks/use-observations';
 import type { Ptw } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,6 +30,7 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialog
   const sigCanvasRef = React.useRef<SignatureCanvas>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { updateItem } = useObservations();
 
   const clearSignature = () => {
     sigCanvasRef.current?.clear();
@@ -48,18 +50,19 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialog
     try {
       const signatureDataUrl = sigCanvasRef.current?.getTrimmedCanvas().toDataURL('image/png') || '';
       
-      await approvePtwAction({
+      const updatedPtw = await approvePtwAction({
           ptwId: ptw.id, 
           signatureDataUrl, 
           approverName: userProfile.displayName, 
           approverPosition: userProfile.position
       });
 
+      updateItem(updatedPtw); // Explicitly update context state
+
       toast({
         title: 'PTW Approved!',
         description: `Permit ${ptw.referenceId} has been successfully approved.`,
       });
-      // No longer call onSuccess. The onSnapshot listener will handle the UI update.
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to approve PTW:', error);

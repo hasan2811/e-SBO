@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Observation } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
 import { deleteItem as deleteItemAction } from '@/lib/actions/item-actions';
-
+import { useObservations } from '@/hooks/use-observations';
 
 interface DeleteObservationDialogProps {
   isOpen: boolean;
@@ -32,17 +32,18 @@ export function DeleteObservationDialog({
   onSuccess,
 }: DeleteObservationDialogProps) {
   const { toast } = useToast();
+  const { removeItem } = useObservations();
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteItemAction(observation);
+      const { id } = await deleteItemAction(observation);
+      removeItem(id); // Explicitly update context state
       toast({
         title: 'Berhasil Dihapus',
         description: `Laporan observasi telah berhasil dihapus.`,
       });
-      // The onSnapshot listener will handle UI updates.
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {

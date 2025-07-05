@@ -27,8 +27,8 @@ interface ObservationContextType {
   hasMore: boolean;
   error: string | null;
   fetchMoreItems: () => void;
-  // addItem, updateItem, removeItem are removed to prevent race conditions.
-  // The onSnapshot listener is now the single source of truth for UI updates.
+  updateItem: (item: AllItems) => void;
+  removeItem: (itemId: string) => void;
   handleLikeToggle: (observationId: string) => Promise<void>;
   handleViewCount: (observationId: string) => void;
   viewType: 'observations' | 'inspections' | 'ptws';
@@ -60,7 +60,15 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
   const mode: Scope = pathname.startsWith('/proyek') ? 'project' : pathname.startsWith('/public') ? 'public' : 'private';
   const projectId = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/)?.[1] || null;
 
-  // Realtime listener effect. This is now the ONLY mechanism that updates the item list.
+  const updateItem = React.useCallback((updatedItem: AllItems) => {
+    setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
+  }, []);
+
+  const removeItem = React.useCallback((itemId: string) => {
+    setItems(prevItems => prevItems.filter(item => item.id !== itemId));
+  }, []);
+
+
   React.useEffect(() => {
     if ((mode === 'private' || mode === 'project') && !user) {
         setItems([]);
@@ -147,24 +155,17 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     }
   }, [hasMore, isLoading, lastVisible, mode, user, projectId, viewType]);
 
-  // Removed addItem, updateItem, removeItem to prevent race conditions.
-  // The onSnapshot listener is now the single source of truth for UI updates.
-
   const handleLikeToggle = React.useCallback(async (observationId: string) => {
     if (!user) return;
-    // We no longer optimistically update the UI here.
-    // The server action will update the DB, and the onSnapshot listener will catch the change.
     try {
-        await toggleLike({ docId: observationId, userId: user.uid, collectionName: 'observations' });
+        const updatedObservation = await toggleLike({ docId: observationId, userId: user.uid, collectionName: 'observations' });
+        updateItem(updatedObservation);
     } catch (error) {
         console.error("Failed to sync like with server:", error);
-        // No need to revert, as the UI was not changed.
     }
-  }, [user]);
+  }, [user, updateItem]);
   
   const handleViewCount = React.useCallback((observationId: string) => {
-      // No optimistic update. Just fire-and-forget the server action.
-      // The onSnapshot listener will eventually sync the view count.
       incrementViewCount({ docId: observationId, collectionName: 'observations' }).catch(console.error);
   }, []);
   
@@ -182,12 +183,12 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
 
   const value = React.useMemo(() => ({
     items, isLoading, hasMore, error,
-    fetchMoreItems,
+    fetchMoreItems, updateItem, removeItem,
     handleLikeToggle, handleViewCount,
     viewType, setViewType, getObservationById, getInspectionById, getPtwById
   }), [
       items, isLoading, hasMore, error,
-      fetchMoreItems,
+      fetchMoreItems, updateItem, removeItem,
       handleLikeToggle, handleViewCount,
       viewType, getObservationById, getInspectionById, getPtwById
   ]);

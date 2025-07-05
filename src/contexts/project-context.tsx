@@ -10,6 +10,9 @@ import type { Project } from '@/lib/types';
 interface ProjectContextType {
   projects: Project[];
   loading: boolean;
+  addProject: (project: Project) => void;
+  updateProject: (project: Project) => void;
+  removeProject: (projectId: string) => void;
 }
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -18,24 +21,35 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
+  
+  // Explicit state manipulation functions for instant UI feedback
+  const addProject = React.useCallback((project: Project) => {
+    setProjects(prev => [project, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+  }, []);
+
+  const updateProject = React.useCallback((updatedProject: Project) => {
+    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+  }, []);
+  
+  const removeProject = React.useCallback((projectId: string) => {
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+  }, []);
+
 
   React.useEffect(() => {
     let unsubscribe: Unsubscribe = () => {};
 
-    // Don't do anything until auth state is resolved.
     if (authLoading) {
       setLoading(true);
       return;
     }
     
-    // If no user, there are no projects to fetch.
     if (!user) {
       setProjects([]);
       setLoading(false);
       return;
     }
 
-    // At this point, we have a user. Start loading projects.
     setLoading(true);
 
     const projectsCollection = collection(db, 'projects');
@@ -44,13 +58,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         : query(projectsCollection, where('memberUids', 'array-contains', user.uid));
 
     unsubscribe = onSnapshot(q, (snapshot) => {
-      const userProjects = snapshot.docs.map(doc => ({
+      const serverProjects = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Project[];
       
-      setProjects(userProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      setLoading(false); // Stop loading once projects are fetched
+      setProjects(serverProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      setLoading(false);
     }, (error) => {
       console.error("Error fetching projects:", error);
       setProjects([]);
@@ -60,7 +74,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [user, isAdmin, authLoading]);
 
-  const value = { projects, loading };
+  const value = { projects, loading, addProject, updateProject, removeProject };
 
   return (
     <ProjectContext.Provider value={value}>

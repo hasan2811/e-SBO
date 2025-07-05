@@ -57,42 +57,33 @@ interface ObservationDetailSheetProps {
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getObservationById, handleLikeToggle, handleViewCount } = useObservations();
+  const { getObservationById, handleLikeToggle, handleViewCount, updateItem } = useObservations();
   const { toast } = useToast();
 
-  const observationFromContext = observationId ? getObservationById(observationId) : null;
-  const [currentObservation, setCurrentObservation] = React.useState(observationFromContext);
-
+  // The observation from context is the single source of truth
+  const observation = observationId ? getObservationById(observationId) : null;
+  
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isSharing, setIsSharing] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const viewCountedRef = React.useRef<string | null>(null);
 
-  React.useEffect(() => {
-    // This effect ensures that if the context updates (e.g. from the snapshot listener),
-    // the local state is updated to reflect the latest truth from the database.
-    const latestObservation = observationId ? getObservationById(observationId) : null;
-    setCurrentObservation(latestObservation);
-  }, [observationId, getObservationById, isOpen]);
-
   const handleCloseSheet = () => {
     onOpenChange(false);
   };
   
   React.useEffect(() => {
-    if (isOpen && currentObservation?.scope === 'public') {
-        if (viewCountedRef.current !== currentObservation.id) {
-            handleViewCount(currentObservation.id);
-            viewCountedRef.current = currentObservation.id;
+    if (isOpen && observation?.scope === 'public') {
+        if (viewCountedRef.current !== observation.id) {
+            handleViewCount(observation.id);
+            viewCountedRef.current = observation.id;
         }
     }
-  }, [isOpen, currentObservation, handleViewCount]);
+  }, [isOpen, observation, handleViewCount]);
 
-  if (!currentObservation) return null;
+  if (!observation) return null;
   
-  // Use the local state for all rendering logic from now on.
-  const observation = currentObservation;
   const isAiViewerEnabled = userProfile?.aiEnabled ?? true;
 
   const mode = observation.scope;
@@ -105,8 +96,8 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     if (!observation || !userProfile) return;
     setIsSharing(true);
     try {
-        await shareObservationToPublic(observation, userProfile);
-        // No optimistic update needed. The onSnapshot listener will add the new public item.
+        const { updatedOriginal } = await shareObservationToPublic(observation, userProfile);
+        updateItem(updatedOriginal); // Explicitly update context state for the original item
         toast({ title: 'Berhasil Dibagikan', description: 'Laporan Anda telah dibagikan ke feed publik.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Gagal Membagikan', description: 'Terjadi kesalahan saat mencoba membagikan.' });
@@ -130,7 +121,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     setIsAnalyzing(true);
     try {
       const updatedObservation = await runDeeperAnalysis(observation.id);
-      setCurrentObservation(updatedObservation); // Immediately update UI with server response
+      updateItem(updatedObservation); // Explicitly update context state
       toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.'})
@@ -303,7 +294,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
               <p className="text-sm text-muted-foreground">{observation.recommendation}</p>
             </div>
 
-            {/* AI ANALYSIS SECTION - Conditionally rendered based on viewer's settings */}
             {isAiViewerEnabled && observation.aiStatus !== 'n/a' && (
               <div className="space-y-4 pt-4 mt-4 border-t">
                 <h3 className="font-semibold text-base flex items-center gap-2">
@@ -455,7 +445,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
           isOpen={isActionDialogOpen}
           onOpenChange={setActionDialogOpen}
           observation={observation}
-          onSuccess={setCurrentObservation}
       />
     )}
     </>

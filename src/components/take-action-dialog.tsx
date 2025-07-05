@@ -11,6 +11,7 @@ import { Loader2, Upload, ListChecks } from 'lucide-react';
 import type { Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useObservations } from '@/hooks/use-observations';
 import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
@@ -50,18 +51,17 @@ interface TakeActionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   observation?: Observation;
-  onSuccess: (updatedObservation: Observation) => void;
 }
 
 export function TakeActionDialog({
   isOpen,
   onOpenChange,
   observation,
-  onSuccess,
 }: TakeActionDialogProps) {
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { updateItem } = useObservations();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -157,7 +157,7 @@ export function TakeActionDialog({
           userPosition: userProfile.position
       });
       
-      onSuccess(updatedObservation);
+      updateItem(updatedObservation); // Explicitly update context state
       toast({ title: 'Success', description: 'Observation has been marked as completed.' });
       handleOpenChange(false);
     } catch(error) {

@@ -15,6 +15,7 @@ import {
 import { Loader2, Trash2 } from 'lucide-react';
 import type { AllItems } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useObservations } from '@/hooks/use-observations';
 import { deleteMultipleItems as deleteMultipleItemsAction } from '@/lib/actions/item-actions';
 
 interface DeleteMultipleDialogProps {
@@ -32,18 +33,19 @@ export function DeleteMultipleDialog({
 }: DeleteMultipleDialogProps) {
   const [isDeleting, setIsDeleting] = React.useState(false);
   const { toast } = useToast();
+  const { removeItem } = useObservations();
 
   const handleConfirmClick = async () => {
     if (itemsToDelete.length === 0) return;
     
     setIsDeleting(true);
     try {
-      await deleteMultipleItemsAction(itemsToDelete);
+      const { deletedIds } = await deleteMultipleItemsAction(itemsToDelete);
+      deletedIds.forEach(id => removeItem(id)); // Explicitly update context state
       toast({
         title: 'Berhasil Dihapus',
         description: `${itemsToDelete.length} item telah berhasil dihapus.`,
       });
-      // The onSnapshot listener will handle UI updates.
       onSuccess();
       onOpenChange(false);
     } catch (error) {

@@ -31,28 +31,21 @@ interface InspectionDetailSheetProps {
 export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: InspectionDetailSheetProps) {
   const { projects } = useProjects();
   const { user, userProfile } = useAuth();
-  const { getInspectionById } = useObservations();
+  const { getInspectionById, updateItem } = useObservations();
   const { toast } = useToast();
   
-  const inspectionFromContext = inspectionId ? getInspectionById(inspectionId) : null;
-  const [currentInspection, setCurrentInspection] = React.useState(inspectionFromContext);
+  const inspection = inspectionId ? getInspectionById(inspectionId) : null;
   
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
 
-  React.useEffect(() => {
-    const latestInspection = inspectionId ? getInspectionById(inspectionId) : null;
-    setCurrentInspection(latestInspection);
-  }, [inspectionId, getInspectionById, isOpen]);
-
-
   const handleCloseSheet = () => {
     onOpenChange(false);
   };
 
-  if (!currentInspection) return null;
-  const inspection = currentInspection;
+  if (!inspection) return null;
+  
   const isAiViewerEnabled = userProfile?.aiEnabled ?? true;
 
   const projectName = inspection.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
@@ -74,7 +67,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
     setIsAnalyzing(true);
     try {
         const updatedInspection = await runDeeperInspectionAnalysis(inspection.id);
-        setCurrentInspection(updatedInspection);
+        updateItem(updatedInspection);
         toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.' });
@@ -170,7 +163,6 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                 </div>
               )}
 
-              {/* AI ANALYSIS SECTION - Conditionally rendered based on viewer's settings */}
               {isAiViewerEnabled && inspection.aiStatus !== 'n/a' && (
                 <div className="space-y-4 pt-4 mt-4 border-t">
                     <h3 className="font-semibold text-base flex items-center gap-2">
@@ -300,7 +292,6 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
           isOpen={isFollowUpOpen}
           onOpenChange={setFollowUpOpen}
           inspection={inspection}
-          onSuccess={setCurrentInspection}
         />
       )}
     </>

@@ -20,11 +20,10 @@ import type { Project } from '@/lib/types';
 
 export default function ProjectHubPage() {
   const { user } = useAuth();
-  const { projects, loading, error } = useProjects();
+  const { projects, loading, removeProject } = useProjects();
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
   const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
   
-  // State for moved dialogs
   const [projectForAction, setProjectForAction] = React.useState<Project | null>(null);
   const [isAddMemberOpen, setAddMemberOpen] = React.useState(false);
   const [isDeleteOpen, setDeleteOpen] = React.useState(false);
@@ -38,10 +37,8 @@ export default function ProjectHubPage() {
     dialogSetter(true);
   };
   
-  const handleSuccess = () => {
+  const handleDialogClose = () => {
     setProjectForAction(null);
-    setDeleteOpen(false);
-    setLeaveOpen(false);
   };
 
   return (
@@ -66,34 +63,17 @@ export default function ProjectHubPage() {
           </div>
         </div>
 
-        {error && (
-            <Card className="border-destructive bg-destructive/10">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-destructive">
-                        <AlertCircle />
-                        Gagal Memuat Proyek
-                    </CardTitle>
-                    <CardDescription className="text-destructive/80">
-                        Tidak dapat mengambil daftar proyek Anda. Ini mungkin karena masalah izin atau koneksi.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm font-medium">
-                       Jika Anda yakin memiliki izin, coba muat ulang halaman ini. Jika masalah berlanjut, hubungi administrator.
-                    </p>
-                </CardContent>
-            </Card>
-        )}
-
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Proyek Anda</h2>
-          {loading ? (
+        {loading && projects.length === 0 && (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               <Skeleton className="h-40" />
               <Skeleton className="h-40" />
               <Skeleton className="h-40" />
             </div>
-          ) : projects.length > 0 ? (
+        )}
+
+        {projects.length > 0 ? (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Proyek Anda</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {projects.map((project) => {
                 const isOwner = user && project.ownerUid === user.uid;
@@ -165,15 +145,15 @@ export default function ProjectHubPage() {
                 )
               })}
             </div>
-          ) : !error ? (
+          </div>
+        ) : !loading ? (
             <Card className="flex flex-col items-center justify-center p-8 text-center min-h-[200px] border-dashed">
               <CardTitle>Anda Belum Bergabung dengan Proyek Apapun</CardTitle>
               <CardDescription className="mt-2 max-w-sm">
                 Buat proyek baru atau gabung dengan proyek yang sudah ada untuk memulai.
               </CardDescription>
             </Card>
-          ) : null}
-        </div>
+        ) : null}
       </div>
 
       <JoinProjectDialog isOpen={isJoinDialogOpen} onOpenChange={setJoinDialogOpen} />
@@ -183,26 +163,24 @@ export default function ProjectHubPage() {
           <>
             <ManageProjectDialog
                 isOpen={isManageOpen}
-                onOpenChange={(open) => { if(!open) setProjectForAction(null); setManageOpen(open); }}
+                onOpenChange={(open) => { if(!open) handleDialogClose(); setManageOpen(open); }}
                 project={projectForAction}
                 defaultTab={manageDefaultTab}
             />
             <AddMemberDialog 
                 isOpen={isAddMemberOpen} 
-                onOpenChange={(open) => { if(!open) setProjectForAction(null); setAddMemberOpen(open); }}
+                onOpenChange={(open) => { if(!open) handleDialogClose(); setAddMemberOpen(open); }}
                 project={projectForAction} 
             />
             <DeleteProjectDialog 
                 isOpen={isDeleteOpen} 
-                onOpenChange={(open) => { if(!open) setProjectForAction(null); setDeleteOpen(open); }}
+                onOpenChange={(open) => { if(!open) handleDialogClose(); setDeleteOpen(open); }}
                 project={projectForAction} 
-                onSuccess={handleSuccess} 
             />
             <LeaveProjectDialog 
                 isOpen={isLeaveOpen} 
-                onOpenChange={(open) => { if(!open) setProjectForAction(null); setLeaveOpen(open); }}
+                onOpenChange={(open) => { if(!open) handleDialogClose(); setLeaveOpen(open); }}
                 project={projectForAction} 
-                onSuccess={handleSuccess} 
             />
           </>
       )}

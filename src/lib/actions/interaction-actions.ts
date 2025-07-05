@@ -2,6 +2,7 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
+import type { Observation } from '@/lib/types';
 
 interface ToggleLikeParams {
   docId: string;
@@ -11,10 +12,10 @@ interface ToggleLikeParams {
 
 /**
  * Toggles a like on an observation document. This is an atomic operation.
- * Now uses the Admin SDK to bypass Firestore rules.
+ * Now uses the Admin SDK to bypass Firestore rules and returns the updated document.
  * @param params - The parameters for the toggle operation.
  */
-export async function toggleLike({ docId, userId, collectionName }: ToggleLikeParams) {
+export async function toggleLike({ docId, userId, collectionName }: ToggleLikeParams): Promise<Observation> {
   if (!docId || !userId || !collectionName) {
     throw new Error('Document ID, User ID, and Collection Name are required.');
   }
@@ -44,6 +45,10 @@ export async function toggleLike({ docId, userId, collectionName }: ToggleLikePa
         likeCount: newLikes.length,
       });
     });
+
+    const updatedDocSnap = await docRef.get();
+    return { id: updatedDocSnap.id, ...updatedDocSnap.data() } as Observation;
+
   } catch (error) {
     console.error('Error toggling like:', error);
     throw new Error('Could not update like status.');
