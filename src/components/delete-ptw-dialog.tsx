@@ -34,7 +34,7 @@ export function DeletePtwDialog({
   onSuccess,
 }: DeletePtwDialogProps) {
   const { toast } = useToast();
-  const { removeItem } = useObservations();
+  const { removeItem } = useObservations(null, 'ptw');
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDelete = async () => {

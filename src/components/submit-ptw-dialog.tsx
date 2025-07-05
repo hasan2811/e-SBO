@@ -48,7 +48,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   const [fileName, setFileName] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { addItem, removeItem } = useObservations();
+  const { addItem, removeItem } = useObservations(project?.id || null, 'ptw');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();

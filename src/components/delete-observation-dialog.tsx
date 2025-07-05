@@ -34,7 +34,7 @@ export function DeleteObservationDialog({
   onSuccess,
 }: DeleteObservationDialogProps) {
   const { toast } = useToast();
-  const { removeItem } = useObservations();
+  const { removeItem } = useObservations(null, 'observation'); // Hook instance for actions
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDelete = async () => {
@@ -53,7 +53,9 @@ export function DeleteObservationDialog({
           await deleteObject(actionPhotoRef).catch(err => console.error("Non-blocking: Failed to delete action photo", err));
       }
 
+      // Optimistically remove from UI
       removeItem(observation.id);
+      
       toast({
         title: 'Berhasil Dihapus',
         description: `Laporan observasi telah berhasil dihapus.`,

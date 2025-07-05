@@ -34,7 +34,7 @@ export function DeleteInspectionDialog({
   onSuccess,
 }: DeleteInspectionDialogProps) {
   const { toast } = useToast();
-  const { removeItem } = useObservations();
+  const { removeItem } = useObservations(null, 'inspection');
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDelete = async () => {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -38,19 +39,12 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, labe
 export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetProps) {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
-  const [ptw, setPtw] = React.useState<Ptw | null>(null);
-
+  
   const { projects } = useProjects();
   const { getPtwById } = useObservationData();
 
-  React.useEffect(() => {
-    if (isOpen && ptwId) {
-      const ptwData = getPtwById(ptwId);
-      setPtw(ptwData || null);
-    } else {
-      setPtw(null);
-    }
-  }, [isOpen, ptwId, getPtwById]);
+  // Directly get the PTW from the central context. No local state needed.
+  const ptw = ptwId ? getPtwById(ptwId) : null;
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);

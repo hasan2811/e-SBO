@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -56,20 +57,12 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const { getObservationById } = useObservationData();
   const { toast } = useToast();
 
-  const [observation, setObservation] = React.useState<Observation | null>(null);
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
 
-  React.useEffect(() => {
-    if (isOpen && observationId) {
-      const obsData = getObservationById(observationId);
-      setObservation(obsData || null);
-    } else {
-      // Clear data when sheet is closed
-      setObservation(null);
-    }
-  }, [isOpen, observationId, getObservationById]);
+  // Directly get the observation from the central context. No local state needed.
+  const observation = observationId ? getObservationById(observationId) : null;
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);

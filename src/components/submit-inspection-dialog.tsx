@@ -55,7 +55,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { addItem, removeItem } = useObservations();
+  const { addItem, removeItem } = useObservations(project?.id || null, 'inspection');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();

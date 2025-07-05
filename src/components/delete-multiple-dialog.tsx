@@ -35,7 +35,7 @@ export function DeleteMultipleDialog({
 }: DeleteMultipleDialogProps) {
   const [isDeleting, setIsDeleting] = React.useState(false);
   const { toast } = useToast();
-  const { removeItem } = useObservations();
+  const { removeItem } = useObservations(null, 'observation'); // It doesn't matter which type, removeItem is generic
 
   const handleConfirmClick = async () => {
     if (itemsToDelete.length === 0) return;
@@ -46,16 +46,24 @@ export function DeleteMultipleDialog({
       const storageDeletePromises: Promise<any>[] = [];
 
       for (const item of itemsToDelete) {
-        const docRef = doc(db, `${item.itemType}s`, item.id);
+        const collectionName = `${item.itemType}s`;
+        const docRef = doc(db, collectionName, item.id);
         batch.delete(docRef);
 
         if (item.itemType === 'observation' || item.itemType === 'inspection') {
-          if(item.photoUrl) storageDeletePromises.push(deleteObject(ref(storage, item.photoUrl)).catch(e => console.error(e)));
-          if ('actionTakenPhotoUrl' in item && item.actionTakenPhotoUrl) {
-            storageDeletePromises.push(deleteObject(ref(storage, item.actionTakenPhotoUrl)).catch(e => console.error(e)));
+          if('photoStoragePath' in item && item.photoStoragePath) {
+            storageDeletePromises.push(deleteObject(ref(storage, item.photoStoragePath)).catch(e => console.error(e)));
           }
-        } else if (item.itemType === 'ptw' && item.jsaPdfUrl) {
-          storageDeletePromises.push(deleteObject(ref(storage, item.jsaPdfUrl)).catch(e => console.error(e)));
+          if ('actionTakenPhotoStoragePath' in item && item.actionTakenPhotoStoragePath) {
+            storageDeletePromises.push(deleteObject(ref(storage, item.actionTakenPhotoStoragePath)).catch(e => console.error(e)));
+          }
+        } else if (item.itemType === 'ptw') {
+            if('jsaPdfStoragePath' in item && item.jsaPdfStoragePath) {
+                storageDeletePromises.push(deleteObject(ref(storage, item.jsaPdfStoragePath)).catch(e => console.error(e)));
+            }
+            if('stampedPdfStoragePath' in item && item.stampedPdfStoragePath) {
+                storageDeletePromises.push(deleteObject(ref(storage, item.stampedPdfStoragePath)).catch(e => console.error(e)));
+            }
         }
       }
 

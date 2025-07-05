@@ -62,7 +62,7 @@ export function TakeActionDialog({
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { updateItem } = useObservations();
+  const { updateItem } = useObservations(null, 'observation');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const [isSubmitting, setIsSubmitting] = React.useState(false);

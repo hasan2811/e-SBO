@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -57,19 +58,12 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   const { getInspectionById } = useObservationData();
   const { toast } = useToast();
   
-  const [inspection, setInspection] = React.useState<Inspection | null>(null);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
 
-  React.useEffect(() => {
-    if (isOpen && inspectionId) {
-      const inspData = getInspectionById(inspectionId);
-      setInspection(inspData || null);
-    } else {
-      setInspection(null);
-    }
-  }, [isOpen, inspectionId, getInspectionById]);
+  // Directly get the inspection from the central context. No local state needed.
+  const inspection = inspectionId ? getInspectionById(inspectionId) : null;
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);
