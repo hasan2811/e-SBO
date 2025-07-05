@@ -67,19 +67,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Case 2: User has EXACTLY ONE project.
-    // Redirect them straight to their project, bypassing the hub for a faster workflow.
-    if (projectCount === 1) {
-       // Only redirect if they are on the hub or root, allowing them to visit other app pages if needed in future.
-      if (isAtHub || isAtRoot) {
-        router.replace(`/proyek/${projects[0].id}/observasi`);
-        return;
-      }
-    }
-
-    // Case 3: User has MULTIPLE projects.
+    // Case 2: User has projects.
     // The hub is their main entry point. Redirect from root to hub.
-    if (projectCount > 1 && isAtRoot) {
+    if (isAtRoot) {
       router.replace('/beranda');
       return;
     }

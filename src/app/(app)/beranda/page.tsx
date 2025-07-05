@@ -58,7 +58,7 @@ const ProjectCard = ({
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="opacity-70 group-hover:opacity-100 transition-opacity"
                   >
                     <MoreVertical className="h-4 w-4" />
                     <span className="sr-only">Project Actions</span>
