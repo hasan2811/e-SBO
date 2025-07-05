@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, onSnapshot, Unsubscribe, where, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, Unsubscribe, where, orderBy, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
@@ -62,8 +62,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         return; // Early exit if user has no projects.
       }
       // Fetch only the projects whose IDs are in the user's profile.
-      // Note: Firestore 'in' queries are limited to 30 values.
-      q = query(projectsCollection, where('id', 'in', userProjectIds));
+      // This is the correct way to query for documents by their ID.
+      q = query(projectsCollection, where(documentId(), 'in', userProjectIds));
     }
 
     unsubscribe = onSnapshot(q, (snapshot) => {
