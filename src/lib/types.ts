@@ -19,13 +19,18 @@ export const DEFAULT_LOCATIONS: readonly string[] = ['International', 'National'
 export const DEFAULT_COMPANIES: readonly string[] = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'];
 
 
-// Updated list to reflect Life-Saving Rules (LSR) as categories
-export const OBSERVATION_CATEGORIES = [
-  'Open',
-  'Close',
-] as const;
+// Default categories if a project does not define its own.
+export const DEFAULT_OBSERVATION_CATEGORIES: readonly string[] = [
+  'Unsafe Act',
+  'Unsafe Condition',
+  'Housekeeping',
+  'Positive Observation',
+  'Procedure Violation',
+  'Tools & Equipment',
+];
 
-export type ObservationCategory = (typeof OBSERVATION_CATEGORIES)[number];
+// This is now just a semantic alias for a string.
+export type ObservationCategory = string;
 
 
 export type UserProfile = {
@@ -192,7 +197,7 @@ export const AssistObservationInputSchema = z.object({
 export type AssistObservationInput = z.infer<typeof AssistObservationInputSchema>;
 
 export const AssistObservationOutputSchema = z.object({
-  suggestedCategory: z.string().describe('The most likely category for this finding.'),
+  suggestedCategory: z.string().describe('A concise, one-or-two-word category that best describes this finding (e.g., "Unsafe Act", "Poor Housekeeping").'),
   suggestedRiskLevel: z.string().describe('The suggested risk level based on the finding.'),
   improvedFindings: z.string().describe('An improved, more professional version of the original findings text.'),
   suggestedRecommendation: z.string().describe('A suggested recommendation to address the findings.'),
@@ -218,13 +223,6 @@ export const SummarizeObservationDataInputSchema = z.object({
   observationData: z.string().describe('The raw text data of the observation report.'),
 });
 export type SummarizeObservationDataInput = z.infer<typeof SummarizeObservationDataInputSchema>;
-
-// This is now only for the FAST classification phase.
-export const FastClassificationOutputSchema = z.object({
-  suggestedCategory: z.enum(OBSERVATION_CATEGORIES),
-  suggestedRiskLevel: z.enum(RISK_LEVELS),
-});
-export type FastClassificationOutput = z.infer<typeof FastClassificationOutputSchema>;
 
 // This now includes all fields from the background/deeper analysis.
 export const DeeperAnalysisOutputSchema = z.object({

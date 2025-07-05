@@ -9,7 +9,7 @@
 import {ai} from '@/ai/genkit';
 import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
-import { RISK_LEVELS, OBSERVATION_CATEGORIES, RiskLevel, ObservationCategory, AssistObservationInput, AssistObservationInputSchema, AssistObservationOutput, AssistObservationOutputSchema, UserProfile, UserProfileSchema } from '@/lib/types';
+import { RISK_LEVELS, RiskLevel, AssistObservationInput, AssistObservationInputSchema, AssistObservationOutput, AssistObservationOutputSchema, UserProfile, UserProfileSchema } from '@/lib/types';
 
 /**
  * Finds the best match for a given value from a list of options, or returns a default.
@@ -50,7 +50,7 @@ const assistObservationPrompt = ai.definePrompt({
     prompt: `You are an extremely fast AI assistant for an HSSE application. Your task is to instantly analyze the user's text and provide suggestions. Your response MUST be a raw JSON object and nothing else. Prioritize speed.
 
 Analyze the user's findings below and provide the following in Bahasa Indonesia:
-1.  "suggestedCategory": The most fitting category from this list: ${OBSERVATION_CATEGORIES.join(', ')}.
+1.  "suggestedCategory": A concise, one-or-two-word category that best describes this finding (e.g., "Unsafe Act", "Poor Housekeeping", "Positive Observation").
 2.  "suggestedRiskLevel": The most likely risk level from this list: ${RISK_LEVELS.join(', ')}.
 3.  "improvedFindings": A rewritten, more professional version of the user's findings.
 4.  "suggestedRecommendation": A clear, actionable recommendation to mitigate the identified risk.
@@ -67,7 +67,7 @@ const assistObservationFlow = ai.defineFlow(
         userProfile: UserProfileSchema,
     }),
     outputSchema: z.object({
-        suggestedCategory: z.enum(OBSERVATION_CATEGORIES),
+        suggestedCategory: z.string(),
         suggestedRiskLevel: z.enum(RISK_LEVELS),
         improvedFindings: z.string(),
         suggestedRecommendation: z.string(),
@@ -88,7 +88,6 @@ const assistObservationFlow = ai.defineFlow(
     // Sanitize and validate the output to make the flow more resilient
     const sanitizedOutput = {
       ...output,
-      suggestedCategory: findClosestMatch(output.suggestedCategory, OBSERVATION_CATEGORIES, 'Open'),
       suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
     };
     
@@ -99,7 +98,7 @@ const assistObservationFlow = ai.defineFlow(
 export async function assistObservation(input: AssistObservationInput, userProfile: UserProfile): Promise<AssistObservationOutput> {
   if (!userProfile.aiEnabled) {
     return {
-      suggestedCategory: 'Open',
+      suggestedCategory: 'Unsafe Condition',
       suggestedRiskLevel: 'Low',
       improvedFindings: input.findings,
       suggestedRecommendation: 'AI is disabled.',
@@ -109,7 +108,7 @@ export async function assistObservation(input: AssistObservationInput, userProfi
   // Ensure the final return type matches the expected Zod schema for the exported function.
   return {
       ...result,
-      suggestedCategory: result.suggestedCategory as ObservationCategory,
+      suggestedCategory: result.suggestedCategory,
       suggestedRiskLevel: result.suggestedRiskLevel as RiskLevel,
   };
 }

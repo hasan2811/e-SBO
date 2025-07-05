@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel } from '@/lib/types';
-import { InspectionStatusBadge, PtwStatusBadge, StatusBadge, ObservationCategoryBadge } from '@/components/status-badges';
+import { InspectionStatusBadge, PtwStatusBadge, RiskBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
 import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useObservations } from '@/hooks/use-observations';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from './ui/badge';
 
 const riskColorMap: Record<RiskLevel, string> = {
     Low: 'bg-chart-2',
@@ -33,8 +34,14 @@ const ListItemWrapper = ({ children, onSelect, item }: { children: React.ReactNo
         e.stopPropagation();
     };
 
-    const isPending = item.status === 'Pending' || item.status === 'Pending Approval';
-    const isCompleted = item.status === 'Completed' || item.status === 'Pass' || item.status === 'Approved' || item.status === 'Closed';
+    const isCompleted = 
+        (item.itemType === 'observation' && item.status === 'Completed') ||
+        (item.itemType === 'inspection' && item.status === 'Pass') ||
+        (item.itemType === 'ptw' && (item.status === 'Approved' || item.status === 'Closed'));
+        
+    const isPending = !isCompleted && 
+        !((item.itemType === 'ptw' && item.status === 'Rejected'));
+
     const riskLevel = item.itemType === 'observation' ? item.riskLevel : undefined;
     const riskColor = riskLevel ? riskColorMap[riskLevel] : 'bg-transparent';
 
@@ -50,7 +57,7 @@ const ListItemWrapper = ({ children, onSelect, item }: { children: React.ReactNo
                 <TooltipProvider delayDuration={100}>
                   <Tooltip>
                     <TooltipTrigger>
-                      {isPending && <Clock className="h-4 w-4 text-muted-foreground" />}
+                      {isPending && <Clock className="h-4 w-4 text-chart-5" />}
                       {isCompleted && <CheckCircle2 className="h-4 w-4 text-green-600" />}
                     </TooltipTrigger>
                     <TooltipContent>
@@ -79,18 +86,16 @@ const ObservationListItem = ({ observation, onSelect }: { observation: Observati
                 )}
             </div>
             <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="flex justify-between items-start gap-2">
-                    <ObservationCategoryBadge category={observation.category} />
-                    {observation.aiStatus === 'completed' && typeof observation.aiObserverSkillRating === 'number' && (
-                        <StarRating rating={observation.aiObserverSkillRating} starClassName="h-3 w-3" />
-                    )}
+                <div className="flex justify-end items-start">
+                    {/* Status icon from ListItemWrapper is here, so we have space */}
                 </div>
-                <p className="font-semibold leading-snug line-clamp-2">{observation.findings}</p>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
-                    <StatusBadge status={observation.status} />
-                    <div className="text-xs text-muted-foreground truncate">
-                        {observation.company} &bull; {observation.location} &bull; {format(new Date(observation.date), 'd MMM yy')}
-                    </div>
+                <p className="font-semibold leading-snug line-clamp-2 pr-6">{observation.findings}</p>
+                 <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <RiskBadge riskLevel={observation.riskLevel} />
+                    <Badge variant="secondary">{observation.category}</Badge>
+                </div>
+                <div className="text-xs text-muted-foreground truncate pt-1">
+                    {observation.company} &bull; {observation.location} &bull; {format(new Date(observation.date), 'd MMM yy')}
                 </div>
             </div>
         </ListItemWrapper>

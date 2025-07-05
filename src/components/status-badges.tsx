@@ -3,8 +3,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { Observation, RiskLevel, InspectionStatus, PtwStatus, ObservationCategory } from '@/lib/types';
-import { CircleDot, CheckCircle2 } from 'lucide-react';
+import type { Observation, RiskLevel, InspectionStatus, PtwStatus } from '@/lib/types';
 
 export const RiskBadge = ({ riskLevel }: { riskLevel: RiskLevel }) => {
   const riskStyles: Record<RiskLevel, string> = {
@@ -25,25 +24,6 @@ export const StatusBadge = ({ status }: { status: Observation['status'] }) => {
   
   return <Badge className={cn('font-semibold', statusStyles[status])}>{status}</Badge>;
 };
-
-export const ObservationCategoryBadge = ({ category }: { category: ObservationCategory }) => {
-  if (category === 'Close') {
-    return (
-      <div className="flex items-center gap-1.5 text-xs font-semibold text-chart-2">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        <span>Closed Finding</span>
-      </div>
-    );
-  }
-  // Default to Open
-  return (
-    <div className="flex items-center gap-1.5 text-xs font-semibold text-chart-4">
-      <CircleDot className="h-3.5 w-3.5" />
-      <span>Open Finding</span>
-    </div>
-  );
-};
-
 
 export const InspectionStatusBadge = ({ status }: { status: InspectionStatus }) => {
   const statusStyles: Record<InspectionStatus, string> = {

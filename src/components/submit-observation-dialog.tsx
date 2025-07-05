@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePathname } from 'next/navigation';
-import { DEFAULT_LOCATIONS, DEFAULT_COMPANIES, OBSERVATION_CATEGORIES, RISK_LEVELS } from '@/lib/types';
+import { DEFAULT_LOCATIONS, DEFAULT_COMPANIES, DEFAULT_OBSERVATION_CATEGORIES, RISK_LEVELS } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const formSchema = z.object({
@@ -62,7 +62,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   // AI Assistant State
   const [aiSuggestions, setAiSuggestions] = React.useState<AssistObservationOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
-  const isAiEnabled = userProfile?.aiEnabled ?? false;
+  const isAiEnabled = userProfile?.aiEnabled ?? true;
 
   const companyOptions = React.useMemo(() => 
     (project?.customCompanies && project.customCompanies.length > 0) ? project.customCompanies : DEFAULT_COMPANIES,
@@ -73,7 +73,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   [project]);
   
   const categoryOptions = React.useMemo(() =>
-    (project?.customObservationCategories && project.customObservationCategories.length > 0) ? project.customObservationCategories : OBSERVATION_CATEGORIES,
+    (project?.customObservationCategories && project.customObservationCategories.length > 0) ? project.customObservationCategories : DEFAULT_OBSERVATION_CATEGORIES,
   [project]);
 
   const form = useForm<FormValues>({
@@ -376,7 +376,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                             {aiSuggestions.suggestedCategory && (
                               <div className="flex items-center justify-between">
                                 <p>Saran Kategori: <span className="font-semibold">{aiSuggestions.suggestedCategory}</span></p>
-                                <Button type="button" size="sm" variant="outline" onClick={() => form.setValue('category', aiSuggestions.suggestedCategory as ObservationCategory)}>Terapkan</Button>
                               </div>
                             )}
                              {aiSuggestions.suggestedRiskLevel && (
