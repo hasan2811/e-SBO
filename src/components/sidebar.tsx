@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ClipboardList, Wrench, FileSignature } from 'lucide-react';
+import { ClipboardList, Wrench, FileSignature, BrainCircuit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Sidebar({ projectId }: { projectId: string }) {
@@ -12,6 +12,7 @@ export function Sidebar({ projectId }: { projectId: string }) {
     { href: `/proyek/${projectId}/observasi`, label: 'Observasi', icon: ClipboardList },
     { href: `/proyek/${projectId}/inspeksi`, label: 'Inspeksi', icon: Wrench },
     { href: `/proyek/${projectId}/ptw`, label: 'PTW', icon: FileSignature },
+    { href: `/proyek/${projectId}/analisis`, label: 'Analisis AI', icon: BrainCircuit },
   ];
 
   if (!projectId) return null;

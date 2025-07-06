@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ClipboardList, Wrench, FileSignature } from 'lucide-react';
+import { ClipboardList, Wrench, FileSignature, BrainCircuit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function BottomNavBar({ projectId }: { projectId: string }) {
@@ -13,6 +13,7 @@ export function BottomNavBar({ projectId }: { projectId: string }) {
     { href: `/proyek/${projectId}/observasi`, label: 'Observasi', icon: ClipboardList, activeColor: 'text-primary', borderColor: 'border-primary' },
     { href: `/proyek/${projectId}/inspeksi`, label: 'Inspeksi', icon: Wrench, activeColor: 'text-chart-2', borderColor: 'border-chart-2' },
     { href: `/proyek/${projectId}/ptw`, label: 'PTW', icon: FileSignature, activeColor: 'text-chart-5', borderColor: 'border-chart-5' },
+    { href: `/proyek/${projectId}/analisis`, label: 'Analisis', icon: BrainCircuit, activeColor: 'text-accent', borderColor: 'border-accent' },
   ];
 
   if (!projectId) return null;
@@ -30,7 +31,7 @@ export function BottomNavBar({ projectId }: { projectId: string }) {
         "md:hidden fixed bottom-0 left-0 z-40 w-full h-16 bg-card border-t-2 transition-colors duration-300",
         activeBorderColor
     )}>
-      <div className="grid h-full max-w-lg grid-cols-3 mx-auto font-medium">
+      <div className="grid h-full max-w-lg grid-cols-4 mx-auto font-medium">
         {navItems.map((item) => {
           // Check if the current item is active, with the same default logic.
           const isActive = pathname === item.href || (item.label === 'Observasi' && pathname === `/proyek/${projectId}`);
