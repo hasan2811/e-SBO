@@ -37,40 +37,41 @@ export function DeletePtwDialog({
   const { removeItem } = useObservations(null, 'ptw');
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     setIsDeleting(true);
-    try {
-      const docRef = doc(db, 'ptws', ptw.id);
-      await deleteDoc(docRef);
 
-      // Delete original JSA PDF using its storage path
-      if (ptw.jsaPdfStoragePath) {
-        const fileRef = ref(storage, ptw.jsaPdfStoragePath);
-        await deleteObject(fileRef).catch(err => console.error("Non-blocking: Failed to delete JSA PDF", err));
-      }
-      
-      // Delete stamped JSA PDF if it exists, using its storage path
-      if (ptw.stampedPdfStoragePath) {
-        const stampedFileRef = ref(storage, ptw.stampedPdfStoragePath);
-        await deleteObject(stampedFileRef).catch(err => console.error("Non-blocking: Failed to delete stamped JSA PDF", err));
-      }
+    // 1. Optimistic UI update
+    removeItem(ptw.id);
+    toast({
+      title: 'Izin Kerja Dihapus',
+      description: `Izin kerja "${ptw.referenceId}" telah berhasil dihapus.`,
+    });
+    onSuccess();
+    onOpenChange(false);
+    
+    // 2. Background deletion
+    const deleteInBackground = async () => {
+        try {
+            const docRef = doc(db, 'ptws', ptw.id);
+            await deleteDoc(docRef);
 
-      removeItem(ptw.id);
-      toast({
-        title: 'Berhasil Dihapus',
-        description: `Izin Kerja telah berhasil dihapus.`,
-      });
-      onSuccess();
-      onOpenChange(false);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Gagal Menghapus',
-        description: error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga.',
-      });
-    } finally {
-      setIsDeleting(false);
-    }
+            if (ptw.jsaPdfStoragePath) {
+                await deleteObject(ref(storage, ptw.jsaPdfStoragePath)).catch(err => console.error(err));
+            }
+            if (ptw.stampedPdfStoragePath) {
+                await deleteObject(ref(storage, ptw.stampedPdfStoragePath)).catch(err => console.error(err));
+            }
+        } catch (error) {
+            console.error("Gagal menghapus PTW dari server:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Sinkronisasi Gagal',
+                description: 'Izin kerja gagal dihapus dari server. Harap segarkan halaman.',
+            });
+        }
+    };
+
+    deleteInBackground();
   };
 
   return (

@@ -37,56 +37,62 @@ export function DeleteMultipleDialog({
   const { toast } = useToast();
   const { removeItem } = useObservations(null, 'observation'); // It doesn't matter which type, removeItem is generic
 
-  const handleConfirmClick = async () => {
+  const handleConfirmClick = () => {
     if (itemsToDelete.length === 0) return;
     
     setIsDeleting(true);
-    try {
-      const batch = writeBatch(db);
-      const storageDeletePromises: Promise<any>[] = [];
+    const count = itemsToDelete.length;
 
-      for (const item of itemsToDelete) {
-        const collectionName = `${item.itemType}s`;
-        const docRef = doc(db, collectionName, item.id);
-        batch.delete(docRef);
-
-        if (item.itemType === 'observation' || item.itemType === 'inspection') {
-          if('photoStoragePath' in item && item.photoStoragePath) {
-            storageDeletePromises.push(deleteObject(ref(storage, item.photoStoragePath)).catch(e => console.error(e)));
-          }
-          if ('actionTakenPhotoStoragePath' in item && item.actionTakenPhotoStoragePath) {
-            storageDeletePromises.push(deleteObject(ref(storage, item.actionTakenPhotoStoragePath)).catch(e => console.error(e)));
-          }
-        } else if (item.itemType === 'ptw') {
-            if('jsaPdfStoragePath' in item && item.jsaPdfStoragePath) {
-                storageDeletePromises.push(deleteObject(ref(storage, item.jsaPdfStoragePath)).catch(e => console.error(e)));
-            }
-            if('stampedPdfStoragePath' in item && item.stampedPdfStoragePath) {
-                storageDeletePromises.push(deleteObject(ref(storage, item.stampedPdfStoragePath)).catch(e => console.error(e)));
-            }
-        }
-      }
-
-      await batch.commit();
-      await Promise.all(storageDeletePromises);
-
-      itemsToDelete.forEach(item => removeItem(item.id));
-
-      toast({
+    // 1. Optimistic UI Update
+    itemsToDelete.forEach(item => removeItem(item.id));
+    toast({
         title: 'Berhasil Dihapus',
-        description: `${itemsToDelete.length} item telah berhasil dihapus.`,
-      });
-      onSuccess();
-      onOpenChange(false);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Gagal Menghapus',
-        description: 'Terjadi kesalahan saat menghapus item yang dipilih.',
-      });
-    } finally {
-      setIsDeleting(false);
-    }
+        description: `${count} item telah dihapus dari tampilan.`,
+    });
+    onSuccess();
+    onOpenChange(false);
+    
+    // 2. Background DB & Storage Deletion
+    const deleteInBackground = async () => {
+        try {
+            const batch = writeBatch(db);
+            const storageDeletePromises: Promise<any>[] = [];
+
+            for (const item of itemsToDelete) {
+                const collectionName = `${item.itemType}s`;
+                const docRef = doc(db, collectionName, item.id);
+                batch.delete(docRef);
+
+                if (item.itemType === 'observation' || item.itemType === 'inspection') {
+                if('photoStoragePath' in item && item.photoStoragePath) {
+                    storageDeletePromises.push(deleteObject(ref(storage, item.photoStoragePath)).catch(e => console.error(e)));
+                }
+                if ('actionTakenPhotoStoragePath' in item && item.actionTakenPhotoStoragePath) {
+                    storageDeletePromises.push(deleteObject(ref(storage, item.actionTakenPhotoStoragePath)).catch(e => console.error(e)));
+                }
+                } else if (item.itemType === 'ptw') {
+                    if('jsaPdfStoragePath' in item && item.jsaPdfStoragePath) {
+                        storageDeletePromises.push(deleteObject(ref(storage, item.jsaPdfStoragePath)).catch(e => console.error(e)));
+                    }
+                    if('stampedPdfStoragePath' in item && item.stampedPdfStoragePath) {
+                        storageDeletePromises.push(deleteObject(ref(storage, item.stampedPdfStoragePath)).catch(e => console.error(e)));
+                    }
+                }
+            }
+
+            await batch.commit();
+            await Promise.all(storageDeletePromises);
+        } catch (error) {
+            console.error("Gagal menghapus beberapa item dari server:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Sinkronisasi Gagal',
+                description: 'Beberapa item gagal dihapus dari server. Harap segarkan halaman.',
+            });
+        }
+    };
+    
+    deleteInBackground();
   };
 
   if (itemsToDelete.length === 0) return null;

@@ -38,51 +38,44 @@ export function RemoveMemberDialog({
   const { toast } = useToast();
   const [isRemoving, setIsRemoving] = React.useState(false);
 
-  const handleRemove = async () => {
+  const handleRemove = () => {
     if (!user || !project || !member) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Data pengguna, proyek, atau anggota tidak ditemukan.',
-      });
+      toast({ variant: 'destructive', title: 'Error', description: 'Data pengguna, proyek, atau anggota tidak ditemukan.' });
       return;
     }
-
     if (member.uid === project.ownerUid) {
       toast({ variant: 'destructive', title: 'Tindakan Ditolak', description: 'Pemilik proyek tidak dapat dikeluarkan.'});
       return;
     }
     
     setIsRemoving(true);
-    try {
-      const projectRef = doc(db, 'projects', project.id);
-      const memberUserRef = doc(db, 'users', member.uid);
 
-      await runTransaction(db, async (transaction) => {
-        // Remove member from project's member list
-        transaction.update(projectRef, {
-          memberUids: arrayRemove(member.uid),
+    // 1. Optimistic UI update
+    onSuccess?.(member.uid);
+    toast({ title: 'Anggota Dikeluarkan', description: `${member.displayName} telah dikeluarkan dari proyek.` });
+    onOpenChange(false);
+
+    // 2. Background DB operation
+    const removeFromDb = async () => {
+      try {
+        const projectRef = doc(db, 'projects', project.id);
+        const memberUserRef = doc(db, 'users', member.uid);
+
+        await runTransaction(db, async (transaction) => {
+          transaction.update(projectRef, { memberUids: arrayRemove(member.uid) });
+          transaction.update(memberUserRef, { projectIds: arrayRemove(project.id) });
         });
-
-        // Remove project from member's project list
-        transaction.update(memberUserRef, {
-          projectIds: arrayRemove(project.id)
+      } catch (error) {
+        console.error("Gagal mengeluarkan anggota dari server:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Sinkronisasi Gagal',
+          description: `Gagal mengeluarkan ${member.displayName} dari server. Harap muat ulang.`,
         });
-      });
+      }
+    };
 
-      toast({ title: 'Anggota Dikeluarkan', description: 'Anggota telah berhasil dikeluarkan dari proyek.' });
-      onSuccess?.(member.uid);
-      onOpenChange(false);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga saat mengeluarkan anggota.';
-      toast({
-        variant: 'destructive',
-        title: 'Gagal Mengeluarkan Anggota',
-        description: errorMessage,
-      });
-    } finally {
-      setIsRemoving(false);
-    }
+    removeFromDb();
   };
 
   return (

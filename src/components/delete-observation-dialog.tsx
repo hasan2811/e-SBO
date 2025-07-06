@@ -34,43 +34,44 @@ export function DeleteObservationDialog({
   onSuccess,
 }: DeleteObservationDialogProps) {
   const { toast } = useToast();
-  const { removeItem } = useObservations(null, 'observation'); // Hook instance for actions
+  const { removeItem } = useObservations(null, 'observation');
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     setIsDeleting(true);
-    try {
-      const docRef = doc(db, 'observations', observation.id);
-      await deleteDoc(docRef);
 
-      // Delete associated photos using their storage paths for reliability
-      if (observation.photoStoragePath) {
-        const photoRef = ref(storage, observation.photoStoragePath);
-        await deleteObject(photoRef).catch(err => console.error("Non-blocking: Failed to delete main photo", err));
-      }
-      if (observation.actionTakenPhotoStoragePath) {
-          const actionPhotoRef = ref(storage, observation.actionTakenPhotoStoragePath);
-          await deleteObject(actionPhotoRef).catch(err => console.error("Non-blocking: Failed to delete action photo", err));
-      }
+    // 1. Optimistic UI update
+    removeItem(observation.id);
+    toast({
+      title: 'Laporan Dihapus',
+      description: `Laporan observasi "${observation.referenceId}" telah dihapus.`,
+    });
+    onSuccess();
+    onOpenChange(false);
 
-      // Optimistically remove from UI
-      removeItem(observation.id);
-      
-      toast({
-        title: 'Berhasil Dihapus',
-        description: `Laporan observasi telah berhasil dihapus.`,
-      });
-      onSuccess();
-      onOpenChange(false);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Gagal Menghapus',
-        description: error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga.',
-      });
-    } finally {
-        setIsDeleting(false);
-    }
+    // 2. Background deletion
+    const deleteInBackground = async () => {
+      try {
+        const docRef = doc(db, 'observations', observation.id);
+        await deleteDoc(docRef);
+
+        if (observation.photoStoragePath) {
+          await deleteObject(ref(storage, observation.photoStoragePath)).catch(err => console.error(err));
+        }
+        if (observation.actionTakenPhotoStoragePath) {
+          await deleteObject(ref(storage, observation.actionTakenPhotoStoragePath)).catch(err => console.error(err));
+        }
+      } catch (error) {
+        console.error("Gagal menghapus observasi dari server:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Sinkronisasi Gagal',
+          description: 'Laporan gagal dihapus dari server. Harap segarkan halaman.',
+        });
+      }
+    };
+    
+    deleteInBackground();
   };
 
   return (

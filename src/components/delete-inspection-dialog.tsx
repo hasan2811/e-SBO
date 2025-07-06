@@ -37,38 +37,40 @@ export function DeleteInspectionDialog({
   const { removeItem } = useObservations(null, 'inspection');
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     setIsDeleting(true);
-    try {
-      const docRef = doc(db, 'inspections', inspection.id);
-      await deleteDoc(docRef);
+    
+    // 1. Optimistic UI update
+    removeItem(inspection.id);
+    toast({
+      title: 'Laporan Dihapus',
+      description: `Laporan inspeksi "${inspection.referenceId}" telah dihapus.`,
+    });
+    onSuccess();
+    onOpenChange(false);
+    
+    // 2. Background deletion
+    const deleteInBackground = async () => {
+        try {
+            const docRef = doc(db, 'inspections', inspection.id);
+            await deleteDoc(docRef);
 
-      // Delete associated photos using their storage paths
-      if (inspection.photoStoragePath) {
-        const photoRef = ref(storage, inspection.photoStoragePath);
-        await deleteObject(photoRef).catch(err => console.error("Non-blocking: Failed to delete main photo", err));
-      }
-      if (inspection.actionTakenPhotoStoragePath) {
-          const actionPhotoRef = ref(storage, inspection.actionTakenPhotoStoragePath);
-          await deleteObject(actionPhotoRef).catch(err => console.error("Non-blocking: Failed to delete action photo", err));
-      }
-
-      removeItem(inspection.id);
-      toast({
-        title: 'Berhasil Dihapus',
-        description: `Laporan inspeksi telah berhasil dihapus.`,
-      });
-      onSuccess();
-      onOpenChange(false);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Gagal Menghapus',
-        description: error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga.',
-      });
-    } finally {
-      setIsDeleting(false);
-    }
+            if (inspection.photoStoragePath) {
+                await deleteObject(ref(storage, inspection.photoStoragePath)).catch(e => console.error(e));
+            }
+            if (inspection.actionTakenPhotoStoragePath) {
+                await deleteObject(ref(storage, inspection.actionTakenPhotoStoragePath)).catch(e => console.error(e));
+            }
+        } catch (error) {
+            console.error("Gagal menghapus inspeksi dari server:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Sinkronisasi Gagal',
+                description: 'Laporan gagal dihapus dari server. Harap segarkan halaman.',
+            });
+        }
+    };
+    deleteInBackground();
   };
 
   return (
