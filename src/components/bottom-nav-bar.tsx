@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -18,7 +17,12 @@ export function BottomNavBar({ projectId }: { projectId: string }) {
 
   if (!projectId) return null;
 
-  const activeItem = navItems.find(item => pathname === item.href);
+  // Find the active item, considering the base project path as the default for 'Observasi'
+  const activeItem = navItems.find(item => 
+    pathname === item.href || 
+    (item.label === 'Observasi' && pathname === `/proyek/${projectId}`)
+  );
+  
   const activeBorderColor = activeItem ? activeItem.borderColor : 'border-border';
 
   return (
@@ -28,7 +32,8 @@ export function BottomNavBar({ projectId }: { projectId: string }) {
     )}>
       <div className="grid h-full max-w-lg grid-cols-3 mx-auto font-medium">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          // Check if the current item is active, with the same default logic.
+          const isActive = pathname === item.href || (item.label === 'Observasi' && pathname === `/proyek/${projectId}`);
           return (
             <Link
               key={item.label}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -22,7 +21,8 @@ export function Sidebar({ projectId }: { projectId: string }) {
       <div className="flex-1">
         <nav className="grid items-start gap-2">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            // Check if the current item is active, considering the base project path as the default for 'Observasi'
+            const isActive = pathname === item.href || (item.label === 'Observasi' && pathname === `/proyek/${projectId}`);
             return (
               <Link
                 key={item.href}
