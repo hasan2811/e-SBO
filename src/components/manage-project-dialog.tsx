@@ -4,7 +4,7 @@
 import * as React from 'react';
 import type { Project, UserProfile, MemberRole } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,6 +24,7 @@ import type { AllItems } from '@/lib/types';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { useProjects } from '@/hooks/use-projects';
+import { useCallback } from 'react';
 
 const getInitials = (name: string | null | undefined): string => {
     if (!name?.trim()) return 'U';
@@ -106,115 +107,80 @@ const ExportCard = ({ project }: { project: Project }) => {
     );
 };
 
-const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onProjectUpdate: (updatedData: Partial<Project>) => void }) => {
-  const { toast } = useToast();
-  const [customCompanies, setCustomCompanies] = React.useState<string[]>([]);
-  const [customLocations, setCustomLocations] = React.useState<string[]>([]);
-  const [customCategories, setCustomCategories] = React.useState<string[]>([]);
-  const [isProjectOpen, setIsProjectOpen] = React.useState(true);
-  const [isSaving, setIsSaving] = React.useState(false);
-
-  React.useEffect(() => {
-    setCustomCompanies(project.customCompanies || []);
-    setCustomLocations(project.customLocations || []);
-    setCustomCategories(project.customObservationCategories || []);
-    setIsProjectOpen(project.isOpen ?? true);
-  }, [project]);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    const projectRef = doc(db, 'projects', project.id);
-    const updatedData = {
-        customCompanies,
-        customLocations,
-        customObservationCategories: customCategories,
-        isOpen: isProjectOpen,
-    };
-    try {
-      await updateDoc(projectRef, updatedData);
-      toast({
-        title: 'Settings Saved',
-        description: 'Your project settings have been updated.',
-      });
-      onProjectUpdate(updatedData);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Save Failed',
-        description: 'Could not save your project settings. Please try again.',
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
+// ## Dumb Component for Project Settings ##
+const ProjectSettingsTab = ({
+  project,
+  customCompanies, setCustomCompanies,
+  customLocations, setCustomLocations,
+  customCategories, setCustomCategories,
+  isProjectOpen, setIsProjectOpen
+}: {
+  project: Project;
+  customCompanies: string[]; setCustomCompanies: (items: string[]) => void;
+  customLocations: string[]; setCustomLocations: (items: string[]) => void;
+  customCategories: string[]; setCustomCategories: (items: string[]) => void;
+  isProjectOpen: boolean; setIsProjectOpen: (isOpen: boolean) => void;
+}) => {
   return (
-    <div className="space-y-6 p-1">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
-            <CardTitle>Akses Proyek</CardTitle>
-            <CardDescription>Kontrol siapa yang dapat bergabung dengan proyek ini.</CardDescription>
+          <CardTitle>Akses Proyek</CardTitle>
+          <CardDescription>Kontrol siapa yang dapat bergabung dengan proyek ini.</CardDescription>
         </CardHeader>
         <CardContent>
-            <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                <div className="space-y-0.5">
-                    <Label htmlFor="project-open" className="font-medium">Buka untuk Bergabung</Label>
-                    <p className="text-xs text-muted-foreground">
-                        Jika diaktifkan, pengguna mana pun dapat melihat dan bergabung dengan proyek ini.
-                    </p>
-                </div>
-                <Switch
-                    id="project-open"
-                    checked={isProjectOpen}
-                    onCheckedChange={setIsProjectOpen}
-                />
+          <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+            <div className="space-y-0.5">
+              <Label htmlFor="project-open" className="font-medium">Buka untuk Bergabung</Label>
+              <p className="text-xs text-muted-foreground">
+                Jika diaktifkan, pengguna mana pun dapat melihat dan bergabung dengan proyek ini.
+              </p>
             </div>
+            <Switch
+              id="project-open"
+              checked={isProjectOpen}
+              onCheckedChange={setIsProjectOpen}
+            />
+          </div>
         </CardContent>
       </Card>
       
       <Card>
         <CardHeader>
-            <CardTitle>Opsi Formulir Kustom</CardTitle>
-            <CardDescription>Kelola opsi dropdown untuk formulir di proyek ini.</CardDescription>
+          <CardTitle>Opsi Formulir Kustom</CardTitle>
+          <CardDescription>Kelola opsi dropdown untuk formulir di proyek ini.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-            <CustomListInput
-                inputId="custom-categories-manage"
-                title="Kategori Observasi Kustom"
-                description="Jika kosong, akan menggunakan daftar default: Open, Close."
-                placeholder="Masukkan nama kategori baru"
-                items={customCategories}
-                setItems={setCustomCategories}
-            />
-            <CustomListInput
-                inputId="custom-companies-manage"
-                title="Perusahaan Kustom"
-                description="Tambahkan atau hapus opsi perusahaan untuk formulir."
-                placeholder="Masukkan nama perusahaan baru"
-                items={customCompanies}
-                setItems={setCustomCompanies}
-            />
-            
-            <CustomListInput
-                inputId="custom-locations-manage"
-                title="Lokasi Kustom"
-                description="Tambahkan atau hapus opsi lokasi untuk formulir."
-                placeholder="Masukkan nama lokasi baru"
-                items={customLocations}
-                setItems={setCustomLocations}
-            />
+          <CustomListInput
+            inputId="custom-categories-manage"
+            title="Kategori Observasi Kustom"
+            description="Jika kosong, akan menggunakan daftar default: Open, Close."
+            placeholder="Masukkan nama kategori baru"
+            items={customCategories}
+            setItems={setCustomCategories}
+          />
+          <CustomListInput
+            inputId="custom-companies-manage"
+            title="Perusahaan Kustom"
+            description="Tambahkan atau hapus opsi perusahaan untuk formulir."
+            placeholder="Masukkan nama perusahaan baru"
+            items={customCompanies}
+            setItems={setCustomCompanies}
+          />
+          <CustomListInput
+            inputId="custom-locations-manage"
+            title="Lokasi Kustom"
+            description="Tambahkan atau hapus opsi lokasi untuk formulir."
+            placeholder="Masukkan nama lokasi baru"
+            items={customLocations}
+            setItems={setCustomLocations}
+          />
         </CardContent>
       </Card>
-      
-      <div className="flex justify-end pt-4">
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving && <Loader2 className="animate-spin" />}
-            Simpan Semua Pengaturan
-          </Button>
-      </div>
     </div>
   );
 };
+
 
 const SwitchWithLabel = ({ id, label, description, checked, onCheckedChange }: { id: string, label: string, description: string, checked: boolean, onCheckedChange: (checked: boolean) => void }) => (
     <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
@@ -226,123 +192,87 @@ const SwitchWithLabel = ({ id, label, description, checked, onCheckedChange }: {
     </div>
 );
 
-const MemberList = ({ project, members, onRemoveClick }: { 
-    project: Project;
-    members: UserProfile[];
-    onRemoveClick: (member: UserProfile) => void;
+// ## Dumb Component for Member List ##
+const MemberListTab = ({ 
+  project, 
+  members,
+  roles,
+  onRemoveClick,
+  onRoleChange
+}: { 
+  project: Project;
+  members: UserProfile[];
+  roles: Project['roles'];
+  onRemoveClick: (member: UserProfile) => void;
+  onRoleChange: (memberId: string, role: keyof MemberRole, value: boolean) => void;
 }) => {
     const { userProfile } = useAuth();
-    const { toast } = useToast();
-    const { updateProject } = useProjects();
-    
-    const [roles, setRoles] = React.useState<Project['roles']>(project.roles || {});
-    const [isSaving, setIsSaving] = React.useState(false);
-    
     const isCurrentUserOwner = userProfile?.uid === project.ownerUid;
 
-    const handleRoleChange = (memberId: string, role: keyof MemberRole, value: boolean) => {
-        setRoles(prev => ({
-            ...prev,
-            [memberId]: {
-                ...prev?.[memberId],
-                [role]: value,
-            },
-        }));
-    };
-
-    const handleSaveRoles = async () => {
-        if (!isCurrentUserOwner) return;
-        setIsSaving(true);
-        const projectRef = doc(db, 'projects', project.id);
-        try {
-            await updateDoc(projectRef, { roles });
-            updateProject(project.id, { roles }); // Optimistic update
-            toast({ title: "Peran berhasil diperbarui!" });
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Gagal memperbarui peran." });
-        } finally {
-            setIsSaving(false);
-        }
-    };
-    
-    // Reset local roles state if the project prop changes
-    React.useEffect(() => {
-        setRoles(project.roles || {});
-    }, [project]);
-
     return (
-        <div className="space-y-6 p-1">
-            <div className="grid gap-4 md:grid-cols-2">
-                {members.map(member => {
-                    const memberRoles = roles?.[member.uid] || {};
-                    const isOwner = member.uid === project.ownerUid;
-                    return (
-                        <Card key={member.uid} className="flex flex-col">
-                            <CardHeader className="flex flex-row items-center gap-4 pb-4">
-                                <Avatar className="h-12 w-12">
-                                    <AvatarImage src={member.photoURL ?? undefined} data-ai-hint="person face" />
-                                    <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                    <CardTitle className="truncate">{member.displayName || 'Pengguna Tidak Dikenal'}</CardTitle>
-                                    <CardDescription className="truncate">{member.position || 'Tidak Ada Posisi'}</CardDescription>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="flex-1 space-y-4">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {isOwner && <Badge variant="secondary" className="border-amber-500/50"><Crown className="h-3 w-3 mr-1.5 text-amber-500" />Pemilik</Badge>}
-                                    {memberRoles.canApprovePtw && <Badge variant="outline" className="text-green-700 border-green-300"><ShieldCheck className="h-3 w-3 mr-1.5" />Approver</Badge>}
-                                    {memberRoles.canTakeAction && <Badge variant="outline" className="text-blue-700 border-blue-300"><Gavel className="h-3 w-3 mr-1.5" />Action Taker</Badge>}
-                                </div>
-                                {isCurrentUserOwner && !isOwner && (
-                                    <>
-                                        <Separator/>
-                                        <div className="space-y-3">
-                                            <SwitchWithLabel
-                                                id={`approve-${member.uid}`}
-                                                label="Izin Menyetujui PTW"
-                                                description="Dapat menyetujui Izin Kerja."
-                                                checked={memberRoles.canApprovePtw ?? false}
-                                                onCheckedChange={(val) => handleRoleChange(member.uid, 'canApprovePtw', val)}
-                                            />
-                                            <SwitchWithLabel
-                                                id={`action-${member.uid}`}
-                                                label="Izin Ambil Tindakan"
-                                                description="Dapat menyelesaikan laporan."
-                                                checked={memberRoles.canTakeAction ?? false}
-                                                onCheckedChange={(val) => handleRoleChange(member.uid, 'canTakeAction', val)}
-                                            />
-                                        </div>
-                                    </>
-                                )}
-                            </CardContent>
-                            <CardFooter className="flex justify-end items-center bg-muted/50 p-3 mt-auto">
-                                {!isOwner && isCurrentUserOwner && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                        onClick={() => onRemoveClick(member)}
-                                    >
-                                        <UserX /> Keluarkan
-                                    </Button>
-                                )}
-                            </CardFooter>
-                        </Card>
-                    );
-                })}
-            </div>
-            {isCurrentUserOwner && (
-                <div className="flex justify-end pt-4">
-                    <Button onClick={handleSaveRoles} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
-                        Simpan Perubahan Peran
-                    </Button>
-                </div>
-            )}
+        <div className="grid gap-4 md:grid-cols-2">
+            {members.map(member => {
+                const memberRoles = roles?.[member.uid] || {};
+                const isOwner = member.uid === project.ownerUid;
+                return (
+                    <Card key={member.uid} className="flex flex-col">
+                        <CardHeader className="flex flex-row items-center gap-4 pb-4">
+                            <Avatar className="h-12 w-12">
+                                <AvatarImage src={member.photoURL ?? undefined} data-ai-hint="person face" />
+                                <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                                <CardTitle className="truncate">{member.displayName || 'Pengguna Tidak Dikenal'}</CardTitle>
+                                <CardDescription className="truncate">{member.position || 'Tidak Ada Posisi'}</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 space-y-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                                {isOwner && <Badge variant="secondary" className="border-amber-500/50"><Crown className="h-3 w-3 mr-1.5 text-amber-500" />Pemilik</Badge>}
+                                {memberRoles.canApprovePtw && <Badge variant="outline" className="text-green-700 border-green-300"><ShieldCheck className="h-3 w-3 mr-1.5" />Approver</Badge>}
+                                {memberRoles.canTakeAction && <Badge variant="outline" className="text-blue-700 border-blue-300"><Gavel className="h-3 w-3 mr-1.5" />Action Taker</Badge>}
+                            </div>
+                            {isCurrentUserOwner && !isOwner && (
+                                <>
+                                    <Separator/>
+                                    <div className="space-y-3">
+                                        <SwitchWithLabel
+                                            id={`approve-${member.uid}`}
+                                            label="Izin Menyetujui PTW"
+                                            description="Dapat menyetujui Izin Kerja."
+                                            checked={memberRoles.canApprovePtw ?? false}
+                                            onCheckedChange={(val) => onRoleChange(member.uid, 'canApprovePtw', val)}
+                                        />
+                                        <SwitchWithLabel
+                                            id={`action-${member.uid}`}
+                                            label="Izin Ambil Tindakan"
+                                            description="Dapat menyelesaikan laporan."
+                                            checked={memberRoles.canTakeAction ?? false}
+                                            onCheckedChange={(val) => onRoleChange(member.uid, 'canTakeAction', val)}
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </CardContent>
+                        <CardFooter className="flex justify-end items-center bg-muted/50 p-3 mt-auto">
+                            {!isOwner && isCurrentUserOwner && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    onClick={() => onRemoveClick(member)}
+                                >
+                                    <UserX /> Keluarkan
+                                </Button>
+                            )}
+                        </CardFooter>
+                    </Card>
+                );
+            })}
         </div>
     );
-}
+};
+
 
 const MemberListSkeleton = () => (
     <div className="grid gap-4 md:grid-cols-2 p-1">
@@ -371,11 +301,29 @@ interface ManageProjectDialogProps {
 
 export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProject }: ManageProjectDialogProps) {
     const { toast } = useToast();
+    const { userProfile } = useAuth();
+    const { updateProject } = useProjects();
+    
+    // ## STATE MANAGEMENT ##
+    const [activeTab, setActiveTab] = React.useState('members');
+    const [isLoadingData, setIsLoadingData] = React.useState(true);
+    const [isSaving, setIsSaving] = React.useState(false);
+    
+    // Data State
     const [currentProject, setCurrentProject] = React.useState(initialProject);
     const [members, setMembers] = React.useState<UserProfile[]>([]);
-    const [isLoadingData, setIsLoadingData] = React.useState(true);
     const [memberToRemove, setMemberToRemove] = React.useState<UserProfile | null>(null);
 
+    // Settings State
+    const [roles, setRoles] = React.useState<Project['roles']>(initialProject.roles || {});
+    const [customCompanies, setCustomCompanies] = React.useState<string[]>(initialProject.customCompanies || []);
+    const [customLocations, setCustomLocations] = React.useState<string[]>(initialProject.customLocations || []);
+    const [customCategories, setCustomCategories] = React.useState<string[]>(initialProject.customObservationCategories || []);
+    const [isProjectOpen, setIsProjectOpen] = React.useState(initialProject.isOpen ?? true);
+
+    const isCurrentUserOwner = userProfile?.uid === initialProject.ownerUid;
+
+    // ## DATA FETCHING ##
     React.useEffect(() => {
         if (!isOpen) return;
 
@@ -391,7 +339,14 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                     return;
                 }
                 const projectData = projectSnap.data() as Project;
+                
+                // Reset all state based on fetched data
                 setCurrentProject(projectData);
+                setRoles(projectData.roles || {});
+                setCustomCompanies(projectData.customCompanies || []);
+                setCustomLocations(projectData.customLocations || []);
+                setCustomCategories(projectData.customObservationCategories || []);
+                setIsProjectOpen(projectData.isOpen ?? true);
 
                 if (projectData.memberUids?.length > 0) {
                     const memberDocs = await Promise.all(
@@ -400,7 +355,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                     const memberProfiles = memberDocs
                         .map(snap => snap.data() as UserProfile)
                         .filter(Boolean)
-                        .sort((a, b) => (a.uid === projectData.ownerUid ? -1 : 1));
+                        .sort((a, b) => (a.uid === projectData.ownerUid ? -1 : b.uid === projectData.ownerUid ? 1 : 0));
                     setMembers(memberProfiles);
                 } else {
                     setMembers([]);
@@ -417,10 +372,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
     }, [isOpen, initialProject.id, toast, onOpenChange]);
 
 
-    const handleProjectUpdate = (updatedData: Partial<Project>) => {
-        setCurrentProject(prev => ({ ...prev, ...updatedData }));
-    };
-    
+    // ## EVENT HANDLERS ##
     const handleMemberRemoved = (removedMemberId: string) => {
         const updatedMembers = members.filter(m => m.uid !== removedMemberId);
         const updatedUids = currentProject.memberUids.filter(uid => uid !== removedMemberId);
@@ -429,11 +381,51 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
         setMemberToRemove(null);
     };
 
+    const handleRoleChange = (memberId: string, role: keyof MemberRole, value: boolean) => {
+        setRoles(prev => ({
+            ...prev,
+            [memberId]: {
+                ...prev?.[memberId],
+                [role]: value,
+            },
+        }));
+    };
+
+    const handleSaveChanges = useCallback(async () => {
+        setIsSaving(true);
+        const projectRef = doc(db, 'projects', currentProject.id);
+        const updatedData = {
+            roles,
+            customCompanies,
+            customLocations,
+            customObservationCategories: customCategories,
+            isOpen: isProjectOpen,
+        };
+        try {
+          await updateDoc(projectRef, updatedData);
+          updateProject(currentProject.id, updatedData); // Optimistic update
+          toast({
+            title: 'Perubahan Disimpan',
+            description: 'Pengaturan proyek Anda telah berhasil diperbarui.',
+          });
+        } catch (error) {
+          toast({
+            variant: 'destructive',
+            title: 'Gagal Menyimpan',
+            description: 'Tidak dapat menyimpan pengaturan proyek Anda. Silakan coba lagi.',
+          });
+        } finally {
+          setIsSaving(false);
+        }
+    }, [roles, customCompanies, customLocations, customCategories, isProjectOpen, currentProject.id, updateProject, toast]);
+
+    const showSaveButton = isCurrentUserOwner && (activeTab === 'members' || activeTab === 'settings');
+
     return (
         <>
             <Dialog open={isOpen} onOpenChange={onOpenChange}>
-                <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0">
-                    <DialogHeader className="p-6 pb-2">
+                <DialogContent className="sm:max-w-3xl md:max-w-4xl lg:max-w-5xl max-h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="p-6 pb-4 flex-shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                           <FileCog />
                           Kelola "{currentProject.name}"
@@ -443,27 +435,52 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-1 flex flex-col overflow-hidden px-6 pb-4">
-                        <Tabs defaultValue="members" className="flex-1 flex flex-col overflow-hidden">
-                            <TabsList className="grid w-full shrink-0 grid-cols-3">
-                                <TabsTrigger value="members">Anggota & Peran ({currentProject.memberUids?.length || 0})</TabsTrigger>
-                                <TabsTrigger value="settings">Pengaturan</TabsTrigger>
-                                <TabsTrigger value="export">Ekspor</TabsTrigger>
-                            </TabsList>
-                            
-                            <ScrollArea className="flex-1 mt-4 -mr-6 pr-6">
-                                <TabsContent value="members" className="mt-0">
-                                    {isLoadingData ? <MemberListSkeleton /> : <MemberList project={currentProject} members={members} onRemoveClick={setMemberToRemove} />}
-                                </TabsContent>
-                                <TabsContent value="settings" className="mt-0">
-                                    <ProjectSettings project={currentProject} onProjectUpdate={handleProjectUpdate} />
-                                </TabsContent>
-                                <TabsContent value="export" className="mt-0 p-1">
-                                    <ExportCard project={currentProject} />
-                                </TabsContent>
-                            </ScrollArea>
-                        </Tabs>
-                    </div>
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+                        <div className="px-6 border-b">
+                          <TabsList className="grid w-full grid-cols-3">
+                              <TabsTrigger value="members">Anggota & Peran ({currentProject.memberUids?.length || 0})</TabsTrigger>
+                              <TabsTrigger value="settings">Pengaturan</TabsTrigger>
+                              <TabsTrigger value="export">Ekspor</TabsTrigger>
+                          </TabsList>
+                        </div>
+                        
+                        <ScrollArea className="flex-1">
+                          <div className="p-6">
+                            <TabsContent value="members" className="mt-0">
+                                {isLoadingData ? <MemberListSkeleton /> : 
+                                  <MemberListTab 
+                                    project={currentProject} 
+                                    members={members} 
+                                    roles={roles}
+                                    onRemoveClick={setMemberToRemove} 
+                                    onRoleChange={handleRoleChange}
+                                  />
+                                }
+                            </TabsContent>
+                            <TabsContent value="settings" className="mt-0">
+                                <ProjectSettingsTab 
+                                  project={currentProject}
+                                  customCompanies={customCompanies} setCustomCompanies={setCustomCompanies}
+                                  customLocations={customLocations} setCustomLocations={setCustomLocations}
+                                  customCategories={customCategories} setCustomCategories={setCustomCategories}
+                                  isProjectOpen={isProjectOpen} setIsProjectOpen={setIsProjectOpen}
+                                />
+                            </TabsContent>
+                            <TabsContent value="export" className="mt-0">
+                                <ExportCard project={currentProject} />
+                            </TabsContent>
+                          </div>
+                        </ScrollArea>
+                    </Tabs>
+                    
+                    {showSaveButton && (
+                       <DialogFooter className="p-4 border-t bg-background flex-shrink-0">
+                          <Button onClick={handleSaveChanges} disabled={isSaving}>
+                              {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
+                              Simpan Perubahan
+                          </Button>
+                      </DialogFooter>
+                    )}
                 </DialogContent>
             </Dialog>
             

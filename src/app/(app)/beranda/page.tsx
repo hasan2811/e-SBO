@@ -145,13 +145,19 @@ export default function ProjectHubPage() {
   const isLoading = projectsLoading || authLoading;
 
   const handleLeaveSuccess = (projectId: string) => {
-    removeProject(projectId);
-    setProjectToLeave(null);
+    setProjectToLeave(null); // Close dialog immediately to unblock UI
+    // Update state after a short delay to allow closing animation to complete
+    setTimeout(() => {
+      removeProject(projectId);
+    }, 150);
   };
 
   const handleDeleteSuccess = (projectId: string) => {
-    removeProject(projectId);
-    setProjectToDelete(null);
+    setProjectToDelete(null); // Close dialog immediately to unblock UI
+    // Update state after a short delay to allow closing animation to complete
+    setTimeout(() => {
+      removeProject(projectId);
+    }, 150);
   };
   
   const containerVariants = {
