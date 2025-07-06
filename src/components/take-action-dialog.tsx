@@ -149,7 +149,7 @@ export function TakeActionDialog({
       closedBy: closerName,
       closedDate: new Date().toISOString(),
       actionTakenPhotoUrl: photoPreview || observation.actionTakenPhotoUrl,
-      actionTakenPhotoStoragePath: undefined,
+      actionTakenPhotoStoragePath: undefined, // Will be set in background
     };
     const optimisticallyUpdatedObservation = { ...observation, ...optimisticUpdate };
     
@@ -180,11 +180,9 @@ export function TakeActionDialog({
           finalUpdateData.actionTakenPhotoStoragePath = actionTakenPhotoStoragePath;
         }
         
-        // This update will be caught by the real-time listener, ensuring the UI is consistent.
         await updateDoc(observationDocRef, finalUpdateData);
       } catch(error) {
         toast({ variant: 'destructive', title: 'Update Failed', description: error instanceof Error ? error.message : "An unexpected error occurred." });
-        // Revert the optimistic update on failure by sending the original observation back.
         updateItem(observation);
       }
     };
@@ -215,7 +213,7 @@ export function TakeActionDialog({
                     {suggestedActions.map((action, index) => (
                         <div key={index} className="flex items-center gap-3">
                         <Checkbox
-                            id={`action-${index}`}
+                            id={`action-checkbox-${index}`}
                             onCheckedChange={(checked) => {
                             setCheckedActions(prev => 
                                 checked ? [...prev, action] : prev.filter(a => a !== action)
@@ -223,7 +221,7 @@ export function TakeActionDialog({
                             }}
                         />
                         <label
-                            htmlFor={`action-${index}`}
+                            htmlFor={`action-checkbox-${index}`}
                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
                             {action}
@@ -303,7 +301,7 @@ export function TakeActionDialog({
               Cancel
             </Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || form.getValues('actionTakenDescription').length === 0 || isSubmitting}>
-              {isSubmitting && <Loader2 />}
+              {isSubmitting && <Loader2 className="animate-spin" />}
               Mark as Completed
             </Button>
           </div>
@@ -312,3 +310,5 @@ export function TakeActionDialog({
     </Dialog>
   );
 }
+
+    

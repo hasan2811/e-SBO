@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { usePathname, useRouter } from 'next/navigation';
 import { DEFAULT_LOCATIONS, DEFAULT_COMPANIES, DEFAULT_OBSERVATION_CATEGORIES, RISK_LEVELS } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { createAssignmentNotification } from '@/lib/actions/notification-actions';
 
 const formSchema = z.object({
   photo: z
@@ -67,7 +68,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   const [isAiLoading, setIsAiLoading] = React.useState(false);
   const [members, setMembers] = React.useState<UserProfile[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = React.useState(false);
-  const isAiEnabled = userProfile?.aiEnabled ?? false;
+  const isAiEnabled = userProfile?.aiEnabled ?? true;
 
   const companyOptions = React.useMemo(() => 
     (project?.customCompanies && project.customCompanies.length > 0) ? project.customCompanies : DEFAULT_COMPANIES,
@@ -134,7 +135,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   }, [debouncedFindings, userProfile, isAiEnabled]);
   
   React.useEffect(() => {
-    if (isOpen && project) {
+    if (isOpen && project && userProfile) {
         if (project.memberUids) {
             const fetchMembers = async () => {
                 setIsLoadingMembers(true);
@@ -143,7 +144,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                     const memberDocs = await Promise.all(memberProfilesPromises);
                     const allMembers = memberDocs
                         .map(d => d.exists() ? (d.data() as UserProfile) : null)
-                        .filter((p): p is UserProfile => p !== null);
+                        .filter((p): p is UserProfile => p !== null && p.uid !== userProfile.uid); // Exclude self
 
                     const responsibleMembers = allMembers.filter(member => 
                         member.uid === project.ownerUid || project.roles?.[member.uid]?.canTakeAction === true
@@ -175,7 +176,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             fileInputRef.current.value = '';
         }
     }
-  }, [isOpen, project, form, locationOptions, companyOptions, categoryOptions, toast]);
+  }, [isOpen, project, form, locationOptions, companyOptions, categoryOptions, toast, userProfile]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -196,24 +197,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         });
       }
     }
-  };
-  
-  const createAssignmentNotification = async (itemId: string, itemType: 'observation' | 'inspection' | 'ptw', responsiblePersonUid: string, submitterName: string, findings: string, projectId: string) => {
-     if (!responsiblePersonUid) return;
-
-     try {
-         await addDoc(collection(db, 'notifications'), {
-             userId: responsiblePersonUid,
-             itemId,
-             itemType,
-             projectId,
-             message: `${submitterName} menugaskan Anda laporan baru: ${findings.substring(0, 50)}...`,
-             isRead: false,
-             createdAt: new Date().toISOString(),
-         });
-     } catch (error) {
-         console.error("Gagal membuat notifikasi penugasan:", error);
-     }
   };
 
   const onSubmit = (values: FormValues) => {
@@ -252,6 +235,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     };
 
     addItem(optimisticItem);
+    toast({ title: 'Laporan Dikirim', description: 'Laporan Anda sedang diunggah di latar belakang.' });
     handleOpenChange(false);
     
     const targetPath = `/proyek/${project.id}/observasi`;
@@ -306,7 +290,14 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           }
           
           if (values.responsiblePersonUid && projectId) {
-              createAssignmentNotification(docRef.id, 'observation', values.responsiblePersonUid, userProfile.displayName, values.findings, projectId);
+              await createAssignmentNotification({
+                  itemId: docRef.id,
+                  itemType: 'observation',
+                  responsiblePersonUid: values.responsiblePersonUid,
+                  submitterName: userProfile.displayName,
+                  description: values.findings,
+                  projectId,
+              });
           }
 
       } catch (error) {
@@ -573,3 +564,5 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     </Dialog>
   );
 }
+
+    

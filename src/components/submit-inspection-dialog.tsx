@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { usePathname, useRouter } from 'next/navigation';
 import { DEFAULT_LOCATIONS, EQUIPMENT_TYPES, INSPECTION_STATUSES } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { createAssignmentNotification } from '@/lib/actions/notification-actions';
 
 
 const formSchema = z.object({
@@ -67,7 +68,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   const [isAiLoading, setIsAiLoading] = React.useState(false);
   const [members, setMembers] = React.useState<UserProfile[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = React.useState(false);
-  const isAiEnabled = userProfile?.aiEnabled ?? false;
+  const isAiEnabled = userProfile?.aiEnabled ?? true;
 
   const locationOptions = React.useMemo(() => 
     (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : DEFAULT_LOCATIONS,
@@ -127,7 +128,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   }, [debouncedFindings, userProfile, isAiEnabled]);
   
   React.useEffect(() => {
-    if (isOpen && project) {
+    if (isOpen && project && userProfile) {
         if (project.memberUids) {
             const fetchMembers = async () => {
                 setIsLoadingMembers(true);
@@ -136,7 +137,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
                     const memberDocs = await Promise.all(memberProfilesPromises);
                     const allMembers = memberDocs
                         .map(d => d.exists() ? (d.data() as UserProfile) : null)
-                        .filter((p): p is UserProfile => p !== null);
+                        .filter((p): p is UserProfile => p !== null && p.uid !== userProfile.uid); // Exclude self
 
                     const responsibleMembers = allMembers.filter(member => 
                         member.uid === project.ownerUid || project.roles?.[member.uid]?.canTakeAction === true
@@ -164,7 +165,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         setAiSuggestions(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [isOpen, project, form, locationOptions]);
+  }, [isOpen, project, form, locationOptions, userProfile]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -181,24 +182,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         toast({ variant: 'destructive', title: 'File tidak valid', description: validation.error.issues[0].message });
       }
     }
-  };
-
-  const createAssignmentNotification = async (itemId: string, itemType: 'observation' | 'inspection' | 'ptw', responsiblePersonUid: string, submitterName: string, findings: string, projectId: string) => {
-     if (!responsiblePersonUid) return;
-
-     try {
-         await addDoc(collection(db, 'notifications'), {
-             userId: responsiblePersonUid,
-             itemId,
-             itemType,
-             projectId,
-             message: `${submitterName} menugaskan Anda laporan inspeksi baru: ${findings.substring(0, 40)}...`,
-             isRead: false,
-             createdAt: new Date().toISOString(),
-         });
-     } catch (error) {
-         console.error("Gagal membuat notifikasi penugasan:", error);
-     }
   };
 
   const onSubmit = (values: FormValues) => {
@@ -236,6 +219,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     };
 
     addItem(optimisticItem);
+    toast({ title: 'Laporan Dikirim', description: 'Laporan inspeksi Anda sedang diunggah.' });
     handleOpenChange(false);
 
     const targetPath = `/proyek/${project.id}/inspeksi`;
@@ -284,7 +268,14 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
           }
 
           if (values.responsiblePersonUid && projectId) {
-              createAssignmentNotification(docRef.id, 'inspection', values.responsiblePersonUid, userProfile.displayName, values.findings, projectId);
+              await createAssignmentNotification({
+                  itemId: docRef.id,
+                  itemType: 'inspection',
+                  responsiblePersonUid: values.responsiblePersonUid,
+                  submitterName: userProfile.displayName,
+                  description: `Inspeksi untuk: ${values.equipmentName}`,
+                  projectId,
+              });
           }
 
       } catch (error) {
@@ -428,3 +419,5 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     </Dialog>
   );
 }
+
+    

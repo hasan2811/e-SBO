@@ -180,11 +180,9 @@ export function FollowUpInspectionDialog({
           finalUpdateData.actionTakenPhotoStoragePath = actionTakenPhotoStoragePath;
         }
 
-        // This update will be caught by the real-time listener.
         await updateDoc(inspectionDocRef, finalUpdateData);
       } catch (error) {
         toast({ variant: 'destructive', title: 'Gagal Memperbarui', description: 'Gagal menyimpan pembaruan. Mengembalikan perubahan.' });
-        // Revert the optimistic update on failure
         updateItem(inspection);
       }
     };
@@ -215,7 +213,7 @@ export function FollowUpInspectionDialog({
                     {suggestedActions.map((action, index) => (
                         <div key={index} className="flex items-center gap-3">
                         <Checkbox
-                            id={`action-${index}`}
+                            id={`follow-up-action-checkbox-${index}`}
                             onCheckedChange={(checked) => {
                             setCheckedActions(prev => 
                                 checked ? [...prev, action] : prev.filter(a => a !== action)
@@ -223,7 +221,7 @@ export function FollowUpInspectionDialog({
                             }}
                         />
                         <label
-                            htmlFor={`action-${index}`}
+                            htmlFor={`follow-up-action-checkbox-${index}`}
                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
                             {action}
@@ -303,7 +301,7 @@ export function FollowUpInspectionDialog({
               Cancel
             </Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || form.getValues('actionTakenDescription').length === 0 || isSubmitting}>
-              {isSubmitting && <Loader2 />}
+              {isSubmitting && <Loader2 className="animate-spin" />}
               Mark as Completed
             </Button>
           </div>
@@ -312,3 +310,5 @@ export function FollowUpInspectionDialog({
     </Dialog>
   );
 }
+
+    

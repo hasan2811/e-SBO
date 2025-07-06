@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePathname, useRouter } from 'next/navigation';
 import { DEFAULT_LOCATIONS, DEFAULT_COMPANIES } from '@/lib/types';
+import { createAssignmentNotification } from '@/lib/actions/notification-actions';
 
 
 const formSchema = z.object({
@@ -89,7 +90,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   };
   
   React.useEffect(() => {
-    if (isOpen && project) {
+    if (isOpen && project && userProfile) {
         if (project.memberUids) {
             const fetchMembers = async () => {
                 setIsLoadingMembers(true);
@@ -98,7 +99,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
                     const memberDocs = await Promise.all(memberProfilesPromises);
                     const allMembers = memberDocs
                         .map(d => d.exists() ? (d.data() as UserProfile) : null)
-                        .filter((p): p is UserProfile => p !== null);
+                        .filter((p): p is UserProfile => p !== null && p.uid !== userProfile.uid); // Exclude self
 
                     const approverMembers = allMembers.filter(member => 
                         member.uid === project.ownerUid || project.roles?.[member.uid]?.canApprovePtw === true
@@ -123,7 +124,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
         if (fileInputRef.current) fileInputRef.current.value = '';
 
     }
-  }, [isOpen, project, form, locationOptions, companyOptions]);
+  }, [isOpen, project, form, locationOptions, companyOptions, userProfile]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -138,24 +139,6 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
         toast({ variant: 'destructive', title: 'File tidak valid', description: validation.error.issues[0].message });
       }
     }
-  };
-
-  const createAssignmentNotification = async (itemId: string, itemType: 'observation' | 'inspection' | 'ptw', responsiblePersonUid: string, submitterName: string, workDescription: string, projectId: string) => {
-     if (!responsiblePersonUid) return;
-
-     try {
-         await addDoc(collection(db, 'notifications'), {
-             userId: responsiblePersonUid,
-             itemId,
-             itemType,
-             projectId,
-             message: `Anda ditugaskan untuk menyetujui Izin Kerja: ${workDescription.substring(0, 40)}...`,
-             isRead: false,
-             createdAt: new Date().toISOString(),
-         });
-     } catch (error) {
-         console.error("Gagal membuat notifikasi penugasan:", error);
-     }
   };
 
   const onSubmit = (values: FormValues) => {
@@ -190,6 +173,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     };
 
     addItem(optimisticItem);
+    toast({ title: 'Izin Kerja Dikirim', description: 'PTW Anda sedang diunggah.' });
     handleOpenChange(false);
 
     const targetPath = `/proyek/${project.id}/ptw`;
@@ -227,7 +211,14 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
           const docRef = await addDoc(collection(db, 'ptws'), newPtwData);
 
           if (values.responsiblePersonUid && projectId) {
-              createAssignmentNotification(docRef.id, 'ptw', values.responsiblePersonUid, userProfile.displayName, values.workDescription, projectId);
+              await createAssignmentNotification({
+                  itemId: docRef.id,
+                  itemType: 'ptw',
+                  responsiblePersonUid: values.responsiblePersonUid,
+                  submitterName: userProfile.displayName,
+                  description: `Persetujuan PTW: ${values.workDescription}`,
+                  projectId,
+              });
           }
 
       } catch (error) {
@@ -322,3 +313,5 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     </Dialog>
   );
 }
+
+    
