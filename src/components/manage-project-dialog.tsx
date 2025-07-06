@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -14,7 +13,6 @@ import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'fireb
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
@@ -437,8 +435,8 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                         </DialogDescription>
                     </DialogHeader>
 
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
-                        <div className="px-6 border-b">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-y-hidden">
+                        <div className="px-6 border-b flex-shrink-0">
                             <TooltipProvider delayDuration={100}>
                                 <TabsList className="grid w-full grid-cols-3">
                                     <Tooltip>
@@ -480,33 +478,33 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                             </TooltipProvider>
                         </div>
                         
-                        <ScrollArea className="flex-1">
-                          <div className="p-6">
-                            <TabsContent value="members" className="mt-0">
-                                {isLoadingData ? <MemberListSkeleton /> : 
-                                  <MemberListTab 
-                                    project={currentProject} 
-                                    members={members} 
-                                    roles={roles}
-                                    onRemoveClick={setMemberToRemove} 
-                                    onRoleChange={handleRoleChange}
-                                  />
-                                }
-                            </TabsContent>
-                            <TabsContent value="settings" className="mt-0">
-                                <ProjectSettingsTab 
-                                  project={currentProject}
-                                  customCompanies={customCompanies} setCustomCompanies={setCustomCompanies}
-                                  customLocations={customLocations} setCustomLocations={setCustomLocations}
-                                  customCategories={customCategories} setCustomCategories={setCustomCategories}
-                                  isProjectOpen={isProjectOpen} setIsProjectOpen={setIsProjectOpen}
-                                />
-                            </TabsContent>
-                            <TabsContent value="export" className="mt-0">
-                                <ExportCard project={currentProject} />
-                            </TabsContent>
-                          </div>
-                        </ScrollArea>
+                        <div className="flex-1 overflow-y-auto">
+                            <div className="p-6">
+                                <TabsContent value="members" className="mt-0">
+                                    {isLoadingData ? <MemberListSkeleton /> : 
+                                    <MemberListTab 
+                                        project={currentProject} 
+                                        members={members} 
+                                        roles={roles}
+                                        onRemoveClick={setMemberToRemove} 
+                                        onRoleChange={handleRoleChange}
+                                    />
+                                    }
+                                </TabsContent>
+                                <TabsContent value="settings" className="mt-0">
+                                    <ProjectSettingsTab 
+                                    project={currentProject}
+                                    customCompanies={customCompanies} setCustomCompanies={setCustomCompanies}
+                                    customLocations={customLocations} setCustomLocations={setCustomLocations}
+                                    customCategories={customCategories} setCustomCategories={setCustomCategories}
+                                    isProjectOpen={isProjectOpen} setIsProjectOpen={setIsProjectOpen}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="export" className="mt-0">
+                                    <ExportCard project={currentProject} />
+                                </TabsContent>
+                            </div>
+                        </div>
                     </Tabs>
                     
                     {showSaveButton && (
