@@ -6,15 +6,15 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
-import { Loader2, Upload, Sparkles, Wand2, ClipboardPlus } from 'lucide-react';
-import { collection, addDoc } from 'firebase/firestore';
+import { Loader2, Upload, Sparkles, Wand2, ClipboardPlus, Users } from 'lucide-react';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { triggerObservationAnalysis } from '@/lib/actions/ai-actions';
 import { useDebounce } from 'use-debounce';
 import { assistObservation } from '@/ai/flows/assist-observation-flow';
 
-import type { Project, Scope, Location, Company, Observation, RiskLevel, ObservationCategory, AssistObservationOutput } from '@/lib/types';
+import type { Project, Scope, Location, Company, Observation, RiskLevel, ObservationCategory, AssistObservationOutput, UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useObservations } from '@/hooks/use-observations';
@@ -41,6 +41,7 @@ const formSchema = z.object({
   recommendation: z.string().optional(),
   category: z.string().min(1, "Category is required."),
   riskLevel: z.enum(RISK_LEVELS),
+  responsiblePersonUid: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -64,6 +65,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   
   const [aiSuggestions, setAiSuggestions] = React.useState<AssistObservationOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
+  const [members, setMembers] = React.useState<UserProfile[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = React.useState(false);
   const isAiEnabled = userProfile?.aiEnabled ?? false;
 
   const companyOptions = React.useMemo(() => 
@@ -84,6 +87,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
       photo: undefined,
       findings: '',
       recommendation: '',
+      responsiblePersonUid: '',
     },
     mode: 'onChange',
   });
@@ -124,21 +128,44 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         riskLevel: RISK_LEVELS[0],
         findings: '',
         recommendation: '',
+        responsiblePersonUid: '',
     });
     setPhotoPreview(null);
     setAiSuggestions(null);
     setIsAiLoading(false);
     setIsSubmitting(false);
+    setMembers([]);
     if (fileInputRef.current) {
         fileInputRef.current.value = '';
     }
   }, [form, locationOptions, companyOptions, categoryOptions]);
 
   React.useEffect(() => {
-    if (isOpen) {
+    if (isOpen && project?.memberUids) {
+        const fetchMembers = async () => {
+            setIsLoadingMembers(true);
+            try {
+                const memberProfiles = await Promise.all(
+                    project.memberUids.map(async (uid) => {
+                        const userDoc = await getDoc(doc(db, 'users', uid));
+                        return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
+                    })
+                );
+                setMembers(memberProfiles.filter((p): p is UserProfile => p !== null));
+            } catch (error) {
+                console.error("Failed to fetch project members:", error);
+                toast({ variant: 'destructive', title: 'Gagal memuat anggota proyek' });
+            } finally {
+                setIsLoadingMembers(false);
+            }
+        };
+        fetchMembers();
+    }
+    
+    if (!isOpen) {
         resetForm();
     }
-  }, [isOpen, resetForm]);
+  }, [isOpen, project, toast, resetForm]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -160,6 +187,25 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
       }
     }
   };
+  
+  const createAssignmentNotification = async (itemId: string, itemType: 'observation' | 'inspection' | 'ptw', responsiblePersonUid: string, submitterName: string, findings: string, projectId: string) => {
+     if (!responsiblePersonUid) return;
+
+     try {
+         await addDoc(collection(db, 'notifications'), {
+             userId: responsiblePersonUid,
+             itemId,
+             itemType,
+             projectId,
+             message: `${submitterName} menugaskan Anda laporan baru: ${findings.substring(0, 50)}...`,
+             isRead: false,
+             createdAt: new Date().toISOString(),
+         });
+     } catch (error) {
+         console.error("Gagal membuat notifikasi penugasan:", error);
+         // Non-blocking, so we don't show a toast to the user for this
+     }
+  };
 
   const onSubmit = (values: FormValues) => {
     if (!user || !userProfile || !project) {
@@ -170,6 +216,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
 
     const referenceId = `OBS-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const optimisticId = `optimistic-${referenceId}`;
+    const responsiblePersonName = members.find(m => m.uid === values.responsiblePersonUid)?.displayName;
 
     const optimisticItem: Observation = {
         id: optimisticId,
@@ -191,6 +238,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         status: 'uploading',
         aiStatus: 'n/a',
         optimisticState: 'uploading',
+        responsiblePersonUid: values.responsiblePersonUid,
+        responsiblePersonName,
     };
 
     addItem(optimisticItem);
@@ -235,22 +284,27 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
               riskLevel: values.riskLevel,
               status: 'Pending',
               aiStatus: isAiEnabled ? 'processing' : 'n/a',
+              responsiblePersonUid: values.responsiblePersonUid,
+              responsiblePersonName,
           };
           
           const docRef = await addDoc(collection(db, "observations"), newObservationData);
           
           if (isAiEnabled) {
             const finalObservation: Observation = { ...newObservationData, id: docRef.id };
-            // Do not await this. Let it run in the background.
             triggerObservationAnalysis(finalObservation, userProfile).catch(error => {
                 console.error("Failed to trigger AI analysis:", error);
             });
           }
+          
+          if (values.responsiblePersonUid && projectId) {
+              createAssignmentNotification(docRef.id, 'observation', values.responsiblePersonUid, userProfile.displayName, values.findings, projectId);
+          }
+
       } catch (error) {
           console.error("Submission failed:", error);
           const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
           toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
-          // Remove the failed optimistic item from the UI.
           removeItem(optimisticId);
       }
     };
@@ -388,6 +442,35 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   )}
                 />
               </div>
+              
+                <FormField
+                  control={form.control}
+                  name="responsiblePersonUid"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Penanggung Jawab (Opsional)
+                      </FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingMembers}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={isLoadingMembers ? "Memuat anggota..." : "Pilih anggota proyek"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">Tidak Ditugaskan</SelectItem>
+                          {members.map(member => (
+                            <SelectItem key={member.uid} value={member.uid}>
+                              {member.displayName} ({member.position})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
               <FormField
                 control={form.control}

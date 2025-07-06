@@ -5,12 +5,12 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Upload, FileSignature, FileText } from 'lucide-react';
-import { collection, addDoc } from 'firebase/firestore';
+import { Loader2, Upload, FileSignature, FileText, Users } from 'lucide-react';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 
-import type { Ptw, Location, Project, Scope } from '@/lib/types';
+import type { Ptw, Location, Project, Scope, UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useObservations } from '@/hooks/use-observations';
@@ -34,6 +34,7 @@ const formSchema = z.object({
     .instanceof(File, { message: 'File JSA (PDF) wajib diunggah.' })
     .refine((file) => file.type === 'application/pdf', 'File harus dalam format PDF.')
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
+  responsiblePersonUid: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -54,6 +55,8 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   const pathname = usePathname();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [members, setMembers] = React.useState<UserProfile[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = React.useState(false);
   
   const locationOptions = React.useMemo(() => 
     (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : DEFAULT_LOCATIONS,
@@ -64,22 +67,49 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     defaultValues: {
       workDescription: '',
       contractor: '',
+      responsiblePersonUid: '',
     },
     mode: 'onChange',
   });
 
+  const resetForm = React.useCallback(() => {
+    form.reset({
+        location: locationOptions[0],
+        workDescription: '',
+        contractor: '',
+        responsiblePersonUid: '',
+    });
+    setFileName(null);
+    setIsSubmitting(false);
+    setMembers([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [form, locationOptions]);
+
   React.useEffect(() => {
-    if (isOpen) {
-        form.reset({
-            location: locationOptions[0],
-            workDescription: '',
-            contractor: '',
-        });
-        setFileName(null);
-        setIsSubmitting(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
+    if (isOpen && project?.memberUids) {
+        const fetchMembers = async () => {
+            setIsLoadingMembers(true);
+            try {
+                const memberProfiles = await Promise.all(
+                    project.memberUids.map(async (uid) => {
+                        const userDoc = await getDoc(doc(db, 'users', uid));
+                        return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
+                    })
+                );
+                setMembers(memberProfiles.filter((p): p is UserProfile => p !== null));
+            } catch (error) {
+                console.error("Failed to fetch project members:", error);
+            } finally {
+                setIsLoadingMembers(false);
+            }
+        };
+        fetchMembers();
     }
-  }, [isOpen, form, locationOptions]);
+
+    if (!isOpen) {
+        resetForm();
+    }
+  }, [isOpen, project, resetForm]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -96,6 +126,24 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     }
   };
 
+  const createAssignmentNotification = async (itemId: string, itemType: 'observation' | 'inspection' | 'ptw', responsiblePersonUid: string, submitterName: string, workDescription: string, projectId: string) => {
+     if (!responsiblePersonUid) return;
+
+     try {
+         await addDoc(collection(db, 'notifications'), {
+             userId: responsiblePersonUid,
+             itemId,
+             itemType,
+             projectId,
+             message: `Anda ditugaskan untuk menyetujui Izin Kerja: ${workDescription.substring(0, 40)}...`,
+             isRead: false,
+             createdAt: new Date().toISOString(),
+         });
+     } catch (error) {
+         console.error("Gagal membuat notifikasi penugasan:", error);
+     }
+  };
+
   const onSubmit = (values: FormValues) => {
     if (!user || !userProfile || !values.jsaPdf || !project) {
         toast({ variant: 'destructive', title: 'Data tidak lengkap' });
@@ -105,6 +153,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     
     const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const optimisticId = `optimistic-${referenceId}`;
+    const responsiblePersonName = members.find(m => m.uid === values.responsiblePersonUid)?.displayName;
 
     const optimisticItem: Ptw = {
       id: optimisticId,
@@ -122,6 +171,8 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
       scope: project ? 'project' : 'private',
       projectId: project?.id || null,
       optimisticState: 'uploading',
+      responsiblePersonUid: values.responsiblePersonUid,
+      responsiblePersonName,
     };
 
     addItem(optimisticItem);
@@ -156,14 +207,20 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
               projectId,
               referenceId,
               status: 'Pending Approval',
+              responsiblePersonUid: values.responsiblePersonUid,
+              responsiblePersonName,
           };
 
-          await addDoc(collection(db, 'ptws'), newPtwData);
+          const docRef = await addDoc(collection(db, 'ptws'), newPtwData);
+
+          if (values.responsiblePersonUid && projectId) {
+              createAssignmentNotification(docRef.id, 'ptw', values.responsiblePersonUid, userProfile.displayName, values.workDescription, projectId);
+          }
+
       } catch (error) {
           console.error("Submission failed:", error);
           const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
           toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
-          // Remove the failed optimistic item from the UI.
           removeItem(optimisticId);
       }
     };
@@ -189,6 +246,35 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
                   <FormItem><FormLabel>Kontraktor</FormLabel><FormControl><Input placeholder="e.g., PT. Maju Jaya" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
+
+              <FormField
+                control={form.control}
+                name="responsiblePersonUid"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Approver / Penyetuju
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingMembers}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={isLoadingMembers ? "Memuat anggota..." : "Pilih approver"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {members.map(member => (
+                          <SelectItem key={member.uid} value={member.uid}>
+                            {member.displayName} ({member.position})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField name="workDescription" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Deskripsi Pekerjaan</FormLabel><FormControl><Textarea placeholder="Jelaskan detail pekerjaan yang akan dilakukan." rows={4} {...field} /></FormControl><FormMessage /></FormItem>
               )} />

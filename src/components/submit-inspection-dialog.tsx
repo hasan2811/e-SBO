@@ -6,15 +6,15 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
-import { Loader2, Upload, Wrench, Sparkles, Wand2 } from 'lucide-react';
-import { collection, addDoc } from 'firebase/firestore';
+import { Loader2, Upload, Wrench, Sparkles, Wand2, Users } from 'lucide-react';
+import { collection, addDoc, getDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { triggerInspectionAnalysis } from '@/lib/actions/ai-actions';
 import { useDebounce } from 'use-debounce';
 import { assistInspection } from '@/ai/flows/assist-inspection-flow';
 
-import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope, AssistInspectionOutput } from '@/lib/types';
+import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope, AssistInspectionOutput, UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useObservations } from '@/hooks/use-observations';
@@ -41,6 +41,7 @@ const formSchema = z.object({
   photo: z
     .instanceof(File, { message: 'Foto wajib diunggah.' })
     .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
+  responsiblePersonUid: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -64,6 +65,8 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   
   const [aiSuggestions, setAiSuggestions] = React.useState<AssistInspectionOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
+  const [members, setMembers] = React.useState<UserProfile[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = React.useState(false);
   const isAiEnabled = userProfile?.aiEnabled ?? false;
 
   const form = useForm<FormValues>({
@@ -74,6 +77,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
       status: INSPECTION_STATUSES[0],
       findings: '',
       recommendation: '',
+      responsiblePersonUid: '',
     },
     mode: 'onChange',
   });
@@ -116,19 +120,41 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         status: INSPECTION_STATUSES[0],
         findings: '',
         recommendation: '',
+        responsiblePersonUid: '',
     });
     setPhotoPreview(null);
     setAiSuggestions(null);
     setIsAiLoading(false);
     setIsSubmitting(false);
+    setMembers([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [form, locationOptions]);
 
   React.useEffect(() => {
-    if (isOpen) {
-      resetForm();
+    if (isOpen && project?.memberUids) {
+        const fetchMembers = async () => {
+            setIsLoadingMembers(true);
+            try {
+                const memberProfiles = await Promise.all(
+                    project.memberUids.map(async (uid) => {
+                        const userDoc = await getDoc(doc(db, 'users', uid));
+                        return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
+                    })
+                );
+                setMembers(memberProfiles.filter((p): p is UserProfile => p !== null));
+            } catch (error) {
+                console.error("Failed to fetch project members:", error);
+            } finally {
+                setIsLoadingMembers(false);
+            }
+        };
+        fetchMembers();
     }
-  }, [isOpen, resetForm]);
+    
+    if (!isOpen) {
+        resetForm();
+    }
+  }, [isOpen, project, resetForm]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -147,6 +173,24 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     }
   };
 
+  const createAssignmentNotification = async (itemId: string, itemType: 'observation' | 'inspection' | 'ptw', responsiblePersonUid: string, submitterName: string, findings: string, projectId: string) => {
+     if (!responsiblePersonUid) return;
+
+     try {
+         await addDoc(collection(db, 'notifications'), {
+             userId: responsiblePersonUid,
+             itemId,
+             itemType,
+             projectId,
+             message: `${submitterName} menugaskan Anda laporan inspeksi baru: ${findings.substring(0, 40)}...`,
+             isRead: false,
+             createdAt: new Date().toISOString(),
+         });
+     } catch (error) {
+         console.error("Gagal membuat notifikasi penugasan:", error);
+     }
+  };
+
   const onSubmit = (values: FormValues) => {
     if (!user || !userProfile || !values.photo || !project) {
       toast({ variant: 'destructive', title: 'Data tidak lengkap' });
@@ -156,6 +200,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     setIsSubmitting(true);
     const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const optimisticId = `optimistic-${referenceId}`;
+    const responsiblePersonName = members.find(m => m.uid === values.responsiblePersonUid)?.displayName;
 
     const optimisticItem: Inspection = {
       id: optimisticId,
@@ -176,6 +221,8 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
       projectId: project?.id || null,
       aiStatus: 'n/a',
       optimisticState: 'uploading',
+      responsiblePersonUid: values.responsiblePersonUid,
+      responsiblePersonName,
     };
 
     addItem(optimisticItem);
@@ -213,22 +260,27 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
               projectId,
               referenceId,
               aiStatus: isAiEnabled ? 'processing' : 'n/a',
+              responsiblePersonUid: values.responsiblePersonUid,
+              responsiblePersonName,
           };
 
           const docRef = await addDoc(collection(db, "inspections"), newInspectionData);
           
           if (isAiEnabled) {
               const newInspection = { ...newInspectionData, id: docRef.id };
-              // Do not await this. Let it run in the background.
               triggerInspectionAnalysis(newInspection, userProfile).catch(error => {
                   console.error("Failed to trigger AI analysis for inspection:", error);
               });
           }
+
+          if (values.responsiblePersonUid && projectId) {
+              createAssignmentNotification(docRef.id, 'inspection', values.responsiblePersonUid, userProfile.displayName, values.findings, projectId);
+          }
+
       } catch (error) {
           console.error("Submission failed:", error);
           const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
           toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
-          // Remove the failed optimistic item from the UI.
           removeItem(optimisticId);
       }
     };
@@ -262,6 +314,36 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
               <FormField name="status" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Status Inspeksi</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(INSPECTION_STATUSES)}</SelectContent></Select><FormMessage /></FormItem>
               )} />
+              
+              <FormField
+                control={form.control}
+                name="responsiblePersonUid"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Penanggung Jawab (Opsional)
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingMembers}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={isLoadingMembers ? "Memuat anggota..." : "Pilih anggota proyek"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">Tidak Ditugaskan</SelectItem>
+                        {members.map(member => (
+                          <SelectItem key={member.uid} value={member.uid}>
+                            {member.displayName} ({member.position})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
               <FormField name="findings" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Temuan</FormLabel><FormControl><Textarea placeholder="Jelaskan detail temuan inspeksi." rows={3} {...field} /></FormControl><FormMessage /></FormItem>
               )} />

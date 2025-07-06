@@ -99,6 +99,8 @@ export type Observation = {
   closedBy?: string;
   closedDate?: string;
   optimisticState?: 'uploading';
+  responsiblePersonUid?: string;
+  responsiblePersonName?: string;
   
   // AI Fields
   aiStatus?: 'processing' | 'completed' | 'failed' | 'n/a';
@@ -131,6 +133,8 @@ export type Inspection = {
   scope: Scope;
   projectId: string | null;
   optimisticState?: 'uploading';
+  responsiblePersonUid?: string;
+  responsiblePersonName?: string;
   aiStatus?: 'processing' | 'completed' | 'failed' | 'n/a';
   aiSummary?: string;
   aiRisks?: string;
@@ -161,6 +165,8 @@ export type Ptw = {
   scope: Scope;
   projectId: string | null;
   optimisticState?: 'uploading';
+  responsiblePersonUid?: string;
+  responsiblePersonName?: string;
   approver?: string;
   approvedDate?: string;
   rejectionReason?: string;
@@ -173,7 +179,8 @@ export type AllItems = Observation | Inspection | Ptw;
 export type Notification = {
     id: string;
     userId: string; // The user who should receive the notification
-    observationId: string;
+    itemId: string;
+    itemType: AllItems['itemType'];
     projectId: string;
     message: string;
     isRead: boolean;

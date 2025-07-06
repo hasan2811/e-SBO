@@ -16,7 +16,7 @@ export default function ProjectObservationPage() {
   const { projects, loading: projectsLoading } = useProjects();
   
   const projectId = params.projectId as string;
-  const observationIdToOpen = searchParams.get('openObservation');
+  const itemIdToOpen = searchParams.get('openItem');
 
   if (projectsLoading || !projectId) {
     return <PageSkeleton />;
@@ -41,7 +41,7 @@ export default function ProjectObservationPage() {
     <FeedView 
       projectId={projectId} 
       itemTypeFilter="observation"
-      observationIdToOpen={observationIdToOpen}
+      itemIdToOpen={itemIdToOpen}
       title="Observasi Proyek"
     />
   );

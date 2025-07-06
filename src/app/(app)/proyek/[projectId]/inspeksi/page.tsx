@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useProjects } from '@/hooks/use-projects';
 import { FeedView } from '@/components/feed-view';
 import { PageSkeleton } from '@/components/page-skeleton';
@@ -12,9 +12,11 @@ import { ArrowLeft } from 'lucide-react';
 export default function ProjectInspectionPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { projects, loading: projectsLoading } = useProjects();
   
   const projectId = params.projectId as string;
+  const itemIdToOpen = searchParams.get('openItem');
 
   if (projectsLoading || !projectId) {
     return <PageSkeleton />;
@@ -39,6 +41,7 @@ export default function ProjectInspectionPage() {
     <FeedView 
       projectId={projectId} 
       itemTypeFilter="inspection"
+      itemIdToOpen={itemIdToOpen}
       title="Inspeksi"
     />
   );

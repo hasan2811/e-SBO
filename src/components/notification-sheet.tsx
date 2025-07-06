@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -20,9 +21,11 @@ import { formatDistanceToNow } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 export function NotificationSheet() {
   const { user } = useAuth();
+  const router = useRouter();
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -55,6 +58,11 @@ export function NotificationSheet() {
 
     return () => unsubscribe();
   }, [user]);
+  
+  const getLinkForItem = (notification: Notification) => {
+      const pluralType = `${notification.itemType}s`;
+      return `/proyek/${notification.projectId}/${pluralType}?openItem=${notification.itemId}`;
+  }
 
   const handleOpenSheet = async () => {
     setIsSheetOpen(true);
@@ -73,6 +81,16 @@ export function NotificationSheet() {
       }
     }
   };
+  
+  const handleNotificationClick = (e: React.MouseEvent, notification: Notification) => {
+      e.preventDefault();
+      setIsSheetOpen(false);
+      const link = getLinkForItem(notification);
+      // Timeout to allow sheet to close before navigating
+      setTimeout(() => {
+        router.push(link);
+      }, 150);
+  }
 
   return (
     <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -80,9 +98,13 @@ export function NotificationSheet() {
         <Button variant="ghost" size="icon" className="relative" onClick={handleOpenSheet}>
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+            <span className="absolute top-1.5 right-1.5 flex h-4 w-4">
+              <span className={cn(
+                  "absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-destructive rounded-full",
+                  unreadCount > 9 && "px-1" // Adjust padding for double digits
+              )}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
             </span>
           )}
         </Button>
@@ -101,7 +123,10 @@ export function NotificationSheet() {
             <ul className="divide-y">
               {notifications.map(notification => (
                 <li key={notification.id}>
-                  <Link href={`/proyek/${notification.projectId}?openObservation=${notification.observationId}`} onClick={() => setIsSheetOpen(false)} className={cn(
+                  <Link 
+                    href={getLinkForItem(notification)}
+                    onClick={(e) => handleNotificationClick(e, notification)}
+                    className={cn(
                     "block p-4 hover:bg-muted/50 transition-colors",
                     !notification.isRead && "bg-primary/5"
                   )}>

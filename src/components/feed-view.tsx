@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel } from '@/lib/types';
 import { PtwStatusBadge, InspectionStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck, Clock, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck, Clock, CheckCircle2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -81,6 +81,12 @@ const ObservationListItem = React.memo(function ObservationListItem({ observatio
                         <div className="text-xs text-muted-foreground pt-1">
                             {observation.company} &bull; {observation.location} &bull; {format(new Date(observation.date), 'd MMM yy')}
                         </div>
+                         {observation.responsiblePersonName && (
+                            <div className="text-xs text-muted-foreground pt-1 flex items-center gap-1.5">
+                                <User className="h-3 w-3" />
+                                <span>{observation.responsiblePersonName}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </CardContent>
@@ -135,6 +141,12 @@ const InspectionListItem = React.memo(function InspectionListItem({ inspection, 
                             <InspectionStatusBadge status={inspection.status} />
                             <span className="text-xs text-muted-foreground">{inspection.location} &bull; {format(new Date(inspection.date), 'd MMM yy')}</span>
                         </div>
+                        {inspection.responsiblePersonName && (
+                            <div className="text-xs text-muted-foreground pt-1 flex items-center gap-1.5">
+                                <User className="h-3 w-3" />
+                                <span>{inspection.responsiblePersonName}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </CardContent>
@@ -184,6 +196,12 @@ const PtwListItem = React.memo(function PtwListItem({ ptw, onSelect }: { ptw: Pt
                         <div className="text-xs text-muted-foreground">
                             {ptw.contractor} &bull; {format(new Date(ptw.date), 'd MMM yy')}
                         </div>
+                        {ptw.responsiblePersonName && (
+                            <div className="text-xs text-muted-foreground pt-1 flex items-center gap-1.5">
+                                <User className="h-3 w-3" />
+                                <span>Approver: {ptw.responsiblePersonName}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </CardContent>
@@ -194,17 +212,17 @@ const PtwListItem = React.memo(function PtwListItem({ ptw, onSelect }: { ptw: Pt
 interface FeedViewProps {
   projectId: string;
   itemTypeFilter: 'observation' | 'inspection' | 'ptw';
-  observationIdToOpen?: string | null;
+  itemIdToOpen?: string | null;
   title: string;
 }
 
-export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title }: FeedViewProps) {
+export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: FeedViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
   const { isFastConnection } = usePerformance();
   
-  const { items, isLoading, getObservationById } = useObservations(projectId, itemTypeFilter);
+  const { items, isLoading, getObservationById, getInspectionById, getPtwById } = useObservations(projectId, itemTypeFilter);
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -217,22 +235,42 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   const [visibleCount, setVisibleCount] = React.useState(ITEMS_PER_PAGE);
 
   const triggeredOpen = React.useRef(false);
+  
   React.useEffect(() => {
-    const openItemFromNotification = async () => {
-        if (observationIdToOpen && !isLoading && !triggeredOpen.current) {
+    const openItemFromUrl = async () => {
+        if (itemIdToOpen && !isLoading && !triggeredOpen.current) {
             triggeredOpen.current = true;
+            let itemExists = false;
             
-            const item = getObservationById(observationIdToOpen);
-            if (item) {
-                setSelectedObservationId(observationIdToOpen);
-            } else {
+            switch (itemTypeFilter) {
+                case 'observation':
+                    if (getObservationById(itemIdToOpen)) {
+                        setSelectedObservationId(itemIdToOpen);
+                        itemExists = true;
+                    }
+                    break;
+                case 'inspection':
+                    if (getInspectionById(itemIdToOpen)) {
+                        setSelectedInspectionId(itemIdToOpen);
+                        itemExists = true;
+                    }
+                    break;
+                case 'ptw':
+                    if (getPtwById(itemIdToOpen)) {
+                        setSelectedPtwId(itemIdToOpen);
+                        itemExists = true;
+                    }
+                    break;
+            }
+
+            if (!itemExists) {
                  toast({ variant: 'destructive', title: 'Laporan Tidak Ditemukan' });
             }
-            router.replace(pathname, { scroll: false });
+            router.replace(pathname, { scroll: false }); // Clear URL param
         }
     };
-    openItemFromNotification();
-  }, [observationIdToOpen, isLoading, getObservationById, pathname, router, toast]);
+    openItemFromUrl();
+  }, [itemIdToOpen, isLoading, itemTypeFilter, getObservationById, getInspectionById, getPtwById, pathname, router, toast]);
 
   const filteredData = React.useMemo(() => {
     if (!searchTerm) return items;
