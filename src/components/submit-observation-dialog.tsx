@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
-import { Loader2, Upload, Sparkles, Wand2 } from 'lucide-react';
+import { Loader2, Upload, Sparkles, Wand2, ClipboardPlus } from 'lucide-react';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
@@ -271,7 +271,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
       <DialogContent className="sm:max-w-[525px] p-0 flex flex-col max-h-[90dvh]">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <ClipboardPlus className="h-5 w-5" />
              Submit New Observation
           </DialogTitle>
           <DialogDescription>
@@ -439,7 +439,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                            <div>
                               <p className="mb-1">Saran Rekomendasi:</p>
                                <Button type="button" size="sm" variant="outline" className="w-full justify-start text-left h-auto whitespace-normal" onClick={() => form.setValue('recommendation', aiSuggestions.suggestedRecommendation)}>
-                                  <Wand2 /> {aiSuggestions.suggestedRecommendation}
+                                  <Wand2 className="mr-2 h-4 w-4 flex-shrink-0" /> {aiSuggestions.suggestedRecommendation}
                                </Button>
                            </div>
                          )}
@@ -472,7 +472,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
               Batal
             </Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
-              {isSubmitting && <Loader2 />}
+              {isSubmitting && <Loader2 className="animate-spin" />}
               Kirim Laporan
             </Button>
           </div>

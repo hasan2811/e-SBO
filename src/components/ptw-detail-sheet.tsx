@@ -14,7 +14,7 @@ import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { DeletePtwDialog } from './delete-ptw-dialog';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApprovePtwDialog } from './approve-ptw-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
@@ -53,7 +53,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
     } else {
       setPtw(null);
     }
-  }, [ptwId, getPtwById]);
+  }, [ptwId, getPtwById, isOpen]);
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);

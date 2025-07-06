@@ -94,7 +94,7 @@ const ExportCard = ({ project }: { project: Project }) => {
             </CardHeader>
             <CardContent>
                 <Button onClick={handleExport} disabled={isExporting} className="w-full sm:w-auto">
-                    {isExporting ? <Loader2 /> : <Download />}
+                    {isExporting ? <Loader2 className="animate-spin" /> : <Download />}
                     Mulai Ekspor
                 </Button>
             </CardContent>
@@ -204,7 +204,7 @@ const ProjectSettings = ({ project, onProjectUpdate }: { project: Project, onPro
       
       <div className="flex justify-end pt-4">
           <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving && <Loader2 />}
+            {isSaving && <Loader2 className="animate-spin" />}
             Simpan Semua Pengaturan
           </Button>
       </div>
@@ -384,5 +384,3 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
         </>
     );
 }
-
-    

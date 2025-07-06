@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -12,7 +13,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton';
 import { Folder, FolderPlus, LogIn, Users, Crown, MoreVertical, FileCog, LogOut, Trash2 } from 'lucide-react';
 import type { Project } from '@/lib/types';
-import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ManageProjectDialog } from '@/components/manage-project-dialog';
 import { LeaveProjectDialog } from '@/components/leave-project-dialog';
@@ -62,19 +62,28 @@ const ProjectCard = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={onManageClick}>
-                    <FileCog />
-                    <span>Kelola Proyek</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  {isOwner && (
+                    <>
+                      <DropdownMenuItem onSelect={onManageClick}>
+                        <FileCog />
+                        <span>Kelola Proyek</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem onSelect={onLeaveClick}>
                     <LogOut />
                     <span>Keluar dari Proyek</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={onDeleteClick} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                    <Trash2 />
-                    <span>Hapus Proyek</span>
-                  </DropdownMenuItem>
+                  {isOwner && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={onDeleteClick} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                        <Trash2 />
+                        <span>Hapus Proyek</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -85,10 +94,12 @@ const ProjectCard = ({
             <Users className="h-4 w-4" />
             <span>{project.memberUids.length} Anggota</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold">
-              <Crown className="h-4 w-4 text-amber-500" />
-              <span>Pemilik</span>
+          {isOwner && (
+            <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold">
+                <Crown className="h-4 w-4 text-amber-500" />
+                <span>Pemilik</span>
             </div>
+          )}
         </CardFooter>
       </Card>
     </Link>
@@ -126,14 +137,6 @@ export default function ProjectHubPage() {
   const [projectToDelete, setProjectToDelete] = React.useState<Project | null>(null);
 
   const isLoading = projectsLoading || authLoading;
-
-  const ownedProjects = React.useMemo(() => 
-    projects.filter(p => p.ownerUid === userProfile?.uid),
-  [projects, userProfile]);
-
-  const memberProjects = React.useMemo(() =>
-    projects.filter(p => p.ownerUid !== userProfile?.uid),
-  [projects, userProfile]);
 
   const handleActionSuccess = () => {
     setProjectToManage(null);

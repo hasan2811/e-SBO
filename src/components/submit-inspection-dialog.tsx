@@ -316,7 +316,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
                   <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
                     <Upload className="mr-2 h-4 w-4" />{photoPreview ? 'Ganti Foto' : 'Pilih Foto'}
                   </Button>
-                  {photoPreview && <div className="mt-2 relative w-full h-48 rounded-md overflow-hidden border"><Image src={photoPreview} alt="Pratinjau" fill sizes="100vw" className="object-cover" /></div>}
+                  {photoPreview && <div className="mt-2 relative w-full h-48 rounded-md overflow-hidden border"><Image src={photoPreview} alt="Pratinjau" fill sizes="100vw" className="object-cover" data-ai-hint="equipment inspection"/></div>}
                   <FormMessage />
                 </FormItem>
               )} />
@@ -327,7 +327,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
           <div className="flex w-full justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Batal</Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
-              {isSubmitting && <Loader2 />}
+              {isSubmitting && <Loader2 className="animate-spin" />}
               Kirim Laporan
             </Button>
           </div>

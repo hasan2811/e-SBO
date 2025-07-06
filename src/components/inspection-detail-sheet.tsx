@@ -72,7 +72,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
     } else {
       setInspection(null);
     }
-  }, [inspectionId, getInspectionById]);
+  }, [inspectionId, getInspectionById, isOpen]);
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);
@@ -146,7 +146,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                           data-ai-hint="equipment inspection"
                       />
                       ) : (
-                          <Image src="/logo.svg" alt="Default inspection image" width={80} height={80} className="opacity-50" />
+                          <Wrench className="h-16 w-16 text-muted-foreground opacity-50" />
                       )}
                   </div>
 

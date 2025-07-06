@@ -22,7 +22,7 @@ import { DeleteObservationDialog } from './delete-observation-dialog';
 import { ObservationContext } from '@/contexts/observation-context';
 import { runDeeperAnalysis, retryAiAnalysis } from '@/lib/actions/ai-actions';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ObservationDetailSheetProps {
     observationId: string | null;
@@ -71,7 +71,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     } else {
       setObservation(null);
     }
-  }, [observationId, getObservationById]);
+  }, [observationId, getObservationById, isOpen]);
 
   const handleSuccessfulDelete = () => {
     onOpenChange(false);
