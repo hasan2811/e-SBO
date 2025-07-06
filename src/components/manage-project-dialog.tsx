@@ -66,6 +66,7 @@ const ExportCard = ({ project }: { project: Project }) => {
             }
 
             const fileName = `Export_${project.name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}`;
+            // Dynamically import xlsx to reduce initial bundle size
             const success = await exportToExcel(allItems, fileName);
 
             if (success) {
@@ -100,7 +101,7 @@ const ExportCard = ({ project }: { project: Project }) => {
             </CardHeader>
             <CardContent>
                 <Button onClick={handleExport} disabled={isExporting} className="w-full sm:w-auto">
-                    {isExporting ? <Loader2 className="animate-spin" /> : <Download />}
+                    {isExporting ? <Loader2 className="animate-spin mr-2" /> : <Download className="mr-2" />}
                     Mulai Ekspor
                 </Button>
             </CardContent>
@@ -263,7 +264,7 @@ const MemberListTab = ({
                                     className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                                     onClick={() => onRemoveClick(member)}
                                 >
-                                    <UserX /> Keluarkan
+                                    <UserX className="mr-2" /> Keluarkan
                                 </Button>
                             )}
                         </CardFooter>
@@ -378,12 +379,8 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
     };
 
     const handleSaveChanges = useCallback(async () => {
-        if (!currentProject) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Project data not found.' });
-            return;
-        }
         setIsSaving(true);
-        const projectRef = doc(db, 'projects', currentProject.id);
+        const projectRef = doc(db, 'projects', initialProject.id);
         const updatedData = {
             roles,
             customCompanies,
@@ -393,7 +390,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
         };
         try {
           await updateDoc(projectRef, updatedData);
-          updateProject(currentProject.id, updatedData); // Optimistic update of global context
+          updateProject(initialProject.id, updatedData); // Optimistic update of global context
           toast({
             title: 'Perubahan Disimpan',
             description: 'Pengaturan proyek Anda telah berhasil diperbarui.',
@@ -407,7 +404,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
         } finally {
           setIsSaving(false);
         }
-    }, [roles, customCompanies, customLocations, customCategories, isProjectOpen, currentProject, updateProject, toast]);
+    }, [roles, customCompanies, customLocations, customCategories, isProjectOpen, initialProject.id, updateProject, toast]);
 
     const showSaveButton = isCurrentUserOwner && (activeTab === 'members' || activeTab === 'settings');
 
@@ -502,7 +499,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                     {showSaveButton && (
                        <DialogFooter className="p-4 border-t bg-background flex-shrink-0">
                           <Button onClick={handleSaveChanges} disabled={isSaving}>
-                              {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
+                              {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2" />}
                               Simpan Perubahan
                           </Button>
                       </DialogFooter>
