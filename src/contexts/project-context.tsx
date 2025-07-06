@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -11,6 +12,7 @@ interface ProjectContextType {
   loading: boolean;
   addProject: (project: Project) => void;
   removeProject: (projectId: string) => void;
+  updateProject: (projectId: string, data: Partial<Project>) => void;
 }
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -35,6 +37,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
   const removeProject = React.useCallback((projectId: string) => {
     setProjects(prevProjects => prevProjects.filter(p => p.id !== projectId));
+  }, []);
+
+  const updateProject = React.useCallback((projectId: string, data: Partial<Project>) => {
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...data } : p));
   }, []);
 
   React.useEffect(() => {
@@ -85,7 +91,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [user, userProfile, authLoading]);
 
-  const value = { projects, loading, addProject, removeProject };
+  const value = { projects, loading, addProject, removeProject, updateProject };
 
   return (
     <ProjectContext.Provider value={value}>

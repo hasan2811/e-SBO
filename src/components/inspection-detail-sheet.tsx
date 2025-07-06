@@ -104,7 +104,11 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   
   const isAiEnabled = userProfile?.aiEnabled ?? false;
   const projectName = inspection?.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
-  const canFollowUp = inspection?.status === 'Fail' || inspection?.status === 'Needs Repair';
+  const project = inspection ? projects.find(p => p.id === inspection.projectId) : null;
+  const isOwner = project?.ownerUid === userProfile?.uid;
+  const userRoles = (userProfile && project?.roles) ? (project.roles[userProfile.uid] || {}) : {};
+  const hasActionPermission = isOwner || userRoles.canTakeAction;
+  const canFollowUp = (inspection?.status === 'Fail' || inspection?.status === 'Needs Repair') && hasActionPermission;
   const hasDeepAnalysis = inspection?.aiRisks && inspection?.aiSuggestedActions;
 
   return (

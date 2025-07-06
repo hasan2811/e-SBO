@@ -41,6 +41,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
   
   const { projects } = useProjects();
+  const { userProfile } = useAuth();
   const { getPtwById } = React.useContext(ObservationContext)!;
   const [ptw, setPtw] = React.useState<Ptw | null>(null);
 
@@ -61,7 +62,11 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   };
 
   const projectName = ptw?.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
-  const canApprove = ptw?.status === 'Pending Approval';
+  const project = ptw ? projects.find(p => p.id === ptw.projectId) : null;
+  const isOwner = project?.ownerUid === userProfile?.uid;
+  const userRoles = (userProfile && project?.roles) ? (project.roles[userProfile.uid] || {}) : {};
+  const hasApprovalPermission = isOwner || userRoles.canApprovePtw;
+  const canApprove = ptw?.status === 'Pending Approval' && hasApprovalPermission;
   
   return (
     <>

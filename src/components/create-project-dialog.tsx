@@ -77,6 +77,7 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
       customCompanies: customCompanies,
       customLocations: customLocations,
       customObservationCategories: customCategories,
+      roles: {},
     };
     
     try {

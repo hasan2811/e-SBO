@@ -60,6 +60,11 @@ export const UserProfileSchema = z.object({
   googleAiApiKey: z.string().optional(),
 });
 
+export type MemberRole = {
+  canApprovePtw: boolean;
+  canTakeAction: boolean;
+};
+
 export type Project = {
     id: string;
     name: string;
@@ -70,6 +75,7 @@ export type Project = {
     customCompanies?: string[];
     customLocations?: string[];
     customObservationCategories?: string[];
+    roles?: { [uid: string]: Partial<MemberRole> }; // Role assignments for members
     // Enriched client-side
     owner?: UserProfile; 
     members?: UserProfile[];

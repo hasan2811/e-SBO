@@ -102,8 +102,12 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   }
   
   const isAiEnabled = userProfile?.aiEnabled ?? false;
-  const canTakeAction = observation?.status !== 'Completed';
   const projectName = observation?.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
+  const project = observation?.projectId ? projects.find(p => p.id === observation.projectId) : null;
+  const isOwner = project?.ownerUid === userProfile?.uid;
+  const userRoles = (userProfile && project?.roles) ? (project.roles[userProfile.uid] || {}) : {};
+  const hasActionPermission = isOwner || userRoles.canTakeAction;
+  const canTakeAction = observation?.status !== 'Completed' && hasActionPermission;
   const hasDeepAnalysis = observation?.aiRisks && observation?.aiObserverSkillRating;
 
   return (
