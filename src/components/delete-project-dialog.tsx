@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -19,6 +18,7 @@ import { Loader2, Trash2 } from 'lucide-react';
 import { doc, runTransaction, arrayRemove, collection, query, where, getDocs, writeBatch, getDoc } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, deleteObject } from 'firebase/storage';
+import { useProjects } from '@/hooks/use-projects';
 
 interface DeleteProjectDialogProps {
   isOpen: boolean;
@@ -35,6 +35,7 @@ export function DeleteProjectDialog({
 }: DeleteProjectDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { removeProject } = useProjects();
   const [isProcessing, setIsProcessing] = React.useState(false);
 
   if (!project) return null;
@@ -99,6 +100,9 @@ export function DeleteProjectDialog({
       // 4. Commit Firestore batch and then delete from storage
       await batch.commit();
       await Promise.all(storageDeletePromises);
+      
+      // Optimistically remove project from UI before Firestore listener catches up
+      removeProject(project.id);
 
       toast({
         title: 'Proyek Dihapus',

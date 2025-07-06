@@ -10,6 +10,7 @@ interface ProjectContextType {
   projects: Project[];
   loading: boolean;
   addProject: (project: Project) => void;
+  removeProject: (projectId: string) => void;
 }
 
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -30,6 +31,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       newProjects.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       return newProjects;
     });
+  }, []);
+
+  const removeProject = React.useCallback((projectId: string) => {
+    setProjects(prevProjects => prevProjects.filter(p => p.id !== projectId));
   }, []);
 
   React.useEffect(() => {
@@ -85,7 +90,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [user, userProfile, isAdmin, authLoading]);
 
-  const value = { projects, loading, addProject };
+  const value = { projects, loading, addProject, removeProject };
 
   return (
     <ProjectContext.Provider value={value}>

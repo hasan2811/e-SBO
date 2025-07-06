@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -18,6 +17,7 @@ import type { Project } from '@/lib/types';
 import { Loader2, LogOut } from 'lucide-react';
 import { doc, updateDoc, arrayRemove, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useProjects } from '@/hooks/use-projects';
 
 
 interface LeaveProjectDialogProps {
@@ -35,6 +35,7 @@ export function LeaveProjectDialog({
 }: LeaveProjectDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { removeProject } = useProjects();
   const [isLeaving, setIsLeaving] = React.useState(false);
 
   const handleLeave = async () => {
@@ -62,6 +63,9 @@ export function LeaveProjectDialog({
           projectIds: arrayRemove(project.id),
         });
       });
+      
+      // Optimistically remove project from UI before Firestore listener catches up
+      removeProject(project.id);
 
       toast({
         title: 'Berhasil Meninggalkan Proyek',
