@@ -28,15 +28,12 @@ async function getUserProfile(userId: string): Promise<UserProfile | null> {
 
 /**
  * Triggers the AI analysis for a new observation.
- * This function is fire-and-forget. It updates the document in the background.
- * It respects the user's AI-enabled setting.
+ * This function is fire-and-forget. It fetches all necessary data from the DB.
  * @param observationId The ID of the newly created observation document.
- * @param userProfile The profile of the user who submitted the observation.
  */
-export async function triggerObservationAnalysis(observationId: string, userProfile: UserProfile) {
+export async function triggerObservationAnalysis(observationId: string) {
   const docRef = adminDb.collection('observations').doc(observationId);
 
-  // Fetch the authoritative data from the server
   const docSnap = await docRef.get();
   if (!docSnap.exists) {
     console.error(`[triggerObservationAnalysis] Observation with ID ${observationId} not found.`);
@@ -44,7 +41,13 @@ export async function triggerObservationAnalysis(observationId: string, userProf
   }
   const observation = { id: docSnap.id, ...docSnap.data() } as Observation;
   
-  // Immediately trigger smart notify if it's a project observation and AI is enabled
+  const userProfile = await getUserProfile(observation.userId);
+  if (!userProfile) {
+    console.error(`[triggerObservationAnalysis] Submitter profile for user ${observation.userId} not found.`);
+    await docRef.update({ aiStatus: 'failed', aiSummary: 'Submitter profile not found.' });
+    return;
+  }
+  
   if (observation.scope === 'project' && observation.projectId && userProfile.aiEnabled) {
     triggerSmartNotify({
       observationId: observation.id,
@@ -57,7 +60,6 @@ export async function triggerObservationAnalysis(observationId: string, userProf
     }, userProfile).catch(err => console.error(`Smart-notify failed for obs ${observation.id}`, err));
   }
 
-  // If AI is disabled, mark as n/a and stop here.
   if (!userProfile.aiEnabled) {
       await docRef.update({ aiStatus: 'n/a' });
       return;
@@ -65,12 +67,10 @@ export async function triggerObservationAnalysis(observationId: string, userProf
   
   await docRef.update({ aiStatus: 'processing' });
 
-  // Now, run the deeper analysis in the background
   try {
     const observationData = `Temuan: ${observation.findings}\nRekomendasi: ${observation.recommendation}\nKategori Awal: ${observation.category}\nTingkat Risiko: ${observation.riskLevel}`;
     const deepAnalysis = await analyzeDeeperObservation({ observationData }, userProfile);
     
-    // Check if the document still exists before updating
     const currentDocSnap = await docRef.get();
     if (currentDocSnap.exists) {
         const updatePayload: Partial<Observation> = {
@@ -96,15 +96,16 @@ export async function triggerObservationAnalysis(observationId: string, userProf
 
 /**
  * Triggers deeper, on-demand AI analysis for an observation.
- * Returns the fully updated observation object.
  * @param observationId The ID of the observation to analyze.
- * @param userProfile The profile of the user requesting the analysis.
  */
-export async function runDeeperAnalysis(observationId: string, userProfile: UserProfile): Promise<Observation> {
+export async function runDeeperAnalysis(observationId: string): Promise<Observation> {
     const docRef = adminDb.collection('observations').doc(observationId);
     let docSnap = await docRef.get();
     if (!docSnap.exists) throw new Error("Observasi tidak ditemukan.");
     const observation = { id: docSnap.id, ...docSnap.data() } as Observation;
+
+    const userProfile = await getUserProfile(observation.userId);
+    if (!userProfile) throw new Error("Profil pengguna tidak ditemukan.");
 
     if (!userProfile.aiEnabled) {
       throw new Error("Fitur AI dinonaktifkan untuk pengguna ini.");
@@ -149,15 +150,9 @@ export async function runDeeperAnalysis(observationId: string, userProfile: User
 /**
  * Triggers the initial, fast AI analysis for a new inspection.
  * @param inspectionId The ID of the newly created inspection document.
- * @param userProfile The profile of the user who submitted the inspection.
  */
-export async function triggerInspectionAnalysis(inspectionId: string, userProfile: UserProfile) {
+export async function triggerInspectionAnalysis(inspectionId: string) {
   const docRef = adminDb.collection('inspections').doc(inspectionId);
-
-  if (!userProfile.aiEnabled) {
-    await docRef.update({ aiStatus: 'n/a' });
-    return;
-  }
   
   const docSnap = await docRef.get();
   if (!docSnap.exists) {
@@ -165,6 +160,18 @@ export async function triggerInspectionAnalysis(inspectionId: string, userProfil
     return;
   }
   const inspection = { id: docSnap.id, ...docSnap.data() } as Inspection;
+
+  const userProfile = await getUserProfile(inspection.userId);
+  if (!userProfile) {
+    console.error(`[triggerInspectionAnalysis] Submitter profile for user ${inspection.userId} not found.`);
+    await docRef.update({ aiStatus: 'failed', aiSummary: 'Submitter profile not found.' });
+    return;
+  }
+  
+  if (!userProfile.aiEnabled) {
+    await docRef.update({ aiStatus: 'n/a' });
+    return;
+  }
 
   await docRef.update({ aiStatus: 'processing' });
 
@@ -191,13 +198,15 @@ export async function triggerInspectionAnalysis(inspectionId: string, userProfil
 /**
  * Triggers deeper, on-demand AI analysis for an inspection.
  * @param inspectionId The ID of the inspection to analyze.
- * @param userProfile The profile of the user requesting the analysis.
  */
-export async function runDeeperInspectionAnalysis(inspectionId: string, userProfile: UserProfile): Promise<Inspection> {
+export async function runDeeperInspectionAnalysis(inspectionId: string): Promise<Inspection> {
     const docRef = adminDb.collection('inspections').doc(inspectionId);
     let docSnap = await docRef.get();
     if (!docSnap.exists) throw new Error("Inspeksi tidak ditemukan.");
     const inspection = { id: docSnap.id, ...docSnap.data() } as Inspection;
+
+    const userProfile = await getUserProfile(inspection.userId);
+    if (!userProfile) throw new Error("Profil pengguna tidak ditemukan.");
 
     if (!userProfile.aiEnabled) {
         throw new Error("Fitur AI dinonaktifkan untuk pengguna ini.");
@@ -236,14 +245,10 @@ export async function runDeeperInspectionAnalysis(inspectionId: string, userProf
 }
 
 export async function retryAiAnalysis(item: Observation | Inspection): Promise<void> {
-    const userProfile = await getUserProfile(item.userId);
-    if (!userProfile || !userProfile.aiEnabled) {
-        throw new Error("AI is disabled for the user.");
-    }
-    
+    // This function can now be simplified as it doesn't need to fetch the profile itself
     if (item.itemType === 'observation') {
-      await triggerObservationAnalysis(item.id, userProfile);
+      await triggerObservationAnalysis(item.id);
     } else if (item.itemType === 'inspection') {
-      await triggerInspectionAnalysis(item.id, userProfile);
+      await triggerInspectionAnalysis(item.id);
     }
 }

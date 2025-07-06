@@ -95,7 +95,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     if (!observation || !userProfile) return;
     setIsAnalyzing(true);
     try {
-      await runDeeperAnalysis(observation.id, userProfile);
+      await runDeeperAnalysis(observation.id);
       toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.'})

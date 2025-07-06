@@ -193,7 +193,10 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     setIsSubmitting(true);
     const referenceId = `INSP-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const optimisticId = `optimistic-${referenceId}`;
-    const responsiblePersonName = members.find(m => m.uid === values.responsiblePersonUid)?.displayName;
+    
+    const responsiblePersonName = values.responsiblePersonUid
+        ? members.find(m => m.uid === values.responsiblePersonUid)?.displayName
+        : undefined;
 
     const optimisticItem: Inspection = {
       id: optimisticId,
@@ -214,8 +217,8 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
       projectId: project?.id || null,
       aiStatus: 'n/a',
       optimisticState: 'uploading',
-      responsiblePersonUid: values.responsiblePersonUid,
-      responsiblePersonName,
+      responsiblePersonUid: values.responsiblePersonUid || undefined,
+      responsiblePersonName: responsiblePersonName,
     };
 
     addItem(optimisticItem);
@@ -227,17 +230,14 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
       router.push(targetPath);
     }
 
-    // Fire-and-forget background submission
     const handleBackgroundSubmit = async () => {
       try {
           const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
           const projectId = match ? match[1] : null;
 
-          const { downloadURL, storagePath } = await uploadFile(values.photo!, 'inspections', userProfile.uid, () => {}, projectId);
-          
           const scope: Scope = projectId ? 'project' : 'private';
 
-          const newInspectionData: Omit<Inspection, 'id' | 'optimisticState'> = {
+          const inspectionData: any = {
               itemType: 'inspection',
               userId: userProfile.uid,
               date: new Date().toISOString(),
@@ -247,21 +247,28 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
               equipmentType: values.equipmentType,
               status: values.status,
               findings: values.findings,
-              recommendation: values.recommendation,
-              photoUrl: downloadURL,
-              photoStoragePath: storagePath,
+              recommendation: values.recommendation || '',
               scope,
               projectId,
               referenceId,
               aiStatus: isAiEnabled ? 'processing' : 'n/a',
-              responsiblePersonUid: values.responsiblePersonUid,
-              responsiblePersonName,
           };
 
-          const docRef = await addDoc(collection(db, "inspections"), newInspectionData);
+          if (values.photo) {
+            const { downloadURL, storagePath } = await uploadFile(values.photo, 'inspections', userProfile.uid, () => {}, projectId);
+            inspectionData.photoUrl = downloadURL;
+            inspectionData.photoStoragePath = storagePath;
+          }
+
+          if (values.responsiblePersonUid && responsiblePersonName) {
+            inspectionData.responsiblePersonUid = values.responsiblePersonUid;
+            inspectionData.responsiblePersonName = responsiblePersonName;
+          }
+
+          const docRef = await addDoc(collection(db, "inspections"), inspectionData);
           
           if (isAiEnabled) {
-              triggerInspectionAnalysis(docRef.id, userProfile).catch(error => {
+              triggerInspectionAnalysis(docRef.id).catch(error => {
                   console.error("Failed to trigger AI analysis for inspection:", error);
               });
           }

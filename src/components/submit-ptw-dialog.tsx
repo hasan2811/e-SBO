@@ -150,7 +150,10 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     
     const referenceId = `PTW-${format(new Date(), 'yyMMdd')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const optimisticId = `optimistic-${referenceId}`;
-    const responsiblePersonName = members.find(m => m.uid === values.responsiblePersonUid)?.displayName;
+
+    const responsiblePersonName = values.responsiblePersonUid
+        ? members.find(m => m.uid === values.responsiblePersonUid)?.displayName
+        : undefined;
 
     const optimisticItem: Ptw = {
       id: optimisticId,
@@ -168,8 +171,8 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
       scope: project ? 'project' : 'private',
       projectId: project?.id || null,
       optimisticState: 'uploading',
-      responsiblePersonUid: values.responsiblePersonUid,
-      responsiblePersonName,
+      responsiblePersonUid: values.responsiblePersonUid || undefined,
+      responsiblePersonName: responsiblePersonName,
     };
 
     addItem(optimisticItem);
@@ -190,7 +193,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
 
           const scope: Scope = projectId ? 'project' : 'private';
           
-          const newPtwData: Omit<Ptw, 'id' | 'optimisticState'> = {
+          const ptwData: any = {
               itemType: 'ptw',
               userId: userProfile.uid,
               date: new Date().toISOString(),
@@ -204,11 +207,14 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
               projectId,
               referenceId,
               status: 'Pending Approval',
-              responsiblePersonUid: values.responsiblePersonUid,
-              responsiblePersonName,
           };
 
-          const docRef = await addDoc(collection(db, 'ptws'), newPtwData);
+          if (values.responsiblePersonUid && responsiblePersonName) {
+            ptwData.responsiblePersonUid = values.responsiblePersonUid;
+            ptwData.responsiblePersonName = responsiblePersonName;
+          }
+
+          const docRef = await addDoc(collection(db, 'ptws'), ptwData);
 
           if (values.responsiblePersonUid && projectId) {
               await createAssignmentNotification({
@@ -313,5 +319,3 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     </Dialog>
   );
 }
-
-    

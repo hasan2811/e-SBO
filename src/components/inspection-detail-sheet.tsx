@@ -96,7 +96,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
     if (!inspection || !userProfile) return;
     setIsAnalyzing(true);
     try {
-        await runDeeperInspectionAnalysis(inspection.id, userProfile);
+        await runDeeperInspectionAnalysis(inspection.id);
         toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.' });
