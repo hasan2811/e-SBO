@@ -155,7 +155,7 @@ export default function ProjectHubPage() {
     const remainingProjects = projects.filter(p => p.id !== removedProjectId);
     if (remainingProjects.length > 0) {
       // Navigate to the first remaining project
-      router.push(`/proyek/${remainingProjects[0].id}`);
+      router.push(`/proyek/${remainingProjects[0].id}/observasi`);
     } 
     // If no projects are left, we stay on the hub page, which will show the empty state.
   };

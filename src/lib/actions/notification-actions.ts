@@ -27,17 +27,18 @@ export async function createAssignmentNotification(params: NotificationParams) {
     }
 
     let message = '';
-    const truncatedDescription = description.substring(0, 40);
+    const truncatedDescription = description.length > 40 ? `${description.substring(0, 40)}...` : description;
+
 
     switch (itemType) {
         case 'observation':
-            message = `${submitterName} menugaskan Anda laporan observasi baru: ${truncatedDescription}...`;
+            message = `${submitterName} menugaskan Anda laporan observasi baru: "${truncatedDescription}"`;
             break;
         case 'inspection':
-            message = `${submitterName} menugaskan Anda laporan inspeksi baru: ${truncatedDescription}...`;
+            message = `${submitterName} menugaskan Anda laporan inspeksi baru: "${truncatedDescription}"`;
             break;
         case 'ptw':
-            message = `Anda ditugaskan untuk menyetujui Izin Kerja dari ${submitterName}: ${truncatedDescription}...`;
+            message = `Anda ditugaskan oleh ${submitterName} untuk menyetujui PTW: "${truncatedDescription}"`;
             break;
         default:
             console.warn(`[createAssignmentNotification] Unknown item type: ${itemType}`);
@@ -45,7 +46,7 @@ export async function createAssignmentNotification(params: NotificationParams) {
     }
 
     try {
-        await adminDb.collection('notifications').add({
+        const notificationData = {
             userId: responsiblePersonUid,
             itemId,
             itemType,
@@ -53,7 +54,8 @@ export async function createAssignmentNotification(params: NotificationParams) {
             message,
             isRead: false,
             createdAt: new Date().toISOString(),
-        });
+        };
+        await adminDb.collection('notifications').add(notificationData);
     } catch (error) {
         console.error("[createAssignmentNotification] Failed to create assignment notification:", {
             error,
@@ -63,5 +65,3 @@ export async function createAssignmentNotification(params: NotificationParams) {
         // The core item submission is more important than the notification.
     }
 }
-
-    
