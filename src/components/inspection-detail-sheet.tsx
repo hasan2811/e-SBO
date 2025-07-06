@@ -102,6 +102,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   const userRoles = (userProfile && project?.roles) ? (project.roles[userProfile.uid] || {}) : {};
   const hasActionPermission = isOwner || userRoles.canTakeAction;
   const canFollowUp = (inspection?.status === 'Fail' || inspection?.status === 'Needs Repair') && hasActionPermission;
+  const canDelete = inspection && userProfile && (isOwner || inspection.userId === userProfile.uid);
 
   return (
     <>
@@ -120,9 +121,11 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                       <SheetDescription>{inspection.referenceId}</SheetDescription>
                     </div>
                   </div>
-                  <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Inspeksi">
-                    <Trash2 />
-                  </Button>
+                  {canDelete && (
+                    <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Inspeksi">
+                        <Trash2 />
+                    </Button>
+                  )}
                 </div>
               </SheetHeader>
               

@@ -71,6 +71,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   const userRoles = (userProfile && project?.roles) ? (project.roles[userProfile.uid] || {}) : {};
   const hasApprovalPermission = isOwner || userRoles.canApprovePtw;
   const canApprove = ptw?.status === 'Pending Approval' && hasApprovalPermission;
+  const canDelete = ptw && userProfile && (isOwner || ptw.userId === userProfile.uid);
   
   return (
     <>
@@ -89,9 +90,11 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                           <SheetDescription>{ptw.referenceId}</SheetDescription>
                       </div>
                   </div>
-                  <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus PTW">
-                    <Trash2 />
-                  </Button>
+                  {canDelete && (
+                    <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus PTW">
+                        <Trash2 />
+                    </Button>
+                  )}
                 </div>
               </SheetHeader>
               

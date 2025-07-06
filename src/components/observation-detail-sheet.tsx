@@ -101,6 +101,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const userRoles = (userProfile && project?.roles) ? (project.roles[userProfile.uid] || {}) : {};
   const hasActionPermission = isOwner || userRoles.canTakeAction;
   const canTakeAction = observation?.status !== 'Completed' && hasActionPermission;
+  const canDelete = observation && userProfile && (isOwner || observation.userId === userProfile.uid);
 
   return (
     <>
@@ -121,9 +122,11 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                         </div>
                         
                         <div className="flex items-center gap-2">
-                            <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Observasi">
-                                <Trash2 />
-                            </Button>
+                           {canDelete && (
+                                <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Observasi">
+                                    <Trash2 />
+                                </Button>
+                           )}
                         </div>
                     </div>
                 </SheetHeader>
