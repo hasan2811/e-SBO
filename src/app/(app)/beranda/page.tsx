@@ -14,10 +14,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Folder, FolderPlus, LogIn, Users, Crown, MoreVertical, FileCog, LogOut, Trash2 } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { ManageProjectDialog } from '@/components/manage-project-dialog';
-import { LeaveProjectDialog } from '@/components/leave-project-dialog';
-import { DeleteProjectDialog } from '@/components/delete-project-dialog';
 import { usePerformance } from '@/contexts/performance-context';
+import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
+
+// Dynamically import dialogs to avoid loading their code until needed
+const ManageProjectDialog = dynamic(() => import('@/components/manage-project-dialog').then(mod => mod.ManageProjectDialog));
+const LeaveProjectDialog = dynamic(() => import('@/components/leave-project-dialog').then(mod => mod.LeaveProjectDialog));
+const DeleteProjectDialog = dynamic(() => import('@/components/delete-project-dialog').then(mod => mod.DeleteProjectDialog));
 
 const ProjectCard = ({ 
   project, 
@@ -132,8 +136,9 @@ const ProjectCardSkeleton = () => (
 
 export default function ProjectHubPage() {
   const { userProfile, loading: authLoading } = useAuth();
-  const { projects, loading: projectsLoading } = useProjects();
+  const { projects, loading: projectsLoading, removeProject } = useProjects();
   const { isFastConnection } = usePerformance();
+  const router = useRouter();
 
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
   const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
@@ -144,11 +149,19 @@ export default function ProjectHubPage() {
 
   const isLoading = projectsLoading || authLoading;
 
-  // This simple handler now only clears the state that controls the dialogs' visibility.
-  // The optimistic UI update is handled inside the dialogs themselves.
-  const handleActionComplete = () => {
+  const handleLeaveOrDeleteSuccess = (removedProjectId: string) => {
+    // This function handles the smart navigation logic.
     setProjectToLeave(null);
     setProjectToDelete(null);
+    removeProject(removedProjectId); // Ensure local state is updated if not already
+    
+    // Smart navigation
+    const remainingProjects = projects.filter(p => p.id !== removedProjectId);
+    if (remainingProjects.length > 0) {
+      // Navigate to the first remaining project
+      router.push(`/proyek/${remainingProjects[0].id}`);
+    } 
+    // If no projects are left, we stay on the hub page, which will show the empty state.
   };
   
   const containerVariants = {
@@ -264,7 +277,7 @@ export default function ProjectHubPage() {
           isOpen={!!projectToLeave}
           onOpenChange={(open) => !open && setProjectToLeave(null)}
           project={projectToLeave}
-          onSuccess={handleActionComplete}
+          onSuccess={handleLeaveOrDeleteSuccess}
         />
       )}
       {projectToDelete && (
@@ -272,7 +285,7 @@ export default function ProjectHubPage() {
           isOpen={!!projectToDelete}
           onOpenChange={(open) => !open && setProjectToDelete(null)}
           project={projectToDelete}
-          onSuccess={handleActionComplete}
+          onSuccess={handleLeaveOrDeleteSuccess}
         />
       )}
     </>

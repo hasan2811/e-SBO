@@ -15,7 +15,6 @@ import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { DeleteInspectionDialog } from './delete-inspection-dialog';
-import { FollowUpInspectionDialog } from './follow-up-inspection-dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { runDeeperInspectionAnalysis, retryAiAnalysis } from '@/lib/actions/ai-actions';
@@ -23,6 +22,10 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ObservationContext } from '@/contexts/observation-context';
+import dynamic from 'next/dynamic';
+
+// Lazy load the FollowUpInspectionDialog to reduce initial JS load
+const FollowUpInspectionDialog = dynamic(() => import('./follow-up-inspection-dialog').then(mod => mod.FollowUpInspectionDialog), { ssr: false });
 
 
 interface InspectionDetailSheetProps {
@@ -147,6 +150,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                           fill
                           sizes="(max-width: 640px) 100vw, 512px"
                           className="object-contain"
+                          priority
                           data-ai-hint="equipment inspection"
                       />
                       ) : (
@@ -319,11 +323,13 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                 inspection={inspection}
                 onSuccess={handleSuccessfulDelete}
             />
-            <FollowUpInspectionDialog
-              isOpen={isFollowUpOpen}
-              onOpenChange={setFollowUpOpen}
-              inspection={inspection}
-            />
+            {isFollowUpOpen && (
+              <FollowUpInspectionDialog
+                isOpen={isFollowUpOpen}
+                onOpenChange={setFollowUpOpen}
+                inspection={inspection}
+              />
+            )}
         </>
       )}
     </>

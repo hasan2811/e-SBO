@@ -7,16 +7,19 @@ import { useAuth } from '@/hooks/use-auth';
 import { DashboardHeader } from '@/components/dashboard-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { Sidebar } from '@/components/sidebar';
-import { SubmitObservationDialog } from '@/components/submit-observation-dialog';
-import { CompleteProfileDialog } from '@/components/complete-profile-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SubmitInspectionDialog } from '@/components/submit-inspection-dialog';
-import { SubmitPtwDialog } from '@/components/submit-ptw-dialog';
 import { useProjects } from '@/hooks/use-projects';
 import { PageSkeleton } from '@/components/page-skeleton';
 import { MultiActionButton } from '@/components/multi-action-button';
 import { usePerformance } from '@/contexts/performance-context';
 import { Loader2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import heavy dialogs to reduce initial bundle size
+const CompleteProfileDialog = dynamic(() => import('@/components/complete-profile-dialog').then(mod => mod.CompleteProfileDialog), { ssr: false });
+const SubmitObservationDialog = dynamic(() => import('@/components/submit-observation-dialog').then(mod => mod.SubmitObservationDialog), { ssr: false });
+const SubmitInspectionDialog = dynamic(() => import('@/components/submit-inspection-dialog').then(mod => mod.SubmitInspectionDialog), { ssr: false });
+const SubmitPtwDialog = dynamic(() => import('@/components/submit-ptw-dialog').then(mod => mod.SubmitPtwDialog), { ssr: false });
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -126,29 +129,37 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
       </div>
       
-      {/* Dialogs are outside the main layout flow */}
-      <CompleteProfileDialog 
-        isOpen={isProfileDialogOpen}
-        onProfileComplete={() => setProfileDialogOpen(false)}
-      />
+      {/* Dialogs are outside the main layout flow and only rendered when needed */}
+      {isProfileDialogOpen && (
+        <CompleteProfileDialog 
+          isOpen={isProfileDialogOpen}
+          onProfileComplete={() => setProfileDialogOpen(false)}
+        />
+      )}
 
       {currentProject && (
           <>
-            <SubmitObservationDialog
-                isOpen={isObservationDialogOpen}
-                onOpenChange={setObservationDialogOpen}
-                project={currentProject}
-            />
-            <SubmitInspectionDialog
-                isOpen={isInspectionDialogOpen}
-                onOpenChange={setInspectionDialogOpen}
-                project={currentProject}
-            />
-            <SubmitPtwDialog
-                isOpen={isPtwDialogOpen}
-                onOpenChange={setPtwDialogOpen}
-                project={currentProject}
-            />
+            {isObservationDialogOpen && (
+              <SubmitObservationDialog
+                  isOpen={isObservationDialogOpen}
+                  onOpenChange={setObservationDialogOpen}
+                  project={currentProject}
+              />
+            )}
+            {isInspectionDialogOpen && (
+              <SubmitInspectionDialog
+                  isOpen={isInspectionDialogOpen}
+                  onOpenChange={setInspectionDialogOpen}
+                  project={currentProject}
+              />
+            )}
+            {isPtwDialogOpen && (
+              <SubmitPtwDialog
+                  isOpen={isPtwDialogOpen}
+                  onOpenChange={setPtwDialogOpen}
+                  project={currentProject}
+              />
+            )}
           </>
       )}
     </>

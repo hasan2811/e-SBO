@@ -15,10 +15,14 @@ import { useProjects } from '@/hooks/use-projects';
 import { useAuth } from '@/hooks/use-auth';
 import { DeletePtwDialog } from './delete-ptw-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ApprovePtwDialog } from './approve-ptw-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { ObservationContext } from '@/contexts/observation-context';
+import dynamic from 'next/dynamic';
+
+// Lazy load the ApprovePtwDialog to reduce initial JS load, as it contains signature pad logic
+const ApprovePtwDialog = dynamic(() => import('@/components/approve-ptw-dialog').then(mod => mod.ApprovePtwDialog), { ssr: false });
+
 
 interface PtwDetailSheetProps {
     ptwId: string | null;
@@ -216,11 +220,13 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                 ptw={ptw}
                 onSuccess={handleSuccessfulDelete}
             />
-            <ApprovePtwDialog
-                isOpen={isApproveDialogOpen}
-                onOpenChange={setApproveDialogOpen}
-                ptw={ptw}
-            />
+            {isApproveDialogOpen && (
+              <ApprovePtwDialog
+                  isOpen={isApproveDialogOpen}
+                  onOpenChange={setApproveDialogOpen}
+                  ptw={ptw}
+              />
+            )}
         </>
       )}
     </>

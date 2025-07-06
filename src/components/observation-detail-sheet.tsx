@@ -4,7 +4,6 @@
 import * as React from 'react';
 import Image from 'next/image';
 import type { Observation, ObservationCategory } from '@/lib/types';
-import { TakeActionDialog } from '@/components/take-action-dialog';
 import { StatusBadge, RiskBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,6 +22,10 @@ import { ObservationContext } from '@/contexts/observation-context';
 import { runDeeperAnalysis, retryAiAnalysis } from '@/lib/actions/ai-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import dynamic from 'next/dynamic';
+
+// Lazy load the TakeActionDialog to reduce initial JS load
+const TakeActionDialog = dynamic(() => import('@/components/take-action-dialog').then(mod => mod.TakeActionDialog));
 
 interface ObservationDetailSheetProps {
     observationId: string | null;
@@ -146,6 +149,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                                 fill
                                 sizes="(max-width: 640px) 100vw, 512px"
                                 className="object-contain"
+                                priority
                                 data-ai-hint="site observation"
                             />
                         </div>
@@ -324,11 +328,13 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
             observation={observation}
             onSuccess={handleSuccessfulDelete}
         />
-        <TakeActionDialog
-            isOpen={isActionDialogOpen}
-            onOpenChange={setActionDialogOpen}
-            observation={observation}
-        />
+        {isActionDialogOpen && (
+          <TakeActionDialog
+              isOpen={isActionDialogOpen}
+              onOpenChange={setActionDialogOpen}
+              observation={observation}
+          />
+        )}
       </>
     )}
     </>
