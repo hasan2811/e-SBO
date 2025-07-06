@@ -16,8 +16,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project, UserProfile } from '@/lib/types';
 import { Loader2, UserX } from 'lucide-react';
-import { doc, getDoc, updateDoc, arrayRemove, runTransaction } from 'firebase/firestore';
+import { doc, arrayRemove, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useProjects } from '@/hooks/use-projects';
 
 interface RemoveMemberDialogProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export function RemoveMemberDialog({
 }: RemoveMemberDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { updateProject } = useProjects();
   const [isRemoving, setIsRemoving] = React.useState(false);
 
   const handleRemove = () => {
@@ -50,10 +52,12 @@ export function RemoveMemberDialog({
     
     setIsRemoving(true);
 
-    // 1. Optimistic UI update
-    onSuccess?.(member.uid);
+    const updatedUids = project.memberUids.filter(uid => uid !== member.uid);
+
+    // 1. Optimistic UI update on global context
+    updateProject(project.id, { memberUids: updatedUids });
     toast({ title: 'Anggota Dikeluarkan', description: `${member.displayName} telah dikeluarkan dari proyek.` });
-    onOpenChange(false);
+    onSuccess?.(member.uid); // Closes the dialog via parent state change
 
     // 2. Background DB operation
     const removeFromDb = async () => {
@@ -67,6 +71,7 @@ export function RemoveMemberDialog({
         });
       } catch (error) {
         console.error("Gagal mengeluarkan anggota dari server:", error);
+        // If server fails, the live listener will eventually revert the optimistic update.
         toast({
           variant: 'destructive',
           title: 'Sinkronisasi Gagal',

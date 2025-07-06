@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -22,7 +23,7 @@ import type { AllItems } from '@/lib/types';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { useProjects } from '@/hooks/use-projects';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
@@ -302,85 +303,70 @@ interface ManageProjectDialogProps {
 export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProject }: ManageProjectDialogProps) {
     const { toast } = useToast();
     const { userProfile } = useAuth();
-    const { updateProject } = useProjects();
+    const { projects, updateProject } = useProjects();
     
     // ## STATE MANAGEMENT ##
     const [activeTab, setActiveTab] = React.useState('members');
     const [isLoadingData, setIsLoadingData] = React.useState(true);
     const [isSaving, setIsSaving] = React.useState(false);
+
+    // Get the authoritative project object directly from the context
+    const currentProject = useMemo(() => 
+        projects.find(p => p.id === initialProject.id) ?? initialProject,
+    [projects, initialProject.id]);
     
-    // Data State
-    const [currentProject, setCurrentProject] = React.useState(initialProject);
+    // Local state for displaying member profiles and managing edits
     const [members, setMembers] = React.useState<UserProfile[]>([]);
     const [memberToRemove, setMemberToRemove] = React.useState<UserProfile | null>(null);
 
-    // Settings State
-    const [roles, setRoles] = React.useState<Project['roles']>(initialProject.roles || {});
-    const [customCompanies, setCustomCompanies] = React.useState<string[]>(initialProject.customCompanies || []);
-    const [customLocations, setCustomLocations] = React.useState<string[]>(initialProject.customLocations || []);
-    const [customCategories, setCustomCategories] = React.useState<string[]>(initialProject.customObservationCategories || []);
-    const [isProjectOpen, setIsProjectOpen] = React.useState(initialProject.isOpen ?? true);
+    // Local state for UI edits, initialized from the authoritative project object
+    const [roles, setRoles] = React.useState<Project['roles']>(currentProject.roles || {});
+    const [customCompanies, setCustomCompanies] = React.useState<string[]>(currentProject.customCompanies || []);
+    const [customLocations, setCustomLocations] = React.useState<string[]>(currentProject.customLocations || []);
+    const [customCategories, setCustomCategories] = React.useState<string[]>(currentProject.customObservationCategories || []);
+    const [isProjectOpen, setIsProjectOpen] = React.useState(currentProject.isOpen ?? true);
 
     const isCurrentUserOwner = userProfile?.uid === initialProject.ownerUid;
 
-    // ## DATA FETCHING ##
+    // ## DATA SYNC & FETCHING ##
     React.useEffect(() => {
-        if (!isOpen) return;
+        if (isOpen && currentProject) {
+            // Sync local editing state whenever the authoritative project from context changes
+            setRoles(currentProject.roles || {});
+            setCustomCompanies(currentProject.customCompanies || []);
+            setCustomLocations(currentProject.customLocations || []);
+            setCustomCategories(currentProject.customObservationCategories || []);
+            setIsProjectOpen(currentProject.isOpen ?? true);
 
-        const fetchData = async () => {
-            setIsLoadingData(true);
-            try {
-                const projectRef = doc(db, 'projects', initialProject.id);
-                const projectSnap = await getDoc(projectRef);
-
-                if (!projectSnap.exists()) {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Project not found.' });
-                    onOpenChange(false);
-                    return;
-                }
-                const projectData = { ...projectSnap.data(), id: projectSnap.id } as Project;
-                
-                // Reset all state based on fetched data
-                setCurrentProject(projectData);
-                setRoles(projectData.roles || {});
-                setCustomCompanies(projectData.customCompanies || []);
-                setCustomLocations(projectData.customLocations || []);
-                setCustomCategories(projectData.customObservationCategories || []);
-                setIsProjectOpen(projectData.isOpen ?? true);
-
-                if (projectData.memberUids?.length > 0) {
-                    const memberDocs = await Promise.all(
-                        projectData.memberUids.map(uid => getDoc(doc(db, 'users', uid)))
-                    );
-                    const memberProfiles = memberDocs
-                        .map(snap => snap.data() as UserProfile)
-                        .filter(Boolean)
-                        .sort((a, b) => (a.uid === projectData.ownerUid ? -1 : b.uid === projectData.ownerUid ? 1 : 0));
-                    setMembers(memberProfiles);
+            // Fetch member profiles for display based on UIDs from the authoritative project
+            const fetchMemberProfiles = async () => {
+                setIsLoadingData(true);
+                if (currentProject.memberUids?.length > 0) {
+                    try {
+                        const memberDocs = await Promise.all(
+                            currentProject.memberUids.map(uid => getDoc(doc(db, 'users', uid)))
+                        );
+                        const memberProfiles = memberDocs
+                            .map(snap => snap.data() as UserProfile)
+                            .filter(Boolean)
+                            .sort((a, b) => (a.uid === currentProject.ownerUid ? -1 : b.uid === currentProject.ownerUid ? 1 : 0));
+                        setMembers(memberProfiles);
+                    } catch (error) {
+                         console.error("Failed to fetch member profiles:", error);
+                         toast({ variant: 'destructive', title: 'Could not load member details.' });
+                    }
                 } else {
                     setMembers([]);
                 }
-            } catch (error) {
-                console.error("Failed to fetch project data:", error);
-                toast({ variant: 'destructive', title: 'Could not load project data.' });
-            } finally {
                 setIsLoadingData(false);
-            }
-        };
+            };
 
-        fetchData();
-    }, [isOpen, initialProject.id, toast, onOpenChange]);
+            fetchMemberProfiles();
+        }
+    }, [isOpen, currentProject, toast]);
 
 
     // ## EVENT HANDLERS ##
-    const handleMemberRemoved = (removedMemberId: string) => {
-        const updatedMembers = members.filter(m => m.uid !== removedMemberId);
-        const updatedUids = currentProject.memberUids.filter(uid => uid !== removedMemberId);
-        setMembers(updatedMembers);
-        setCurrentProject(prev => ({ ...prev, memberUids: updatedUids }));
-        setMemberToRemove(null);
-    };
-
     const handleRoleChange = (memberId: string, role: keyof MemberRole, value: boolean) => {
         setRoles(prev => ({
             ...prev,
@@ -403,7 +389,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
         };
         try {
           await updateDoc(projectRef, updatedData);
-          updateProject(currentProject.id, updatedData); // Optimistic update
+          updateProject(currentProject.id, updatedData); // Optimistic update of global context
           toast({
             title: 'Perubahan Disimpan',
             description: 'Pengaturan proyek Anda telah berhasil diperbarui.',
@@ -475,7 +461,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                             </TooltipProvider>
                         </div>
                         
-                        <div className="flex-1 overflow-y-auto">
+                        <div className="flex-1 overflow-y-auto min-h-0">
                             <div className="p-6">
                                 <TabsContent value="members" className="mt-0">
                                     {isLoadingData ? <MemberListSkeleton /> : 
@@ -521,7 +507,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                 onOpenChange={(open) => !open && setMemberToRemove(null)}
                 project={currentProject}
                 member={memberToRemove}
-                onSuccess={handleMemberRemoved}
+                onSuccess={() => setMemberToRemove(null)}
               />
             )}
         </>
