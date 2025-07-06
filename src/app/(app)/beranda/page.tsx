@@ -67,27 +67,23 @@ const ProjectCard = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {isOwner && (
+                  {isOwner ? (
                     <>
                       <DropdownMenuItem onSelect={onManageClick}>
                         <FileCog />
                         <span>Kelola Proyek</span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                    </>
-                  )}
-                  <DropdownMenuItem onSelect={onLeaveClick}>
-                    <LogOut />
-                    <span>Keluar dari Proyek</span>
-                  </DropdownMenuItem>
-                  {isOwner && (
-                    <>
-                      <DropdownMenuSeparator />
                       <DropdownMenuItem onSelect={onDeleteClick} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                         <Trash2 />
                         <span>Hapus Proyek</span>
                       </DropdownMenuItem>
                     </>
+                  ) : (
+                    <DropdownMenuItem onSelect={onLeaveClick}>
+                      <LogOut />
+                      <span>Keluar dari Proyek</span>
+                    </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
