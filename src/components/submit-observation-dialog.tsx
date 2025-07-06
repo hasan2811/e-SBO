@@ -118,54 +118,53 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     }
     getAiSuggestions();
   }, [debouncedFindings, userProfile, isAiEnabled]);
-
-  const resetForm = React.useCallback(() => {
-    form.reset({
-        photo: undefined,
-        location: locationOptions[0],
-        company: companyOptions[0],
-        category: categoryOptions[0],
-        riskLevel: RISK_LEVELS[0],
-        findings: '',
-        recommendation: '',
-        responsiblePersonUid: '',
-    });
-    setPhotoPreview(null);
-    setAiSuggestions(null);
-    setIsAiLoading(false);
-    setIsSubmitting(false);
-    setMembers([]);
-    if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-    }
-  }, [form, locationOptions, companyOptions, categoryOptions]);
-
+  
   React.useEffect(() => {
-    if (isOpen && project?.memberUids) {
-        const fetchMembers = async () => {
-            setIsLoadingMembers(true);
-            try {
-                const memberProfiles = await Promise.all(
-                    project.memberUids.map(async (uid) => {
-                        const userDoc = await getDoc(doc(db, 'users', uid));
-                        return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
-                    })
-                );
-                setMembers(memberProfiles.filter((p): p is UserProfile => p !== null));
-            } catch (error) {
-                console.error("Failed to fetch project members:", error);
-                toast({ variant: 'destructive', title: 'Gagal memuat anggota proyek' });
-            } finally {
-                setIsLoadingMembers(false);
-            }
-        };
-        fetchMembers();
+    if (isOpen) {
+        // Fetch members when dialog opens
+        if (project?.memberUids) {
+            const fetchMembers = async () => {
+                setIsLoadingMembers(true);
+                try {
+                    const memberProfiles = await Promise.all(
+                        project.memberUids.map(async (uid) => {
+                            const userDoc = await getDoc(doc(db, 'users', uid));
+                            return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
+                        })
+                    );
+                    setMembers(memberProfiles.filter((p): p is UserProfile => p !== null));
+                } catch (error) {
+                    console.error("Failed to fetch project members:", error);
+                    toast({ variant: 'destructive', title: 'Gagal memuat anggota proyek' });
+                } finally {
+                    setIsLoadingMembers(false);
+                }
+            };
+            fetchMembers();
+        }
+        
+        // Reset form with correct defaults every time dialog opens
+        form.reset({
+            photo: undefined,
+            location: locationOptions[0],
+            company: companyOptions[0],
+            category: categoryOptions[0],
+            riskLevel: RISK_LEVELS[0],
+            findings: '',
+            recommendation: '',
+            responsiblePersonUid: '',
+        });
+        setPhotoPreview(null);
+        setAiSuggestions(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    } else {
+        // Cleanup on close
+        setIsSubmitting(false);
+        setMembers([]);
     }
-    
-    if (!isOpen) {
-        resetForm();
-    }
-  }, [isOpen, project, toast, resetForm]);
+  }, [isOpen, project, form, locationOptions, companyOptions, categoryOptions, toast]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -203,7 +202,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
          });
      } catch (error) {
          console.error("Gagal membuat notifikasi penugasan:", error);
-         // Non-blocking, so we don't show a toast to the user for this
      }
   };
 
@@ -250,7 +248,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
       router.push(targetPath);
     }
 
-    // Fire-and-forget background submission
     const handleBackgroundSubmit = async () => {
       try {
           const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);

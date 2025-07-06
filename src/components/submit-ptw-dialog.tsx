@@ -23,13 +23,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePathname, useRouter } from 'next/navigation';
-import { DEFAULT_LOCATIONS } from '@/lib/types';
+import { DEFAULT_LOCATIONS, DEFAULT_COMPANIES } from '@/lib/types';
 
 
 const formSchema = z.object({
-  location: z.string().min(1),
+  location: z.string().min(1, 'Lokasi wajib diisi.'),
   workDescription: z.string().min(10, { message: 'Deskripsi pekerjaan minimal 10 karakter.' }),
-  contractor: z.string().min(3, { message: 'Nama kontraktor minimal 3 karakter.' }),
+  contractor: z.string().min(1, 'Kontraktor wajib diisi.'),
   jsaPdf: z
     .instanceof(File, { message: 'File JSA (PDF) wajib diunggah.' })
     .refine((file) => file.type === 'application/pdf', 'File harus dalam format PDF.')
@@ -62,54 +62,55 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : DEFAULT_LOCATIONS,
   [project]);
 
+  const companyOptions = React.useMemo(() =>
+    (project?.customCompanies && project.customCompanies.length > 0) ? project.customCompanies : DEFAULT_COMPANIES,
+  [project]);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       workDescription: '',
-      contractor: '',
       responsiblePersonUid: '',
     },
     mode: 'onChange',
   });
 
-  const resetForm = React.useCallback(() => {
-    form.reset({
-        location: locationOptions[0],
-        workDescription: '',
-        contractor: '',
-        responsiblePersonUid: '',
-    });
-    setFileName(null);
-    setIsSubmitting(false);
-    setMembers([]);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [form, locationOptions]);
-
   React.useEffect(() => {
-    if (isOpen && project?.memberUids) {
-        const fetchMembers = async () => {
-            setIsLoadingMembers(true);
-            try {
-                const memberProfiles = await Promise.all(
-                    project.memberUids.map(async (uid) => {
-                        const userDoc = await getDoc(doc(db, 'users', uid));
-                        return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
-                    })
-                );
-                setMembers(memberProfiles.filter((p): p is UserProfile => p !== null));
-            } catch (error) {
-                console.error("Failed to fetch project members:", error);
-            } finally {
-                setIsLoadingMembers(false);
-            }
-        };
-        fetchMembers();
-    }
+    if (isOpen) {
+        if (project?.memberUids) {
+            const fetchMembers = async () => {
+                setIsLoadingMembers(true);
+                try {
+                    const memberProfiles = await Promise.all(
+                        project.memberUids.map(async (uid) => {
+                            const userDoc = await getDoc(doc(db, 'users', uid));
+                            return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
+                        })
+                    );
+                    setMembers(memberProfiles.filter((p): p is UserProfile => p !== null));
+                } catch (error) {
+                    console.error("Failed to fetch project members:", error);
+                } finally {
+                    setIsLoadingMembers(false);
+                }
+            };
+            fetchMembers();
+        }
 
-    if (!isOpen) {
-        resetForm();
+        form.reset({
+            location: locationOptions[0],
+            contractor: companyOptions[0],
+            workDescription: '',
+            responsiblePersonUid: '',
+        });
+        setFileName(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+
+    } else {
+        setIsSubmitting(false);
+        setMembers([]);
     }
-  }, [isOpen, project, resetForm]);
+  }, [isOpen, project, form, locationOptions, companyOptions]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -183,7 +184,6 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
       router.push(targetPath);
     }
 
-    // Fire-and-forget background submission
     const handleBackgroundSubmit = async () => {
       try {
           const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
@@ -227,6 +227,8 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     
     handleBackgroundSubmit();
   };
+  
+  const renderSelectItems = (items: readonly string[]) => items.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -240,10 +242,10 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
             <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField name="location" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Lokasi</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih lokasi"/></SelectTrigger></FormControl><SelectContent>{locationOptions.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Lokasi</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih lokasi"/></SelectTrigger></FormControl><SelectContent>{renderSelectItems(locationOptions)}</SelectContent></Select><FormMessage /></FormItem>
                 )} />
                 <FormField name="contractor" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Kontraktor</FormLabel><FormControl><Input placeholder="e.g., PT. Maju Jaya" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Kontraktor</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih kontraktor"/></SelectTrigger></FormControl><SelectContent>{renderSelectItems(companyOptions)}</SelectContent></Select><FormMessage /></FormItem>
                 )} />
               </div>
 
@@ -297,7 +299,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
           <div className="flex w-full justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Batal</Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
-              {isSubmitting && <Loader2 />}
+              {isSubmitting && <Loader2 className="animate-spin" />}
               Ajukan PTW
             </Button>
           </div>

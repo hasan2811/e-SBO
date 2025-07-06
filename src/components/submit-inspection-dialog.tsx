@@ -69,6 +69,10 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   const [isLoadingMembers, setIsLoadingMembers] = React.useState(false);
   const isAiEnabled = userProfile?.aiEnabled ?? false;
 
+  const locationOptions = React.useMemo(() => 
+    (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : DEFAULT_LOCATIONS,
+  [project]);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -108,53 +112,48 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     getAiSuggestions();
   }, [debouncedFindings, userProfile, isAiEnabled]);
   
-  const locationOptions = React.useMemo(() => 
-    (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : DEFAULT_LOCATIONS,
-  [project]);
-
-  const resetForm = React.useCallback(() => {
-    form.reset({
-        location: locationOptions[0],
-        equipmentName: '',
-        equipmentType: EQUIPMENT_TYPES[0],
-        status: INSPECTION_STATUSES[0],
-        findings: '',
-        recommendation: '',
-        responsiblePersonUid: '',
-    });
-    setPhotoPreview(null);
-    setAiSuggestions(null);
-    setIsAiLoading(false);
-    setIsSubmitting(false);
-    setMembers([]);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [form, locationOptions]);
-
   React.useEffect(() => {
-    if (isOpen && project?.memberUids) {
-        const fetchMembers = async () => {
-            setIsLoadingMembers(true);
-            try {
-                const memberProfiles = await Promise.all(
-                    project.memberUids.map(async (uid) => {
-                        const userDoc = await getDoc(doc(db, 'users', uid));
-                        return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
-                    })
-                );
-                setMembers(memberProfiles.filter((p): p is UserProfile => p !== null));
-            } catch (error) {
-                console.error("Failed to fetch project members:", error);
-            } finally {
-                setIsLoadingMembers(false);
-            }
-        };
-        fetchMembers();
+    if (isOpen) {
+        // Fetch members when dialog opens
+        if (project?.memberUids) {
+            const fetchMembers = async () => {
+                setIsLoadingMembers(true);
+                try {
+                    const memberProfiles = await Promise.all(
+                        project.memberUids.map(async (uid) => {
+                            const userDoc = await getDoc(doc(db, 'users', uid));
+                            return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
+                        })
+                    );
+                    setMembers(memberProfiles.filter((p): p is UserProfile => p !== null));
+                } catch (error) {
+                    console.error("Failed to fetch project members:", error);
+                } finally {
+                    setIsLoadingMembers(false);
+                }
+            };
+            fetchMembers();
+        }
+
+        // Reset form with correct defaults every time dialog opens
+        form.reset({
+            location: locationOptions[0],
+            equipmentName: '',
+            equipmentType: EQUIPMENT_TYPES[0],
+            status: INSPECTION_STATUSES[0],
+            findings: '',
+            recommendation: '',
+            responsiblePersonUid: '',
+        });
+        setPhotoPreview(null);
+        setAiSuggestions(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    } else {
+        // Cleanup on close
+        setIsSubmitting(false);
+        setMembers([]);
     }
-    
-    if (!isOpen) {
-        resetForm();
-    }
-  }, [isOpen, project, resetForm]);
+  }, [isOpen, project, form, locationOptions]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
