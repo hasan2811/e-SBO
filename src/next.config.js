@@ -61,42 +61,6 @@ const withPWA = require('@ducanh2912/next-pwa').default({
   ],
 });
 
-const studioUrl = 'https://*.cloudworkstations.dev';
-const firebaseAppUrl = 'https://hssetech-e1710.firebaseapp.com';
-
-const cspHeader = `
-    default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://apis.google.com https://www.gstatic.com;
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    img-src 'self' data: https://placehold.co https://lh3.googleusercontent.com https://firebasestorage.googleapis.com;
-    connect-src 'self' https://*.googleapis.com wss://*.firebaseio.com https://firebasestorage.googleapis.com https://www.google-analytics.com ${studioUrl} wss://*.cloudworkstations.dev;
-    font-src 'self' https://fonts.gstatic.com;
-    object-src 'none';
-    frame-src 'self' ${firebaseAppUrl} ${studioUrl};
-    base-uri 'self';
-    form-action 'self';
-    frame-ancestors 'self' ${firebaseAppUrl} ${studioUrl};
-`.replace(/\s{2,}/g, ' ').trim();
-
-const securityHeaders = [
-  {
-    key: 'Content-Security-Policy',
-    value: cspHeader,
-  },
-  {
-    key: 'Strict-Transport-Security',
-    value: 'max-age=63072000; includeSubDomains; preload',
-  },
-  {
-    key: 'X-Content-Type-Options',
-    value: 'nosniff',
-  },
-  {
-    key: 'Referrer-Policy',
-    value: 'no-referrer-when-downgrade',
-  },
-];
-
 
 const nextConfig = {
   output: 'standalone',
@@ -106,14 +70,8 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: securityHeaders,
-      },
-    ];
-  },
+  // NOTE: The security headers have been temporarily removed to allow access
+  // in the development environment. They can be re-instated later.
   experimental: {
     serverComponentsExternalPackages: [
       '@google-cloud/firestore',
