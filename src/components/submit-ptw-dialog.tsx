@@ -258,13 +258,14 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
                         <Users className="h-4 w-4" />
                         Approver / Penyetuju
                     </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingMembers}>
+                    <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value} disabled={isSubmitting || isLoadingMembers}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder={isLoadingMembers ? "Memuat anggota..." : "Pilih approver"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="none">Tidak Ditugaskan</SelectItem>
                         {members.map(member => (
                           <SelectItem key={member.uid} value={member.uid}>
                             {member.displayName} ({member.position})
