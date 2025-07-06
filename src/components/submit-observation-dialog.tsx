@@ -248,18 +248,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           const match = pathname.match(/\/proyek\/([a-zA-Z0-9]+)/);
           const projectId = match ? match[1] : null;
           
-          let photoUrl: string | null = null;
-          let photoStoragePath: string | undefined = undefined;
-          if (values.photo) {
-            const uploadResult = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, projectId);
-            photoUrl = uploadResult.downloadURL;
-            photoStoragePath = uploadResult.storagePath;
-          }
-
           const scope: Scope = projectId ? 'project' : 'private';
 
-          const newObservationData: Omit<Observation, 'id' | 'optimisticState'> = {
-              itemType: 'observation',
+          const baseObservationData = {
+              itemType: 'observation' as const,
               userId: userProfile.uid,
               date: new Date().toISOString(),
               submittedBy: `${userProfile.displayName} (${userProfile.position || 'N/A'})`,
@@ -267,20 +259,35 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
               company: values.company as Company,
               findings: values.findings,
               recommendation: values.recommendation || '',
-              photoUrl: photoUrl,
-              photoStoragePath: photoStoragePath,
               scope,
               projectId,
               referenceId,
               category: values.category as ObservationCategory,
               riskLevel: values.riskLevel,
-              status: 'Pending',
-              aiStatus: isAiEnabled ? 'processing' : 'n/a',
+              status: 'Pending' as const,
+              aiStatus: isAiEnabled ? 'processing' as const : 'n/a' as const,
               responsiblePersonUid: values.responsiblePersonUid,
               responsiblePersonName,
           };
+
+          let fullObservationData: Omit<Observation, 'id' | 'optimisticState'>;
+
+          if (values.photo) {
+            const uploadResult = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, projectId);
+            fullObservationData = {
+                ...baseObservationData,
+                photoUrl: uploadResult.downloadURL,
+                photoStoragePath: uploadResult.storagePath,
+            };
+          } else {
+            fullObservationData = {
+                ...baseObservationData,
+                photoUrl: null,
+                // photoStoragePath is correctly omitted here
+            };
+          }
           
-          const docRef = await addDoc(collection(db, "observations"), newObservationData);
+          const docRef = await addDoc(collection(db, "observations"), fullObservationData);
           
           if (isAiEnabled) {
             triggerObservationAnalysis(docRef.id, userProfile).catch(error => {
