@@ -36,24 +36,26 @@ async function getUserProfile(userId: string): Promise<UserProfile | null> {
 export async function triggerObservationAnalysis(observation: Observation, userProfile: UserProfile) {
   const docRef = adminDb.collection('observations').doc(observation.id);
   
-  if (!userProfile.aiEnabled) {
-      await docRef.update({ aiStatus: 'n/a' });
-      return;
-  }
-
-  await docRef.update({ aiStatus: 'processing' });
-  
-  // Immediately trigger smart notify if it's a project observation
-  if (observation.scope === 'project' && observation.projectId) {
+  // Immediately trigger smart notify if it's a project observation and AI is enabled
+  if (observation.scope === 'project' && observation.projectId && userProfile.aiEnabled) {
     triggerSmartNotify({
       observationId: observation.id,
       projectId: observation.projectId,
       company: observation.company,
       findings: observation.findings,
+      riskLevel: observation.riskLevel,
       submitterId: observation.userId,
       submittedByDisplayName: observation.submittedBy.split(' (')[0],
     }, userProfile).catch(err => console.error(`Smart-notify failed for obs ${observation.id}`, err));
   }
+
+  // If AI is disabled, mark as n/a and stop here.
+  if (!userProfile.aiEnabled) {
+      await docRef.update({ aiStatus: 'n/a' });
+      return;
+  }
+  
+  await docRef.update({ aiStatus: 'processing' });
 
   // Now, run the deeper analysis in the background
   try {

@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 export type ObservationStatus = 'Pending' | 'In Progress' | 'Completed' | 'uploading';
@@ -267,6 +268,7 @@ export const SmartNotifyInputSchema = z.object({
     projectId: z.string(),
     company: z.string(),
     findings: z.string(),
+    riskLevel: z.nativeEnum(Object.fromEntries(RISK_LEVELS.map(level => [level, level])) as { [K in RiskLevel]: K }),
     submitterId: z.string().describe("The UID of the user who submitted the observation, to be excluded from notifications."),
     submittedByDisplayName: z.string().describe("The display name of the user who submitted the observation, for use in message generation."),
 });
