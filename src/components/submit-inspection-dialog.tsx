@@ -261,8 +261,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
           const docRef = await addDoc(collection(db, "inspections"), newInspectionData);
           
           if (isAiEnabled) {
-              const newInspection = { ...newInspectionData, id: docRef.id };
-              triggerInspectionAnalysis(newInspection, userProfile).catch(error => {
+              triggerInspectionAnalysis(docRef.id, userProfile).catch(error => {
                   console.error("Failed to trigger AI analysis for inspection:", error);
               });
           }
@@ -419,5 +418,3 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     </Dialog>
   );
 }
-
-    

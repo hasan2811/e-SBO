@@ -283,8 +283,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           const docRef = await addDoc(collection(db, "observations"), newObservationData);
           
           if (isAiEnabled) {
-            const finalObservation: Observation = { ...newObservationData, id: docRef.id };
-            triggerObservationAnalysis(finalObservation, userProfile).catch(error => {
+            triggerObservationAnalysis(docRef.id, userProfile).catch(error => {
                 console.error("Failed to trigger AI analysis:", error);
             });
           }
@@ -564,5 +563,3 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     </Dialog>
   );
 }
-
-    
