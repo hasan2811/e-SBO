@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -44,31 +43,33 @@ export function DeletePtwDialog({
     removeItem(ptw.id);
     toast({
       title: 'Izin Kerja Dihapus',
-      description: `Izin kerja "${ptw.referenceId}" telah berhasil dihapus.`,
+      description: `Izin kerja "${ptw.referenceId}" telah dihapus dari tampilan.`,
     });
     onSuccess();
     onOpenChange(false);
     
     // 2. Background deletion
     const deleteInBackground = async () => {
-        try {
-            const docRef = doc(db, 'ptws', ptw.id);
-            await deleteDoc(docRef);
+      try {
+        const docRef = doc(db, 'ptws', ptw.id);
+        await deleteDoc(docRef);
 
-            if (ptw.jsaPdfStoragePath) {
-                await deleteObject(ref(storage, ptw.jsaPdfStoragePath)).catch(err => console.error(err));
-            }
-            if (ptw.stampedPdfStoragePath) {
-                await deleteObject(ref(storage, ptw.stampedPdfStoragePath)).catch(err => console.error(err));
-            }
-        } catch (error) {
-            console.error("Gagal menghapus PTW dari server:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Sinkronisasi Gagal',
-                description: 'Izin kerja gagal dihapus dari server. Harap segarkan halaman.',
-            });
+        const storagePromises = [];
+        if (ptw.jsaPdfStoragePath) {
+          storagePromises.push(deleteObject(ref(storage, ptw.jsaPdfStoragePath)).catch(err => console.error(err)));
         }
+        if (ptw.stampedPdfStoragePath) {
+          storagePromises.push(deleteObject(ref(storage, ptw.stampedPdfStoragePath)).catch(err => console.error(err)));
+        }
+        await Promise.all(storagePromises);
+      } catch (error) {
+        console.error("Gagal menghapus PTW dari server:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Sinkronisasi Gagal',
+          description: 'Izin kerja gagal dihapus dari server. Harap segarkan halaman.',
+        });
+      }
     };
 
     deleteInBackground();

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -39,37 +38,40 @@ export function DeleteInspectionDialog({
 
   const handleDelete = () => {
     setIsDeleting(true);
-    
+
     // 1. Optimistic UI update
     removeItem(inspection.id);
     toast({
       title: 'Laporan Dihapus',
-      description: `Laporan inspeksi "${inspection.referenceId}" telah dihapus.`,
+      description: `Laporan inspeksi "${inspection.referenceId}" telah dihapus dari tampilan.`,
     });
     onSuccess();
     onOpenChange(false);
-    
+
     // 2. Background deletion
     const deleteInBackground = async () => {
-        try {
-            const docRef = doc(db, 'inspections', inspection.id);
-            await deleteDoc(docRef);
+      try {
+        const docRef = doc(db, 'inspections', inspection.id);
+        await deleteDoc(docRef);
 
-            if (inspection.photoStoragePath) {
-                await deleteObject(ref(storage, inspection.photoStoragePath)).catch(e => console.error(e));
-            }
-            if (inspection.actionTakenPhotoStoragePath) {
-                await deleteObject(ref(storage, inspection.actionTakenPhotoStoragePath)).catch(e => console.error(e));
-            }
-        } catch (error) {
-            console.error("Gagal menghapus inspeksi dari server:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Sinkronisasi Gagal',
-                description: 'Laporan gagal dihapus dari server. Harap segarkan halaman.',
-            });
+        const storagePromises = [];
+        if (inspection.photoStoragePath) {
+          storagePromises.push(deleteObject(ref(storage, inspection.photoStoragePath)).catch(e => console.error(e)));
         }
+        if (inspection.actionTakenPhotoStoragePath) {
+          storagePromises.push(deleteObject(ref(storage, inspection.actionTakenPhotoStoragePath)).catch(e => console.error(e)));
+        }
+        await Promise.all(storagePromises);
+      } catch (error) {
+        console.error("Gagal menghapus inspeksi dari server:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Sinkronisasi Gagal',
+          description: 'Laporan gagal dihapus dari server. Harap segarkan halaman.',
+        });
+      }
     };
+    
     deleteInBackground();
   };
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -40,27 +39,30 @@ export function DeleteObservationDialog({
   const handleDelete = () => {
     setIsDeleting(true);
 
-    // 1. Optimistic UI update
+    // 1. Optimistic UI update: Remove the item from the local state immediately.
     removeItem(observation.id);
     toast({
       title: 'Laporan Dihapus',
-      description: `Laporan observasi "${observation.referenceId}" telah dihapus.`,
+      description: `Laporan observasi "${observation.referenceId}" telah dihapus dari tampilan.`,
     });
-    onSuccess();
-    onOpenChange(false);
+    onSuccess(); // Closes the detail sheet
+    onOpenChange(false); // Closes this dialog
 
-    // 2. Background deletion
+    // 2. Background deletion: Perform the actual database and storage deletion in the background.
     const deleteInBackground = async () => {
       try {
         const docRef = doc(db, 'observations', observation.id);
         await deleteDoc(docRef);
 
+        const storagePromises = [];
         if (observation.photoStoragePath) {
-          await deleteObject(ref(storage, observation.photoStoragePath)).catch(err => console.error(err));
+          storagePromises.push(deleteObject(ref(storage, observation.photoStoragePath)).catch(err => console.error(err)));
         }
         if (observation.actionTakenPhotoStoragePath) {
-          await deleteObject(ref(storage, observation.actionTakenPhotoStoragePath)).catch(err => console.error(err));
+          storagePromises.push(deleteObject(ref(storage, observation.actionTakenPhotoStoragePath)).catch(err => console.error(err)));
         }
+        await Promise.all(storagePromises);
+
       } catch (error) {
         console.error("Gagal menghapus observasi dari server:", error);
         toast({
