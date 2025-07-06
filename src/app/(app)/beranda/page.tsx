@@ -132,7 +132,7 @@ const ProjectCardSkeleton = () => (
 
 export default function ProjectHubPage() {
   const { userProfile, loading: authLoading } = useAuth();
-  const { projects, loading: projectsLoading, removeProject } = useProjects();
+  const { projects, loading: projectsLoading } = useProjects();
   const { isFastConnection } = usePerformance();
 
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
@@ -145,19 +145,15 @@ export default function ProjectHubPage() {
   const isLoading = projectsLoading || authLoading;
 
   const handleLeaveSuccess = (projectId: string) => {
-    setProjectToLeave(null); // Close dialog immediately to unblock UI
-    // Update state after a short delay to allow closing animation to complete
-    setTimeout(() => {
-      removeProject(projectId);
-    }, 150);
+    // The onSnapshot listener in ProjectProvider will automatically remove the project from the UI.
+    // This handler's only job is to close the dialog, which prevents a UI freeze/race condition.
+    setProjectToLeave(null);
   };
 
   const handleDeleteSuccess = (projectId: string) => {
-    setProjectToDelete(null); // Close dialog immediately to unblock UI
-    // Update state after a short delay to allow closing animation to complete
-    setTimeout(() => {
-      removeProject(projectId);
-    }, 150);
+    // The onSnapshot listener will handle the UI update reactively.
+    // This handler just needs to close the dialog to prevent UI freeze issues.
+    setProjectToDelete(null);
   };
   
   const containerVariants = {
