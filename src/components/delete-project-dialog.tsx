@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -13,11 +14,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import type { Project, AllItems, UserProfile } from '@/lib/types';
+import type { Project, AllItems } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { doc, runTransaction, arrayRemove, collection, query, where, getDocs, writeBatch, getDoc } from 'firebase/firestore';
+import { doc, getDoc, arrayRemove, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, deleteObject } from 'firebase/storage';
+import { useProjects } from '@/hooks/use-projects';
 
 interface DeleteProjectDialogProps {
   isOpen: boolean;
@@ -34,6 +36,7 @@ export function DeleteProjectDialog({
 }: DeleteProjectDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { removeProject } = useProjects();
   const [isProcessing, setIsProcessing] = React.useState(false);
 
   if (!project) return null;
@@ -46,20 +49,28 @@ export function DeleteProjectDialog({
 
     setIsProcessing(true);
 
+    // 1. Optimistic UI update for instant response
+    removeProject(project.id);
+    toast({
+      title: 'Proyek Dihapus',
+      description: `Proyek "${project.name}" sedang dihapus di latar belakang.`,
+    });
+    onSuccess?.(project.id); // Close the dialog immediately
+
+    // 2. Background DB & Storage operation
     try {
       const projectRef = doc(db, 'projects', project.id);
       const projectSnap = await getDoc(projectRef);
       if (!projectSnap.exists()) {
-        throw new Error("Project does not exist anymore.");
+        console.warn("Project already deleted from server.");
+        return;
       }
       
       const currentProjectData = projectSnap.data() as Project;
       const memberUids = currentProjectData.memberUids || [];
-
       const batch = writeBatch(db);
       const storageDeletePromises: Promise<any>[] = [];
 
-      // 1. Find and queue deletion for all associated items and their storage files
       const itemTypes = ['observations', 'inspections', 'ptws'];
       for (const itemType of itemTypes) {
         const q = query(collection(db, itemType), where("projectId", "==", project.id));
@@ -86,35 +97,23 @@ export function DeleteProjectDialog({
         });
       }
       
-      // 2. Queue updates to remove the project from every member's profile
       for (const uid of memberUids) {
         const userRef = doc(db, 'users', uid);
         batch.update(userRef, { projectIds: arrayRemove(project.id) });
       }
 
-      // 3. Queue deletion for the project document itself
       batch.delete(projectRef);
       
-      // 4. Commit Firestore batch and then delete from storage
       await batch.commit();
       await Promise.all(storageDeletePromises);
       
-      toast({
-        title: 'Proyek Dihapus',
-        description: `Proyek "${project.name}" dan semua datanya telah dihapus secara permanen.`,
-      });
-
-      // Signal success to the parent component, which is responsible for the UI update and closing the dialog.
-      onSuccess?.(project.id);
     } catch (error) {
-      console.error("Error deleting project:", error);
+      console.error("Error deleting project from server:", error);
       toast({
         variant: 'destructive',
-        title: 'Penghapusan Gagal',
-        description: 'Terjadi kesalahan tak terduga saat menghapus proyek.',
+        title: 'Sinkronisasi Gagal',
+        description: 'Gagal menghapus proyek dari server. Muat ulang halaman jika proyek muncul kembali.',
       });
-      // On error, allow the user to try again by resetting the loading state.
-      setIsProcessing(false);
     }
   };
 

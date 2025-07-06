@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -15,9 +16,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
 import { Loader2, LogOut } from 'lucide-react';
-import { doc, updateDoc, arrayRemove, runTransaction } from 'firebase/firestore';
+import { doc, arrayRemove, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-
+import { useProjects } from '@/hooks/use-projects';
 
 interface LeaveProjectDialogProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export function LeaveProjectDialog({
 }: LeaveProjectDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { removeProject } = useProjects();
   const [isLeaving, setIsLeaving] = React.useState(false);
 
   const handleLeave = async () => {
@@ -47,6 +49,16 @@ export function LeaveProjectDialog({
     }
 
     setIsLeaving(true);
+
+    // 1. Optimistic UI update for an instant response
+    removeProject(project.id);
+    toast({
+      title: 'Berhasil Meninggalkan Proyek',
+      description: `Anda telah meninggalkan proyek "${project.name}".`,
+    });
+    onSuccess?.(project.id); // Close the dialog immediately
+
+    // 2. Background DB operation
     try {
       const projectRef = doc(db, 'projects', project.id);
       const userRef = doc(db, 'users', user.uid);
@@ -61,24 +73,12 @@ export function LeaveProjectDialog({
           projectIds: arrayRemove(project.id),
         });
       });
-      
-      toast({
-        title: 'Berhasil Meninggalkan Proyek',
-        description: `Anda telah berhasil meninggalkan proyek "${project.name}".`,
-      });
-      
-      // Signal success to the parent component.
-      // The parent is responsible for closing the dialog by changing its state.
-      // No need to call setIsLeaving(false) here because the component will unmount.
-      onSuccess?.(project.id);
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Gagal Meninggalkan Proyek',
-        description: 'Terjadi kesalahan tak terduga saat meninggalkan proyek.',
+        title: 'Sinkronisasi Gagal',
+        description: 'Gagal meninggalkan proyek dari server. Muat ulang halaman jika proyek muncul kembali.',
       });
-      // ONLY set loading to false on error, so the user can try again.
-      setIsLeaving(false);
     }
   };
 

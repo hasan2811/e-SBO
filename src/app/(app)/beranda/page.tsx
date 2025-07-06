@@ -18,7 +18,6 @@ import { ManageProjectDialog } from '@/components/manage-project-dialog';
 import { LeaveProjectDialog } from '@/components/leave-project-dialog';
 import { DeleteProjectDialog } from '@/components/delete-project-dialog';
 import { usePerformance } from '@/contexts/performance-context';
-import { useRouter } from 'next/navigation';
 
 const ProjectCard = ({ 
   project, 
@@ -135,7 +134,6 @@ export default function ProjectHubPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const { projects, loading: projectsLoading } = useProjects();
   const { isFastConnection } = usePerformance();
-  const router = useRouter();
 
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
   const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
@@ -146,17 +144,11 @@ export default function ProjectHubPage() {
 
   const isLoading = projectsLoading || authLoading;
 
-  const handleProjectRemoved = (removedProjectId: string) => {
-    // Optimistic update handled by the dialog.
-    // This function handles the navigation logic.
+  // This simple handler now only clears the state that controls the dialogs' visibility.
+  // The optimistic UI update is handled inside the dialogs themselves.
+  const handleActionComplete = () => {
     setProjectToLeave(null);
     setProjectToDelete(null);
-
-    // After removing/leaving a project, navigate to the next available project, or stay here.
-    const remainingProjects = projects.filter(p => p.id !== removedProjectId);
-    if (remainingProjects.length > 0) {
-      router.push(`/proyek/${remainingProjects[0].id}/observasi`);
-    }
   };
   
   const containerVariants = {
@@ -272,7 +264,7 @@ export default function ProjectHubPage() {
           isOpen={!!projectToLeave}
           onOpenChange={(open) => !open && setProjectToLeave(null)}
           project={projectToLeave}
-          onSuccess={handleProjectRemoved}
+          onSuccess={handleActionComplete}
         />
       )}
       {projectToDelete && (
@@ -280,7 +272,7 @@ export default function ProjectHubPage() {
           isOpen={!!projectToDelete}
           onOpenChange={(open) => !open && setProjectToDelete(null)}
           project={projectToDelete}
-          onSuccess={handleProjectRemoved}
+          onSuccess={handleActionComplete}
         />
       )}
     </>
