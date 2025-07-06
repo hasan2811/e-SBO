@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { UserX, Loader2, Download, FileCog, Crown, ShieldCheck, Gavel, Save } from 'lucide-react';
+import { UserX, Loader2, Download, FileCog, Crown, ShieldCheck, Gavel, Save, SlidersHorizontal, Users } from 'lucide-react';
 import { RemoveMemberDialog } from '@/components/remove-member-dialog';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -25,6 +25,8 @@ import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { useProjects } from '@/hooks/use-projects';
 import { useCallback } from 'react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 const getInitials = (name: string | null | undefined): string => {
     if (!name?.trim()) return 'U';
@@ -437,11 +439,45 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
 
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
                         <div className="px-6 border-b">
-                          <TabsList className="grid w-full grid-cols-3">
-                              <TabsTrigger value="members">Anggota & Peran ({currentProject.memberUids?.length || 0})</TabsTrigger>
-                              <TabsTrigger value="settings">Pengaturan</TabsTrigger>
-                              <TabsTrigger value="export">Ekspor</TabsTrigger>
-                          </TabsList>
+                            <TooltipProvider delayDuration={100}>
+                                <TabsList className="grid w-full grid-cols-3">
+                                    <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <TabsTrigger value="members">
+                                        <Users className="h-4 w-4" />
+                                        <span className="ml-1.5 rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs font-medium tabular-nums text-primary">
+                                            {currentProject.memberUids?.length || 0}
+                                        </span>
+                                        </TabsTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Anggota & Peran</p>
+                                    </TooltipContent>
+                                    </Tooltip>
+                                    
+                                    <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <TabsTrigger value="settings">
+                                        <SlidersHorizontal className="h-4 w-4" />
+                                        </TabsTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Pengaturan Proyek</p>
+                                    </TooltipContent>
+                                    </Tooltip>
+
+                                    <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <TabsTrigger value="export">
+                                        <Download className="h-4 w-4" />
+                                        </TabsTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Ekspor Data</p>
+                                    </TooltipContent>
+                                    </Tooltip>
+                                </TabsList>
+                            </TooltipProvider>
                         </div>
                         
                         <ScrollArea className="flex-1">
