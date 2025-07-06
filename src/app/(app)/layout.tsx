@@ -92,11 +92,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   
   return (
     <>
-      <CompleteProfileDialog 
-        isOpen={isProfileDialogOpen}
-        onProfileComplete={() => setProfileDialogOpen(false)}
-      />
-
       <div className="flex flex-col min-h-screen bg-secondary/50">
         <DashboardHeader />
         <div className="flex-1 md:grid md:grid-cols-[220px_1fr]">
@@ -131,6 +126,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
       </div>
       
+      {/* Dialogs are outside the main layout flow */}
+      <CompleteProfileDialog 
+        isOpen={isProfileDialogOpen}
+        onProfileComplete={() => setProfileDialogOpen(false)}
+      />
+
       {currentProject && (
           <>
             <SubmitObservationDialog

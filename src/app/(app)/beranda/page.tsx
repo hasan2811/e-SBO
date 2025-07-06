@@ -133,7 +133,7 @@ const ProjectCardSkeleton = () => (
 
 export default function ProjectHubPage() {
   const { userProfile, loading: authLoading } = useAuth();
-  const { projects, loading: projectsLoading, removeProject } = useProjects();
+  const { projects, loading: projectsLoading } = useProjects();
   const { isFastConnection } = usePerformance();
   const router = useRouter();
 
@@ -146,21 +146,16 @@ export default function ProjectHubPage() {
 
   const isLoading = projectsLoading || authLoading;
 
-  const handleLeaveSuccess = (projectId: string) => {
-    const updatedProjects = projects.filter(p => p.id !== projectId);
-    removeProject(projectId);
+  const handleProjectRemoved = (removedProjectId: string) => {
+    // Optimistic update handled by the dialog.
+    // This function handles the navigation logic.
     setProjectToLeave(null);
-    if (updatedProjects.length > 0) {
-      router.push(`/proyek/${updatedProjects[0].id}/observasi`);
-    }
-  };
-
-  const handleDeleteSuccess = (projectId: string) => {
-    const updatedProjects = projects.filter(p => p.id !== projectId);
-    removeProject(projectId);
     setProjectToDelete(null);
-    if (updatedProjects.length > 0) {
-      router.push(`/proyek/${updatedProjects[0].id}/observasi`);
+
+    // After removing/leaving a project, navigate to the next available project, or stay here.
+    const remainingProjects = projects.filter(p => p.id !== removedProjectId);
+    if (remainingProjects.length > 0) {
+      router.push(`/proyek/${remainingProjects[0].id}/observasi`);
     }
   };
   
@@ -277,7 +272,7 @@ export default function ProjectHubPage() {
           isOpen={!!projectToLeave}
           onOpenChange={(open) => !open && setProjectToLeave(null)}
           project={projectToLeave}
-          onSuccess={handleLeaveSuccess}
+          onSuccess={handleProjectRemoved}
         />
       )}
       {projectToDelete && (
@@ -285,7 +280,7 @@ export default function ProjectHubPage() {
           isOpen={!!projectToDelete}
           onOpenChange={(open) => !open && setProjectToDelete(null)}
           project={projectToDelete}
-          onSuccess={handleDeleteSuccess}
+          onSuccess={handleProjectRemoved}
         />
       )}
     </>

@@ -75,6 +75,19 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     mode: 'onChange',
   });
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      form.reset();
+      setFileName(null);
+      setIsSubmitting(false);
+      setMembers([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+    onOpenChange(open);
+  };
+  
   React.useEffect(() => {
     if (isOpen && project) {
         if (project.memberUids) {
@@ -109,9 +122,6 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
         setFileName(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
 
-    } else {
-        setIsSubmitting(false);
-        setMembers([]);
     }
   }, [isOpen, project, form, locationOptions, companyOptions]);
 
@@ -180,7 +190,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     };
 
     addItem(optimisticItem);
-    onOpenChange(false);
+    handleOpenChange(false);
 
     const targetPath = `/proyek/${project.id}/ptw`;
     if (pathname !== targetPath) {
@@ -234,7 +244,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   const renderSelectItems = (items: readonly string[]) => items.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[525px] p-0 flex flex-col max-h-[90dvh]">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-2"><FileSignature className="h-5 w-5" /> Submit New PTW</DialogTitle>
@@ -301,7 +311,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
         </div>
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Batal</Button>
+            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>Batal</Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
               {isSubmitting && <Loader2 className="animate-spin" />}
               Ajukan PTW

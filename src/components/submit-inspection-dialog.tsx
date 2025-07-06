@@ -88,6 +88,20 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   
   const [debouncedFindings] = useDebounce(form.watch('findings'), 1000);
   
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      form.reset();
+      setPhotoPreview(null);
+      setAiSuggestions(null);
+      setIsSubmitting(false);
+      setMembers([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+    onOpenChange(open);
+  };
+  
   React.useEffect(() => {
     async function getAiSuggestions() {
       if (!isAiEnabled) {
@@ -149,9 +163,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         setPhotoPreview(null);
         setAiSuggestions(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
-    } else {
-        setIsSubmitting(false);
-        setMembers([]);
     }
   }, [isOpen, project, form, locationOptions]);
 
@@ -225,7 +236,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     };
 
     addItem(optimisticItem);
-    onOpenChange(false);
+    handleOpenChange(false);
 
     const targetPath = `/proyek/${project.id}/inspeksi`;
     if (pathname !== targetPath) {
@@ -290,7 +301,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   const renderSelectItems = (items: readonly string[]) => items.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[525px] p-0 flex flex-col max-h-[90dvh]">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Submit New Inspection</DialogTitle>
@@ -406,7 +417,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         </div>
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Batal</Button>
+            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>Batal</Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
               {isSubmitting && <Loader2 className="animate-spin" />}
               Kirim Laporan

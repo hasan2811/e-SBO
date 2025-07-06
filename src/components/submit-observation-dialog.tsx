@@ -94,6 +94,20 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
 
   const [debouncedFindings] = useDebounce(form.watch('findings'), 1000);
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      form.reset();
+      setPhotoPreview(null);
+      setAiSuggestions(null);
+      setIsSubmitting(false);
+      setMembers([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+    onOpenChange(open);
+  };
+  
   React.useEffect(() => {
     async function getAiSuggestions() {
       if (!isAiEnabled) {
@@ -160,9 +174,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
-    } else {
-        setIsSubmitting(false);
-        setMembers([]);
     }
   }, [isOpen, project, form, locationOptions, companyOptions, categoryOptions, toast]);
 
@@ -241,7 +252,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     };
 
     addItem(optimisticItem);
-    onOpenChange(false);
+    handleOpenChange(false);
     
     const targetPath = `/proyek/${project.id}/observasi`;
     if (pathname !== targetPath) {
@@ -318,7 +329,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[525px] p-0 flex flex-col max-h-[90dvh]">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">
@@ -548,7 +559,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
 
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
               Batal
             </Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
