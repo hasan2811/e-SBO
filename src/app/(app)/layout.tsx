@@ -14,6 +14,9 @@ import { MultiActionButton } from '@/components/multi-action-button';
 import { usePerformance } from '@/contexts/performance-context';
 import { Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { ProjectProvider } from '@/contexts/project-context';
+import { ObservationProvider } from '@/contexts/observation-context';
+
 
 // Dynamically import heavy dialogs to reduce initial bundle size
 const CompleteProfileDialog = dynamic(() => import('@/components/complete-profile-dialog').then(mod => mod.CompleteProfileDialog), { ssr: false });
@@ -22,7 +25,7 @@ const SubmitInspectionDialog = dynamic(() => import('@/components/submit-inspect
 const SubmitPtwDialog = dynamic(() => import('@/components/submit-ptw-dialog').then(mod => mod.SubmitPtwDialog), { ssr: false });
 
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -163,5 +166,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </>
       )}
     </>
+  );
+}
+
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ProjectProvider>
+      <ObservationProvider>
+        <AppLayoutContent>{children}</AppLayoutContent>
+      </ObservationProvider>
+    </ProjectProvider>
   );
 }
