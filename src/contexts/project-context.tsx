@@ -16,7 +16,7 @@ interface ProjectContextType {
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const { user, userProfile, isAdmin, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
   
@@ -52,23 +52,18 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
 
     setLoading(true);
-    const projectsCollection = collection(db, 'projects');
-    let q;
-
-    if (isAdmin) {
-      // Admin gets all projects. Sorting will happen on the client to avoid indexing issues.
-      q = query(projectsCollection);
-    } else {
-      const userProjectIds = userProfile.projectIds || [];
-      if (userProjectIds.length === 0) {
-        setProjects([]);
-        setLoading(false);
-        return; // Early exit if user has no projects.
-      }
-      // Fetch only the projects whose IDs are in the user's profile.
-      // This is the correct way to query for documents by their ID.
-      q = query(projectsCollection, where(documentId(), 'in', userProjectIds));
+    
+    const userProjectIds = userProfile.projectIds || [];
+    if (userProjectIds.length === 0) {
+      setProjects([]);
+      setLoading(false);
+      return; // Early exit if user has no projects.
     }
+    
+    // Fetch only the projects whose IDs are in the user's profile for ALL users.
+    // This provides a consistent experience for both admins and regular users in the main UI.
+    const projectsCollection = collection(db, 'projects');
+    const q = query(projectsCollection, where(documentId(), 'in', userProjectIds));
 
     unsubscribe = onSnapshot(q, (snapshot) => {
       const serverProjects = snapshot.docs.map(doc => ({
@@ -88,7 +83,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [user, userProfile, isAdmin, authLoading]);
+  }, [user, userProfile, authLoading]);
 
   const value = { projects, loading, addProject, removeProject };
 
