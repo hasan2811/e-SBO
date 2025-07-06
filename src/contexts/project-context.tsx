@@ -67,7 +67,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
     
     // Fetch only the projects whose IDs are in the user's profile for ALL users.
-    // This provides a consistent experience for both admins and regular users in the main UI.
     const projectsCollection = collection(db, 'projects');
     const q = query(projectsCollection, where(documentId(), 'in', userProjectIds));
 
