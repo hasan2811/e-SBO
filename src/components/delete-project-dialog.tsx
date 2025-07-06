@@ -108,8 +108,9 @@ export function DeleteProjectDialog({
         title: 'Proyek Dihapus',
         description: `Proyek "${project.name}" dan semua datanya telah dihapus secara permanen.`,
       });
+
+      // Signal success to the parent component, which is responsible for closing the dialog.
       onSuccess?.();
-      onOpenChange(false);
     } catch (error) {
       console.error("Error deleting project:", error);
       toast({

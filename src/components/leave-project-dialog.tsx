@@ -71,7 +71,9 @@ export function LeaveProjectDialog({
         title: 'Berhasil Meninggalkan Proyek',
         description: `Anda telah berhasil meninggalkan proyek "${project.name}".`,
       });
-      onOpenChange(false);
+      
+      // Signal success to the parent component, which is responsible for closing the dialog.
+      // This avoids race conditions and ensures a clean state transition.
       onSuccess?.();
     } catch (error) {
       toast({
