@@ -19,7 +19,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DeleteObservationDialog } from './delete-observation-dialog';
 import { ObservationContext } from '@/contexts/observation-context';
-import { runDeeperAnalysis, retryAiAnalysis } from '@/lib/actions/ai-actions';
+import { runDeeperAnalysis } from '@/lib/actions/ai-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import dynamic from 'next/dynamic';
@@ -80,16 +80,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     onOpenChange(false);
     setDeleteDialogOpen(false);
   };
-
-  const handleRetryAnalysis = async () => {
-    if (!observation) return;
-    try {
-      await retryAiAnalysis(observation);
-      toast({ title: 'Analisis diulang', description: 'Analisis AI telah dimulai ulang untuk laporan ini.' });
-    } catch (error) {
-       toast({ variant: 'destructive', title: 'Gagal Mencoba Ulang Analisis' });
-    }
-  };
   
   const handleRunDeeperAnalysis = async () => {
     if (!observation || !userProfile) return;
@@ -111,7 +101,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const userRoles = (userProfile && project?.roles) ? (project.roles[userProfile.uid] || {}) : {};
   const hasActionPermission = isOwner || userRoles.canTakeAction;
   const canTakeAction = observation?.status !== 'Completed' && hasActionPermission;
-  const hasDeepAnalysis = observation?.aiRisks && observation?.aiObserverSkillRating;
 
   return (
     <>
@@ -189,7 +178,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                         </CardContent>
                     </Card>
 
-                    {isAiEnabled && observation.aiStatus !== 'n/a' && (
+                    {isAiEnabled && (
                       <Card>
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
@@ -198,10 +187,19 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          {observation.aiStatus === 'processing' && (
+                           {observation.aiStatus === 'n/a' && (
+                                <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed">
+                                   <p className="text-sm text-muted-foreground">Jalankan analisis AI untuk mendapatkan wawasan mendalam mengenai risiko, tindakan, dan lainnya.</p>
+                                   <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={isAnalyzing}>
+                                       {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4" />}
+                                       Jalankan Analisis AI
+                                   </Button>
+                               </div>
+                           )}
+                           {observation.aiStatus === 'processing' && (
                               <div className="flex items-center gap-3 p-4 rounded-lg bg-muted">
                                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                                  <p className="text-sm text-muted-foreground">AI sedang menganalisis...</p>
+                                  <p className="text-sm text-muted-foreground">AI sedang menganalisis laporan...</p>
                               </div>
                           )}
                           {observation.aiStatus === 'failed' && (
@@ -209,20 +207,23 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                                   <AlertTriangle />
                                   <AlertTitle>Analisis Gagal</AlertTitle>
                                   <AlertDescription>
-                                      Analisis AI tidak dapat diselesaikan.
-                                      <Button variant="link" size="sm" onClick={handleRetryAnalysis} className="p-0 h-auto ml-2 text-destructive">Coba lagi</Button>
+                                      Terjadi kesalahan saat menganalisis laporan.
+                                      <Button variant="link" size="sm" onClick={handleRunDeeperAnalysis} className="p-0 h-auto ml-2 text-destructive">Coba lagi</Button>
                                   </AlertDescription>
                               </Alert>
                           )}
                           {observation.aiStatus === 'completed' && (
                             <div className="space-y-4">
-                              {observation.aiSuggestedRiskLevel && (
-                                 <DetailRow icon={Activity} label="Saran Tingkat Risiko" value={<RiskBadge riskLevel={observation.aiSuggestedRiskLevel} />} />
+                              {observation.aiSummary && (
+                                  <div>
+                                      <h4 className="text-sm font-semibold mb-2">Ringkasan Cepat</h4>
+                                      <p className="text-sm text-muted-foreground">{observation.aiSummary}</p>
+                                  </div>
                               )}
                               
-                              {hasDeepAnalysis ? (
                                 <div className="space-y-2">
                                   <Separator className="my-4"/>
+                                  <h4 className="text-sm font-semibold mb-2">Analisis Mendalam</h4>
                                   <Accordion type="multiple" className="w-full">
                                       {typeof observation.aiObserverSkillRating === 'number' && (
                                           <AccordionItem value="observerRating">
@@ -247,15 +248,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                                       )}
                                   </Accordion>
                                 </div>
-                              ) : (
-                                <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed">
-                                   <p className="text-sm text-muted-foreground">Jalankan analisis mendalam untuk wawasan lebih lanjut mengenai risiko, tindakan, dan lainnya.</p>
-                                   <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={isAnalyzing}>
-                                       {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4" />}
-                                       Jalankan Analisis Mendalam
-                                   </Button>
-                               </div>
-                              )}
                             </div>
                           )}
                         </CardContent>

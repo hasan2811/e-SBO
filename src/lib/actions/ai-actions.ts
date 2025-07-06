@@ -5,11 +5,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { Observation, Inspection, UserProfile } from '@/lib/types';
 import { 
     analyzeDeeperObservation, 
-    analyzeDeeperInspection, 
-    analyzeInspectionData,
-    summarizeObservationFast
+    analyzeDeeperInspection,
 } from '@/ai/flows/summarize-observation-data';
-import { triggerSmartNotify } from '@/ai/flows/smart-notify-flow';
 
 /**
  * Gets a user's profile from Firestore.
@@ -25,68 +22,6 @@ async function getUserProfile(userId: string): Promise<UserProfile | null> {
         return null;
     }
     return userSnap.data() as UserProfile;
-}
-
-/**
- * Triggers a fast, lightweight AI summary for a new observation.
- * This function is fire-and-forget. It fetches all necessary data from the DB.
- * @param observationId The ID of the newly created observation document.
- */
-export async function triggerObservationAnalysis(observationId: string) {
-  const docRef = adminDb.collection('observations').doc(observationId);
-
-  const docSnap = await docRef.get();
-  if (!docSnap.exists) {
-    console.error(`[triggerObservationAnalysis] Observation with ID ${observationId} not found.`);
-    return;
-  }
-  const observation = { id: docSnap.id, ...docSnap.data() } as Observation;
-  
-  const userProfile = await getUserProfile(observation.userId);
-  if (!userProfile) {
-    console.error(`[triggerObservationAnalysis] Submitter profile for user ${observation.userId} not found.`);
-    await docRef.update({ aiStatus: 'failed', aiSummary: 'Submitter profile not found.' });
-    return;
-  }
-  
-  if (observation.scope === 'project' && observation.projectId && userProfile.aiEnabled) {
-    triggerSmartNotify({
-      observationId: observation.id,
-      projectId: observation.projectId,
-      company: observation.company,
-      findings: observation.findings,
-      riskLevel: observation.riskLevel,
-      submitterId: observation.userId,
-      submittedByDisplayName: observation.submittedBy.split(' (')[0],
-    }, userProfile).catch(err => console.error(`Smart-notify failed for obs ${observation.id}`, err));
-  }
-
-  if (!userProfile.aiEnabled) {
-      await docRef.update({ aiStatus: 'n/a' });
-      return;
-  }
-  
-  await docRef.update({ aiStatus: 'processing' });
-
-  try {
-    const observationData = `Temuan: ${observation.findings}\nRekomendasi: ${observation.recommendation}\nKategori Awal: ${observation.category}\nTingkat Risiko: ${observation.riskLevel}`;
-    const fastAnalysis = await summarizeObservationFast({ observationData }, userProfile);
-    
-    const currentDocSnap = await docRef.get();
-    if (currentDocSnap.exists) {
-        const updatePayload: Partial<Observation> = {
-            aiStatus: 'completed',
-            aiSummary: fastAnalysis.summary,
-        };
-        await docRef.update(updatePayload);
-    }
-  } catch (error) {
-    console.error(`Fast summary analysis failed for obs ${observation.id}:`, error);
-    const currentDocSnap = await docRef.get();
-    if (currentDocSnap.exists) {
-        await docRef.update({ aiStatus: 'failed' });
-    }
-  }
 }
 
 /**
@@ -143,54 +78,6 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
 }
 
 /**
- * Triggers the initial, fast AI analysis for a new inspection.
- * @param inspectionId The ID of the newly created inspection document.
- */
-export async function triggerInspectionAnalysis(inspectionId: string) {
-  const docRef = adminDb.collection('inspections').doc(inspectionId);
-  
-  const docSnap = await docRef.get();
-  if (!docSnap.exists) {
-    console.error(`[triggerInspectionAnalysis] Inspection with ID ${inspectionId} not found.`);
-    return;
-  }
-  const inspection = { id: docSnap.id, ...docSnap.data() } as Inspection;
-
-  const userProfile = await getUserProfile(inspection.userId);
-  if (!userProfile) {
-    console.error(`[triggerInspectionAnalysis] Submitter profile for user ${inspection.userId} not found.`);
-    await docRef.update({ aiStatus: 'failed', aiSummary: 'Submitter profile not found.' });
-    return;
-  }
-  
-  if (!userProfile.aiEnabled) {
-    await docRef.update({ aiStatus: 'n/a' });
-    return;
-  }
-
-  await docRef.update({ aiStatus: 'processing' });
-
-  try {
-    const inspectionData = `Nama Peralatan: ${inspection.equipmentName}\nJenis: ${inspection.equipmentType}\nTemuan: ${inspection.findings}\nRekomendasi: ${inspection.recommendation || 'N/A'}`;
-    const analysis = await analyzeInspectionData({ inspectionData }, userProfile);
-
-    const currentDocSnap = await docRef.get();
-    if (currentDocSnap.exists) {
-        await docRef.update({ 
-            aiStatus: 'completed', 
-            aiSummary: analysis.summary 
-        });
-    }
-  } catch (error) {
-    console.error(`AI analysis failed for inspection ${inspection.id}:`, error);
-    const currentDocSnap = await docRef.get();
-    if (currentDocSnap.exists) {
-        await docRef.update({ aiStatus: 'failed' });
-    }
-  }
-}
-
-/**
  * Triggers deeper, on-demand AI analysis for an inspection.
  * @param inspectionId The ID of the inspection to analyze.
  */
@@ -236,14 +123,5 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
             await docRef.update({ aiStatus: 'failed' });
         }
         throw error;
-    }
-}
-
-export async function retryAiAnalysis(item: Observation | Inspection): Promise<void> {
-    // This function can now be simplified as it doesn't need to fetch the profile itself
-    if (item.itemType === 'observation') {
-      await triggerObservationAnalysis(item.id);
-    } else if (item.itemType === 'inspection') {
-      await triggerInspectionAnalysis(item.id);
     }
 }

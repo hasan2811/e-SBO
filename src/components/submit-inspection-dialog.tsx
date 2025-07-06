@@ -10,7 +10,6 @@ import { Loader2, Upload, Wrench, Sparkles, Wand2, Users } from 'lucide-react';
 import { collection, addDoc, getDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
-import { triggerInspectionAnalysis } from '@/lib/actions/ai-actions';
 import { useDebounce } from 'use-debounce';
 import { assistInspection } from '@/ai/flows/assist-inspection-flow';
 
@@ -237,7 +236,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
 
           const scope: Scope = projectId ? 'project' : 'private';
 
-          const inspectionData: any = {
+          const inspectionData: Partial<Inspection> = {
               itemType: 'inspection',
               userId: userProfile.uid,
               date: new Date().toISOString(),
@@ -251,8 +250,11 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
               scope,
               projectId,
               referenceId,
-              aiStatus: isAiEnabled ? 'processing' : 'n/a',
           };
+          
+          if (isAiEnabled) {
+              inspectionData.aiStatus = 'n/a';
+          }
 
           if (values.photo) {
             const { downloadURL, storagePath } = await uploadFile(values.photo, 'inspections', userProfile.uid, () => {}, projectId);
@@ -267,12 +269,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
 
           const docRef = await addDoc(collection(db, "inspections"), inspectionData);
           
-          if (isAiEnabled) {
-              triggerInspectionAnalysis(docRef.id).catch(error => {
-                  console.error("Failed to trigger AI analysis for inspection:", error);
-              });
-          }
-
           if (values.responsiblePersonUid && projectId) {
               await createAssignmentNotification({
                   itemId: docRef.id,

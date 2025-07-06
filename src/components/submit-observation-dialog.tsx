@@ -10,7 +10,6 @@ import { Loader2, Upload, Sparkles, Wand2, ClipboardPlus, Users } from 'lucide-r
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
-import { triggerObservationAnalysis } from '@/lib/actions/ai-actions';
 import { useDebounce } from 'use-debounce';
 import { assistObservation } from '@/ai/flows/assist-observation-flow';
 
@@ -253,7 +252,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           
           const scope: Scope = projectId ? 'project' : 'private';
 
-          const observationData: any = {
+          const observationData: Partial<Observation> = {
               itemType: 'observation' as const,
               userId: userProfile.uid,
               date: new Date().toISOString(),
@@ -268,8 +267,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
               category: values.category as ObservationCategory,
               riskLevel: values.riskLevel,
               status: 'Pending' as const,
-              aiStatus: isAiEnabled ? 'processing' as const : 'n/a' as const,
           };
+          
+          if (isAiEnabled) {
+              observationData.aiStatus = 'n/a';
+          }
 
           if (values.photo) {
             const { downloadURL, storagePath } = await uploadFile(values.photo, 'observations', userProfile.uid, () => {}, projectId);
@@ -285,12 +287,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           }
           
           const docRef = await addDoc(collection(db, "observations"), observationData);
-          
-          if (isAiEnabled) {
-            triggerObservationAnalysis(docRef.id).catch(error => {
-                console.error("Failed to trigger AI analysis:", error);
-            });
-          }
           
           if (values.responsiblePersonUid && projectId) {
               await createAssignmentNotification({

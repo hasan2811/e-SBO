@@ -34,51 +34,7 @@ function parseAndClampRating(value: string | number | undefined): number {
 }
 
 // =================================================================================
-// 0. FAST OBSERVATION SUMMARY FLOW (for initial processing)
-// =================================================================================
-
-const FastSummarizeObservationOutputSchema = z.object({
-  summary: z.string().describe('Ringkasan yang sangat singkat (satu atau dua kalimat) dari temuan inti observasi.'),
-});
-
-const summarizeObservationFastPrompt = ai.definePrompt({
-    name: 'summarizeObservationFastPrompt',
-    model: 'googleai/gemini-1.5-flash-latest',
-    input: { schema: SummarizeObservationDataInputSchema },
-    output: { schema: FastSummarizeObservationOutputSchema },
-    config: {
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-        ],
-    },
-    prompt: `Anda adalah seorang ahli HSSE yang sangat cepat. Tugas Anda HANYA menganalisis data laporan observasi dan memberikan ringkasan satu kalimat dalam Bahasa Indonesia.
-PENTING: Respons Anda harus berupa objek JSON mentah saja dengan satu kunci: "summary".
-
-Data Observasi untuk dianalisis:
-{{{observationData}}}`,
-});
-
-const summarizeObservationFastFlow = ai.defineFlow(
-  {
-    name: 'summarizeObservationFastFlow',
-    inputSchema: z.object({ payload: SummarizeObservationDataInputSchema, userProfile: UserProfileSchema }),
-    outputSchema: z.object({ summary: z.string() }),
-  },
-  async ({ payload, userProfile }) => {
-    const response = await summarizeObservationFastPrompt(payload);
-    if (!response.output) throw new Error('AI analysis returned no structured output for observation summary.');
-    return { summary: response.output.summary };
-  }
-);
-
-export async function summarizeObservationFast(input: SummarizeObservationDataInput, userProfile: UserProfile): Promise<{ summary: string }> {
-  return summarizeObservationFastFlow({ payload: input, userProfile });
-}
-
-
-// =================================================================================
-// 1. BACKGROUND/DEEPER OBSERVATION ANALYSIS FLOW
+// 1. DEEPER OBSERVATION ANALYSIS FLOW (ON-DEMAND)
 // =================================================================================
 
 const DeeperAnalysisOutputSchema = z.object({
@@ -146,56 +102,7 @@ export async function analyzeDeeperObservation(input: SummarizeObservationDataIn
 
 
 // =================================================================================
-// 2. FAST INSPECTION ANALYSIS FLOW
-// =================================================================================
-
-const FastSummarizeInspectionOutputSchema = z.object({
-  summary: z.string().describe('Ringkasan yang sangat singkat (satu atau dua kalimat) dari temuan inti inspeksi.'),
-});
-
-const summarizeInspectionPrompt = ai.definePrompt({
-    name: 'summarizeInspectionPrompt',
-    model: 'googleai/gemini-1.5-flash-latest',
-    input: { schema: AnalyzeInspectionInputSchema },
-    output: { schema: FastSummarizeInspectionOutputSchema },
-    config: {
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-        ],
-    },
-    prompt: `Anda adalah seorang ahli inspeksi yang sangat cepat. Tugas Anda HANYA menganalisis data laporan inspeksi dan memberikan ringkasan satu kalimat dalam Bahasa Indonesia.
-PENTING: Respons Anda harus berupa objek JSON mentah saja dengan satu kunci: "summary".
-
-Contoh Respons:
-{
-  "summary": "Ditemukan kerusakan pada kabel hidrolik ekskavator yang berpotensi menyebabkan kegagalan fungsi."
-}
-
-Data Inspeksi untuk dianalisis:
-{{{inspectionData}}}`,
-});
-
-const analyzeInspectionDataFlow = ai.defineFlow(
-  {
-    name: 'analyzeInspectionDataFlow',
-    inputSchema: z.object({ payload: AnalyzeInspectionInputSchema, userProfile: UserProfileSchema }),
-    outputSchema: z.object({ summary: z.string() }),
-  },
-  async ({ payload, userProfile }) => {
-    const response = await summarizeInspectionPrompt(payload);
-    if (!response.output) throw new Error('AI analysis returned no structured output for inspection.');
-    return { summary: response.output.summary };
-  }
-);
-
-export async function analyzeInspectionData(input: AnalyzeInspectionInput, userProfile: UserProfile): Promise<{ summary: string }> {
-  return analyzeInspectionDataFlow({ payload: input, userProfile });
-}
-
-
-// =================================================================================
-// 3. DEEP INSPECTION ANALYSIS FLOW (ON-DEMAND)
+// 2. DEEP INSPECTION ANALYSIS FLOW (ON-DEMAND)
 // =================================================================================
 
 const deeperAnalysisInspectionPrompt = ai.definePrompt({

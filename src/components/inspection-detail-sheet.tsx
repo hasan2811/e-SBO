@@ -17,7 +17,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { DeleteInspectionDialog } from './delete-inspection-dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { runDeeperInspectionAnalysis, retryAiAnalysis } from '@/lib/actions/ai-actions';
+import { runDeeperInspectionAnalysis } from '@/lib/actions/ai-actions';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -81,25 +81,15 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
     onOpenChange(false);
     setDeleteDialogOpen(false);
   };
-
-  const handleRetry = async () => {
-    if (!inspection) return;
-    try {
-        await retryAiAnalysis(inspection);
-        toast({ title: 'Analisis diulang', description: 'Analisis AI telah dimulai ulang untuk laporan ini.' });
-    } catch(error) {
-        toast({ variant: 'destructive', title: 'Gagal Mencoba Ulang Analisis' });
-    }
-  };
   
   const handleRunDeeperAnalysis = async () => {
     if (!inspection || !userProfile) return;
     setIsAnalyzing(true);
     try {
         await runDeeperInspectionAnalysis(inspection.id);
-        toast({ title: 'Analisis Mendalam Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
+        toast({ title: 'Analisis Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis mendalam.' });
+        toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis.' });
     } finally {
         setIsAnalyzing(false);
     }
@@ -112,7 +102,6 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   const userRoles = (userProfile && project?.roles) ? (project.roles[userProfile.uid] || {}) : {};
   const hasActionPermission = isOwner || userRoles.canTakeAction;
   const canFollowUp = (inspection?.status === 'Fail' || inspection?.status === 'Needs Repair') && hasActionPermission;
-  const hasDeepAnalysis = inspection?.aiRisks && inspection?.aiSuggestedActions;
 
   return (
     <>
@@ -193,7 +182,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                     </CardContent>
                   </Card>
 
-                  {isAiEnabled && inspection.aiStatus !== 'n/a' && (
+                  {isAiEnabled && (
                     <Card>
                       <CardHeader>
                           <CardTitle className="flex items-center gap-2">
@@ -202,24 +191,31 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                           </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        {inspection.aiStatus === 'processing' && !hasDeepAnalysis && (
+                        {inspection.aiStatus === 'n/a' && (
+                            <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed">
+                                <p className="text-sm text-muted-foreground">Jalankan analisis AI untuk mengidentifikasi risiko dan saran tindakan.</p>
+                                <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={isAnalyzing}>
+                                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4" />}
+                                    Jalankan Analisis AI
+                                </Button>
+                            </div>
+                        )}
+                        {inspection.aiStatus === 'processing' && (
                           <div className="flex items-center gap-3 p-4 rounded-lg bg-muted">
                               <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                              <p className="text-sm text-muted-foreground">Analisis awal sedang diproses...</p>
+                              <p className="text-sm text-muted-foreground">AI sedang menganalisis laporan...</p>
                           </div>
                         )}
-                        
                         {inspection.aiStatus === 'failed' && (
                             <Alert variant="destructive">
                                 <AlertTriangle />
                                 <AlertTitle>Analisis Gagal</AlertTitle>
                                 <AlertDescription>
-                                    Analisis AI tidak dapat diselesaikan.
-                                    <Button variant="link" size="sm" onClick={handleRetry} className="p-0 h-auto ml-2 text-destructive">Coba lagi</Button>
+                                    Terjadi kesalahan saat menganalisis laporan.
+                                    <Button variant="link" size="sm" onClick={handleRunDeeperAnalysis} className="p-0 h-auto ml-2 text-destructive">Coba lagi</Button>
                                 </AlertDescription>
                             </Alert>
                         )}
-                        
                         {inspection.aiStatus === 'completed' && (
                           <div className="space-y-4">
                               {inspection.aiSummary && (
@@ -229,28 +225,16 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                                   </div>
                               )}
                               
-                              {hasDeepAnalysis ? (
-                                  <div>
-                                      <Separator className="my-4" />
-                                      <h4 className="text-sm font-semibold mb-2">Analisis Mendalam</h4>
-                                      <Accordion type="multiple" className="w-full">
-                                          {inspection.aiRisks && (
-                                              <AccordionItem value="risks"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-destructive" />Potensi Risiko</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiRisks, AlertTriangle, "text-destructive")}</AccordionContent></AccordionItem>
-                                          )}
-                                          {inspection.aiSuggestedActions && (
-                                              <AccordionItem value="actions" className="border-b-0"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-green-600" />Saran Tindakan</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiSuggestedActions, CheckCircle2, "text-green-600")}</AccordionContent></AccordionItem>
-                                          )}
-                                      </Accordion>
-                                  </div>
-                              ) : (
-                                  <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed mt-4">
-                                      <p className="text-sm text-muted-foreground">Jalankan analisis mendalam untuk mengidentifikasi risiko dan saran tindakan.</p>
-                                      <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={isAnalyzing}>
-                                          {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4" />}
-                                          Jalankan Analisis Mendalam
-                                      </Button>
-                                  </div>
-                              )}
+                              <Separator className="my-4" />
+                              <h4 className="text-sm font-semibold mb-2">Analisis Mendalam</h4>
+                              <Accordion type="multiple" className="w-full">
+                                  {inspection.aiRisks && (
+                                      <AccordionItem value="risks"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-destructive" />Potensi Risiko</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiRisks, AlertTriangle, "text-destructive")}</AccordionContent></AccordionItem>
+                                  )}
+                                  {inspection.aiSuggestedActions && (
+                                      <AccordionItem value="actions" className="border-b-0"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-green-600" />Saran Tindakan</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiSuggestedActions, CheckCircle2, "text-green-600")}</AccordionContent></AccordionItem>
+                                  )}
+                              </Accordion>
                           </div>
                         )}
                       </CardContent>
