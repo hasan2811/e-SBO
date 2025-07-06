@@ -171,8 +171,8 @@ export default function ProjectHubPage() {
             <Skeleton className="h-10 w-32" />
           </div>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <ProjectCardSkeleton key={i} />
           ))}
         </div>
@@ -185,7 +185,7 @@ export default function ProjectHubPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex-1">
-            <h1 className="text-2xl font-bold tracking-tight">Project Hub</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Project Hub</h1>
             <p className="text-muted-foreground">
               Selamat datang, {userProfile?.displayName}. Kelola proyek Anda atau mulai yang baru.
             </p>
@@ -204,7 +204,7 @@ export default function ProjectHubPage() {
 
         {projects.length > 0 ? (
           <motion.div 
-            className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+            className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
