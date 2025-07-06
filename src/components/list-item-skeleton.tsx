@@ -8,6 +8,7 @@ export function ListItemSkeleton() {
   return (
     <Card className="relative overflow-hidden">
       <Skeleton className="absolute left-0 top-0 bottom-0 w-1.5" />
+      <Skeleton className="absolute top-2 right-2 h-4 w-4 rounded-full" />
       <CardContent className="p-4 pl-6">
         <div className="flex gap-4 items-start">
           <Skeleton className="h-16 w-16 rounded-md flex-shrink-0" />

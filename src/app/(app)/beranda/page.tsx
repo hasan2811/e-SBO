@@ -110,12 +110,15 @@ const ProjectCard = ({
 const ProjectCardSkeleton = () => (
   <Card className="flex flex-col">
     <CardHeader>
-      <div className="flex items-start gap-4">
-        <Skeleton className="h-8 w-8 rounded-md mt-1 flex-shrink-0" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-5 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex items-start gap-4 flex-1">
+          <Skeleton className="h-8 w-8 rounded-md mt-1 flex-shrink-0" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
         </div>
+        <Skeleton className="h-9 w-9" />
       </div>
     </CardHeader>
     <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6 mt-auto">
@@ -139,10 +142,7 @@ export default function ProjectHubPage() {
   const isLoading = projectsLoading || authLoading;
 
   const handleActionSuccess = (projectId: string) => {
-    // Perform the optimistic update first for an instant UI response
     removeProject(projectId);
-
-    // Then, close all dialogs cleanly
     setProjectToManage(null);
     setProjectToLeave(null);
     setProjectToDelete(null);

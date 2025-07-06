@@ -1,7 +1,7 @@
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { DashboardHeader } from '@/components/dashboard-header';
 import { cn } from '@/lib/utils';
+import { ListItemSkeleton } from './list-item-skeleton';
 
 interface PageSkeletonProps {
   withHeader?: boolean;
@@ -41,19 +41,12 @@ export function PageSkeleton({ withHeader = false }: PageSkeletonProps) {
              <main className="flex-1 p-4 sm:p-6 lg:p-8">
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <Skeleton className="h-8 w-1/3" />
-                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-4 w-72" />
                   </div>
                   <div className="space-y-3">
                     {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="flex items-start gap-3 p-3 border rounded-lg bg-card">
-                        <Skeleton className="h-24 w-24 rounded-md" />
-                        <div className="flex-1 space-y-3 pt-1">
-                          <Skeleton className="h-4 w-1/3" />
-                          <Skeleton className="h-5 w-full" />
-                          <Skeleton className="h-4 w-2/3" />
-                        </div>
-                      </div>
+                      <ListItemSkeleton key={i} />
                     ))}
                   </div>
                 </div>
