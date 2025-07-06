@@ -4,7 +4,8 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
-import { getAnalytics, isSupported } from 'firebase/analytics';
+// We are removing getAnalytics to improve initial load performance.
+// import { getAnalytics, isSupported } from 'firebase/analytics';
 
 // Your web app's Firebase configuration, with the correct storageBucket name.
 const firebaseConfig = {
@@ -27,13 +28,7 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
 
-// Initialize Analytics only if running in the browser and it's supported.
-if (typeof window !== 'undefined') {
-  isSupported().then((supported) => {
-    if (supported) {
-      getAnalytics(app);
-    }
-  });
-}
+// Analytics initialization has been removed to prioritize core app performance.
+// It can be re-added later with a deferred loading strategy if needed.
 
 export { app, db, auth, storage };
