@@ -217,6 +217,7 @@ export function UserAccountSheet() {
                     )}
                   </button>
                   <input
+                    id="profile-photo-upload"
                     type="file"
                     ref={fileInputRef}
                     onChange={handlePhotoChange}

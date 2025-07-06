@@ -297,7 +297,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
               <FormField name="jsaPdf" control={form.control} render={() => (
                 <FormItem><FormLabel>Unggah JSA (PDF)</FormLabel>
                   <FormControl>
-                    <Input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+                    <Input id="ptw-jsa-upload" type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
                   </FormControl>
                   <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
                     <Upload className="mr-2 h-4 w-4" />{fileName ? 'Ganti File' : 'Pilih File PDF'}

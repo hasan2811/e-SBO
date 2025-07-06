@@ -266,6 +266,7 @@ export function TakeActionDialog({
                       <FormControl>
                         <>
                           <Input
+                            id="action-photo-upload"
                             type="file"
                             accept="image/*"
                             className="hidden"

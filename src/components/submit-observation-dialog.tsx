@@ -355,6 +355,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                     <FormLabel>Unggah Foto (Opsional)</FormLabel>
                     <FormControl>
                       <Input
+                        id="observation-photo-upload"
                         type="file"
                         accept="image/*"
                         className="hidden"

@@ -266,6 +266,7 @@ export function FollowUpInspectionDialog({
                       <FormControl>
                         <>
                           <Input
+                            id="follow-up-photo-upload"
                             type="file"
                             accept="image/*"
                             className="hidden"

@@ -403,7 +403,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
               <FormField name="photo" control={form.control} render={() => (
                 <FormItem><FormLabel>Unggah Foto</FormLabel>
                   <FormControl>
-                    <Input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handlePhotoChange} />
+                    <Input id="inspection-photo-upload" type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handlePhotoChange} />
                   </FormControl>
                   <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
                     <Upload className="mr-2 h-4 w-4" />{photoPreview ? 'Ganti Foto' : 'Pilih Foto'}
