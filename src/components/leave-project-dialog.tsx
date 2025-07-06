@@ -17,14 +17,13 @@ import type { Project } from '@/lib/types';
 import { Loader2, LogOut } from 'lucide-react';
 import { doc, updateDoc, arrayRemove, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useProjects } from '@/hooks/use-projects';
 
 
 interface LeaveProjectDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   project: Project | null;
-  onSuccess?: () => void;
+  onSuccess?: (projectId: string) => void;
 }
 
 export function LeaveProjectDialog({
@@ -35,7 +34,6 @@ export function LeaveProjectDialog({
 }: LeaveProjectDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { removeProject } = useProjects();
   const [isLeaving, setIsLeaving] = React.useState(false);
 
   const handleLeave = async () => {
@@ -64,17 +62,13 @@ export function LeaveProjectDialog({
         });
       });
       
-      // Optimistically remove project from UI before Firestore listener catches up
-      removeProject(project.id);
-
       toast({
         title: 'Berhasil Meninggalkan Proyek',
         description: `Anda telah berhasil meninggalkan proyek "${project.name}".`,
       });
       
-      // Signal success to the parent component, which is responsible for closing the dialog.
-      // This avoids race conditions and ensures a clean state transition.
-      onSuccess?.();
+      // Signal success to the parent component, which is responsible for the UI update and closing the dialog.
+      onSuccess?.(project.id);
     } catch (error) {
       toast({
         variant: 'destructive',

@@ -128,7 +128,7 @@ const ProjectCardSkeleton = () => (
 
 export default function ProjectHubPage() {
   const { userProfile, loading: authLoading } = useAuth();
-  const { projects, loading: projectsLoading } = useProjects();
+  const { projects, loading: projectsLoading, removeProject } = useProjects();
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
   const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
   
@@ -138,7 +138,11 @@ export default function ProjectHubPage() {
 
   const isLoading = projectsLoading || authLoading;
 
-  const handleActionSuccess = () => {
+  const handleActionSuccess = (projectId: string) => {
+    // Perform the optimistic update first for an instant UI response
+    removeProject(projectId);
+
+    // Then, close all dialogs cleanly
     setProjectToManage(null);
     setProjectToLeave(null);
     setProjectToDelete(null);

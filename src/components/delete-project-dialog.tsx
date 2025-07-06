@@ -18,13 +18,12 @@ import { Loader2, Trash2 } from 'lucide-react';
 import { doc, runTransaction, arrayRemove, collection, query, where, getDocs, writeBatch, getDoc } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, deleteObject } from 'firebase/storage';
-import { useProjects } from '@/hooks/use-projects';
 
 interface DeleteProjectDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   project: Project | null;
-  onSuccess?: () => void;
+  onSuccess?: (projectId: string) => void;
 }
 
 export function DeleteProjectDialog({
@@ -35,7 +34,6 @@ export function DeleteProjectDialog({
 }: DeleteProjectDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { removeProject } = useProjects();
   const [isProcessing, setIsProcessing] = React.useState(false);
 
   if (!project) return null;
@@ -101,16 +99,13 @@ export function DeleteProjectDialog({
       await batch.commit();
       await Promise.all(storageDeletePromises);
       
-      // Optimistically remove project from UI before Firestore listener catches up
-      removeProject(project.id);
-
       toast({
         title: 'Proyek Dihapus',
         description: `Proyek "${project.name}" dan semua datanya telah dihapus secara permanen.`,
       });
 
-      // Signal success to the parent component, which is responsible for closing the dialog.
-      onSuccess?.();
+      // Signal success to the parent component, which is responsible for the UI update and closing the dialog.
+      onSuccess?.(project.id);
     } catch (error) {
       console.error("Error deleting project:", error);
       toast({
