@@ -21,8 +21,8 @@ export function PageSkeleton({ withHeader = false }: PageSkeletonProps) {
                           </div>
                       </div>
                       <div className="flex items-center gap-2">
-                           <Skeleton className="h-8 w-8 rounded-full" />
                            <Skeleton className="h-9 w-9 rounded-full" />
+                           <Skeleton className="h-8 w-8 rounded-full" />
                       </div>
                   </div>
               </div>

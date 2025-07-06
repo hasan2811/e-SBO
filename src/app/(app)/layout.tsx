@@ -16,6 +16,7 @@ import { useProjects } from '@/hooks/use-projects';
 import { PageSkeleton } from '@/components/page-skeleton';
 import { MultiActionButton } from '@/components/multi-action-button';
 import { usePerformance } from '@/contexts/performance-context';
+import { Loader2 } from 'lucide-react';
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -68,7 +69,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
   
   if (!user) {
-     return <PageSkeleton />; // Show skeleton during redirect to login
+    // This provides a clean, non-layout-specific loading screen during the
+    // brief period of redirection to the login page after signing out.
+    // It prevents the main app skeleton from flashing before the login page appears.
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-secondary/50">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
   }
 
   const variants = {
