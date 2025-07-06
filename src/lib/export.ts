@@ -1,14 +1,16 @@
 
 'use client';
 
-import * as XLSX from 'xlsx';
 import type { Observation, Inspection, Ptw, AllItems } from './types';
 import { format } from 'date-fns';
 
-export const exportToExcel = (items: AllItems[], fileName: string): boolean => {
+export const exportToExcel = async (items: AllItems[], fileName: string): Promise<boolean> => {
   if (items.length === 0) {
     return false;
   }
+
+  // Dynamically import xlsx to reduce initial bundle size
+  const XLSX = await import('xlsx');
 
   const observations = items.filter(item => item.itemType === 'observation') as Observation[];
   const inspections = items.filter(item => item.itemType === 'inspection') as Inspection[];

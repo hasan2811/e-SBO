@@ -66,7 +66,7 @@ const ExportCard = ({ project }: { project: Project }) => {
             }
 
             const fileName = `Export_${project.name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}`;
-            const success = exportToExcel(allItems, fileName);
+            const success = await exportToExcel(allItems, fileName);
 
             if (success) {
                 toast({
@@ -312,7 +312,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
 
     // Get the authoritative project object directly from the context
     const currentProject = useMemo(() => 
-        projects.find(p => p.id === initialProject.id) ?? initialProject,
+        projects.find(p => p.id === initialProject.id),
     [projects, initialProject.id]);
     
     // Local state for displaying member profiles and managing edits
@@ -320,11 +320,11 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
     const [memberToRemove, setMemberToRemove] = React.useState<UserProfile | null>(null);
 
     // Local state for UI edits, initialized from the authoritative project object
-    const [roles, setRoles] = React.useState<Project['roles']>(currentProject.roles || {});
-    const [customCompanies, setCustomCompanies] = React.useState<string[]>(currentProject.customCompanies || []);
-    const [customLocations, setCustomLocations] = React.useState<string[]>(currentProject.customLocations || []);
-    const [customCategories, setCustomCategories] = React.useState<string[]>(currentProject.customObservationCategories || []);
-    const [isProjectOpen, setIsProjectOpen] = React.useState(currentProject.isOpen ?? true);
+    const [roles, setRoles] = React.useState<Project['roles']>({});
+    const [customCompanies, setCustomCompanies] = React.useState<string[]>([]);
+    const [customLocations, setCustomLocations] = React.useState<string[]>([]);
+    const [customCategories, setCustomCategories] = React.useState<string[]>([]);
+    const [isProjectOpen, setIsProjectOpen] = React.useState(true);
 
     const isCurrentUserOwner = userProfile?.uid === initialProject.ownerUid;
 
@@ -378,6 +378,10 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
     };
 
     const handleSaveChanges = useCallback(async () => {
+        if (!currentProject) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Project data not found.' });
+            return;
+        }
         setIsSaving(true);
         const projectRef = doc(db, 'projects', currentProject.id);
         const updatedData = {
@@ -403,9 +407,14 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
         } finally {
           setIsSaving(false);
         }
-    }, [roles, customCompanies, customLocations, customCategories, isProjectOpen, currentProject.id, updateProject, toast]);
+    }, [roles, customCompanies, customLocations, customCategories, isProjectOpen, currentProject, updateProject, toast]);
 
     const showSaveButton = isCurrentUserOwner && (activeTab === 'members' || activeTab === 'settings');
+
+    // Render nothing if project data is not yet available in the context
+    if (!currentProject) {
+        return null;
+    }
 
     return (
         <>
@@ -501,7 +510,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                 </DialogContent>
             </Dialog>
             
-            {memberToRemove && (
+            {memberToRemove && currentProject && (
               <RemoveMemberDialog
                 isOpen={!!memberToRemove}
                 onOpenChange={(open) => !open && setMemberToRemove(null)}

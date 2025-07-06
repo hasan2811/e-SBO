@@ -36,7 +36,7 @@ const riskColorMap: Record<RiskLevel, string> = {
 };
 
 // Memoize list items to prevent unnecessary re-renders
-const ObservationListItem = React.memo(function ObservationListItem({ observation, onSelect }: { observation: Observation, onSelect: () => void }) {
+const ObservationListItem = React.memo(function ObservationListItem({ observation, onSelect, isPriority }: { observation: Observation, onSelect: () => void, isPriority?: boolean }) {
     if (observation.optimisticState === 'uploading') {
         return <ListItemSkeleton key={observation.id} />;
     }
@@ -68,7 +68,7 @@ const ObservationListItem = React.memo(function ObservationListItem({ observatio
                 <div className="flex gap-4 items-start">
                     {observation.photoUrl ? (
                         <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border">
-                            <Image src={observation.photoUrl} alt={observation.findings} fill sizes="64px" className="object-cover" data-ai-hint="site observation" />
+                            <Image src={observation.photoUrl} alt={observation.findings} fill sizes="64px" className="object-cover" priority={isPriority} data-ai-hint="site observation" />
                         </div>
                     ) : (
                          <div className="relative h-16 w-16 flex-shrink-0 rounded-md bg-muted flex items-center justify-center">
@@ -95,7 +95,7 @@ const ObservationListItem = React.memo(function ObservationListItem({ observatio
 });
 
 
-const InspectionListItem = React.memo(function InspectionListItem({ inspection, onSelect }: { inspection: Inspection, onSelect: () => void }) {
+const InspectionListItem = React.memo(function InspectionListItem({ inspection, onSelect, isPriority }: { inspection: Inspection, onSelect: () => void, isPriority?: boolean }) {
     if (inspection.optimisticState === 'uploading') {
         return <ListItemSkeleton key={inspection.id} />;
     }
@@ -127,7 +127,7 @@ const InspectionListItem = React.memo(function InspectionListItem({ inspection, 
                  <div className="flex gap-4 items-start">
                     {inspection.photoUrl ? (
                         <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden border">
-                            <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="64px" className="object-cover" data-ai-hint="equipment inspection" />
+                            <Image src={inspection.photoUrl} alt={inspection.equipmentName} fill sizes="64px" className="object-cover" priority={isPriority} data-ai-hint="equipment inspection" />
                         </div>
                     ) : (
                          <div className="relative h-16 w-16 flex-shrink-0 rounded-md bg-muted flex items-center justify-center">
@@ -395,14 +395,15 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
             initial="hidden"
             animate="show"
           >
-             {itemsToDisplay.map(item => (
+             {itemsToDisplay.map((item, index) => (
                 <motion.div key={item.id} variants={itemVariants}>
                     {(() => {
+                        const isPriority = index < 3;
                         switch(item.itemType) {
                             case 'observation':
-                                return <ObservationListItem observation={item} onSelect={() => setSelectedObservationId(item.id)} />;
+                                return <ObservationListItem observation={item} onSelect={() => setSelectedObservationId(item.id)} isPriority={isPriority} />;
                             case 'inspection':
-                                return <InspectionListItem inspection={item} onSelect={() => setSelectedInspectionId(item.id)} />;
+                                return <InspectionListItem inspection={item} onSelect={() => setSelectedInspectionId(item.id)} isPriority={isPriority} />;
                             case 'ptw':
                                 return <PtwListItem ptw={item} onSelect={() => setSelectedPtwId(item.id)} />;
                             default:
