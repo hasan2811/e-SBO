@@ -437,7 +437,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                         </DialogDescription>
                     </DialogHeader>
 
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
                         <div className="px-6 border-b">
                             <TooltipProvider delayDuration={100}>
                                 <TabsList className="grid w-full grid-cols-3">
