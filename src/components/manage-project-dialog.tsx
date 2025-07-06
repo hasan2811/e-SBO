@@ -338,7 +338,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                     onOpenChange(false);
                     return;
                 }
-                const projectData = projectSnap.data() as Project;
+                const projectData = { ...projectSnap.data(), id: projectSnap.id } as Project;
                 
                 // Reset all state based on fetched data
                 setCurrentProject(projectData);
@@ -435,7 +435,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                         </DialogDescription>
                     </DialogHeader>
 
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-y-hidden">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
                         <div className="px-6 border-b flex-shrink-0">
                             <TooltipProvider delayDuration={100}>
                                 <TabsList className="grid w-full grid-cols-3">
@@ -443,9 +443,6 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                                     <TooltipTrigger asChild>
                                         <TabsTrigger value="members">
                                         <Users className="h-4 w-4" />
-                                        <span className="ml-1.5 rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs font-medium tabular-nums text-primary">
-                                            {currentProject.memberUids?.length || 0}
-                                        </span>
                                         </TabsTrigger>
                                     </TooltipTrigger>
                                     <TooltipContent>
