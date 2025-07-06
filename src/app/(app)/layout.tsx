@@ -15,6 +15,7 @@ import { SubmitPtwDialog } from '@/components/submit-ptw-dialog';
 import { useProjects } from '@/hooks/use-projects';
 import { PageSkeleton } from '@/components/page-skeleton';
 import { MultiActionButton } from '@/components/multi-action-button';
+import { usePerformance } from '@/contexts/performance-context';
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -22,6 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { projects, loading: projectsLoading } = useProjects();
+  const { isFastConnection } = usePerformance();
 
   const [isObservationDialogOpen, setObservationDialogOpen] = React.useState(false);
   const [isInspectionDialogOpen, setInspectionDialogOpen] = React.useState(false);
@@ -70,9 +72,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   const variants = {
-    initial: { opacity: 0, y: 15 },
+    initial: { opacity: isFastConnection ? 0 : 1, y: isFastConnection ? 15 : 0 },
     animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -15 },
+    exit: { opacity: isFastConnection ? 0 : 1, y: isFastConnection ? -15 : 0 },
+  };
+
+  const transition = {
+    duration: isFastConnection ? 0.2 : 0,
+    ease: 'easeInOut'
   };
   
   return (
@@ -95,7 +102,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   animate="animate"
                   exit="exit"
                   variants={variants}
-                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  transition={transition}
                 >
                   {!isAppLoading && !isProfileDialogOpen && children}
                 </motion.div>

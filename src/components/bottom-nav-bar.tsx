@@ -11,15 +11,21 @@ export function BottomNavBar({ projectId }: { projectId: string }) {
   const pathname = usePathname();
 
   const navItems = [
-    { href: `/proyek/${projectId}/observasi`, label: 'Observasi', icon: ClipboardList },
-    { href: `/proyek/${projectId}/inspeksi`, label: 'Inspeksi', icon: Wrench },
-    { href: `/proyek/${projectId}/ptw`, label: 'PTW', icon: FileSignature },
+    { href: `/proyek/${projectId}/observasi`, label: 'Observasi', icon: ClipboardList, activeColor: 'text-primary', borderColor: 'border-primary' },
+    { href: `/proyek/${projectId}/inspeksi`, label: 'Inspeksi', icon: Wrench, activeColor: 'text-chart-2', borderColor: 'border-chart-2' },
+    { href: `/proyek/${projectId}/ptw`, label: 'PTW', icon: FileSignature, activeColor: 'text-chart-5', borderColor: 'border-chart-5' },
   ];
 
   if (!projectId) return null;
 
+  const activeItem = navItems.find(item => pathname === item.href);
+  const activeBorderColor = activeItem ? activeItem.borderColor : 'border-border';
+
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 z-40 w-full h-16 bg-card border-t">
+    <nav className={cn(
+        "md:hidden fixed bottom-0 left-0 z-40 w-full h-16 bg-card border-t-2 transition-colors duration-300",
+        activeBorderColor
+    )}>
       <div className="grid h-full max-w-lg grid-cols-3 mx-auto font-medium">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -29,7 +35,7 @@ export function BottomNavBar({ projectId }: { projectId: string }) {
               href={item.href}
               className={cn(
                 'inline-flex flex-col items-center justify-center px-5 hover:bg-muted/50 transition-colors',
-                isActive ? 'text-primary' : 'text-muted-foreground'
+                isActive ? item.activeColor : 'text-muted-foreground'
               )}
             >
               <item.icon className="w-6 h-6 mb-1" />

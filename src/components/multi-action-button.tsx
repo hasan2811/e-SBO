@@ -11,6 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { usePerformance } from '@/contexts/performance-context';
 
 interface MultiActionButtonProps {
   onNewObservation: () => void;
@@ -20,6 +21,7 @@ interface MultiActionButtonProps {
 
 export function MultiActionButton({ onNewObservation, onNewInspection, onNewPtw }: MultiActionButtonProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const { isFastConnection } = usePerformance();
 
   const parentVariants = {
     closed: { rotate: 0 },
@@ -28,13 +30,21 @@ export function MultiActionButton({ onNewObservation, onNewInspection, onNewPtw 
 
   const childVariants = {
     closed: { opacity: 0, y: 15, scale: 0.8 },
-    open: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 20 } },
+    open: { opacity: 1, y: 0, scale: 1 },
     exit: { opacity: 0, y: 15, scale: 0.8 },
   };
 
+  const childTransition = isFastConnection
+    ? { type: 'spring', stiffness: 300, damping: 20 }
+    : { duration: 0 };
+    
+  const parentTransition = isFastConnection
+    ? { duration: 0.3, ease: 'easeInOut' }
+    : { duration: 0 };
+
   const actions = [
     { label: 'Buat Observasi', icon: ClipboardList, action: onNewObservation, color: 'bg-accent' },
-    { label: 'Buat Inspeksi', icon: Wrench, action: onNewInspection, color: 'bg-primary' },
+    { label: 'Buat Inspeksi', icon: Wrench, action: onNewInspection, color: 'bg-chart-2' },
     { label: 'Buat PTW', icon: FileSignature, action: onNewPtw, color: 'bg-chart-5' },
   ];
 
@@ -49,8 +59,8 @@ export function MultiActionButton({ onNewObservation, onNewInspection, onNewPtw 
                 variants={childVariants}
                 initial="closed"
                 animate="open"
-                exit="closed"
-                transition={{ duration: 0.2, delay: index * 0.04 }}
+                exit="exit"
+                transition={{ ...childTransition, delay: isFastConnection ? index * 0.04 : 0 }}
               >
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -82,7 +92,7 @@ export function MultiActionButton({ onNewObservation, onNewInspection, onNewPtw 
             <motion.div
               variants={parentVariants}
               animate={isOpen ? 'open' : 'closed'}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              transition={parentTransition}
             >
               <Plus className="h-8 w-8 transition-transform" />
             </motion.div>

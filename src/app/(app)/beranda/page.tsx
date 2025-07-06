@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ManageProjectDialog } from '@/components/manage-project-dialog';
 import { LeaveProjectDialog } from '@/components/leave-project-dialog';
 import { DeleteProjectDialog } from '@/components/delete-project-dialog';
+import { usePerformance } from '@/contexts/performance-context';
 
 const ProjectCard = ({ 
   project, 
@@ -45,7 +46,7 @@ const ProjectCard = ({
             <div className="flex items-start gap-4 flex-1 overflow-hidden">
               <Folder className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
               <div className="flex-1 overflow-hidden">
-                <CardTitle className="truncate">{project.name}</CardTitle>
+                <CardTitle className="truncate text-xl">{project.name}</CardTitle>
                 <CardDescription>Klik untuk membuka proyek.</CardDescription>
               </div>
             </div>
@@ -114,11 +115,11 @@ const ProjectCardSkeleton = () => (
         <div className="flex items-start gap-4 flex-1">
           <Skeleton className="h-8 w-8 rounded-md mt-1 flex-shrink-0" />
           <div className="flex-1 space-y-2">
-            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-6 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
           </div>
         </div>
-        <Skeleton className="h-9 w-9" />
+        <Skeleton className="h-9 w-9 rounded-full" />
       </div>
     </CardHeader>
     <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6 mt-auto">
@@ -132,6 +133,8 @@ const ProjectCardSkeleton = () => (
 export default function ProjectHubPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const { projects, loading: projectsLoading, removeProject } = useProjects();
+  const { isFastConnection } = usePerformance();
+
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
   const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
   
@@ -141,10 +144,13 @@ export default function ProjectHubPage() {
 
   const isLoading = projectsLoading || authLoading;
 
-  const handleActionSuccess = (projectId: string) => {
+  const handleLeaveSuccess = (projectId: string) => {
     removeProject(projectId);
-    setProjectToManage(null);
     setProjectToLeave(null);
+  };
+
+  const handleDeleteSuccess = (projectId: string) => {
+    removeProject(projectId);
     setProjectToDelete(null);
   };
   
@@ -152,12 +158,14 @@ export default function ProjectHubPage() {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.05 },
+      transition: { 
+        staggerChildren: isFastConnection ? 0.05 : 0,
+      },
     },
   };
 
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { y: isFastConnection ? 20 : 0, opacity: 0 },
     visible: { y: 0, opacity: 1 },
   };
 
@@ -167,12 +175,12 @@ export default function ProjectHubPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex-1 space-y-2">
-            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-9 w-48" />
             <Skeleton className="h-4 w-72" />
           </div>
           <div className="flex-shrink-0 flex gap-2 sm:gap-4">
-            <Skeleton className="h-10 w-36" />
-            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-36 rounded-md" />
+            <Skeleton className="h-10 w-32 rounded-md" />
           </div>
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -257,17 +265,17 @@ export default function ProjectHubPage() {
       {projectToLeave && (
         <LeaveProjectDialog 
           isOpen={!!projectToLeave}
-          onOpenChange={() => setProjectToLeave(null)}
+          onOpenChange={(open) => !open && setProjectToLeave(null)}
           project={projectToLeave}
-          onSuccess={handleActionSuccess}
+          onSuccess={handleLeaveSuccess}
         />
       )}
       {projectToDelete && (
          <DeleteProjectDialog 
           isOpen={!!projectToDelete}
-          onOpenChange={() => setProjectToDelete(null)}
+          onOpenChange={(open) => !open && setProjectToDelete(null)}
           project={projectToDelete}
-          onSuccess={handleActionSuccess}
+          onSuccess={handleDeleteSuccess}
         />
       )}
     </>

@@ -18,6 +18,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from './ui/badge';
 import { ListItemSkeleton } from './list-item-skeleton';
+import { usePerformance } from '@/contexts/performance-context';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -201,6 +202,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
+  const { isFastConnection } = usePerformance();
   
   const { items, isLoading, getObservationById } = useObservations(projectId, itemTypeFilter);
   
@@ -296,12 +298,12 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.05
+        staggerChildren: isFastConnection ? 0.05 : 0
       }
     }
   };
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { y: isFastConnection ? 20 : 0, opacity: 0 },
     show: { y: 0, opacity: 1 }
   };
 
@@ -323,7 +325,7 @@ export function FeedView({ projectId, itemTypeFilter, observationIdToOpen, title
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: isFastConnection ? 0.2 : 0 }}
                 className="overflow-hidden"
             >
                 <div className="relative">
