@@ -67,7 +67,9 @@ export function LeaveProjectDialog({
         description: `Anda telah berhasil meninggalkan proyek "${project.name}".`,
       });
       
-      // Signal success to the parent component, which is responsible for the UI update and closing the dialog.
+      // Signal success to the parent component.
+      // The parent is responsible for closing the dialog by changing its state.
+      // No need to call setIsLeaving(false) here because the component will unmount.
       onSuccess?.(project.id);
     } catch (error) {
       toast({
@@ -75,7 +77,7 @@ export function LeaveProjectDialog({
         title: 'Gagal Meninggalkan Proyek',
         description: 'Terjadi kesalahan tak terduga saat meninggalkan proyek.',
       });
-    } finally {
+      // ONLY set loading to false on error, so the user can try again.
       setIsLeaving(false);
     }
   };

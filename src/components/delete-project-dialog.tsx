@@ -113,7 +113,7 @@ export function DeleteProjectDialog({
         title: 'Penghapusan Gagal',
         description: 'Terjadi kesalahan tak terduga saat menghapus proyek.',
       });
-    } finally {
+      // On error, allow the user to try again by resetting the loading state.
       setIsProcessing(false);
     }
   };
