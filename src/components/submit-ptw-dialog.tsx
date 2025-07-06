@@ -76,18 +76,21 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   });
 
   React.useEffect(() => {
-    if (isOpen) {
-        if (project?.memberUids) {
+    if (isOpen && project) {
+        if (project.memberUids) {
             const fetchMembers = async () => {
                 setIsLoadingMembers(true);
                 try {
-                    const memberProfiles = await Promise.all(
-                        project.memberUids.map(async (uid) => {
-                            const userDoc = await getDoc(doc(db, 'users', uid));
-                            return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
-                        })
+                    const memberProfilesPromises = project.memberUids.map(uid => getDoc(doc(db, 'users', uid)));
+                    const memberDocs = await Promise.all(memberProfilesPromises);
+                    const allMembers = memberDocs
+                        .map(d => d.exists() ? (d.data() as UserProfile) : null)
+                        .filter((p): p is UserProfile => p !== null);
+
+                    const approverMembers = allMembers.filter(member => 
+                        member.uid === project.ownerUid || project.roles?.[member.uid]?.canApprovePtw === true
                     );
-                    setMembers(memberProfiles.filter((p): p is UserProfile => p !== null));
+                    setMembers(approverMembers);
                 } catch (error) {
                     console.error("Failed to fetch project members:", error);
                 } finally {
@@ -258,10 +261,10 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
                         <Users className="h-4 w-4" />
                         Approver / Penyetuju
                     </FormLabel>
-                    <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value} disabled={isSubmitting || isLoadingMembers}>
+                    <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value || 'none'} disabled={isSubmitting || isLoadingMembers}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={isLoadingMembers ? "Memuat anggota..." : "Pilih approver"} />
+                          <SelectValue placeholder={isLoadingMembers ? "Memuat..." : (members.length > 0 ? "Pilih approver" : "Tidak ada approver")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>

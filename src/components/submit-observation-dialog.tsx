@@ -120,19 +120,21 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
   }, [debouncedFindings, userProfile, isAiEnabled]);
   
   React.useEffect(() => {
-    if (isOpen) {
-        // Fetch members when dialog opens
-        if (project?.memberUids) {
+    if (isOpen && project) {
+        if (project.memberUids) {
             const fetchMembers = async () => {
                 setIsLoadingMembers(true);
                 try {
-                    const memberProfiles = await Promise.all(
-                        project.memberUids.map(async (uid) => {
-                            const userDoc = await getDoc(doc(db, 'users', uid));
-                            return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
-                        })
+                    const memberProfilesPromises = project.memberUids.map(uid => getDoc(doc(db, 'users', uid)));
+                    const memberDocs = await Promise.all(memberProfilesPromises);
+                    const allMembers = memberDocs
+                        .map(d => d.exists() ? (d.data() as UserProfile) : null)
+                        .filter((p): p is UserProfile => p !== null);
+
+                    const responsibleMembers = allMembers.filter(member => 
+                        member.uid === project.ownerUid || project.roles?.[member.uid]?.canTakeAction === true
                     );
-                    setMembers(memberProfiles.filter((p): p is UserProfile => p !== null));
+                    setMembers(responsibleMembers);
                 } catch (error) {
                     console.error("Failed to fetch project members:", error);
                     toast({ variant: 'destructive', title: 'Gagal memuat anggota proyek' });
@@ -143,7 +145,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             fetchMembers();
         }
         
-        // Reset form with correct defaults every time dialog opens
         form.reset({
             photo: undefined,
             location: locationOptions[0],
@@ -160,7 +161,6 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
             fileInputRef.current.value = '';
         }
     } else {
-        // Cleanup on close
         setIsSubmitting(false);
         setMembers([]);
     }
@@ -449,10 +449,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                           <Users className="h-4 w-4" />
                           Penanggung Jawab (Opsional)
                       </FormLabel>
-                      <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value} disabled={isSubmitting || isLoadingMembers}>
+                      <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value || 'none'} disabled={isSubmitting || isLoadingMembers}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={isLoadingMembers ? "Memuat anggota..." : "Pilih anggota proyek"} />
+                            <SelectValue placeholder={isLoadingMembers ? "Memuat..." : (members.length > 0 ? "Pilih penanggung jawab" : "Tidak ada yg bisa ditugaskan")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
