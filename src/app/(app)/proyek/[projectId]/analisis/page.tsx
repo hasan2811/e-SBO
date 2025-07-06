@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -253,7 +254,7 @@ export default function AnalysisPage() {
             <div className="grid gap-4 md:grid-cols-2">
                 <RiskDistributionChart data={riskDistribution} isLoading={isLoading} />
                 <DailyTrendChart data={dailyTrend} isLoading={isLoading} />
-            </diV>
+            </div>
 
             {isAnalyzing && (
                  <div className="text-center py-10">
