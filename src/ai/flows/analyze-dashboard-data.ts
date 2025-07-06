@@ -7,7 +7,6 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 import {
     AnalyzeDashboardDataInput,
@@ -74,11 +73,7 @@ const analyzeDashboardDataFlow = ai.defineFlow(
         dailyTrend: JSON.stringify(payload.dailyTrend),
     };
 
-    const model = userProfile.googleAiApiKey 
-        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
-        : 'googleai/gemini-1.5-flash-latest';
-    
-    const response = await analyzeDashboardPrompt(promptInput, { model });
+    const response = await analyzeDashboardPrompt(promptInput);
     const output = response.output;
 
     if (!output) {

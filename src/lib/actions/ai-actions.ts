@@ -6,7 +6,8 @@ import type { Observation, Inspection, UserProfile } from '@/lib/types';
 import { 
     analyzeDeeperObservation, 
     analyzeDeeperInspection, 
-    analyzeInspectionData 
+    analyzeInspectionData,
+    summarizeObservationFast
 } from '@/ai/flows/summarize-observation-data';
 import { triggerSmartNotify } from '@/ai/flows/smart-notify-flow';
 
@@ -27,7 +28,7 @@ async function getUserProfile(userId: string): Promise<UserProfile | null> {
 }
 
 /**
- * Triggers the AI analysis for a new observation.
+ * Triggers a fast, lightweight AI summary for a new observation.
  * This function is fire-and-forget. It fetches all necessary data from the DB.
  * @param observationId The ID of the newly created observation document.
  */
@@ -69,24 +70,18 @@ export async function triggerObservationAnalysis(observationId: string) {
 
   try {
     const observationData = `Temuan: ${observation.findings}\nRekomendasi: ${observation.recommendation}\nKategori Awal: ${observation.category}\nTingkat Risiko: ${observation.riskLevel}`;
-    const deepAnalysis = await analyzeDeeperObservation({ observationData }, userProfile);
+    const fastAnalysis = await summarizeObservationFast({ observationData }, userProfile);
     
     const currentDocSnap = await docRef.get();
     if (currentDocSnap.exists) {
         const updatePayload: Partial<Observation> = {
             aiStatus: 'completed',
-            aiSummary: deepAnalysis.summary,
-            aiObserverSkillRating: deepAnalysis.aiObserverSkillRating,
-            aiObserverSkillExplanation: deepAnalysis.aiObserverSkillExplanation,
-            aiRisks: deepAnalysis.risks,
-            aiSuggestedActions: deepAnalysis.suggestedActions,
-            aiRootCauseAnalysis: deepAnalysis.rootCauseAnalysis,
-            aiRelevantRegulations: deepAnalysis.relevantRegulations,
+            aiSummary: fastAnalysis.summary,
         };
         await docRef.update(updatePayload);
     }
   } catch (error) {
-    console.error(`Deeper analysis failed for obs ${observation.id}:`, error);
+    console.error(`Fast summary analysis failed for obs ${observation.id}:`, error);
     const currentDocSnap = await docRef.get();
     if (currentDocSnap.exists) {
         await docRef.update({ aiStatus: 'failed' });

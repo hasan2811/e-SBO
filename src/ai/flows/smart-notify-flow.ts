@@ -11,7 +11,6 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'zod';
 import { SmartNotifyInput, SmartNotifyInputSchema, SmartNotifyOutputSchema, UserProfile, UserProfileSchema } from '@/lib/types';
 import { adminDb } from '@/lib/firebase-admin';
@@ -141,12 +140,8 @@ const smartNotifyFlow = ai.defineFlow(
       return;
     }
 
-    const model = userProfile.googleAiApiKey
-        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
-        : 'googleai/gemini-1.5-flash-latest';
-
     // Let the AI determine who to notify and generate the messages.
-    const { output } = await smartNotifyPrompt(payload, { model });
+    const { output } = await smartNotifyPrompt(payload);
 
     if (!output?.notifications || output.notifications.length === 0) {
       console.log(`[smartNotifyFlow] AI determined no users for notification for observation ${observationId}.`);

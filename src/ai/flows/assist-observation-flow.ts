@@ -7,7 +7,6 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 import { RISK_LEVELS, RiskLevel, AssistObservationInput, AssistObservationInputSchema, AssistObservationOutput, AssistObservationOutputSchema, UserProfile, UserProfileSchema } from '@/lib/types';
 
@@ -74,11 +73,7 @@ const assistObservationFlow = ai.defineFlow(
     }),
   },
   async ({ payload, userProfile }) => {
-    const model = userProfile.googleAiApiKey
-        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
-        : 'googleai/gemini-1.5-flash-latest';
-
-    const response = await assistObservationPrompt(payload, { model });
+    const response = await assistObservationPrompt(payload);
     const output = response.output;
 
     if (!output) {

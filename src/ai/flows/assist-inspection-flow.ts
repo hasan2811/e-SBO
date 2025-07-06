@@ -7,7 +7,6 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 import { INSPECTION_STATUSES, AssistInspectionInput, AssistInspectionInputSchema, AssistInspectionOutput, AssistInspectionOutputSchema, InspectionStatus, UserProfile, UserProfileSchema } from '@/lib/types';
 
@@ -72,11 +71,7 @@ const assistInspectionFlow = ai.defineFlow(
     }),
   },
   async ({ payload, userProfile }) => {
-    const model = userProfile.googleAiApiKey
-        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
-        : 'googleai/gemini-1.5-flash-latest';
-
-    const response = await assistInspectionPrompt(payload, { model });
+    const response = await assistInspectionPrompt(payload);
     const output = response.output;
 
     if (!output) {

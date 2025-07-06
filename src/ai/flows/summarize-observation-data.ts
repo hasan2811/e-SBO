@@ -8,7 +8,6 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 import { 
     SummarizeObservationDataInput,
@@ -32,6 +31,49 @@ function parseAndClampRating(value: string | number | undefined): number {
     let numericValue = typeof value === 'string' ? parseInt(value, 10) : value;
     if (isNaN(numericValue)) return 3;
     return Math.max(1, Math.min(5, Math.round(numericValue)));
+}
+
+// =================================================================================
+// 0. FAST OBSERVATION SUMMARY FLOW (for initial processing)
+// =================================================================================
+
+const FastSummarizeObservationOutputSchema = z.object({
+  summary: z.string().describe('Ringkasan yang sangat singkat (satu atau dua kalimat) dari temuan inti observasi.'),
+});
+
+const summarizeObservationFastPrompt = ai.definePrompt({
+    name: 'summarizeObservationFastPrompt',
+    model: 'googleai/gemini-1.5-flash-latest',
+    input: { schema: SummarizeObservationDataInputSchema },
+    output: { schema: FastSummarizeObservationOutputSchema },
+    config: {
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+        ],
+    },
+    prompt: `Anda adalah seorang ahli HSSE yang sangat cepat. Tugas Anda HANYA menganalisis data laporan observasi dan memberikan ringkasan satu kalimat dalam Bahasa Indonesia.
+PENTING: Respons Anda harus berupa objek JSON mentah saja dengan satu kunci: "summary".
+
+Data Observasi untuk dianalisis:
+{{{observationData}}}`,
+});
+
+const summarizeObservationFastFlow = ai.defineFlow(
+  {
+    name: 'summarizeObservationFastFlow',
+    inputSchema: z.object({ payload: SummarizeObservationDataInputSchema, userProfile: UserProfileSchema }),
+    outputSchema: z.object({ summary: z.string() }),
+  },
+  async ({ payload, userProfile }) => {
+    const response = await summarizeObservationFastPrompt(payload);
+    if (!response.output) throw new Error('AI analysis returned no structured output for observation summary.');
+    return { summary: response.output.summary };
+  }
+);
+
+export async function summarizeObservationFast(input: SummarizeObservationDataInput, userProfile: UserProfile): Promise<{ summary: string }> {
+  return summarizeObservationFastFlow({ payload: input, userProfile });
 }
 
 
@@ -86,11 +128,7 @@ const analyzeDeeperObservationFlow = ai.defineFlow(
     outputSchema: DeeperAnalysisOutputSchema,
   },
   async ({ payload, userProfile }) => {
-    const model = userProfile.googleAiApiKey
-        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
-        : 'googleai/gemini-1.5-flash-latest';
-    
-    const response = await deeperAnalysisPrompt(payload, { model });
+    const response = await deeperAnalysisPrompt(payload);
     const output = response.output;
     if (!output) throw new Error('AI deep analysis returned no structured output.');
 
@@ -145,10 +183,7 @@ const analyzeInspectionDataFlow = ai.defineFlow(
     outputSchema: z.object({ summary: z.string() }),
   },
   async ({ payload, userProfile }) => {
-    const model = userProfile.googleAiApiKey
-        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
-        : 'googleai/gemini-1.5-flash-latest';
-    const response = await summarizeInspectionPrompt(payload, { model });
+    const response = await summarizeInspectionPrompt(payload);
     if (!response.output) throw new Error('AI analysis returned no structured output for inspection.');
     return { summary: response.output.summary };
   }
@@ -194,10 +229,7 @@ const analyzeDeeperInspectionFlow = ai.defineFlow(
     outputSchema: AnalyzeInspectionOutputSchema,
   },
   async ({ payload, userProfile }) => {
-    const model = userProfile.googleAiApiKey
-        ? googleAI({ apiKey: userProfile.googleAiApiKey }).model('gemini-1.5-flash-latest')
-        : 'googleai/gemini-1.5-flash-latest';
-    const response = await deeperAnalysisInspectionPrompt(payload, { model });
+    const response = await deeperAnalysisInspectionPrompt(payload);
     if (!response.output) throw new Error('AI deep inspection analysis returned no structured output.');
     return response.output;
   }

@@ -111,7 +111,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       company: 'Unassigned',
       projectIds: [],
       aiEnabled: true,
-      googleAiApiKey: '',
     });
   };
   

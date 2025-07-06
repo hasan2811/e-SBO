@@ -43,7 +43,6 @@ export type UserProfile = {
   photoStoragePath?: string;
   projectIds?: string[];
   aiEnabled?: boolean;
-  googleAiApiKey?: string;
 };
 
 // Zod schema for UserProfile, useful for validating in server actions or flows
@@ -57,7 +56,6 @@ export const UserProfileSchema = z.object({
   photoStoragePath: z.string().optional(),
   projectIds: z.array(z.string()).optional(),
   aiEnabled: z.boolean().optional(),
-  googleAiApiKey: z.string().optional(),
 });
 
 export type MemberRole = {

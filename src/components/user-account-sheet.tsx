@@ -73,7 +73,6 @@ export function UserAccountSheet() {
   const [position, setPosition] = React.useState('');
   const [company, setCompany] = React.useState('');
   const [aiEnabled, setAiEnabled] = React.useState(true);
-  const [googleAiApiKey, setGoogleAiApiKey] = React.useState('');
   
   const isLoading = authLoading || (user && projectsLoading);
   const hasProject = projects.length > 0;
@@ -84,7 +83,6 @@ export function UserAccountSheet() {
       setPosition(userProfile.position || 'Not Set');
       setCompany(userProfile.company || '');
       setAiEnabled(userProfile.aiEnabled ?? true);
-      setGoogleAiApiKey(userProfile.googleAiApiKey || '');
     }
   }, [userProfile]);
   
@@ -94,7 +92,6 @@ export function UserAccountSheet() {
       setPosition(userProfile.position || 'Not Set');
       setCompany(userProfile.company || '');
       setAiEnabled(userProfile.aiEnabled ?? true);
-      setGoogleAiApiKey(userProfile.googleAiApiKey || '');
       setIsEditing(true);
     }
   };
@@ -113,7 +110,7 @@ export function UserAccountSheet() {
 
     setIsSaving(true);
     try {
-      await updateUserProfile(user.uid, { displayName, position, company, aiEnabled, googleAiApiKey });
+      await updateUserProfile(user.uid, { displayName, position, company, aiEnabled });
       toast({ title: 'Profile Updated', description: 'Your information has been saved.' });
       setIsEditing(false);
     } catch (error) {
@@ -261,11 +258,6 @@ export function UserAccountSheet() {
                           <p className="text-xs text-muted-foreground">Turn AI assistance on or off.</p>
                         </div>
                         <Switch id="ai-enabled" checked={aiEnabled} onCheckedChange={setAiEnabled} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="api-key" className="flex items-center gap-2"><KeyRound className="h-4 w-4"/>Your Google AI API Key (Optional)</Label>
-                        <Input id="api-key" type="password" placeholder="Enter your own API key" value={googleAiApiKey} onChange={(e) => setGoogleAiApiKey(e.target.value)} />
-                        <p className="text-xs text-muted-foreground">If provided, this key will be used for your AI requests.</p>
                       </div>
                     </div>
                   </div>
