@@ -18,6 +18,7 @@ import { ManageProjectDialog } from '@/components/manage-project-dialog';
 import { LeaveProjectDialog } from '@/components/leave-project-dialog';
 import { DeleteProjectDialog } from '@/components/delete-project-dialog';
 import { usePerformance } from '@/contexts/performance-context';
+import { useRouter } from 'next/navigation';
 
 const ProjectCard = ({ 
   project, 
@@ -134,6 +135,7 @@ export default function ProjectHubPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const { projects, loading: projectsLoading, removeProject } = useProjects();
   const { isFastConnection } = usePerformance();
+  const router = useRouter();
 
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
   const [isCreateDialogOpen, setCreateDialogOpen] = React.useState(false);
@@ -145,17 +147,21 @@ export default function ProjectHubPage() {
   const isLoading = projectsLoading || authLoading;
 
   const handleLeaveSuccess = (projectId: string) => {
-    // Optimistically remove the project card from the UI for instant feedback.
+    const updatedProjects = projects.filter(p => p.id !== projectId);
     removeProject(projectId);
-    // The dialog automatically closes because its state is now null.
     setProjectToLeave(null);
+    if (updatedProjects.length > 0) {
+      router.push(`/proyek/${updatedProjects[0].id}/observasi`);
+    }
   };
 
   const handleDeleteSuccess = (projectId: string) => {
-    // Optimistically remove the project card from the UI.
+    const updatedProjects = projects.filter(p => p.id !== projectId);
     removeProject(projectId);
-    // This will close the dialog.
     setProjectToDelete(null);
+    if (updatedProjects.length > 0) {
+      router.push(`/proyek/${updatedProjects[0].id}/observasi`);
+    }
   };
   
   const containerVariants = {

@@ -16,7 +16,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { useAuth } from '@/hooks/use-auth';
-import { LogOut, UserCircle, Loader2, Edit, Folder, Camera, Sparkles, KeyRound } from 'lucide-react';
+import { LogOut, UserCircle, Loader2, Edit, Folder, Camera, Sparkles, KeyRound, Crown, ShieldCheck, Gavel } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
@@ -25,6 +25,7 @@ import { Separator } from './ui/separator';
 import { useProjects } from '@/hooks/use-projects';
 import { uploadFile } from '@/lib/storage';
 import { Switch } from './ui/switch';
+import { Badge } from './ui/badge';
 
 const UserAccountSheetSkeleton = () => (
   <>
@@ -286,17 +287,53 @@ export function UserAccountSheet() {
               <Separator />
 
               <div className="space-y-4">
-                <h3 className="font-semibold flex items-center gap-2"><Folder className="h-5 w-5 text-muted-foreground"/>My Projects</h3>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Folder className="h-5 w-5 text-muted-foreground" />
+                  My Projects & Roles
+                </h3>
                 {hasProject ? (
-                  <ul className="space-y-2">
-                    {projects.map(project => (
-                      <li key={project.id} className="text-sm flex items-center gap-3 text-muted-foreground"><Folder className="h-4 w-4 text-primary" />{project.name}</li>
-                    ))}
-                  </ul>
+                  <div className="space-y-3 pl-2">
+                    {projects.map(project => {
+                      const userRoles = project.roles?.[userProfile.uid] || {};
+                      const isOwner = project.ownerUid === userProfile.uid;
+                      return (
+                        <div key={project.id} className="text-sm p-3 rounded-md border bg-muted/40">
+                          <p className="font-semibold text-foreground">{project.name}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                            {isOwner && (
+                              <Badge variant="secondary" className="border-amber-500/50">
+                                <Crown className="h-3 w-3 mr-1.5 text-amber-500" />
+                                Owner
+                              </Badge>
+                            )}
+                            {userRoles.canApprovePtw && (
+                              <Badge variant="outline" className="text-green-700 border-green-300">
+                                <ShieldCheck className="h-3 w-3 mr-1.5" />
+                                Approver
+                              </Badge>
+                            )}
+                            {userRoles.canTakeAction && (
+                              <Badge variant="outline" className="text-blue-700 border-blue-300">
+                                <Gavel className="h-3 w-3 mr-1.5" />
+                                Action Taker
+                              </Badge>
+                            )}
+                            {!isOwner && !userRoles.canApprovePtw && !userRoles.canTakeAction && (
+                              <Badge variant="outline">Member</Badge>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
-                    <>
-                        <p className="text-sm text-muted-foreground pl-3">You are not in any projects yet. Go to the <Link href="/beranda" onClick={() => setIsSheetOpen(false)} className="text-primary hover:underline">Project Hub</Link> to create or join one.</p>
-                    </>
+                  <p className="text-sm text-muted-foreground pl-3">
+                    You are not in any projects yet. Go to the{' '}
+                    <Link href="/beranda" onClick={() => setIsSheetOpen(false)} className="text-primary hover:underline">
+                      Project Hub
+                    </Link>{' '}
+                    to create or join one.
+                  </p>
                 )}
               </div>
 
