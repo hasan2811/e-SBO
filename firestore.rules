@@ -3,9 +3,10 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all authenticated users to read and write to any document.
+    // ATURAN TERBUKA: Izinkan semua operasi baca dan tulis untuk semua pengguna.
+    // Ini menghilangkan semua batasan keamanan untuk fokus pada fungsionalitas.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
