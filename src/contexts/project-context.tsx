@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -42,45 +41,71 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
-    let unsubscribe: Unsubscribe | null = null;
-    
     if (authLoading) {
       setLoading(true);
-      return;
+      return () => {};
     }
 
     if (!user) {
       setProjects([]);
       setLoading(false);
-      if (unsubscribe) unsubscribe();
-      return;
+      return () => {};
     }
 
     setLoading(true);
-    
-    // This is the new, more robust query.
-    // It finds all projects where the current user's UID is in the memberUids array,
-    // which is the true source of membership information. It is sorted by creation date.
-    const projectsQuery = query(
-      collection(db, 'projects'),
-      where('memberUids', 'array-contains', user.uid),
-      orderBy('createdAt', 'desc')
-    );
+    const projectsMap = new Map<string, Project>();
 
-    unsubscribe = onSnapshot(projectsQuery, (snapshot) => {
-      const fetchedProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
-      setProjects(fetchedProjects);
-      setLoading(false);
+    const updateAndSortProjects = () => {
+        const allProjects = Array.from(projectsMap.values());
+        allProjects.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        setProjects(allProjects);
+    };
+
+    // Listener 1: Projects where user is a member (for modern projects)
+    const memberQuery = query(
+        collection(db, 'projects'),
+        where('memberUids', 'array-contains', user.uid),
+        orderBy('createdAt', 'desc')
+    );
+    const unsubscribeMember = onSnapshot(memberQuery, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === "removed") {
+                projectsMap.delete(change.doc.id);
+            } else {
+                projectsMap.set(change.doc.id, { id: change.doc.id, ...change.doc.data() } as Project);
+            }
+        });
+        updateAndSortProjects();
+        setLoading(false); // Consider loading finished after first listener returns
     }, (error) => {
-      console.error("Error fetching projects. This might be due to a missing Firestore index.", error);
-      setProjects([]);
-      setLoading(false);
+        console.error("Error on member projects listener:", error);
+        setLoading(false);
+    });
+
+    // Listener 2: Projects where user is owner (for legacy compatibility)
+    const ownerQuery = query(
+        collection(db, 'projects'),
+        where('ownerUid', '==', user.uid),
+        orderBy('createdAt', 'desc')
+    );
+    const unsubscribeOwner = onSnapshot(ownerQuery, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === "removed") {
+                projectsMap.delete(change.doc.id);
+            } else {
+                projectsMap.set(change.doc.id, { id: change.doc.id, ...change.doc.data() } as Project);
+            }
+        });
+        updateAndSortProjects();
+        setLoading(false);
+    }, (error) => {
+        console.error("Error on owner projects listener:", error);
+        setLoading(false);
     });
 
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+        unsubscribeMember();
+        unsubscribeOwner();
     };
   }, [user, authLoading]);
 
