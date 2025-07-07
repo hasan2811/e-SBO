@@ -7,8 +7,9 @@ import '@/app/globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
-// SVG icon as a data URI to prevent browser caching issues
-const logoSvgDataUri = "data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2329ABE2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M12 2L2 6v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-10-4z' /%3e%3cpath d='m9 12 2 2 4-4' /%3e%3c/svg%3e";
+// SVG icon as a more robustly encoded data URI to force browsers to update the favicon
+const logoSvgDataUri = "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%2329ABE2%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M12%202L2%206v5c0%205.55%203.84%2010.74%209%2012%205.16-1.26%209-6.45%209-12V6l-10-4z%27%20%2F%3E%3Cpath%20d%3D%27m9%2012%202%202%204-4%27%20%2F%3E%3C%2Fsvg%3E";
+
 
 export const metadata: Metadata = {
   title: 'HSSE Tech Platform',
