@@ -8,7 +8,7 @@ import '@/app/globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'InspectWise Dashboard',
+  title: 'HSSE Tech Platform',
   description: 'HSSE Observation and Analysis Platform',
   icons: {
     icon: '/logo.svg',
