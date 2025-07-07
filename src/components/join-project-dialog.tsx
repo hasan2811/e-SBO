@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,11 +41,10 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
   const [joinableProjects, setJoinableProjects] = React.useState<JoinableProject[]>([]);
 
   React.useEffect(() => {
-    // Clean up state when dialog is closed
     if (!isOpen) {
       setJoinableProjects([]);
       setJoiningProjectId(null);
-      setLoadingProjects(true); // Reset loading state for next open
+      setLoadingProjects(true); 
       return;
     }
 
@@ -56,7 +55,7 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
     const fetchJoinableProjects = async () => {
       setLoadingProjects(true);
       try {
-        const projectsQuery = query(collection(db, 'projects'), where("isOpen", "!=", false));
+        const projectsQuery = query(collection(db, 'projects'), where("isOpen", "==", true), orderBy("createdAt", "desc"));
         const projectsSnapshot = await getDocs(projectsQuery);
         
         const allOpenProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
@@ -114,7 +113,6 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
         transaction.update(userRef, { projectIds: arrayUnion(projectToJoin.id) });
       });
       
-      // Manually add project to local state for immediate UI update before redirecting
       addProject(projectToJoin);
 
       toast({ title: 'Sukses!', description: `Berhasil bergabung dengan proyek!` });
