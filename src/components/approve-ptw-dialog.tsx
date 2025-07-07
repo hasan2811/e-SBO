@@ -94,8 +94,8 @@ export function ApprovePtwDialog({ isOpen, onOpenChange, ptw }: ApprovePtwDialog
               penColor="black"
               canvasProps={{
                 className: 'w-full h-full',
-                willReadFrequently: true
               }}
+              willReadFrequently={true}
             />
           </div>
         </div>
