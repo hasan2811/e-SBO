@@ -7,8 +7,8 @@ import '@/app/globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
-// SVG icon as a more robustly encoded data URI to force browsers to update the favicon
-const logoSvgDataUri = "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%2329ABE2%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M12%202L2%206v5c0%205.55%203.84%2010.74%209%2012%205.16-1.26%209-6.45%209-12V6l-10-4z%27%20%2F%3E%3Cpath%20d%3D%27m9%2012%202%202%204-4%27%20%2F%3E%3C%2Fsvg%3E";
+// SVG icon encoded as a Base64 data URI for maximum browser compatibility and to bypass caching issues.
+const logoSvgDataUri = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMjlBQkUyIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDJMMiA2djVjMCA1LjU1IDMuODQgMTAuNzQgOSAxMiA1LjE2LTEuMjYgOS02LjQ1IDktMTJWNmwLTEwLTR6IiAvPjxwYXRoIGQ9Im05IDEyIDIgMiA0LTQiIC8+PC9zdmc+";
 
 
 export const metadata: Metadata = {
