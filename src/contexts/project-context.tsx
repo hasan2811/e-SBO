@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, onSnapshot, Unsubscribe, documentId, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
@@ -41,54 +41,46 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...data } : p));
   }, []);
 
-  // Use a stable reference for project IDs to avoid re-running the effect unnecessarily
-  const projectIdsJson = JSON.stringify(userProfile?.projectIds || []);
 
   React.useEffect(() => {
-    const fetchProjects = async () => {
-        if (authLoading) {
-            setLoading(true);
-            return;
-        }
+    let unsubscribe: Unsubscribe | null = null;
+    
+    // If auth is still loading, or there's no user, do nothing and keep loading.
+    if (authLoading || !userProfile) {
+      setLoading(true);
+      setProjects([]);
+      return;
+    }
 
-        const projectIds = JSON.parse(projectIdsJson) as string[];
+    // Set up the real-time query based on the user's membership.
+    // This is the most reliable way to get all projects for a user.
+    const q = query(
+      collection(db, 'projects'),
+      where('memberUids', 'array-contains', userProfile.uid)
+    );
 
-        if (!projectIds || projectIds.length === 0) {
-            setProjects([]);
-            setLoading(false);
-            return;
-        }
+    unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+      
+      // Sort on the client since we can't orderBy on a different field with array-contains
+      fetchedProjects.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      
+      setProjects(fetchedProjects);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching projects in real-time:", error);
+      setProjects([]);
+      setLoading(false);
+    });
 
-        setLoading(true);
-        try {
-            // Firestore 'in' queries are limited to 30 elements per batch.
-            // Chunking the array to handle more than 30 projects if needed.
-            const chunks: string[][] = [];
-            for (let i = 0; i < projectIds.length; i += 30) {
-                chunks.push(projectIds.slice(i, i + 30));
-            }
-
-            const fetchPromises = chunks.map(chunk =>
-                getDocs(query(collection(db, 'projects'), where(documentId(), 'in', chunk)))
-            );
-            
-            const allSnapshots = await Promise.all(fetchPromises);
-            const fetchedProjects = allSnapshots.flatMap(snapshot =>
-                snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project))
-            );
-
-            fetchedProjects.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-            setProjects(fetchedProjects);
-        } catch (error) {
-            console.error("Error fetching projects by IDs:", error);
-            setProjects([]);
-        } finally {
-            setLoading(false);
-        }
+    // Clean up the listener on unmount or when the user changes
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
 
-    fetchProjects();
-  }, [projectIdsJson, authLoading]);
+  }, [authLoading, userProfile]);
 
 
   const value = { projects, loading, addProject, removeProject, updateProject };

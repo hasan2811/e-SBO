@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -34,7 +35,7 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
   const { user, userProfile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const { addProject } = useProjects();
+  const { projects: userProjects, addProject } = useProjects();
   const [loadingProjects, setLoadingProjects] = React.useState(true);
   const [joiningProjectId, setJoiningProjectId] = React.useState<string | null>(null);
   const [joinableProjects, setJoinableProjects] = React.useState<JoinableProject[]>([]);
@@ -59,7 +60,7 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
         
         const allOpenProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
 
-        const userProjectIds = userProfile.projectIds || [];
+        const userProjectIds = userProjects.map(p => p.id);
         const finalJoinableProjects = allOpenProjects.filter(p => !userProjectIds.includes(p.id));
 
         const projectsWithOwners = await Promise.all(
@@ -87,7 +88,7 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
 
     fetchJoinableProjects();
     
-  }, [isOpen, userProfile, toast]);
+  }, [isOpen, userProfile, userProjects, toast]);
 
   const onJoin = async (projectToJoin: JoinableProject) => {
     if (!user || !userProfile) {
