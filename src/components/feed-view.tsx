@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from './ui/badge';
 import { ListItemSkeleton } from './list-item-skeleton';
 import { usePerformance } from '@/contexts/performance-context';
+import { ObservationContext } from '@/contexts/observation-context';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -222,7 +223,14 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
   const { toast } = useToast();
   const { isFastConnection } = usePerformance();
   
-  const { items, isLoading, getObservationById, getInspectionById, getPtwById } = useObservations(projectId, itemTypeFilter);
+  // 1. Trigger the data fetching for the current feed type. This hook doesn't return anything.
+  useObservations(projectId, itemTypeFilter);
+  
+  // 2. Read the state for the current feed type directly from the context.
+  const context = React.useContext(ObservationContext)!;
+  const itemsForFeed = context.items[itemTypeFilter];
+  const isLoading = context.isLoading[itemTypeFilter];
+  const { getObservationById, getInspectionById, getPtwById } = context;
   
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
@@ -273,6 +281,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
   }, [itemIdToOpen, isLoading, itemTypeFilter, getObservationById, getInspectionById, getPtwById, pathname, router, toast]);
 
   const filteredData = React.useMemo(() => {
+    const items = itemsForFeed as AllItems[];
     if (!searchTerm) return items;
     
     const lowercasedSearch = searchTerm.toLowerCase();
@@ -282,7 +291,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
         if (item.itemType === 'ptw') return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
         return false;
     });
-  }, [items, searchTerm]);
+  }, [itemsForFeed, searchTerm]);
 
   const itemsToDisplay = React.useMemo(() => {
       return filteredData.slice(0, visibleCount);
@@ -386,7 +395,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
         </AnimatePresence>
 
       <main className="mt-6">
-        {isLoading && items.length === 0 ? (
+        {isLoading && itemsToDisplay.length === 0 ? (
           <FeedSkeleton />
         ) : itemsToDisplay.length > 0 ? (
           <motion.div 
@@ -401,11 +410,11 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
                         const isPriority = index < 3;
                         switch(item.itemType) {
                             case 'observation':
-                                return <ObservationListItem observation={item} onSelect={() => setSelectedObservationId(item.id)} isPriority={isPriority} />;
+                                return <ObservationListItem observation={item as Observation} onSelect={() => setSelectedObservationId(item.id)} isPriority={isPriority} />;
                             case 'inspection':
-                                return <InspectionListItem inspection={item} onSelect={() => setSelectedInspectionId(item.id)} isPriority={isPriority} />;
+                                return <InspectionListItem inspection={item as Inspection} onSelect={() => setSelectedInspectionId(item.id)} isPriority={isPriority} />;
                             case 'ptw':
-                                return <PtwListItem ptw={item} onSelect={() => setSelectedPtwId(item.id)} />;
+                                return <PtwListItem ptw={item as Ptw} onSelect={() => setSelectedPtwId(item.id)} />;
                             default:
                                 return null;
                         }

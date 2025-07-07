@@ -16,7 +16,6 @@ import { assistInspection } from '@/ai/flows/assist-inspection-flow';
 import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope, AssistInspectionOutput, UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { useObservations } from '@/hooks/use-observations';
 import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
@@ -29,6 +28,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { DEFAULT_LOCATIONS, EQUIPMENT_TYPES, INSPECTION_STATUSES } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { createAssignmentNotification } from '@/lib/actions/notification-actions';
+import { ObservationContext } from '@/contexts/observation-context';
 
 
 const formSchema = z.object({
@@ -56,7 +56,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { addItem, removeItem } = useObservations(project?.id || null, 'inspection');
+  const { addItem } = React.useContext(ObservationContext)!;
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -284,7 +284,6 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
           console.error("Submission failed:", error);
           const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
           toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
-          removeItem(optimisticId);
       }
     };
     

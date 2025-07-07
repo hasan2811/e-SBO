@@ -15,10 +15,10 @@ import {
 import { Loader2, Trash2 } from 'lucide-react';
 import type { AllItems } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useObservations } from '@/hooks/use-observations';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, deleteObject } from 'firebase/storage';
+import { ObservationContext } from '@/contexts/observation-context';
 
 interface DeleteMultipleDialogProps {
   isOpen: boolean;
@@ -35,7 +35,7 @@ export function DeleteMultipleDialog({
 }: DeleteMultipleDialogProps) {
   const [isDeleting, setIsDeleting] = React.useState(false);
   const { toast } = useToast();
-  const { removeItem } = useObservations(null, 'observation'); // It doesn't matter which type, removeItem is generic
+  const { removeItem } = React.useContext(ObservationContext)!;
 
   const handleConfirmClick = () => {
     if (itemsToDelete.length === 0) return;
@@ -44,7 +44,7 @@ export function DeleteMultipleDialog({
     const count = itemsToDelete.length;
 
     // 1. Optimistic UI Update
-    itemsToDelete.forEach(item => removeItem(item.id));
+    itemsToDelete.forEach(item => removeItem(item.id, item.itemType));
     toast({
         title: 'Berhasil Dihapus',
         description: `${count} item telah dihapus dari tampilan.`,

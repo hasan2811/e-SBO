@@ -11,7 +11,6 @@ import { Loader2, Upload, ListChecks } from 'lucide-react';
 import type { Observation } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { useObservations } from '@/hooks/use-observations';
 import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
@@ -37,6 +36,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { ObservationContext } from '@/contexts/observation-context';
 
 const formSchema = z.object({
   actionTakenDescription: z.string().min(1, 'Description cannot be empty.'),
@@ -62,7 +62,7 @@ export function TakeActionDialog({
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { updateItem } = useObservations(null, 'observation');
+  const { updateItem } = React.useContext(ObservationContext)!;
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -310,5 +310,3 @@ export function TakeActionDialog({
     </Dialog>
   );
 }
-
-    

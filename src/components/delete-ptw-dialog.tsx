@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -14,10 +15,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { Ptw } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { useObservations } from '@/hooks/use-observations';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, deleteObject } from 'firebase/storage';
+import { ObservationContext } from '@/contexts/observation-context';
 
 interface DeletePtwDialogProps {
   isOpen: boolean;
@@ -33,14 +34,14 @@ export function DeletePtwDialog({
   onSuccess,
 }: DeletePtwDialogProps) {
   const { toast } = useToast();
-  const { removeItem } = useObservations(null, 'ptw');
+  const { removeItem } = React.useContext(ObservationContext)!;
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDelete = () => {
     setIsDeleting(true);
 
     // 1. Optimistic UI update
-    removeItem(ptw.id);
+    removeItem(ptw.id, 'ptw');
     toast({
       title: 'Izin Kerja Dihapus',
       description: `Izin kerja "${ptw.referenceId}" telah dihapus dari tampilan.`,

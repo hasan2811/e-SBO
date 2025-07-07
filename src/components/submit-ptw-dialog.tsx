@@ -13,7 +13,6 @@ import { format } from 'date-fns';
 import type { Ptw, Location, Project, Scope, UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { useObservations } from '@/hooks/use-observations';
 import { uploadFile } from '@/lib/storage';
 
 import { Button } from '@/components/ui/button';
@@ -25,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { usePathname, useRouter } from 'next/navigation';
 import { DEFAULT_LOCATIONS, DEFAULT_COMPANIES } from '@/lib/types';
 import { createAssignmentNotification } from '@/lib/actions/notification-actions';
+import { ObservationContext } from '@/contexts/observation-context';
 
 
 const formSchema = z.object({
@@ -50,7 +50,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
   const [fileName, setFileName] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { addItem, removeItem } = useObservations(project?.id || null, 'ptw');
+  const { addItem } = React.useContext(ObservationContext)!;
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();
@@ -231,7 +231,6 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
           console.error("Submission failed:", error);
           const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
           toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
-          removeItem(optimisticId);
       }
     };
     

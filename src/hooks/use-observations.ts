@@ -2,7 +2,6 @@
 'use client';
 
 import * as React from 'react';
-import { useContext }from 'react';
 import { collection, query, orderBy, where, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { AllItems } from '@/lib/types';
@@ -10,12 +9,12 @@ import { useAuth } from '@/hooks/use-auth';
 import { ObservationContext } from '@/contexts/observation-context';
 
 /**
- * The master hook for fetching and managing real-time data for a given project context.
- * It listens to a collection for a specific project and keeps the central ObservationContext up-to-date.
- * When the context (projectId or itemTypeFilter) changes, it clears the old data and fetches the new.
+ * A hook that ensures data for a specific feed type is being fetched and kept up-to-date in the central context.
+ * This hook does not return anything; its sole purpose is to trigger and manage a Firestore listener.
+ * Components should read data directly from the ObservationContext.
  */
 export function useObservations(projectId: string | null, itemTypeFilter: AllItems['itemType']) {
-  const context = useContext(ObservationContext);
+  const context = React.useContext(ObservationContext);
   const { user } = useAuth();
   
   if (context === undefined) {
@@ -26,25 +25,22 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
   const unsubscribeRef = React.useRef<Unsubscribe | null>(null);
 
   React.useEffect(() => {
-    // Always clean up the previous listener when dependencies change.
+    // Clean up the previous listener when dependencies change.
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
 
-    // If there's no user or no project selected, there's nothing to fetch.
-    // Clear the items and set loading to false.
+    // If there's no user or no project, clear the specific item type and stop loading.
     if (!user || !projectId) {
-      setItems([]);
-      setIsLoading(false);
+      setItems(itemTypeFilter, []);
+      setIsLoading(itemTypeFilter, false);
       return;
     }
 
-    // A fetch is about to happen. Set loading state, but DO NOT clear items.
-    // This prevents the flash of an empty page. The new data from the listener
-    // will replace the old data seamlessly.
-    setIsLoading(true);
-    setError(null);
+    // Set loading state for the specific feed type.
+    setIsLoading(itemTypeFilter, true);
+    setError(itemTypeFilter, null);
     
     const collectionName = `${itemTypeFilter}s`;
     
@@ -55,34 +51,28 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
           orderBy('date', 'desc')
       );
 
+      // Set up the listener for the specific feed type.
       unsubscribeRef.current = onSnapshot(q, (snapshot) => {
           const serverItems: AllItems[] = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AllItems));
-          setItems(serverItems);
-          setIsLoading(false);
+          // Update only the relevant slice of the state in the context.
+          setItems(itemTypeFilter, serverItems);
+          setIsLoading(itemTypeFilter, false);
       }, (err) => {
           console.error(`[useObservations] Firestore snapshot error for ${collectionName}:`, err);
-          setError(`Gagal memuat ${collectionName}.`);
-          setItems([]);
-          setIsLoading(false);
+          setError(itemTypeFilter, `Gagal memuat ${collectionName}.`);
+          setIsLoading(itemTypeFilter, false);
       });
     } catch (err) {
       console.error(`[useObservations] Error creating query for ${collectionName}:`, err);
-      setError(`Terjadi kesalahan saat menyiapkan data.`);
-      setItems([]);
-      setIsLoading(false);
+      setError(itemTypeFilter, `Terjadi kesalahan saat menyiapkan data.`);
+      setIsLoading(itemTypeFilter, false);
     }
 
-    // Final cleanup function for when the component unmounts.
+    // Final cleanup for when the component unmounts or dependencies change.
     return () => {
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
-        unsubscribeRef.current = null;
       }
     };
-  // We include the setters in the dependency array for correctness,
-  // although they are stable and won't cause re-renders.
   }, [projectId, itemTypeFilter, user, setItems, setIsLoading, setError]);
-
-  // This hook now returns the full context, letting the component decide how to use it.
-  return context;
 }
