@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Observation, Inspection, Ptw, AllItems } from './types';
