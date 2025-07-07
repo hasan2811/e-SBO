@@ -25,8 +25,6 @@ import { Separator } from './ui/separator';
 import { useProjects } from '@/hooks/use-projects';
 import { useCallback, useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useRouter } from 'next/navigation';
-
 
 const getInitials = (name: string | null | undefined): string => {
     if (!name?.trim()) return 'U';
@@ -306,7 +304,6 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
     const { toast } = useToast();
     const { userProfile } = useAuth();
     const { projects, updateProject } = useProjects();
-    const router = useRouter();
     
     // ## STATE MANAGEMENT ##
     const [activeTab, setActiveTab] = React.useState('members');
@@ -395,10 +392,9 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
           updateProject(initialProject.id, updatedData); // Optimistic update of global context
           toast({
             title: 'Pengaturan Disimpan',
-            description: 'Pengaturan proyek Anda telah diperbarui. Mengarahkan ke Project Hub.',
+            description: 'Pengaturan proyek Anda telah berhasil diperbarui.',
           });
           onOpenChange(false);
-          router.push('/beranda');
         } catch (error) {
           toast({
             variant: 'destructive',
@@ -408,7 +404,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
         } finally {
           setIsSaving(false);
         }
-    }, [roles, customCompanies, customLocations, customCategories, isProjectOpen, initialProject.id, updateProject, toast, onOpenChange, router]);
+    }, [roles, customCompanies, customLocations, customCategories, isProjectOpen, initialProject.id, updateProject, toast, onOpenChange]);
 
     const showSaveButton = isCurrentUserOwner && (activeTab === 'members' || activeTab === 'settings');
 

@@ -4,20 +4,41 @@
 import { adminDb, adminStorage } from '@/lib/firebase-admin';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { Buffer } from 'buffer';
-import type { Ptw } from '@/lib/types';
+import type { Ptw, Project, UserProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import QRCode from 'qrcode';
 
 /**
  * Approves a PTW, stamps the associated JSA PDF with a signature and approver info,
- * and updates the Firestore document.
+ * and updates the Firestore document. It now includes server-side permission checks.
  * @param ptw The PTW object being approved.
  * @param approverName The name of the person approving the PTW.
  * @param signatureDataUrl The signature as a base64 data URL.
+ * @param approverUid The UID of the user performing the approval, for permission checks.
  */
-export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, signatureDataUrl: string): Promise<{ stampedPdfUrl: string }> {
+export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, signatureDataUrl: string, approverUid: string): Promise<{ stampedPdfUrl: string }> {
   try {
-    // adminStorage is now the bucket instance itself, imported directly.
+    // --- Server-Side Permission Check ---
+    const projectRef = adminDb.collection('projects').doc(ptw.projectId!);
+    const userRef = adminDb.collection('users').doc(approverUid);
+
+    const [projectSnap, userSnap] = await Promise.all([projectRef.get(), userRef.get()]);
+
+    if (!projectSnap.exists) throw new Error("Project not found. Cannot validate permissions.");
+    if (!userSnap.exists) throw new Error("Approver's user profile not found.");
+
+    const project = projectSnap.data() as Project;
+    const user = userSnap.data() as UserProfile;
+
+    const isOwner = project.ownerUid === user.uid;
+    const userRoles = project.roles?.[user.uid] || {};
+    const hasApprovalPermission = isOwner || userRoles.canApprovePtw;
+
+    if (!hasApprovalPermission) {
+      throw new Error("Permission Denied: User does not have rights to approve PTWs for this project.");
+    }
+    // --- End Permission Check ---
+
     const bucket = adminStorage;
 
     if (!ptw.jsaPdfStoragePath) {
@@ -31,18 +52,16 @@ export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, sign
     const firstPage = pages[0];
 
     // --- Define paths and URLs before stamping ---
-    // Standardize storage path and use the unique referenceId for the filename
     const stampedFileName = `${ptw.referenceId}.pdf`;
     const stampedFilePath = `projects/${ptw.projectId}/stamped-jsa/${stampedFileName}`;
 
-    // Construct the public URL manually for the QR code.
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${stampedFilePath}`;
 
     // --- Generate QR Code ---
     const qrCodeDataUrl = await QRCode.toDataURL(publicUrl, { errorCorrectionLevel: 'M' });
     const qrCodeImageBytes = Buffer.from(qrCodeDataUrl.split(',')[1], 'base64');
     const qrCodeImage = await pdfDoc.embedPng(qrCodeImageBytes);
-    const qrCodeDims = qrCodeImage.scale(0.4); // Scale QR code
+    const qrCodeDims = qrCodeImage.scale(0.4);
 
     // --- Generate Signature ---
     const signatureImageBytes = Buffer.from(signatureDataUrl.split(',')[1], 'base64');
@@ -56,10 +75,9 @@ export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, sign
 
     // --- Stamp the PDF ---
     const { width } = firstPage.getSize();
-    const margin = 30; // Consistent margin
+    const margin = 30;
     const textGap = 2;
 
-    // Stamp Signature block on the bottom right
     firstPage.drawImage(signatureImage, {
       x: width - signatureDims.width - margin,
       y: margin,
@@ -81,10 +99,9 @@ export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, sign
       color: rgb(0.1, 0.1, 0.1),
     });
 
-    // Stamp QR Code on the bottom left
     firstPage.drawImage(qrCodeImage, {
         x: margin,
-        y: margin - 5, // Align baseline with signature block
+        y: margin - 5,
         width: qrCodeDims.width,
         height: qrCodeDims.height,
     });
@@ -96,7 +113,6 @@ export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, sign
       metadata: { contentType: 'application/pdf' },
     });
 
-    // Make the file public to match the URL used in the QR code
     await stampedFile.makePublic();
 
     // --- Update Firestore ---
@@ -111,7 +127,6 @@ export async function approvePtwAndStampPdf(ptw: Ptw, approverName: string, sign
     };
     await ptwDocRef.update(updateData);
     
-    // The publicUrl is now confirmed and returned.
     return { stampedPdfUrl: publicUrl };
 
   } catch (error) {
