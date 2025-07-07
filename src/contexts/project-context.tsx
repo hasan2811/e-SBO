@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -28,7 +27,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         return prevProjects;
       }
       const newProjects = [newProject, ...prevProjects];
-      newProjects.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      newProjects.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       return newProjects;
     });
   }, []);
@@ -55,30 +54,43 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
     const fetchProjects = async () => {
         setLoading(true);
-        const userProjectIds = userProfile.projectIds || [];
-        if (userProjectIds.length === 0) {
-            setProjects([]);
-            setLoading(false);
-            return;
-        }
-
         try {
             const projectsCollection = collection(db, 'projects');
-            // This query fetches all project documents whose ID is in the user's list.
-            const q = query(projectsCollection, where(documentId(), 'in', userProjectIds));
-            const querySnapshot = await getDocs(q);
+            const projectPromises: Promise<any>[] = [];
 
-            const serverProjects = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })) as Project[];
+            // Query 1: Based on projectIds in user profile (for projects that might not have memberUids)
+            const userProjectIds = userProfile.projectIds || [];
+            if (userProjectIds.length > 0) {
+                const q1 = query(projectsCollection, where(documentId(), 'in', userProjectIds));
+                projectPromises.push(getDocs(q1));
+            }
 
-            // Sort client-side to ensure a consistent order.
-            serverProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            setProjects(serverProjects);
+            // Query 2: Based on memberUids array in projects collection (robust fallback)
+            const q2 = query(projectsCollection, where('memberUids', 'array-contains', user.uid));
+            projectPromises.push(getDocs(q2));
+
+            const snapshots = await Promise.all(projectPromises);
+
+            const allProjectsMap = new Map<string, Project>();
+
+            snapshots.forEach(snapshot => {
+                snapshot.docs.forEach(doc => {
+                    if (!allProjectsMap.has(doc.id)) {
+                        allProjectsMap.set(doc.id, { id: doc.id, ...doc.data() } as Project);
+                    }
+                });
+            });
+            
+            const uniqueProjects = Array.from(allProjectsMap.values());
+            
+            // Safe sorting
+            uniqueProjects.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+            setProjects(uniqueProjects);
+
         } catch (error) {
-            console.error("Error fetching projects by IDs:", error);
-            // Do not clear projects on error, might be a temporary network issue.
+            console.error("Fatal: Could not fetch projects. This might be a missing Firestore index.", error);
+            // Don't clear projects on error, might be a temporary network issue.
         } finally {
             setLoading(false);
         }
