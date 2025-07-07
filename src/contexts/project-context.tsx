@@ -1,7 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, onSnapshot, Unsubscribe, documentId } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Unsubscribe, documentId, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
@@ -44,46 +45,49 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const projectIdsJson = JSON.stringify(userProfile?.projectIds || []);
 
   React.useEffect(() => {
-    let unsubscribe: Unsubscribe | undefined;
+    const fetchProjects = async () => {
+        if (authLoading) {
+            setLoading(true);
+            return;
+        }
 
-    if (authLoading) {
-      setLoading(true);
-      return;
-    }
+        const projectIds = JSON.parse(projectIdsJson) as string[];
 
-    const projectIds = JSON.parse(projectIdsJson) as string[];
+        if (!projectIds || projectIds.length === 0) {
+            setProjects([]);
+            setLoading(false);
+            return;
+        }
 
-    if (!projectIds || projectIds.length === 0) {
-      setProjects([]);
-      setLoading(false);
-      return () => {};
-    }
+        setLoading(true);
+        try {
+            // Firestore 'in' queries are limited to 30 elements per batch.
+            // Chunking the array to handle more than 30 projects if needed.
+            const chunks: string[][] = [];
+            for (let i = 0; i < projectIds.length; i += 30) {
+                chunks.push(projectIds.slice(i, i + 30));
+            }
 
-    setLoading(true);
-    
-    // Firestore 'in' queries are limited to 30 elements. Chunking is needed for more.
-    // For this app, we assume a user won't be in more than 30 projects.
-    const projectsQuery = query(
-      collection(db, 'projects'),
-      where(documentId(), 'in', projectIds)
-    );
+            const fetchPromises = chunks.map(chunk =>
+                getDocs(query(collection(db, 'projects'), where(documentId(), 'in', chunk)))
+            );
+            
+            const allSnapshots = await Promise.all(fetchPromises);
+            const fetchedProjects = allSnapshots.flatMap(snapshot =>
+                snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project))
+            );
 
-    unsubscribe = onSnapshot(projectsQuery, (snapshot) => {
-        const fetchedProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
-        fetchedProjects.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-        setProjects(fetchedProjects);
-        setLoading(false);
-    }, (error) => {
-        console.error("Error fetching projects by IDs:", error);
-        setProjects([]);
-        setLoading(false);
-    });
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+            fetchedProjects.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+            setProjects(fetchedProjects);
+        } catch (error) {
+            console.error("Error fetching projects by IDs:", error);
+            setProjects([]);
+        } finally {
+            setLoading(false);
+        }
     };
+
+    fetchProjects();
   }, [projectIdsJson, authLoading]);
 
 
