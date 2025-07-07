@@ -3,10 +3,11 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // ATURAN TERBUKA: Izinkan semua operasi baca dan tulis untuk semua file.
-    // Ini menghilangkan semua batasan keamanan untuk fokus pada fungsionalitas.
+    // PUBLIC ACCESS: Allow any authenticated user to read and write any file.
+    // This is for development and diagnosis ONLY.
+    // Security will be re-implemented later.
     match /{allPaths=**} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }

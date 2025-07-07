@@ -3,10 +3,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ATURAN TERBUKA: Izinkan semua operasi baca dan tulis untuk semua pengguna.
-    // Ini menghilangkan semua batasan keamanan untuk fokus pada fungsionalitas.
+    // PUBLIC ACCESS: Allow any authenticated user to read and write any document.
+    // This is for development and diagnosis ONLY.
+    // Security will be re-implemented later.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }

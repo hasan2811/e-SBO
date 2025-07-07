@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, query, onSnapshot, Unsubscribe, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
@@ -45,41 +45,43 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     let unsubscribe: Unsubscribe | null = null;
     
-    // If auth is still loading, or there's no user, do nothing and keep loading.
     if (authLoading || !userProfile) {
       setLoading(true);
       setProjects([]);
       return;
     }
 
-    // Set up the real-time query based on the user's membership.
-    // This is the most reliable way to get all projects for a user.
+    // NEW, MORE ROBUST LOGIC:
+    // 1. Fetch ALL projects from the database, ordered by creation date.
+    // This bypasses any complex 'where' clauses that might fail due to missing indexes or permission issues.
     const q = query(
       collection(db, 'projects'),
-      where('memberUids', 'array-contains', userProfile.uid)
+      orderBy('createdAt', 'desc')
     );
 
     unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+      const allProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
       
-      // Sort on the client since we can't orderBy on a different field with array-contains
-      fetchedProjects.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      // 2. Filter the projects on the client-side.
+      // This ensures we only show projects relevant to the user,
+      // and it reliably handles all cases (owner, member, etc.).
+      const userProjects = allProjects.filter(p => 
+        p.ownerUid === userProfile.uid || (p.memberUids && p.memberUids.includes(userProfile.uid))
+      );
       
-      setProjects(fetchedProjects);
+      setProjects(userProjects);
       setLoading(false);
     }, (error) => {
-      console.error("Error fetching projects in real-time:", error);
+      console.error("Error fetching all projects in real-time:", error);
       setProjects([]);
       setLoading(false);
     });
 
-    // Clean up the listener on unmount or when the user changes
     return () => {
       if (unsubscribe) {
         unsubscribe();
       }
     };
-
   }, [authLoading, userProfile]);
 
 
