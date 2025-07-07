@@ -75,6 +75,7 @@ const ContentSecurityPolicy = `
 `.replace(/\s{2,}/g, ' ').trim();
 
 // Define security headers. HSTS is applied only in production.
+// X-Frame-Options is removed because it is superseded by frame-ancestors in CSP.
 const securityHeaders = [
     {
         key: 'Content-Security-Policy',
@@ -83,10 +84,6 @@ const securityHeaders = [
     {
         key: 'Referrer-Policy',
         value: 'origin-when-cross-origin',
-    },
-    {
-        key: 'X-Frame-Options',
-        value: 'SAMEORIGIN',
     },
     {
         key: 'X-Content-Type-Options',
