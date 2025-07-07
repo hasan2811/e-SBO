@@ -55,9 +55,8 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
     const fetchJoinableProjects = async () => {
       setLoadingProjects(true);
       try {
-        // This is the simplest possible query: get all projects.
-        // Filtering will happen on the client. This avoids complex queries and permission errors.
-        const projectsSnapshot = await getDocs(collection(db, 'projects'));
+        // Fetch ALL projects to filter on the client. This avoids complex queries and permission errors.
+        const projectsSnapshot = await getDocs(query(collection(db, 'projects')));
         
         const allProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
 
@@ -77,7 +76,6 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
                   owner = userDocSnap.data() as UserProfile;
                 }
               } catch (e) {
-                // Ignore if a single user profile fails to load
                 console.warn(`Could not load owner profile for project ${project.id}`);
               }
             }

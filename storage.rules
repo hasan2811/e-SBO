@@ -1,11 +1,13 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // SUPER INSECURE: Open to all reads and writes.
-    // This is for debugging purposes as requested, to eliminate permission errors.
+    // This rule allows any authenticated user to read and write any file.
+    // This is for development and troubleshooting ONLY.
+    // DO NOT use this in a production environment without securing your data.
     match /{allPaths=**} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }

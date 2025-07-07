@@ -10,7 +10,7 @@ import type { Project } from '@/lib/types';
 interface ProjectContextType {
   projects: Project[];
   loading: boolean;
-  error: string | null; // Add error state
+  error: string | null;
   addProject: (project: Project) => void;
   removeProject: (projectId: string) => void;
   updateProject: (projectId: string, data: Partial<Project>) => void;
@@ -22,7 +22,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null); // Add error state
+  const [error, setError] = React.useState<string | null>(null);
   const unsubscribeRef = React.useRef<Unsubscribe | null>(null);
 
   const addProject = React.useCallback((newProject: Project) => {
@@ -58,31 +58,33 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     if (!user) {
       setProjects([]);
       setLoading(false);
-      setError(null); // Clear error on logout
+      setError(null);
       return;
     }
     
     setLoading(true);
-    setError(null); // Clear previous errors on new fetch
+    setError(null);
     
-    // This is the robust query that should work with a simple index.
-    const projectsQuery = query(
-      collection(db, 'projects'),
-      where('memberUids', 'array-contains', user.uid)
-    );
+    // BRUTE FORCE QUERY: Fetch ALL projects. This avoids any complex queries that might need specific indexes.
+    const projectsQuery = query(collection(db, 'projects'));
 
     unsubscribeRef.current = onSnapshot(projectsQuery, (snapshot) => {
-      const userProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+      const allProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+      
+      // Filter on the client-side. This is less efficient but more robust against permission/index issues.
+      const userProjects = allProjects.filter(p => p.memberUids?.includes(user.uid));
+
       userProjects.sort((a, b) => {
           const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return dateB - dateA;
       });
+      
       setProjects(userProjects);
       setLoading(false);
     }, (err) => {
-      // Set the error state to be surfaced in the UI
-      console.error("Error fetching projects in real-time:", err);
+      console.error("Error fetching all projects in real-time:", err);
+      // This error message will be displayed on the beranda page.
       setError(`Gagal memuat proyek: ${err.message}. Ini kemungkinan besar adalah masalah konfigurasi indeks database. Pastikan indeks untuk 'projects' pada 'memberUids' (array-contains) telah dibuat.`);
       setProjects([]);
       setLoading(false);
