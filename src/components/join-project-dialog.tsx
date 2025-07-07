@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -15,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -55,13 +54,10 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
     const fetchJoinableProjects = async () => {
       setLoadingProjects(true);
       try {
-        // This query is simpler and avoids potential composite index issues.
-        // It fetches all projects and we filter for "isOpen" on the client.
-        const projectsQuery = query(collection(db, 'projects'), orderBy("createdAt", "desc"));
+        const projectsQuery = query(collection(db, 'projects'), where("isOpen", "==", true), orderBy("createdAt", "desc"));
         const projectsSnapshot = await getDocs(projectsQuery);
         
-        const allProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
-        const allOpenProjects = allProjects.filter(p => p.isOpen === true);
+        const allOpenProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
 
         const userProjectIds = userProfile.projectIds || [];
         const finalJoinableProjects = allOpenProjects.filter(p => !userProjectIds.includes(p.id));

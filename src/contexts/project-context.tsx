@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, onSnapshot, orderBy, Unsubscribe } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Unsubscribe, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
@@ -17,7 +17,7 @@ interface ProjectContextType {
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { userProfile, loading: authLoading } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
   
@@ -40,74 +40,52 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...data } : p));
   }, []);
 
+  // Use a stable reference for project IDs to avoid re-running the effect unnecessarily
+  const projectIdsJson = JSON.stringify(userProfile?.projectIds || []);
+
   React.useEffect(() => {
+    let unsubscribe: Unsubscribe | undefined;
+
     if (authLoading) {
       setLoading(true);
-      return () => {};
+      return;
     }
 
-    if (!user) {
+    const projectIds = JSON.parse(projectIdsJson) as string[];
+
+    if (!projectIds || projectIds.length === 0) {
       setProjects([]);
       setLoading(false);
       return () => {};
     }
 
     setLoading(true);
-    const projectsMap = new Map<string, Project>();
-
-    const updateAndSortProjects = () => {
-        const allProjects = Array.from(projectsMap.values());
-        allProjects.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-        setProjects(allProjects);
-    };
-
-    // Listener 1: Projects where user is a member (for modern projects)
-    const memberQuery = query(
-        collection(db, 'projects'),
-        where('memberUids', 'array-contains', user.uid),
-        orderBy('createdAt', 'desc')
+    
+    // Firestore 'in' queries are limited to 30 elements. Chunking is needed for more.
+    // For this app, we assume a user won't be in more than 30 projects.
+    const projectsQuery = query(
+      collection(db, 'projects'),
+      where(documentId(), 'in', projectIds)
     );
-    const unsubscribeMember = onSnapshot(memberQuery, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-            if (change.type === "removed") {
-                projectsMap.delete(change.doc.id);
-            } else {
-                projectsMap.set(change.doc.id, { id: change.doc.id, ...change.doc.data() } as Project);
-            }
-        });
-        updateAndSortProjects();
-        setLoading(false); // Consider loading finished after first listener returns
-    }, (error) => {
-        console.error("Error on member projects listener:", error);
-        setLoading(false);
-    });
 
-    // Listener 2: Projects where user is owner (for legacy compatibility)
-    const ownerQuery = query(
-        collection(db, 'projects'),
-        where('ownerUid', '==', user.uid),
-        orderBy('createdAt', 'desc')
-    );
-    const unsubscribeOwner = onSnapshot(ownerQuery, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-            if (change.type === "removed") {
-                projectsMap.delete(change.doc.id);
-            } else {
-                projectsMap.set(change.doc.id, { id: change.doc.id, ...change.doc.data() } as Project);
-            }
-        });
-        updateAndSortProjects();
+    unsubscribe = onSnapshot(projectsQuery, (snapshot) => {
+        const fetchedProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+        fetchedProjects.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        setProjects(fetchedProjects);
         setLoading(false);
     }, (error) => {
-        console.error("Error on owner projects listener:", error);
+        console.error("Error fetching projects by IDs:", error);
+        setProjects([]);
         setLoading(false);
     });
 
     return () => {
-        unsubscribeMember();
-        unsubscribeOwner();
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
-  }, [user, authLoading]);
+  }, [projectIdsJson, authLoading]);
+
 
   const value = { projects, loading, addProject, removeProject, updateProject };
 
