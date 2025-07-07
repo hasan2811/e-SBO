@@ -9,7 +9,6 @@ import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { Sidebar } from '@/components/sidebar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProjects } from '@/hooks/use-projects';
-import { AppLoadingScreen } from '@/components/app-loading-screen';
 import { MultiActionButton } from '@/components/multi-action-button';
 import { usePerformance } from '@/contexts/performance-context';
 import { Loader2 } from 'lucide-react';
@@ -49,14 +48,18 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
     return projects.find(p => p.id === projectId) ?? null;
   }, [projectId, projects]);
 
-  // --- Redirection Logic ---
+  const isAppLoading = authLoading || (user && projectsLoading);
+  
+  // --- Redirection Logic & Splash Screen Control ---
   React.useEffect(() => {
     if (authLoading) return; // Wait until authentication check is complete
 
-    // Hide splash screen once JS is loaded and auth state is determined
-    const splash = document.getElementById('splash-screen');
-    if (splash) {
-      splash.classList.add('splash-hidden');
+    // Hide splash screen once the app is no longer loading data.
+    if (!isAppLoading) {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+          splash.classList.add('splash-hidden');
+        }
     }
 
     // 1. If not authenticated, redirect to login page.
@@ -71,24 +74,14 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
     } else {
       setProfileDialogOpen(false);
     }
-  }, [user, userProfile, authLoading, router]);
+  }, [user, userProfile, authLoading, isAppLoading, router]);
 
-
-  const isAppLoading = authLoading || (user && projectsLoading);
-
-  if (isAppLoading) {
-    return <AppLoadingScreen />;
-  }
   
   if (!user) {
-    // This provides a clean, non-layout-specific loading screen during the
-    // brief period of redirection to the login page after signing out.
-    // It prevents the main app skeleton from flashing before the login page appears.
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-secondary/50">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
+    // While redirecting to login, the splash screen remains visible,
+    // so we don't need to render a separate loader here.
+    // This return is a fallback.
+    return null;
   }
 
   const variants = {
@@ -119,6 +112,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                   variants={variants}
                   transition={transition}
                 >
+                  {/* The splash screen covers content while loading, so we don't need a skeleton here. */}
                   {!isAppLoading && !isProfileDialogOpen && children}
                 </motion.div>
               </AnimatePresence>

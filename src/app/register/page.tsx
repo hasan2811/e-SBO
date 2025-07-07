@@ -50,19 +50,23 @@ export default function RegisterPage() {
   }
   
   React.useEffect(() => {
-    if (!loading && user) {
-      router.push('/beranda');
+    // This effect manages the splash screen and redirection logic.
+    if (!loading) {
+      if (user) {
+        // User is already logged in, so we redirect.
+        // We keep the splash screen visible during the redirect.
+        router.push('/beranda');
+      } else {
+        // No user is logged in, hide the splash screen to show the form.
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+          splash.classList.add('splash-hidden');
+        }
+      }
     }
   }, [user, loading, router]);
   
-  if (loading || user) {
-     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
-  }
-
+  // The page is rendered but hidden by the splash screen until auth is checked.
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-secondary/50 p-4">
       <Card className="w-full max-w-sm p-4 shadow-xl">
