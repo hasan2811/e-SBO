@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -55,41 +56,27 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     const fetchProjects = async () => {
         setLoading(true);
         try {
-            const projectsCollection = collection(db, 'projects');
-            const projectPromises: Promise<any>[] = [];
-
-            // Query 1: Based on projectIds in user profile (for projects that might not have memberUids)
             const userProjectIds = userProfile.projectIds || [];
-            if (userProjectIds.length > 0) {
-                const q1 = query(projectsCollection, where(documentId(), 'in', userProjectIds));
-                projectPromises.push(getDocs(q1));
+            
+            if (userProjectIds.length === 0) {
+              setProjects([]);
+              setLoading(false);
+              return;
             }
 
-            // Query 2: Based on memberUids array in projects collection (robust fallback)
-            const q2 = query(projectsCollection, where('memberUids', 'array-contains', user.uid));
-            projectPromises.push(getDocs(q2));
-
-            const snapshots = await Promise.all(projectPromises);
-
-            const allProjectsMap = new Map<string, Project>();
-
-            snapshots.forEach(snapshot => {
-                snapshot.docs.forEach(doc => {
-                    if (!allProjectsMap.has(doc.id)) {
-                        allProjectsMap.set(doc.id, { id: doc.id, ...doc.data() } as Project);
-                    }
-                });
-            });
+            const projectsCollection = collection(db, 'projects');
+            const q = query(projectsCollection, where(documentId(), 'in', userProjectIds));
+            const snapshot = await getDocs(q);
             
-            const uniqueProjects = Array.from(allProjectsMap.values());
+            const fetchedProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
             
-            // Safe sorting
-            uniqueProjects.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+            // Safe sorting client-side
+            fetchedProjects.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
-            setProjects(uniqueProjects);
+            setProjects(fetchedProjects);
 
         } catch (error) {
-            console.error("Fatal: Could not fetch projects. This might be a missing Firestore index.", error);
+            console.error("Fatal: Could not fetch projects. This can be a missing Firestore index or a network issue.", error);
             // Don't clear projects on error, might be a temporary network issue.
         } finally {
             setLoading(false);
