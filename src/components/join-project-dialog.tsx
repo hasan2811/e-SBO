@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query } from 'firebase/firestore';
+import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -55,15 +55,14 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
     const fetchJoinableProjects = async () => {
       setLoadingProjects(true);
       try {
-        // Fetch ALL projects to filter on the client. This avoids complex queries and permission errors.
-        const projectsSnapshot = await getDocs(query(collection(db, 'projects')));
+        const q = query(collection(db, "projects"), where("isOpen", "==", true));
+        const projectsSnapshot = await getDocs(q);
         
-        const allProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
+        const openProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
 
         const userProjectIds = userProjects.map(p => p.id);
         
-        // Filter on the client-side to find open projects the user is not yet a member of.
-        const finalJoinableProjects = allProjects.filter(p => p.isOpen === true && !userProjectIds.includes(p.id));
+        const finalJoinableProjects = openProjects.filter(p => !userProjectIds.includes(p.id));
 
         const projectsWithOwners = await Promise.all(
           finalJoinableProjects.map(async project => {

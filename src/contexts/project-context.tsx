@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Unsubscribe, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
@@ -65,27 +65,19 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setError(null);
     
-    // BRUTE FORCE QUERY: Fetch ALL projects. This avoids any complex queries that might need specific indexes.
-    const projectsQuery = query(collection(db, 'projects'));
+    const projectsQuery = query(
+        collection(db, 'projects'),
+        where('memberUids', 'array-contains', user.uid),
+        orderBy('createdAt', 'desc')
+    );
 
     unsubscribeRef.current = onSnapshot(projectsQuery, (snapshot) => {
-      const allProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
-      
-      // Filter on the client-side. This is less efficient but more robust against permission/index issues.
-      const userProjects = allProjects.filter(p => p.memberUids?.includes(user.uid));
-
-      userProjects.sort((a, b) => {
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return dateB - dateA;
-      });
-      
+      const userProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
       setProjects(userProjects);
       setLoading(false);
     }, (err) => {
-      console.error("Error fetching all projects in real-time:", err);
-      // This error message will be displayed on the beranda page.
-      setError(`Gagal memuat proyek: ${err.message}. Ini kemungkinan besar adalah masalah konfigurasi indeks database. Pastikan indeks untuk 'projects' pada 'memberUids' (array-contains) telah dibuat.`);
+      console.error("Error fetching projects in real-time:", err);
+      setError(`Gagal memuat proyek: ${err.message}. Pastikan indeks komposit untuk 'projects' pada 'memberUids' (array-contains) dan 'createdAt' (descending) telah dibuat.`);
       setProjects([]);
       setLoading(false);
     });
