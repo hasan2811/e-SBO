@@ -2,22 +2,20 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // Project files: Only project members can read/write.
-    match /projects/{projectId}/{allPaths=**} {
-      function isProjectMember() {
-        return request.auth != null &&
-               exists(/databases/$(database)/documents/projects/$(projectId)) &&
-               request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
-      }
-      // Explicitly grant all permissions for project members.
-      allow get, list, create, update, delete: if isProjectMember();
+    // Helper function to check if a user is a member of a project
+    function isProjectMember(projectId) {
+      return get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
     }
 
-    // Profile photos: Users can read anyone's photo, but only write to their own.
+    // Profile photos: Users can only write to their own folder, but anyone authenticated can read.
     match /profile-photos/{userId}/{allPaths=**} {
-      allow get, list: if request.auth != null;
+      allow get: if request.auth != null;
       allow create, update, delete: if request.auth.uid == userId;
+    }
+
+    // Project files: Only project members can access files within their project's folder.
+    match /projects/{projectId}/{allPaths=**} {
+      allow read, write: if request.auth != null && isProjectMember(projectId);
     }
   }
 }
