@@ -61,26 +61,9 @@ const withPWA = require('@ducanh2912/next-pwa').default({
   ],
 });
 
-
-// Define a robust Content Security Policy
-const ContentSecurityPolicy = `
-    default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline' *.googleapis.com *.googletagmanager.com;
-    style-src 'self' 'unsafe-inline' fonts.googleapis.com;
-    img-src 'self' data: blob: https://lh3.googleusercontent.com https://firebasestorage.googleapis.com https://placehold.co;
-    font-src 'self' fonts.gstatic.com;
-    connect-src 'self' *.firebaseio.com *.googleapis.com wss://*.firebaseio.com;
-    frame-src 'self' https://*.firebaseapp.com;
-    frame-ancestors 'self' https://*.cloudworkstations.dev;
-`.replace(/\s{2,}/g, ' ').trim();
-
 // Define security headers. HSTS is applied only in production.
-// X-Frame-Options is removed because it is superseded by frame-ancestors in CSP.
+// Content-Security-Policy has been removed to fix framing issues in Firebase Studio.
 const securityHeaders = [
-    {
-        key: 'Content-Security-Policy',
-        value: ContentSecurityPolicy,
-    },
     {
         key: 'Referrer-Policy',
         value: 'origin-when-cross-origin',
