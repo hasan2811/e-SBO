@@ -38,11 +38,15 @@ export default function RootLayout({
                 left: 0;
                 width: 100vw;
                 height: 100vh;
-                background: white;
                 z-index: 100;
                 opacity: 1;
                 transition: opacity 0.5s ease-out;
-                pointer-events: none;
+                pointer-events: none; /* Allows clicks to pass through when hidden */
+              }
+              #splash-screen iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
               }
               .splash-hidden {
                 opacity: 0 !important;
@@ -52,13 +56,9 @@ export default function RootLayout({
         />
       </head>
       <body className={cn(inter.className, "antialiased")}>
-         <noscript>
-          <iframe
-            id="splash-screen"
-            src="/splash.html"
-            style={{ border: 'none', width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 100 }}
-          ></iframe>
-        </noscript>
+        <div id="splash-screen">
+            <iframe src="/splash.html" title="Loading HSSE Tech"></iframe>
+        </div>
         <AppProviders>
           {children}
         </AppProviders>
