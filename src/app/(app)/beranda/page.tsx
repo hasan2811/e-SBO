@@ -11,7 +11,7 @@ import { JoinProjectDialog } from '@/components/join-project-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Folder, FolderPlus, LogIn, Users, Crown, MoreVertical, FileCog, LogOut, Trash2, AlertTriangle } from 'lucide-react';
+import { Folder, FolderPlus, LogIn, Users, Crown, MoreVertical, FileCog, LogOut, Trash2, AlertTriangle, PackageOpen } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { usePerformance } from '@/contexts/performance-context';
@@ -46,25 +46,26 @@ const ProjectCard = ({
 
   return (
     <Link href={`/proyek/${project.id}/observasi`} className="h-full flex flex-col" prefetch={true}>
-      <Card className="transition-all hover:shadow-md hover:border-primary/50 flex flex-col group w-full flex-1">
+      <Card className="transition-all hover:shadow-lg hover:border-primary/50 flex flex-col group w-full flex-1 bg-card hover:-translate-y-1">
         <CardHeader>
-          <div className="flex justify-between items-start gap-2">
-            <div className="flex items-start gap-4 flex-1 overflow-hidden">
-              <Folder className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
-              <div className="flex-1 overflow-hidden">
-                <CardTitle className="truncate text-xl">{project.name}</CardTitle>
-                <CardDescription>Klik untuk membuka proyek.</CardDescription>
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex-1 overflow-hidden">
+              <div className="p-3 rounded-full bg-primary/10 inline-block mb-4">
+                 <Folder className="h-6 w-6 text-primary" />
               </div>
+              <CardTitle className="truncate text-xl font-bold">{project.name}</CardTitle>
+              <CardDescription>Klik untuk membuka proyek.</CardDescription>
             </div>
             
-            <div onClick={handleActionClick} className="flex-shrink-0">
+            <div onClick={handleActionClick} className="flex-shrink-0 -mr-2 -mt-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
                     size="icon"
+                    className="h-9 w-9"
                   >
-                    <MoreVertical />
+                    <MoreVertical className="h-5 w-5" />
                     <span className="sr-only">Tindakan Proyek</span>
                   </Button>
                 </DropdownMenuTrigger>
@@ -92,6 +93,9 @@ const ProjectCard = ({
             </div>
           </div>
         </CardHeader>
+        <CardContent className="flex-1">
+            {/* Can add some project stats here later if needed */}
+        </CardContent>
         <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6 mt-auto">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Users className="h-4 w-4" />
@@ -111,24 +115,23 @@ const ProjectCard = ({
 
 
 const ProjectCardSkeleton = () => (
-  <Card className="flex flex-col">
-    <CardHeader>
-      <div className="flex justify-between items-start gap-2">
-        <div className="flex items-start gap-4 flex-1">
-          <Skeleton className="h-8 w-8 rounded-md mt-1 flex-shrink-0" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </div>
-        </div>
-        <Skeleton className="h-9 w-9 rounded-full" />
-      </div>
-    </CardHeader>
-    <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6 mt-auto">
-      <Skeleton className="h-5 w-24" />
-      <Skeleton className="h-5 w-16" />
-    </CardFooter>
-  </Card>
+    <Card className="flex flex-col">
+        <CardHeader>
+        <div className="flex justify-between items-start gap-4">
+                <div className="flex-1">
+                    <Skeleton className="h-12 w-12 rounded-full mb-4" />
+                    <Skeleton className="h-7 w-3/4 mb-2" />
+                    <Skeleton className="h-4 w-1/2" />
+                </div>
+                <Skeleton className="h-9 w-9 rounded-full -mr-2 -mt-2" />
+            </div>
+        </CardHeader>
+        <CardContent className="flex-1"></CardContent>
+        <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6 mt-auto">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-5 w-16" />
+        </CardFooter>
+    </Card>
 );
 
 
@@ -191,7 +194,7 @@ export default function ProjectHubPage() {
             <Skeleton className="h-10 w-32 rounded-md" />
           </div>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <ProjectCardSkeleton key={i} />
           ))}
@@ -226,25 +229,30 @@ export default function ProjectHubPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex-1">
             <h1 className="text-3xl font-bold tracking-tight">Project Hub</h1>
-            <p className="text-muted-foreground">
-              Selamat datang, {userProfile?.displayName}. Kelola proyek Anda atau mulai yang baru.
+            <p className="text-muted-foreground mt-1">
+                {projects.length > 0 
+                ? `Anda memiliki ${projects.length} proyek. Pilih satu untuk melanjutkan.` 
+                : `Selamat datang, ${userProfile?.displayName}. Mulai dengan membuat atau bergabung dengan proyek.`
+                }
             </p>
           </div>
-          <div className="flex-shrink-0 flex gap-2 sm:gap-4">
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <FolderPlus />
-              Buat Proyek
-            </Button>
-            <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
-              <LogIn />
-              Gabung Proyek
-            </Button>
-          </div>
+           {projects.length > 0 && (
+                <div className="flex-shrink-0 flex gap-2 sm:gap-4">
+                    <Button onClick={() => setCreateDialogOpen(true)}>
+                        <FolderPlus />
+                        Buat Proyek
+                    </Button>
+                    <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
+                        <LogIn />
+                        Gabung Proyek
+                    </Button>
+                </div>
+            )}
         </div>
 
         {projects.length > 0 ? (
           <motion.div 
-            className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
@@ -261,22 +269,29 @@ export default function ProjectHubPage() {
               ))}
           </motion.div>
         ) : (
-          <div className="flex h-full items-center justify-center pt-16">
-            <Card className="w-full max-w-lg text-center p-8 border-dashed">
-                <CardHeader>
-                    <div className="flex justify-center mb-4">
-                        <FolderPlus className="h-16 w-16 text-muted-foreground" />
-                    </div>
-                    <CardTitle className="text-2xl">Anda belum memiliki proyek</CardTitle>
-                    <CardDescription className="mt-2 max-w-sm mx-auto">
-                        Buat proyek baru atau gabung dengan proyek yang sudah ada untuk memulai.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground text-sm">Gunakan tombol di atas untuk memulai.</p>
-                </CardContent>
-            </Card>
-          </div>
+            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-4">
+                <Card className="w-full max-w-md shadow-sm">
+                    <CardHeader className="p-8">
+                        <div className="mx-auto bg-primary/10 rounded-full p-4 w-fit mb-4">
+                            <PackageOpen className="h-12 w-12 text-primary" />
+                        </div>
+                        <CardTitle className="text-2xl font-bold">Mulai Proyek Pertama Anda</CardTitle>
+                        <CardDescription className="mt-2 max-w-sm mx-auto">
+                        Anda belum menjadi anggota proyek apa pun. Buat yang baru atau gabung dengan tim Anda.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardFooter className="flex flex-col sm:flex-row gap-4 p-6 bg-muted/50 border-t">
+                        <Button onClick={() => setCreateDialogOpen(true)} className="w-full">
+                        <FolderPlus />
+                        Buat Proyek Baru
+                        </Button>
+                        <Button variant="outline" onClick={() => setJoinDialogOpen(true)} className="w-full">
+                        <LogIn />
+                        Gabung Proyek
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </div>
         )}
       </div>
 
