@@ -70,6 +70,7 @@ export function DeleteInspectionDialog({
           title: 'Sinkronisasi Gagal',
           description: 'Laporan gagal dihapus dari server. Harap segarkan halaman.',
         });
+        // In a more robust app, we might re-add the item to the context here.
       }
     };
     
