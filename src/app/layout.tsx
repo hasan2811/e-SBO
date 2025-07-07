@@ -7,13 +7,16 @@ import '@/app/globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
+// SVG icon as a data URI to prevent browser caching issues
+const logoSvgDataUri = "data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2329ABE2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M12 2L2 6v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-10-4z' /%3e%3cpath d='m9 12 2 2 4-4' /%3e%3c/svg%3e";
+
 export const metadata: Metadata = {
   title: 'HSSE Tech Platform',
   description: 'HSSE Observation and Analysis Platform',
   icons: {
-    icon: '/logo.svg',
-    shortcut: '/logo.svg',
-    apple: '/logo.svg',
+    icon: logoSvgDataUri,
+    shortcut: logoSvgDataUri,
+    apple: logoSvgDataUri,
   },
 };
 
