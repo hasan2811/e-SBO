@@ -10,7 +10,6 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 export const metadata: Metadata = {
   title: 'InspectWise Dashboard',
   description: 'HSSE Observation and Analysis Platform',
-  manifest: '/manifest.json',
   icons: {
     icon: '/logo.svg',
     shortcut: '/logo.svg',
