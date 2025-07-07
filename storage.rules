@@ -2,11 +2,22 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Aturan untuk Storage
-    // Aturan ini mengizinkan pengguna yang sudah terautentikasi untuk melakukan semua operasi:
-    // get (melihat/mengunduh), list (melihat daftar), create (mengunggah), update, dan delete.
-    match /{allPaths=**} {
-      allow get, list, create, update, delete: if request.auth != null;
+    
+    // Project files: Only project members can read/write.
+    match /projects/{projectId}/{allPaths=**} {
+      function isProjectMember() {
+        return request.auth != null &&
+               exists(/databases/$(database)/documents/projects/$(projectId)) &&
+               request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
+      }
+      // Explicitly grant all permissions for project members.
+      allow get, list, create, update, delete: if isProjectMember();
+    }
+
+    // Profile photos: Users can read anyone's photo, but only write to their own.
+    match /profile-photos/{userId}/{allPaths=**} {
+      allow get, list: if request.auth != null;
+      allow create, update, delete: if request.auth.uid == userId;
     }
   }
 }
