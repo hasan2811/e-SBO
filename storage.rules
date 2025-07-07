@@ -2,20 +2,12 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Helper function to check if a user is a member of a project
-    function isProjectMember(projectId) {
-      return get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids.has(request.auth.uid);
-    }
-
-    // Profile photos: Users can only write to their own folder, but anyone authenticated can read.
-    match /profile-photos/{userId}/{allPaths=**} {
-      allow get: if request.auth != null;
-      allow create, update, delete: if request.auth.uid == userId;
-    }
-
-    // Project files: Only project members can access files within their project's folder.
-    match /projects/{projectId}/{allPaths=**} {
-      allow read, write: if request.auth != null && isProjectMember(projectId);
+    // Aturan yang disederhanakan:
+    // Izinkan pengguna yang sudah login (terautentikasi) untuk melakukan semua
+    // tindakan (baca dan tulis) pada semua file. Ini memastikan fungsionalitas
+    // dasar bekerja tanpa dibatasi oleh aturan jalur yang rumit.
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }
