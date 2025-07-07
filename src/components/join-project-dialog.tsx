@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';

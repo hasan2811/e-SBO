@@ -2,11 +2,10 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // THIS IS A DEVELOPMENT RULE - IT ALLOWS ANYONE TO READ/WRITE.
-    // This removes permissions as a possible source of error during debugging.
-    // For production, you should implement secure rules.
+    // Aturan permisif: Izinkan baca/tulis ke semua dokumen
+    // untuk setiap pengguna yang sudah terautentikasi.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }
