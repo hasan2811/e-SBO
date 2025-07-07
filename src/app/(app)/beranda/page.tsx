@@ -11,12 +11,14 @@ import { JoinProjectDialog } from '@/components/join-project-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Folder, FolderPlus, LogIn, Users, Crown, MoreVertical, FileCog, LogOut, Trash2 } from 'lucide-react';
+import { Folder, FolderPlus, LogIn, Users, Crown, MoreVertical, FileCog, LogOut, Trash2, AlertTriangle } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { usePerformance } from '@/contexts/performance-context';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 // Dynamically import dialogs to avoid loading their code until needed
 const ManageProjectDialog = dynamic(() => import('@/components/manage-project-dialog').then(mod => mod.ManageProjectDialog));
@@ -132,7 +134,7 @@ const ProjectCardSkeleton = () => (
 
 export default function ProjectHubPage() {
   const { userProfile, loading: authLoading } = useAuth();
-  const { projects, loading: projectsLoading, removeProject } = useProjects();
+  const { projects, loading: projectsLoading, error: projectsError, removeProject } = useProjects();
   const { isFastConnection } = usePerformance();
   const router = useRouter();
 
@@ -194,6 +196,26 @@ export default function ProjectHubPage() {
             <ProjectCardSkeleton key={i} />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (projectsError) {
+    return (
+      <div className="flex h-full items-center justify-center pt-16">
+        <Alert variant="destructive" className="max-w-lg">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Gagal Memuat Proyek</AlertTitle>
+          <AlertDescription>
+            <p>Terjadi kesalahan saat mencoba mengambil daftar proyek Anda.</p>
+            <code className="mt-4 relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
+              {projectsError}
+            </code>
+            <p className="mt-4">
+              Silakan coba muat ulang halaman. Jika masalah berlanjut, kemungkinan ada masalah dengan konfigurasi database yang memerlukan perbaikan oleh administrator.
+            </p>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }

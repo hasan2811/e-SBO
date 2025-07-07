@@ -10,6 +10,7 @@ import type { Project } from '@/lib/types';
 interface ProjectContextType {
   projects: Project[];
   loading: boolean;
+  error: string | null; // Add error state
   addProject: (project: Project) => void;
   removeProject: (projectId: string) => void;
   updateProject: (projectId: string, data: Partial<Project>) => void;
@@ -21,6 +22,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null); // Add error state
   const unsubscribeRef = React.useRef<Unsubscribe | null>(null);
 
   const addProject = React.useCallback((newProject: Project) => {
@@ -56,15 +58,14 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     if (!user) {
       setProjects([]);
       setLoading(false);
+      setError(null); // Clear error on logout
       return;
     }
     
     setLoading(true);
+    setError(null); // Clear previous errors on new fetch
     
-    // This is the new, robust query.
-    // It finds all projects where the current user's UID is in the `memberUids` array.
-    // This is the most reliable way to get a user's projects.
-    // It requires a corresponding Firestore index.
+    // This is the robust query that should work with a simple index.
     const projectsQuery = query(
       collection(db, 'projects'),
       where('memberUids', 'array-contains', user.uid)
@@ -79,8 +80,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       });
       setProjects(userProjects);
       setLoading(false);
-    }, (error) => {
-      console.error("Error fetching projects in real-time:", error);
+    }, (err) => {
+      // Set the error state to be surfaced in the UI
+      console.error("Error fetching projects in real-time:", err);
+      setError(`Gagal memuat proyek: ${err.message}. Ini kemungkinan besar adalah masalah konfigurasi indeks database. Pastikan indeks untuk 'projects' pada 'memberUids' (array-contains) telah dibuat.`);
       setProjects([]);
       setLoading(false);
     });
@@ -92,8 +95,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user, authLoading]);
 
-
-  const value = { projects, loading, addProject, removeProject, updateProject };
+  const value = { projects, loading, error, addProject, removeProject, updateProject };
 
   return (
     <ProjectContext.Provider value={value}>
