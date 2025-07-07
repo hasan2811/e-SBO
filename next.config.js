@@ -61,27 +61,6 @@ const withPWA = require('@ducanh2912/next-pwa').default({
   ],
 });
 
-// Define security headers. HSTS is applied only in production.
-// Content-Security-Policy has been removed to fix framing issues in Firebase Studio.
-const securityHeaders = [
-    {
-        key: 'Referrer-Policy',
-        value: 'origin-when-cross-origin',
-    },
-    {
-        key: 'X-Content-Type-Options',
-        value: 'nosniff',
-    },
-    {
-        key: 'X-DNS-Prefetch-Control',
-        value: 'on',
-    },
-    {
-        key: 'Strict-Transport-Security',
-        value: 'max-age=31536000; includeSubDomains; preload',
-    },
-];
-
 const nextConfig = {
   output: 'standalone',
   typescript: {
@@ -89,15 +68,6 @@ const nextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
-  },
-  // Apply security headers
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: securityHeaders,
-      },
-    ];
   },
   experimental: {
     serverComponentsExternalPackages: [
