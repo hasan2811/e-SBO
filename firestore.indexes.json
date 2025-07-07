@@ -5,7 +5,7 @@
       "collectionGroup": "projects",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "isOpen", "order": "ASCENDING" },
+        { "fieldPath": "memberUids", "arrayConfig": "CONTAINS" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },

@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query, orderBy, where } from 'firebase/firestore';
+import { doc, runTransaction, arrayUnion, getDoc, collection, getDocs, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -55,31 +55,30 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
     const fetchJoinableProjects = async () => {
       setLoadingProjects(true);
       try {
-        // This is the new, robust query.
-        // It directly asks for open projects, ordered by creation date.
-        // This query is now supported by the new index in `firestore.indexes.json`.
-        const projectsQuery = query(
-          collection(db, 'projects'),
-          where("isOpen", "==", true),
-          orderBy("createdAt", "desc")
-        );
-        const projectsSnapshot = await getDocs(projectsQuery);
+        // This is the simplest possible query: get all projects.
+        // Filtering will happen on the client. This avoids complex queries and permission errors.
+        const projectsSnapshot = await getDocs(collection(db, 'projects'));
         
-        const allOpenProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
+        const allProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
 
         const userProjectIds = userProjects.map(p => p.id);
         
-        // Filter on the client-side to find projects the user is not yet a member of.
-        const finalJoinableProjects = allOpenProjects.filter(p => !userProjectIds.includes(p.id));
+        // Filter on the client-side to find open projects the user is not yet a member of.
+        const finalJoinableProjects = allProjects.filter(p => p.isOpen === true && !userProjectIds.includes(p.id));
 
         const projectsWithOwners = await Promise.all(
           finalJoinableProjects.map(async project => {
             let owner: UserProfile | null = null;
             if (project.ownerUid) {
-              const userDocRef = doc(db, 'users', project.ownerUid);
-              const userDocSnap = await getDoc(userDocRef);
-              if (userDocSnap.exists()) {
-                owner = userDocSnap.data() as UserProfile;
+              try {
+                const userDocRef = doc(db, 'users', project.ownerUid);
+                const userDocSnap = await getDoc(userDocRef);
+                if (userDocSnap.exists()) {
+                  owner = userDocSnap.data() as UserProfile;
+                }
+              } catch (e) {
+                // Ignore if a single user profile fails to load
+                console.warn(`Could not load owner profile for project ${project.id}`);
               }
             }
             return { ...project, owner };

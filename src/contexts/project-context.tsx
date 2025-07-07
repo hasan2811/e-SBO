@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
@@ -18,11 +18,11 @@ interface ProjectContextType {
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const { userProfile, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
-  
-  // These are for optimistic updates, they don't trigger refetches.
+  const unsubscribeRef = React.useRef<Unsubscribe | null>(null);
+
   const addProject = React.useCallback((newProject: Project) => {
     setProjects(prevProjects => {
       if (prevProjects.find(p => p.id === newProject.id)) {
@@ -41,51 +41,56 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const updateProject = React.useCallback((projectId: string, data: Partial<Project>) => {
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...data } : p));
   }, []);
-
-  // The definitive data fetching logic based on the user's profile.
+  
   React.useEffect(() => {
-    // This function will fetch project details based on an array of IDs from the user's profile.
-    const fetchProjects = async (projectIds: string[]) => {
+    if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+    }
+    
+    if (authLoading) {
       setLoading(true);
-      try {
-        const projectPromises = projectIds.map(id => getDoc(doc(db, 'projects', id)));
-        const projectSnapshots = await Promise.all(projectPromises);
-        
-        const fetchedProjects = projectSnapshots
-          .filter(snap => snap.exists())
-          .map(snap => ({ id: snap.id, ...snap.data() } as Project));
-          
-        fetchedProjects.sort((a, b) => {
+      return;
+    }
+    
+    if (!user) {
+      setProjects([]);
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    
+    // This is the new, robust query.
+    // It finds all projects where the current user's UID is in the `memberUids` array.
+    // This is the most reliable way to get a user's projects.
+    // It requires a corresponding Firestore index.
+    const projectsQuery = query(
+      collection(db, 'projects'),
+      where('memberUids', 'array-contains', user.uid)
+    );
+
+    unsubscribeRef.current = onSnapshot(projectsQuery, (snapshot) => {
+      const userProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+      userProjects.sort((a, b) => {
           const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return dateB - dateA;
-        });
-        setProjects(fetchedProjects);
-
-      } catch (error) {
-        console.error("Error fetching project details:", error);
-        setProjects([]); // Clear projects on error
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // If auth is still loading, we are also loading.
-    if (authLoading) {
-      setLoading(true);
-      setProjects([]);
-      return;
-    }
-
-    // If auth is done and we have a user with project IDs, fetch them.
-    if (userProfile && userProfile.projectIds && userProfile.projectIds.length > 0) {
-      fetchProjects(userProfile.projectIds);
-    } else {
-      // If user has no projects or no profile, stop loading and show empty list.
+      });
+      setProjects(userProjects);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching projects in real-time:", error);
       setProjects([]);
       setLoading(false);
-    }
-  }, [userProfile, authLoading]); // Re-run only when the user profile or auth state changes.
+    });
+
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
+  }, [user, authLoading]);
 
 
   const value = { projects, loading, addProject, removeProject, updateProject };
