@@ -14,6 +14,7 @@ export type PtwStatus = 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed' 
 export const RISK_LEVELS: [RiskLevel, ...RiskLevel[]] = ['Low', 'Medium', 'High', 'Critical'];
 export const OBSERVATION_STATUSES: [ObservationStatus, ...ObservationStatus[]] = ['Pending', 'In Progress', 'Completed'];
 export const INSPECTION_STATUSES: [InspectionStatus, ...InspectionStatus[]] = ['Pass', 'Fail', 'Needs Repair'];
+export const PTW_STATUSES: [PtwStatus, ...PtwStatus[]] = ['Pending Approval', 'Approved', 'Rejected', 'Closed'];
 export const EQUIPMENT_TYPES: [EquipmentType, ...EquipmentType[]] = ['Heavy Machinery', 'Hand Tool', 'Vehicle', 'Electrical', 'Other'];
 export const DEFAULT_LOCATIONS: readonly string[] = ['International', 'National', 'Local', 'Regional'];
 export const DEFAULT_COMPANIES: readonly string[] = ['Tambang', 'Migas', 'Konstruksi', 'Manufaktur'];
