@@ -1,13 +1,12 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // This rule allows any authenticated user to read and write any file.
-    // This is for development and troubleshooting ONLY.
-    // DO NOT use this in a production environment without securing your data.
+    // Aturan untuk Storage
+    // Aturan ini mengizinkan pengguna yang sudah terautentikasi untuk melakukan semua operasi:
+    // get (melihat/mengunduh), list (melihat daftar), create (mengunggah), update, dan delete.
     match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow get, list, create, update, delete: if request.auth != null;
     }
   }
 }
