@@ -1,13 +1,65 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // This rule allows any authenticated user to read and write to any document.
-    // This is for development and troubleshooting ONLY.
-    // DO NOT use this in a production environment without securing your data.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // Aturan untuk koleksi 'users'
+    match /users/{userId} {
+      // Setiap pengguna yang terautentikasi dapat membaca profil pengguna mana pun
+      allow read: if request.auth != null;
+      
+      // Pengguna hanya dapat membuat dokumen profil mereka sendiri
+      allow create: if request.auth.uid == userId;
+
+      // Pengguna hanya dapat memperbarui profil mereka sendiri
+      allow update: if request.auth.uid == userId;
+    }
+
+    // Aturan untuk koleksi 'projects'
+    match /projects/{projectId} {
+      // Setiap pengguna yang terautentikasi dapat membaca proyek mana pun
+      allow read: if request.auth != null;
+
+      // Pembuatan diizinkan untuk setiap pengguna yang terautentikasi, dan mereka harus menjadi pemilik
+      // Asumsi: ownerUid dan memberUids diatur dengan benar di sisi klien saat membuat proyek.
+      allow create: if request.auth.uid != null && request.resource.data.ownerUid == request.auth.uid;
+
+      // Pembaruan dibatasi untuk pemilik proyek
+      allow update: if request.auth.uid != null && resource.data.ownerUid == request.auth.uid;
+
+      // Penghapusan dibatasi untuk pemilik proyek
+      allow delete: if request.auth.uid != null && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Aturan generik untuk koleksi item (observations, inspections, ptws, dll.)
+    // Aturan ini mengasumsikan bahwa 'projectId' dan 'userId' (UID pembuat) adalah bidang dalam dokumen item.
+    match /{itemCollection}/{itemId} {
+      // Setiap pengguna yang terautentikasi dapat membaca item mana pun
+      allow read: if request.auth != null;
+      
+      // Pembuatan diizinkan jika pengguna terautentikasi, menyediakan projectId, dan userId cocok dengan pengirim
+      allow create: if request.auth.uid != null 
+                      && request.resource.data.projectId is string 
+                      && request.resource.data.userId == request.auth.uid;
+
+      // Pembaruan diizinkan jika pengguna adalah pembuat asli item tersebut
+      // Untuk logika pembaruan yang lebih kompleks (misalnya, pemilik proyek, peran tertentu),
+      // pertimbangkan untuk mendenormalisasi peran/kepemilikan ke dokumen item atau menggunakan Cloud Functions.
+      allow update: if request.auth.uid != null && resource.data.userId == request.auth.uid;
+      
+      // Penghapusan diizinkan untuk pembuat asli item tersebut
+      // Untuk logika penghapusan yang lebih kompleks (misalnya, pemilik proyek),
+      // pertimbangkan untuk mendenormalisasi kepemilikan ke dokumen item atau menggunakan Cloud Functions.
+      allow delete: if request.auth.uid != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // Aturan untuk notifikasi
+    match /notifications/{notificationId} {
+        // Pembacaan diizinkan hanya untuk pengguna yang dituju notifikasi
+        allow read: if request.auth.uid != null && resource.data.userId == request.auth.uid;
+        
+        // Penulisan (membuat, memperbarui) ditangani oleh logika sisi server (Admin SDK)
+        allow write: if false; 
     }
   }
 }
