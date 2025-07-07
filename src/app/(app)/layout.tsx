@@ -9,7 +9,7 @@ import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { Sidebar } from '@/components/sidebar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProjects } from '@/hooks/use-projects';
-import { PageSkeleton } from '@/components/page-skeleton';
+import { AppLoadingScreen } from '@/components/app-loading-screen';
 import { MultiActionButton } from '@/components/multi-action-button';
 import { usePerformance } from '@/contexts/performance-context';
 import { Loader2 } from 'lucide-react';
@@ -53,6 +53,12 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (authLoading) return; // Wait until authentication check is complete
 
+    // Hide splash screen once JS is loaded and auth state is determined
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+      splash.classList.add('splash-hidden');
+    }
+
     // 1. If not authenticated, redirect to login page.
     if (!user) {
       router.push('/login');
@@ -71,7 +77,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const isAppLoading = authLoading || (user && projectsLoading);
 
   if (isAppLoading) {
-    return <PageSkeleton withHeader />;
+    return <AppLoadingScreen />;
   }
   
   if (!user) {

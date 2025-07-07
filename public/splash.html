@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HSSE Tech - Splash Screen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Global Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif; /* Changed to Inter for consistency */
+            background: #ffffff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column; /* Changed to column to stack elements */
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        /* Class to gracefully hide specific elements */
+        .fade-out-elements {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 1s ease-out, visibility 1s ease-out; /* Smooth transition for hiding */
+        }
+
+        .splash-container {
+            position: relative;
+            width: 100vw; /* Use viewport width */
+            height: 100vh; /* Use viewport height */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff; /* Ensure consistent background */
+            flex-grow: 1; /* Allow container to take available space */
+        }
+
+        /* Wrapper for main content to keep it centered */
+        .main-content-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1; /* Allows it to take up space and push footer down */
+            max-width: 90vw;
+            max-height: 90vh;
+            padding: 1rem;
+        }
+
+        /* Wrapper for the animated chain logo - this will fade out */
+        #animated-chain-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0; /* Start hidden for initial fade-in */
+            animation: fadeIn 0.8s ease-out forwards; /* Fade in the chain logo */
+            animation-delay: 0.2s;
+            margin-bottom: clamp(15px, 4vw, 30px); /* Margin below chain */
+        }
+
+        /* Chain animation container */
+        .chain-container {
+            position: relative;
+            /* Responsive width and height using clamp and calc for aspect ratio */
+            --chain-container-width: clamp(120px, 20vw, 200px); /* Min, ideal (20% vw), max width */
+            width: var(--chain-container-width);
+            height: calc(var(--chain-container-width) / 2); /* Maintain approx 2:1 aspect ratio */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Chain links - more compact and responsive */
+        .chain-link {
+            position: absolute;
+            /* Responsive dimensions based on chain-container-width */
+            width: calc(0.28 * var(--chain-container-width)); /* Approx 45/160 of original */
+            height: calc(0.18 * var(--chain-container-width)); /* Approx 30/160 of original */
+            border-radius: calc(0.09 * var(--chain-container-width)); /* Approx 15/160 of original */
+            background-color: transparent;
+            border: calc(0.04 * var(--chain-container-width)) solid #0369a1; /* Responsive border thickness */
+            opacity: 0;
+        }
+
+        /* First chain link */
+        .chain-link:nth-child(1) {
+            left: calc(0.18 * var(--chain-container-width)); /* Adjusted position for responsiveness */
+            animation: firstLinkAppear 3s infinite;
+        }
+
+        /* Middle link as a horizontal line with rounded ends */
+        .chain-link-middle {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            /* Responsive dimensions */
+            width: calc(0.18 * var(--chain-container-width)); /* Approx 30/160 of original */
+            height: calc(0.04 * var(--chain-container-width)); /* Approx 7/160 of original */
+            background-color: #f59e0b; /* Accent orange */
+            border-radius: calc(0.02 * var(--chain-container-width)); /* Responsive border-radius */
+            z-index: 2;
+            opacity: 0;
+            animation: middleLinkAppear 3s infinite;
+        }
+
+        /* Third chain link */
+        .chain-link:nth-child(3) {
+            left: calc(0.53 * var(--chain-container-width)); /* Adjusted position for responsiveness */
+            animation: lastLinkAppear 3s infinite;
+        }
+
+        /* Chain shadow effect */
+        .chain-shadow {
+            position: absolute;
+            /* Responsive dimensions and position */
+            width: calc(0.75 * var(--chain-container-width)); /* Approx 120/160 of original */
+            height: calc(0.075 * var(--chain-container-width)); /* Approx 12/160 of original */
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%;
+            bottom: calc(-0.09 * var(--chain-container-width)); /* Responsive bottom position */
+            opacity: 0;
+            animation: shadowAppear 3s infinite;
+        }
+
+        .app-name {
+            color: #0c4a6e; /* Darker blue for prominence */
+            font-size: clamp(24px, 5vw, 40px); /* Responsive font size */
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-top: clamp(15px, 4vw, 30px); /* Responsive margin */
+            margin-bottom: clamp(5px, 2vw, 15px); /* Responsive margin */
+            opacity: 1; /* Always visible */
+            animation: none; /* Remove fadeIn animation */
+        }
+
+        .app-tagline {
+            color: #0369a1; /* Primary blue */
+            font-size: clamp(14px, 2.5vw, 20px); /* Responsive font size */
+            letter-spacing: 1px;
+            margin-bottom: clamp(20px, 5vw, 40px); /* Responsive margin */
+            text-align: center;
+            opacity: 1; /* Always visible */
+            animation: none; /* Remove fadeIn animation */
+        }
+
+        .loading-bar {
+            width: clamp(200px, 30vw, 300px); /* Responsive width */
+            height: clamp(3px, 0.5vw, 5px); /* Responsive height */
+            background-color: rgba(3, 105, 161, 0.2); /* Light blue for background */
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+            margin-top: clamp(5px, 2vw, 15px); /* Space from tagline */
+        }
+
+        .loading-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background-color: #0369a1; /* Primary blue for progress */
+            animation: loading 3s ease-in-out forwards; /* Loading animation runs once and stays at end */
+        }
+
+        /* Keyframe Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes firstLinkAppear {
+            0% { opacity: 0; transform: translateX(-15px); }
+            20% { opacity: 1; transform: translateX(0); }
+            80%, 100% { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes middleLinkAppear {
+            0%, 15% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.5); }
+            25%, 35% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.6); }
+            45% { box-shadow: 0 0 25px rgba(245, 158, 11, 0.8); } /* Brighter flash */
+            80%, 100% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.6); }
+        }
+        
+        @keyframes lastLinkAppear {
+            0%, 30% { opacity: 0; transform: translateX(15px); }
+            50% { opacity: 1; transform: translateX(0); }
+            80%, 100% { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes shadowAppear {
+            0%, 10% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 0.5; transform: scale(1); }
+            80%, 100% { opacity: 0.5; transform: scale(1); }
+        }
+        
+        @keyframes loading {
+            0% { width: 0%; }
+            100% { width: 100%; } /* Full at the end */
+        }
+        
+        /* Connection flash effect */
+        .connection-flash {
+            position: absolute;
+            /* Responsive dimensions and blur */
+            width: clamp(8px, 1.5vw, 12px);
+            height: clamp(8px, 1.5vw, 12px);
+            background-color: rgba(245, 158, 11, 0.8); /* Accent orange with transparency */
+            border-radius: 50%;
+            filter: blur(clamp(2px, 0.5vw, 4px)); /* Responsive blur */
+            opacity: 0;
+        }
+        
+        .flash-1 {
+            left: calc(0.35 * var(--chain-container-width)); /* Adjusted position for responsiveness */
+            animation: flashEffect 3s infinite 0.8s;
+        }
+        
+        .flash-2 {
+            left: calc(0.52 * var(--chain-container-width)); /* Adjusted position for responsiveness */
+            animation: flashEffect 3s infinite 1.6s;
+        }
+        
+        @keyframes flashEffect {
+            0%, 95% { opacity: 0; transform: scale(0.5); }
+            5% { opacity: 1; transform: scale(1.5); }
+            15% { opacity: 0; transform: scale(0.5); }
+        }
+
+        /* Style for the "HSSE Tech" text at the very bottom */
+        .footer-brand {
+            color: #a0a0a0; /* Light gray for elegant look */
+            font-size: clamp(12px, 2vw, 16px); /* Responsive font size */
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            margin-top: auto; /* Pushes it to the bottom of the flex container */
+            padding-bottom: clamp(10px, 3vw, 20px); /* Responsive bottom padding */
+            opacity: 1; /* Always visible */
+            animation: none; /* Remove fadeIn animation */
+        }
+    </style>
+</head>
+<body>
+    <div class="splash-container">
+        <div class="main-content-wrapper">
+            <div class="app-name">HSSE Tech</div>
+            <div class="app-tagline">Health, Safety, Security &amp; Environment</div>
+
+            <!-- Wrapper for the animated chain logo - this will fade out -->
+            <div id="animated-chain-wrapper">
+                <div class="chain-container">
+                    <div class="chain-link"></div>
+                    <div class="chain-link-middle"></div>
+                    <div class="chain-link"></div>
+                    <div class="connection-flash flash-1"></div>
+                    <div class="connection-flash flash-2"></div>
+                    <div class="chain-shadow"></div>
+                </div>
+            </div>
+
+            <!-- Loading bar - this will fill and then fade out -->
+            <div id="loading-bar-wrapper" class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+        </div>
+        
+        <!-- "HSSE Tech" text at the very bottom -->
+        <div class="footer-brand">HSSE Tech</div>
+    </div>
+
+    <script>
+        // Timeout to simulate app loading.
+        // After 3 seconds, the animated chain logo and loading bar will fade out.
+        setTimeout(() => {
+            console.log('HSSE Tech App is ready to load!');
+            const animatedChainWrapper = document.getElementById('animated-chain-wrapper');
+            const loadingBarWrapper = document.getElementById('loading-bar-wrapper');
+
+            if (animatedChainWrapper) {
+                animatedChainWrapper.classList.add('fade-out-elements'); // Add class to hide animated chain
+            }
+            if (loadingBarWrapper) {
+                loadingBarWrapper.classList.add('fade-out-elements'); // Add class to hide loading bar
+            }
+            // The brand elements (app-name, app-tagline, footer-brand) will remain visible.
+        }, 3000); // Animated elements visible for 3 seconds before fading out
+    </script>
+</body>
+</html>

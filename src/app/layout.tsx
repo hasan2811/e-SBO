@@ -28,7 +28,37 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              #splash-screen {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: white;
+                z-index: 100;
+                opacity: 1;
+                transition: opacity 0.5s ease-out;
+                pointer-events: none;
+              }
+              .splash-hidden {
+                opacity: 0 !important;
+              }
+            `,
+          }}
+        />
+      </head>
       <body className={cn(inter.className, "antialiased")}>
+         <noscript>
+          <iframe
+            id="splash-screen"
+            src="/splash.html"
+            style={{ border: 'none', width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 100 }}
+          ></iframe>
+        </noscript>
         <AppProviders>
           {children}
         </AppProviders>
