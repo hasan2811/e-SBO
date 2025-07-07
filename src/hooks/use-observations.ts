@@ -40,9 +40,9 @@ export function useObservations(projectId: string | null, itemTypeFilter: AllIte
       return;
     }
 
-    // A fetch is about to happen. Clear old items immediately and set loading state.
-    // This prevents flashes of stale content from a previous page.
-    setItems([]);
+    // A fetch is about to happen. Set loading state, but DO NOT clear items.
+    // This prevents the flash of an empty page. The new data from the listener
+    // will replace the old data seamlessly.
     setIsLoading(true);
     setError(null);
     
