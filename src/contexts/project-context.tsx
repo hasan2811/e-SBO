@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, getDocs, where, documentId, Unsubscribe } from 'firebase/firestore';
+import { collection, query, getDocs, where, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
