@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -183,21 +182,23 @@ export default function ProjectHubPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-9 w-48" />
-            <Skeleton className="h-4 w-72" />
+      <div className="max-w-3xl mx-auto w-full">
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-9 w-48" />
+              <Skeleton className="h-4 w-72" />
+            </div>
+            <div className="flex-shrink-0 flex gap-2 sm:gap-4">
+              <Skeleton className="h-10 w-36 rounded-md" />
+              <Skeleton className="h-10 w-32 rounded-md" />
+            </div>
           </div>
-          <div className="flex-shrink-0 flex gap-2 sm:gap-4">
-            <Skeleton className="h-10 w-36 rounded-md" />
-            <Skeleton className="h-10 w-32 rounded-md" />
+          <div className="grid grid-cols-1 gap-6">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <ProjectCardSkeleton key={i} />
+            ))}
           </div>
-        </div>
-        <div className="mx-auto grid max-w-3xl grid-cols-1 gap-6">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <ProjectCardSkeleton key={i} />
-          ))}
         </div>
       </div>
     );
@@ -225,74 +226,76 @@ export default function ProjectHubPage() {
 
   return (
     <>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold tracking-tight">Project Hub</h1>
-            <p className="text-muted-foreground mt-1">
-                {projects.length > 0 
-                ? `Anda memiliki ${projects.length} proyek. Pilih satu untuk melanjutkan.` 
-                : `Selamat datang, ${userProfile?.displayName}. Mulai dengan membuat atau bergabung dengan proyek.`
-                }
-            </p>
-          </div>
-           {projects.length > 0 && (
-                <div className="flex-shrink-0 flex gap-2 sm:gap-4">
-                    <Button onClick={() => setCreateDialogOpen(true)}>
-                        <FolderPlus />
-                        Buat Proyek
-                    </Button>
-                    <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
-                        <LogIn />
-                        Gabung Proyek
-                    </Button>
-                </div>
-            )}
-        </div>
-
-        {projects.length > 0 ? (
-          <motion.div 
-            className="mx-auto grid max-w-3xl grid-cols-1 gap-6"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {projects.map((project) => (
-                <motion.div key={project.id} variants={itemVariants}>
-                    <ProjectCard 
-                      project={project}
-                      onManageClick={() => setProjectToManage(project)}
-                      onLeaveClick={() => setProjectToLeave(project)}
-                      onDeleteClick={() => setProjectToDelete(project)}
-                    />
-                </motion.div>
-              ))}
-          </motion.div>
-        ) : (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-4">
-                <Card className="w-full max-w-md shadow-sm">
-                    <CardHeader className="p-8">
-                        <div className="mx-auto bg-primary/10 rounded-full p-4 w-fit mb-4">
-                            <PackageOpen className="h-12 w-12 text-primary" />
-                        </div>
-                        <CardTitle className="text-2xl font-bold">Mulai Proyek Pertama Anda</CardTitle>
-                        <CardDescription className="mt-2 max-w-sm mx-auto">
-                        Anda belum menjadi anggota proyek apa pun. Buat yang baru atau gabung dengan tim Anda.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardFooter className="flex flex-col sm:flex-row gap-4 p-6 bg-muted/50 border-t">
-                        <Button onClick={() => setCreateDialogOpen(true)} className="w-full">
-                        <FolderPlus />
-                        Buat Proyek Baru
-                        </Button>
-                        <Button variant="outline" onClick={() => setJoinDialogOpen(true)} className="w-full">
-                        <LogIn />
-                        Gabung Proyek
-                        </Button>
-                    </CardFooter>
-                </Card>
+      <div className="max-w-3xl mx-auto w-full">
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold tracking-tight">Project Hub</h1>
+              <p className="text-muted-foreground mt-1">
+                  {projects.length > 0 
+                  ? `Anda memiliki ${projects.length} proyek. Pilih satu untuk melanjutkan.` 
+                  : `Selamat datang, ${userProfile?.displayName}. Mulai dengan membuat atau bergabung dengan proyek.`
+                  }
+              </p>
             </div>
-        )}
+             {projects.length > 0 && (
+                  <div className="flex-shrink-0 flex gap-2 sm:gap-4">
+                      <Button onClick={() => setCreateDialogOpen(true)}>
+                          <FolderPlus />
+                          Buat Proyek
+                      </Button>
+                      <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
+                          <LogIn />
+                          Gabung Proyek
+                      </Button>
+                  </div>
+              )}
+          </div>
+
+          {projects.length > 0 ? (
+            <motion.div 
+              className="grid grid-cols-1 gap-6"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {projects.map((project) => (
+                  <motion.div key={project.id} variants={itemVariants}>
+                      <ProjectCard 
+                        project={project}
+                        onManageClick={() => setProjectToManage(project)}
+                        onLeaveClick={() => setProjectToLeave(project)}
+                        onDeleteClick={() => setProjectToDelete(project)}
+                      />
+                  </motion.div>
+                ))}
+            </motion.div>
+          ) : (
+              <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-4">
+                  <Card className="w-full max-w-md shadow-sm">
+                      <CardHeader className="p-8">
+                          <div className="mx-auto bg-primary/10 rounded-full p-4 w-fit mb-4">
+                              <PackageOpen className="h-12 w-12 text-primary" />
+                          </div>
+                          <CardTitle className="text-2xl font-bold">Mulai Proyek Pertama Anda</CardTitle>
+                          <CardDescription className="mt-2 max-w-sm mx-auto">
+                          Anda belum menjadi anggota proyek apa pun. Buat yang baru atau gabung dengan tim Anda.
+                          </CardDescription>
+                      </CardHeader>
+                      <CardFooter className="flex flex-col sm:flex-row gap-4 p-6 bg-muted/50 border-t">
+                          <Button onClick={() => setCreateDialogOpen(true)} className="w-full">
+                          <FolderPlus />
+                          Buat Proyek Baru
+                          </Button>
+                          <Button variant="outline" onClick={() => setJoinDialogOpen(true)} className="w-full">
+                          <LogIn />
+                          Gabung Proyek
+                          </Button>
+                      </CardFooter>
+                  </Card>
+              </div>
+          )}
+        </div>
       </div>
 
       <JoinProjectDialog isOpen={isJoinDialogOpen} onOpenChange={setJoinDialogOpen} />
