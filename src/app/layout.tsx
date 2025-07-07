@@ -7,8 +7,8 @@ import '@/app/globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
-// SVG icon encoded as a Base64 data URI for maximum browser compatibility and to bypass caching issues.
-const logoSvgDataUri = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMjlBQkUyIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDJMMiA2djVjMCA1LjU1IDMuODQgMTAuNzQgOSAxMiA1LjE2LTEuMjYgOS02LjQ1IDktMTJWNmwLTEwLTR6IiAvPjxwYXRoIGQ9Im05IDEyIDIgMiA0LTQiIC8+PC9zdmc+";
+// Using URL-encoded SVG for the favicon to ensure cache busting and compatibility.
+const logoSvgDataUri = "data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2329ABE2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M12 2L2 6v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-10-4z' /%3e%3cpath d='m9 12 2 2 4-4' /%3e%3c/svg%3e";
 
 
 export const metadata: Metadata = {
