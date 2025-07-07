@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, getDocs, where, documentId } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
@@ -18,7 +18,7 @@ interface ProjectContextType {
 export const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const { user, userProfile, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
   
@@ -42,49 +42,47 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
+    let unsubscribe: Unsubscribe | null = null;
+    
     if (authLoading) {
       setLoading(true);
       return;
     }
 
-    if (!user || !userProfile) {
+    if (!user) {
       setProjects([]);
       setLoading(false);
+      if (unsubscribe) unsubscribe();
       return;
     }
 
-    const fetchProjects = async () => {
-        setLoading(true);
-        try {
-            const userProjectIds = userProfile.projectIds || [];
-            
-            if (userProjectIds.length === 0) {
-              setProjects([]);
-              setLoading(false);
-              return;
-            }
+    setLoading(true);
+    
+    // This is the new, more robust query.
+    // It finds all projects where the current user's UID is in the memberUids array,
+    // which is the true source of membership information. It is sorted by creation date.
+    const projectsQuery = query(
+      collection(db, 'projects'),
+      where('memberUids', 'array-contains', user.uid),
+      orderBy('createdAt', 'desc')
+    );
 
-            const projectsCollection = collection(db, 'projects');
-            const q = query(projectsCollection, where(documentId(), 'in', userProjectIds));
-            const snapshot = await getDocs(q);
-            
-            const fetchedProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
-            
-            // Safe sorting client-side
-            fetchedProjects.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    unsubscribe = onSnapshot(projectsQuery, (snapshot) => {
+      const fetchedProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+      setProjects(fetchedProjects);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching projects. This might be due to a missing Firestore index.", error);
+      setProjects([]);
+      setLoading(false);
+    });
 
-            setProjects(fetchedProjects);
-
-        } catch (error) {
-            console.error("Fatal: Could not fetch projects. This can be a missing Firestore index or a network issue.", error);
-            // Don't clear projects on error, might be a temporary network issue.
-        } finally {
-            setLoading(false);
-        }
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
-
-    fetchProjects();
-  }, [user, userProfile, authLoading]);
+  }, [user, authLoading]);
 
   const value = { projects, loading, addProject, removeProject, updateProject };
 
