@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import type { AllItems, Observation, Inspection, Ptw, RiskLevel } from '@/lib/types';
 import { PtwStatusBadge, InspectionStatusBadge } from '@/components/status-badges';
 import { format } from 'date-fns';
-import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck, Clock, CheckCircle2, User, Trash2 } from 'lucide-react';
+import { Sparkles, Loader2, Search, Eye, X, ClipboardList, Wrench, FileSignature, SearchCheck, Clock, CheckCircle2, User, Trash2, MoreVertical, ListChecks, Filter, FileDown, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,10 @@ import { usePerformance } from '@/contexts/performance-context';
 import { ObservationContext } from '@/contexts/observation-context';
 import { Checkbox } from './ui/checkbox';
 import { cn } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { exportToExcel } from '@/lib/export';
+import { RISK_LEVELS, OBSERVATION_STATUSES, INSPECTION_STATUSES, PTW_STATUSES } from '@/lib/types';
 
 
 const ITEMS_PER_PAGE = 10;
@@ -268,16 +272,22 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
   const [selectedPtwId, setSelectedPtwId] = React.useState<string | null>(null);
   
+  // --- Filter and Search State ---
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [isSearchVisible, setIsSearchVisible] = React.useState(false);
+  const [isFilterVisible, setIsFilterVisible] = React.useState(false);
+  const [statusFilter, setStatusFilter] = React.useState('all');
+  const [riskFilter, setRiskFilter] = React.useState('all');
+
 
   const [visibleCount, setVisibleCount] = React.useState(ITEMS_PER_PAGE);
   const [isLoadingMore, setIsLoadingMore] = React.useState(false);
 
-  // State for bulk actions
+  // --- Bulk Actions State ---
   const [isSelectionMode, setIsSelectionMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [isBulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
+
   
   const triggeredOpen = React.useRef(false);
   
@@ -300,17 +310,49 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
     openItemFromUrl();
   }, [itemIdToOpen, isLoading, itemTypeFilter, getObservationById, getInspectionById, getPtwById, pathname, router, toast]);
 
+  const filterOptions = React.useMemo(() => {
+    const all = { value: 'all', label: 'Semua' };
+    let statusOptions = [all];
+    let riskOptions = [all];
+
+    switch (itemTypeFilter) {
+      case 'observation':
+        statusOptions.push(...OBSERVATION_STATUSES.map(s => ({ value: s, label: s })));
+        riskOptions.push(...RISK_LEVELS.map(r => ({ value: r, label: r })));
+        break;
+      case 'inspection':
+        statusOptions.push(...INSPECTION_STATUSES.map(s => ({ value: s, label: s })));
+        break;
+      case 'ptw':
+        statusOptions.push(...PTW_STATUSES.map(s => ({ value: s, label: s })));
+        break;
+    }
+    return { statusOptions, riskOptions };
+  }, [itemTypeFilter]);
+
   const filteredData = React.useMemo(() => {
-    const items = itemsForFeed as AllItems[];
-    if (!searchTerm) return items;
-    const lowercasedSearch = searchTerm.toLowerCase();
-    return items.filter(item => {
-        if (item.itemType === 'observation') return item.findings.toLowerCase().includes(lowercasedSearch) || item.recommendation.toLowerCase().includes(lowercasedSearch) || item.company.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
-        if (item.itemType === 'inspection') return item.findings.toLowerCase().includes(lowercasedSearch) || item.equipmentName.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
-        if (item.itemType === 'ptw') return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
-        return false;
-    });
-  }, [itemsForFeed, searchTerm]);
+    let items = itemsForFeed as AllItems[];
+
+    if (searchTerm) {
+        const lowercasedSearch = searchTerm.toLowerCase();
+        items = items.filter(item => {
+            if (item.itemType === 'observation') return item.findings.toLowerCase().includes(lowercasedSearch) || item.recommendation.toLowerCase().includes(lowercasedSearch) || item.company.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
+            if (item.itemType === 'inspection') return item.findings.toLowerCase().includes(lowercasedSearch) || item.equipmentName.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
+            if (item.itemType === 'ptw') return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
+            return false;
+        });
+    }
+
+    if (statusFilter !== 'all') {
+        items = items.filter(item => item.status === statusFilter);
+    }
+    
+    if (itemTypeFilter === 'observation' && riskFilter !== 'all') {
+        items = items.filter(item => (item as Observation).riskLevel === riskFilter);
+    }
+
+    return items;
+  }, [itemsForFeed, searchTerm, statusFilter, riskFilter, itemTypeFilter]);
 
   const itemsToDisplay = React.useMemo(() => filteredData.slice(0, visibleCount), [filteredData, visibleCount]);
   const hasMore = visibleCount < filteredData.length;
@@ -341,6 +383,31 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
         setSelectedIds(new Set());
     }
   };
+  
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setRiskFilter('all');
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+        if (filteredData.length === 0) {
+            toast({ variant: 'destructive', title: 'Tidak Ada Data', description: 'Tidak ada data untuk diekspor dengan filter saat ini.' });
+            return;
+        }
+        const fileName = `${title.replace(/\s/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}`;
+        const success = await exportToExcel(filteredData, fileName);
+        if (success) {
+            toast({ title: 'Ekspor Dimulai', description: 'File Excel Anda sedang diunduh.' });
+        }
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Ekspor Gagal', description: 'Terjadi kesalahan saat mengekspor data.' });
+    } finally {
+        setIsExporting(false);
+    }
+  };
 
   const itemsToDelete = React.useMemo(() => {
     return (itemsForFeed as AllItems[]).filter(item => selectedIds.has(item.id));
@@ -352,7 +419,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
         inspection: { icon: Wrench, title: 'Belum Ada Inspeksi', text: 'Belum ada laporan inspeksi untuk proyek ini.' },
         ptw: { icon: FileSignature, title: 'Belum Ada Izin Kerja', text: 'Belum ada izin kerja untuk proyek ini.' },
     };
-    if (searchTerm) return <div className="text-center py-16 text-muted-foreground bg-card rounded-lg border-dashed"><Search className="mx-auto h-12 w-12" /><h3 className="mt-4 text-xl font-semibold">Tidak Ada Hasil</h3><p className="mt-2 text-sm max-w-xs mx-auto">Tidak ada laporan yang cocok dengan pencarian Anda.</p></div>;
+    if (searchTerm || statusFilter !== 'all' || riskFilter !== 'all') return <div className="text-center py-16 text-muted-foreground bg-card rounded-lg border-dashed"><Search className="mx-auto h-12 w-12" /><h3 className="mt-4 text-xl font-semibold">Tidak Ada Hasil</h3><p className="mt-2 text-sm max-w-xs mx-auto">Tidak ada laporan yang cocok dengan filter Anda.</p></div>;
     const currentType = messages[itemTypeFilter];
     return <div className="text-center py-16 text-muted-foreground bg-card rounded-lg border-dashed"><currentType.icon className="mx-auto h-12 w-12" /><h3 className="mt-4 text-xl font-semibold">{currentType.title}</h3><p className="mt-2 text-sm max-w-xs mx-auto">{currentType.text}</p></div>;
   }
@@ -383,22 +450,65 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
             ) : (
                 <>
                     <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-                    <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => setIsSearchVisible(prev => !prev)}><Search className="h-5 w-5"/><span className="sr-only">Cari</span></Button>
-                        <Button variant="ghost" onClick={() => handleSelectionMode(true)}>Pilih</Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                              <MoreVertical />
+                              <span className="sr-only">Opsi Lainnya</span>
+                          </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => setIsFilterVisible(prev => !prev)}>
+                              <Filter /><span>Filter & Cari</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleSelectionMode(true)}>
+                              <ListChecks /><span>Pilih Laporan</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onSelect={handleExport} disabled={isExporting}>
+                              <FileDown /><span>Ekspor ke Excel</span>
+                          </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                 </>
             )}
         </div>
         
         <AnimatePresence>
-        {isSearchVisible && !isSelectionMode && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: isFastConnection ? 0.2 : 0 }} className="overflow-hidden">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Cari berdasarkan temuan, lokasi, perusahaan..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-full" autoFocus/>
-                    {searchTerm && <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}><X className="h-4 w-4"/></Button>}
-                </div>
+        {isFilterVisible && !isSelectionMode && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                <Card className="p-4">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="relative sm:col-span-2 lg:col-span-2">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="Cari berdasarkan kata kunci..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-full" autoFocus/>
+                            {searchTerm && <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}><X className="h-4 w-4"/></Button>}
+                        </div>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger><SelectValue/></SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectLabel>Status</SelectLabel>
+                                    {filterOptions.statusOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                        {itemTypeFilter === 'observation' && (
+                            <Select value={riskFilter} onValueChange={setRiskFilter}>
+                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectLabel>Tingkat Risiko</SelectLabel>
+                                        {filterOptions.riskOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
+                        )}
+                        <Button variant="ghost" onClick={handleResetFilters} className="sm:col-span-2 lg:col-span-4 mt-2">
+                           <RotateCcw /> Reset Filter
+                        </Button>
+                    </div>
+                </Card>
             </motion.div>
         )}
         </AnimatePresence>
@@ -427,7 +537,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
             <div className="flex justify-center mt-6">
                 <Button onClick={loadMore} variant="outline" disabled={isLoadingMore}>
                     {isLoadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Load More
+                    Muat Lebih Banyak
                 </Button>
             </div>
         )}
