@@ -77,7 +77,9 @@ const nextConfig = {
       '@google-cloud/firestore',
       '@opentelemetry/sdk-node',
       '@opentelemetry/exporter-jaeger',
-      'firebase-admin'
+      'firebase-admin',
+      'handlebars',
+      'dotprompt'
     ],
   },
   images: {
