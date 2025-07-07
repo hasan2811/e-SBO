@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, onSnapshot, Unsubscribe, orderBy, where } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import type { Project } from '@/lib/types';
@@ -22,6 +22,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
   
+  // These are for optimistic updates, they don't trigger refetches.
   const addProject = React.useCallback((newProject: Project) => {
     setProjects(prevProjects => {
       if (prevProjects.find(p => p.id === newProject.id)) {
@@ -41,44 +42,50 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...data } : p));
   }, []);
 
-
+  // The definitive data fetching logic based on the user's profile.
   React.useEffect(() => {
-    let unsubscribe: Unsubscribe | null = null;
-    
-    // Stop if authentication is still loading or there's no user profile
-    if (authLoading || !userProfile) {
+    // This function will fetch project details based on an array of IDs from the user's profile.
+    const fetchProjects = async (projectIds: string[]) => {
+      setLoading(true);
+      try {
+        const projectPromises = projectIds.map(id => getDoc(doc(db, 'projects', id)));
+        const projectSnapshots = await Promise.all(projectPromises);
+        
+        const fetchedProjects = projectSnapshots
+          .filter(snap => snap.exists())
+          .map(snap => ({ id: snap.id, ...snap.data() } as Project));
+          
+        fetchedProjects.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+        setProjects(fetchedProjects);
+
+      } catch (error) {
+        console.error("Error fetching project details:", error);
+        setProjects([]); // Clear projects on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // If auth is still loading, we are also loading.
+    if (authLoading) {
       setLoading(true);
       setProjects([]);
       return;
     }
 
-    // THIS IS THE NEW, ROBUST LOGIC.
-    // It directly queries the projects collection for documents where the current user's UID
-    // is present in the `memberUids` array. This is the standard and most reliable way
-    // to fetch projects a user belongs to.
-    const q = query(
-      collection(db, 'projects'),
-      where('memberUids', 'array-contains', userProfile.uid),
-      orderBy('createdAt', 'desc')
-    );
-
-    unsubscribe = onSnapshot(q, (snapshot) => {
-      const userProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
-      setProjects(userProjects);
-      setLoading(false);
-    }, (error) => {
-      // This error handler is crucial for debugging. It will now show the REAL error.
-      console.error("Error fetching projects in real-time:", error);
+    // If auth is done and we have a user with project IDs, fetch them.
+    if (userProfile && userProfile.projectIds && userProfile.projectIds.length > 0) {
+      fetchProjects(userProfile.projectIds);
+    } else {
+      // If user has no projects or no profile, stop loading and show empty list.
       setProjects([]);
       setLoading(false);
-    });
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [authLoading, userProfile]);
+    }
+  }, [userProfile, authLoading]); // Re-run only when the user profile or auth state changes.
 
 
   const value = { projects, loading, addProject, removeProject, updateProject };
