@@ -194,8 +194,8 @@ export default function ProjectHubPage() {
             <Skeleton className="h-10 w-32 rounded-md" />
           </div>
         </div>
-        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="mx-auto grid max-w-3xl grid-cols-1 gap-6">
+          {Array.from({ length: 2 }).map((_, i) => (
             <ProjectCardSkeleton key={i} />
           ))}
         </div>
@@ -252,7 +252,7 @@ export default function ProjectHubPage() {
 
         {projects.length > 0 ? (
           <motion.div 
-            className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            className="mx-auto grid max-w-3xl grid-cols-1 gap-6"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
