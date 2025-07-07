@@ -1,14 +1,14 @@
+
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import { AppProviders } from '@/components/app-providers';
-
 import '@/app/globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'HSSE Tech',
+  title: 'InspectWise Dashboard',
   description: 'HSSE Observation and Analysis Platform',
   manifest: '/manifest.json',
   icons: {
@@ -29,12 +29,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://www.googleapis.com" />
-        <link rel="preconnect" href="https://firebase.googleapis.com" />
-        <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
-        <link rel="preconnect" href="https://hssetech-e1710.firebaseapp.com" />
-      </head>
       <body className={cn(inter.className, "antialiased")}>
         <AppProviders>
           {children}
