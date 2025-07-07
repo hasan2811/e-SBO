@@ -102,7 +102,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
         <div className="flex-1 md:grid md:grid-cols-[220px_1fr]">
           {projectId && <Sidebar projectId={projectId} />}
           <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 overflow-y-auto">
-            <div className="max-w-7xl mx-auto h-full">
+            <div className="max-w-7xl mx-auto">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={pathname}
