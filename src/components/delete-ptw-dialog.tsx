@@ -43,8 +43,8 @@ export function DeletePtwDialog({
     // 1. Optimistic UI update
     removeItem(ptw.id, 'ptw');
     toast({
-      title: 'Izin Kerja Dihapus',
-      description: `Izin kerja "${ptw.referenceId}" telah dihapus dari tampilan.`,
+      title: 'PTW Deleted',
+      description: `Permit to Work "${ptw.referenceId}" has been removed from view.`,
     });
     onSuccess();
     onOpenChange(false);
@@ -64,11 +64,11 @@ export function DeletePtwDialog({
         }
         await Promise.all(storagePromises);
       } catch (error) {
-        console.error("Gagal menghapus PTW dari server:", error);
+        console.error("Failed to delete PTW from server:", error);
         toast({
           variant: 'destructive',
-          title: 'Sinkronisasi Gagal',
-          description: 'Izin kerja gagal dihapus dari server. Harap segarkan halaman.',
+          title: 'Sync Failed',
+          description: 'The PTW failed to delete from the server. Please refresh the page.',
         });
       }
     };
@@ -80,13 +80,13 @@ export function DeletePtwDialog({
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Anda yakin ingin menghapus ini?</AlertDialogTitle>
+          <AlertDialogTitle>Are you sure you want to delete this?</AlertDialogTitle>
           <AlertDialogDescription>
-            Tindakan ini tidak dapat dibatalkan. Ini akan menghapus Izin Kerja ini secara permanen, termasuk dokumen JSA terkait.
+            This action cannot be undone. It will permanently delete this Permit to Work, including the associated JSA document.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
@@ -97,7 +97,7 @@ export function DeletePtwDialog({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            Ya, hapus
+            Yes, delete
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

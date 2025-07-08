@@ -43,8 +43,8 @@ export function DeleteObservationDialog({
     // 1. Optimistic UI update: Remove the item from the local state immediately.
     removeItem(observation.id, 'observation');
     toast({
-      title: 'Laporan Dihapus',
-      description: `Laporan observasi "${observation.referenceId}" telah dihapus dari tampilan.`,
+      title: 'Report Deleted',
+      description: `Observation report "${observation.referenceId}" has been removed from view.`,
     });
     onSuccess(); // Closes the detail sheet
     onOpenChange(false); // Closes this dialog
@@ -65,11 +65,11 @@ export function DeleteObservationDialog({
         await Promise.all(storagePromises);
 
       } catch (error) {
-        console.error("Gagal menghapus observasi dari server:", error);
+        console.error("Failed to delete observation from server:", error);
         toast({
           variant: 'destructive',
-          title: 'Sinkronisasi Gagal',
-          description: 'Laporan gagal dihapus dari server. Harap segarkan halaman.',
+          title: 'Sync Failed',
+          description: 'The report failed to delete from the server. Please refresh the page.',
         });
         // In a more robust app, we might re-add the item to the context here.
       }
@@ -82,13 +82,13 @@ export function DeleteObservationDialog({
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Anda yakin ingin menghapus ini?</AlertDialogTitle>
+          <AlertDialogTitle>Are you sure you want to delete this?</AlertDialogTitle>
           <AlertDialogDescription>
-            Tindakan ini tidak dapat dibatalkan. Ini akan menghapus laporan observasi ini secara permanen, termasuk fotonya.
+            This action cannot be undone. This will permanently delete this observation report, including its photos.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
@@ -99,7 +99,7 @@ export function DeleteObservationDialog({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            Ya, hapus
+            Yes, delete
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

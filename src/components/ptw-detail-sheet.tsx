@@ -86,12 +86,12 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                           <ArrowLeft />
                       </Button>
                       <div className="flex flex-col">
-                          <SheetTitle>Detail Izin Kerja</SheetTitle>
+                          <SheetTitle>PTW Details</SheetTitle>
                           <SheetDescription>{ptw.referenceId}</SheetDescription>
                       </div>
                   </div>
                   {canDelete && (
-                    <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus PTW">
+                    <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Delete PTW">
                         <Trash2 />
                     </Button>
                   )}
@@ -102,24 +102,24 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                 <div className="space-y-6 p-4">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Detail Izin Kerja</CardTitle>
+                      <CardTitle>Permit Details</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <DetailRow icon={User} label="Dikirim Oleh" value={ptw.submittedBy} />
-                      <DetailRow icon={Calendar} label="Tanggal Kirim" value={format(new Date(ptw.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />
-                      <DetailRow icon={Building} label="Kontraktor" value={ptw.contractor} />
-                      <DetailRow icon={MapPin} label="Lokasi" value={ptw.location} />
-                      {projectName && <DetailRow icon={Folder} label="Proyek" value={projectName} />}
+                      <DetailRow icon={User} label="Submitted By" value={ptw.submittedBy} />
+                      <DetailRow icon={Calendar} label="Date Submitted" value={format(new Date(ptw.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />
+                      <DetailRow icon={Building} label="Contractor" value={ptw.contractor} />
+                      <DetailRow icon={MapPin} label="Location" value={ptw.location} />
+                      {projectName && <DetailRow icon={Folder} label="Project" value={projectName} />}
                     </CardContent>
                   </Card>
 
                   <Card>
                     <CardHeader>
-                      <CardTitle>Deskripsi & Status</CardTitle>
+                      <CardTitle>Description & Status</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div>
-                        <h4 className="font-semibold text-sm mb-1">Deskripsi Pekerjaan</h4>
+                        <h4 className="font-semibold text-sm mb-1">Work Description</h4>
                         <p className="text-sm text-muted-foreground">{ptw.workDescription}</p>
                       </div>
                       <div>
@@ -132,14 +132,14 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                    {ptw.status === 'Approved' && (
                     <Card>
                       <CardHeader>
-                        <CardTitle>Detail Persetujuan</CardTitle>
+                        <CardTitle>Approval Details</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                          <DetailRow icon={Check} label="Disetujui Oleh" value={ptw.approver} />
-                          <DetailRow icon={Calendar} label="Tanggal Disetujui" value={ptw.approvedDate ? format(new Date(ptw.approvedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale }) : ''} />
+                          <DetailRow icon={Check} label="Approved By" value={ptw.approver} />
+                          <DetailRow icon={Calendar} label="Date Approved" value={ptw.approvedDate ? format(new Date(ptw.approvedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale }) : ''} />
                           {ptw.signatureDataUrl && (
                             <div>
-                               <h4 className="text-sm text-muted-foreground mb-2">Tanda Tangan</h4>
+                               <h4 className="text-sm text-muted-foreground mb-2">Signature</h4>
                                <div className="relative aspect-video w-full max-w-sm rounded-md border bg-muted/50 p-2">
                                  <Image
                                     src={ptw.signatureDataUrl}
@@ -157,15 +157,15 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
 
                   <Card>
                     <CardHeader>
-                        <CardTitle>Dokumen Terlampir</CardTitle>
+                        <CardTitle>Attached Documents</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>
-                            <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Dokumen JSA Asli</h4>
+                            <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Original JSA Document</h4>
                             <Button asChild variant="secondary" className="w-full">
                                 <a href={ptw.jsaPdfUrl} target="_blank" rel="noopener noreferrer">
                                     <FileText />
-                                    Lihat JSA (Asli)
+                                    View JSA (Original)
                                     <ExternalLink className="ml-auto" />
                                 </a>
                             </Button>
@@ -175,19 +175,19 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                             <>
                                 <Separator />
                                 <div>
-                                    <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Dokumen yang Telah Disetujui</h4>
+                                    <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Approved Document</h4>
                                     {ptw.stampedPdfUrl ? (
                                         <Button asChild variant="outline" className="w-full">
                                             <a href={ptw.stampedPdfUrl} target="_blank" rel="noopener noreferrer">
                                                 <Check className="text-green-500"/>
-                                                Lihat JSA (Telah Dicap)
+                                                View JSA (Stamped)
                                                 <ExternalLink className="ml-auto" />
                                             </a>
                                         </Button>
                                     ) : (
                                         <div className="flex items-center gap-3 p-3 rounded-lg bg-muted text-muted-foreground">
                                             <Loader2 className="h-5 w-5 animate-spin" />
-                                            <p className="text-sm">Sedang memproses stempel dokumen...</p>
+                                            <p className="text-sm">Processing document stamp...</p>
                                         </div>
                                     )}
                                 </div>
@@ -202,7 +202,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                 <SheetFooter className="p-4 border-t mt-auto">
                   <Button type="button" onClick={() => setApproveDialogOpen(true)} className="w-full">
                     <PenSquare />
-                    Setujui & Tanda Tangani
+                    Approve & Sign
                   </Button>
                 </SheetFooter>
               )}

@@ -43,8 +43,8 @@ export function DeleteInspectionDialog({
     // 1. Optimistic UI update
     removeItem(inspection.id, 'inspection');
     toast({
-      title: 'Laporan Dihapus',
-      description: `Laporan inspeksi "${inspection.referenceId}" telah dihapus dari tampilan.`,
+      title: 'Report Deleted',
+      description: `Inspection report "${inspection.referenceId}" has been removed from view.`,
     });
     onSuccess();
     onOpenChange(false);
@@ -64,11 +64,11 @@ export function DeleteInspectionDialog({
         }
         await Promise.all(storagePromises);
       } catch (error) {
-        console.error("Gagal menghapus inspeksi dari server:", error);
+        console.error("Failed to delete inspection from server:", error);
         toast({
           variant: 'destructive',
-          title: 'Sinkronisasi Gagal',
-          description: 'Laporan gagal dihapus dari server. Harap segarkan halaman.',
+          title: 'Sync Failed',
+          description: 'The report failed to delete from the server. Please refresh the page.',
         });
         // In a more robust app, we might re-add the item to the context here.
       }
@@ -81,13 +81,13 @@ export function DeleteInspectionDialog({
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Anda yakin ingin menghapus ini?</AlertDialogTitle>
+          <AlertDialogTitle>Are you sure you want to delete this?</AlertDialogTitle>
           <AlertDialogDescription>
-            Tindakan ini tidak dapat dibatalkan. Ini akan menghapus laporan inspeksi ini secara permanen, termasuk fotonya.
+            This action cannot be undone. It will permanently delete this inspection report, including its photos.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
@@ -98,7 +98,7 @@ export function DeleteInspectionDialog({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            Ya, hapus
+            Yes, delete
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

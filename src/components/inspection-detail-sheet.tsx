@@ -87,9 +87,9 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
     setIsAnalyzing(true);
     try {
         await runDeeperInspectionAnalysis(inspection.id);
-        toast({ title: 'Analisis Selesai', description: 'Wawasan baru dari AI telah ditambahkan ke laporan ini.' });
+        toast({ title: 'Analysis Complete', description: 'New AI insights have been added to this report.' });
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Analisis Gagal', description: 'Gagal menjalankan analisis.' });
+        toast({ variant: 'destructive', title: 'Analysis Failed', description: 'Failed to run analysis.' });
     } finally {
         setIsAnalyzing(false);
     }
@@ -117,12 +117,12 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                       <ArrowLeft />
                     </Button>
                     <div className="flex flex-col">
-                      <SheetTitle>Detail Inspeksi</SheetTitle>
+                      <SheetTitle>Inspection Details</SheetTitle>
                       <SheetDescription>{inspection.referenceId}</SheetDescription>
                     </div>
                   </div>
                   {canDelete && (
-                    <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Hapus Inspeksi">
+                    <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Delete Inspection">
                         <Trash2 />
                     </Button>
                   )}
@@ -152,20 +152,20 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
 
                   <Card>
                     <CardHeader>
-                        <CardTitle>Detail Laporan</CardTitle>
+                        <CardTitle>Report Details</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <DetailRow icon={Wrench} label="Peralatan" value={`${inspection.equipmentName} (${inspection.equipmentType})`} />
-                      <DetailRow icon={User} label="Dikirim Oleh" value={inspection.submittedBy} />
-                      <DetailRow icon={Calendar} label="Tanggal Kirim" value={format(new Date(inspection.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />
-                      <DetailRow icon={MapPin} label="Lokasi" value={inspection.location} />
-                      {projectName && <DetailRow icon={Folder} label="Proyek" value={projectName} />}
+                      <DetailRow icon={Wrench} label="Equipment" value={`${inspection.equipmentName} (${inspection.equipmentType})`} />
+                      <DetailRow icon={User} label="Submitted By" value={inspection.submittedBy} />
+                      <DetailRow icon={Calendar} label="Date Submitted" value={format(new Date(inspection.date), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />
+                      <DetailRow icon={MapPin} label="Location" value={inspection.location} />
+                      {projectName && <DetailRow icon={Folder} label="Project" value={projectName} />}
                     </CardContent>
                   </Card>
 
                   <Card>
                      <CardHeader>
-                        <CardTitle>Status & Temuan</CardTitle>
+                        <CardTitle>Status & Findings</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div>
@@ -173,12 +173,12 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                         <InspectionStatusBadge status={inspection.status} />
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Temuan</h4>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Findings</h4>
                         <p className="text-sm text-foreground">{inspection.findings}</p>
                       </div>
                       {inspection.recommendation && (
                         <div>
-                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Rekomendasi</h4>
+                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Recommendation</h4>
                           <p className="text-sm text-foreground">{inspection.recommendation}</p>
                         </div>
                       )}
@@ -190,32 +190,32 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                       <CardHeader>
                           <CardTitle className="flex items-center gap-2">
                             <Sparkles className="h-5 w-5 text-primary" />
-                            Analisis HSSE Tech
+                            HSSE Tech Analysis
                           </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {inspection.aiStatus === 'n/a' && (
                             <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed">
-                                <p className="text-sm text-muted-foreground">Jalankan analisis AI untuk mengidentifikasi risiko dan saran tindakan.</p>
+                                <p className="text-sm text-muted-foreground">Run AI analysis to identify risks and suggest actions.</p>
                                 <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={isAnalyzing}>
                                     {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4" />}
-                                    Jalankan Analisis AI
+                                    Run AI Analysis
                                 </Button>
                             </div>
                         )}
                         {inspection.aiStatus === 'processing' && (
                           <div className="flex items-center gap-3 p-4 rounded-lg bg-muted">
                               <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                              <p className="text-sm text-muted-foreground">AI sedang menganalisis laporan...</p>
+                              <p className="text-sm text-muted-foreground">AI is analyzing your report...</p>
                           </div>
                         )}
                         {inspection.aiStatus === 'failed' && (
                             <Alert variant="destructive">
                                 <AlertTriangle />
-                                <AlertTitle>Analisis Gagal</AlertTitle>
+                                <AlertTitle>Analysis Failed</AlertTitle>
                                 <AlertDescription>
-                                    Terjadi kesalahan saat menganalisis laporan.
-                                    <Button variant="link" size="sm" onClick={handleRunDeeperAnalysis} className="p-0 h-auto ml-2 text-destructive">Coba lagi</Button>
+                                    An error occurred while analyzing the report.
+                                    <Button variant="link" size="sm" onClick={handleRunDeeperAnalysis} className="p-0 h-auto ml-2 text-destructive">Try again</Button>
                                 </AlertDescription>
                             </Alert>
                         )}
@@ -223,19 +223,19 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                           <div className="space-y-4">
                               {inspection.aiSummary && (
                                   <div>
-                                      <h4 className="text-sm font-semibold mb-2">Ringkasan Cepat</h4>
+                                      <h4 className="text-sm font-semibold mb-2">Quick Summary</h4>
                                       <p className="text-sm text-muted-foreground">{inspection.aiSummary}</p>
                                   </div>
                               )}
                               
                               <Separator className="my-4" />
-                              <h4 className="text-sm font-semibold mb-2">Analisis Mendalam</h4>
+                              <h4 className="text-sm font-semibold mb-2">Deep Analysis</h4>
                               <Accordion type="multiple" className="w-full">
                                   {inspection.aiRisks && (
-                                      <AccordionItem value="risks"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-destructive" />Potensi Risiko</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiRisks, AlertTriangle, "text-destructive")}</AccordionContent></AccordionItem>
+                                      <AccordionItem value="risks"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-destructive" />Potential Risks</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiRisks, AlertTriangle, "text-destructive")}</AccordionContent></AccordionItem>
                                   )}
                                   {inspection.aiSuggestedActions && (
-                                      <AccordionItem value="actions" className="border-b-0"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-green-600" />Saran Tindakan</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiSuggestedActions, CheckCircle2, "text-green-600")}</AccordionContent></AccordionItem>
+                                      <AccordionItem value="actions" className="border-b-0"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-green-600" />Suggested Actions</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(inspection.aiSuggestedActions, CheckCircle2, "text-green-600")}</AccordionContent></AccordionItem>
                                   )}
                               </Accordion>
                           </div>
@@ -247,14 +247,14 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                   {inspection.status === 'Pass' && inspection.actionTakenDescription && (
                       <Card>
                         <CardHeader>
-                          <CardTitle>Tindakan Penyelesaian</CardTitle>
+                          <CardTitle>Resolution Action</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          <DetailRow icon={User} label="Diselesaikan Oleh" value={inspection.closedBy} />
-                          {inspection.closedDate && <DetailRow icon={Calendar} label="Tanggal Selesai" value={format(new Date(inspection.closedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />}
+                          <DetailRow icon={User} label="Completed By" value={inspection.closedBy} />
+                          {inspection.closedDate && <DetailRow icon={Calendar} label="Date Completed" value={format(new Date(inspection.closedDate), 'd MMM yyyy, HH:mm', { locale: indonesianLocale })} />}
                           
                           <div>
-                            <h4 className="text-sm font-medium text-muted-foreground mb-2">Deskripsi Tindakan</h4>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-2">Action Description</h4>
                             <div className="space-y-1">
                               {inspection.actionTakenDescription.split('\n').map((line, index) => (
                                 <div key={index} className="flex items-start gap-2 text-sm">
@@ -267,7 +267,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
 
                           {inspection.actionTakenPhotoUrl && (
                             <div>
-                              <h4 className="text-sm font-medium text-muted-foreground mb-2">Foto Penyelesaian</h4>
+                              <h4 className="text-sm font-medium text-muted-foreground mb-2">Resolution Photo</h4>
                               <div className="relative w-full aspect-video rounded-md overflow-hidden border mt-2">
                                 <Image
                                   src={inspection.actionTakenPhotoUrl}
@@ -289,7 +289,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                   <SheetFooter className="p-4 border-t mt-auto">
                     <Button type="button" onClick={() => setFollowUpOpen(true)} className="w-full">
                       <Gavel />
-                      Tindak Lanjut & Selesaikan
+                      Follow-up & Complete
                     </Button>
                   </SheetFooter>
                 )}

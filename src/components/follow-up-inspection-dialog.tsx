@@ -43,7 +43,7 @@ const formSchema = z.object({
   actionTakenPhoto: z
     .instanceof(File)
     .optional()
-    .refine((file) => !file || file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
+    .refine((file) => !file || file.size <= 10 * 1024 * 1024, `The maximum file size is 10MB.`),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -123,7 +123,7 @@ export function FollowUpInspectionDialog({
         setPhotoPreview(null);
         toast({
           variant: 'destructive',
-          title: 'File tidak valid',
+          title: 'Invalid File',
           description: validation.error.issues[0].message,
         });
       }
@@ -154,7 +154,7 @@ export function FollowUpInspectionDialog({
     const optimisticallyUpdatedInspection = { ...inspection, ...optimisticUpdate };
     
     updateItem(optimisticallyUpdatedInspection);
-    toast({ title: 'Tindakan Disimpan', description: 'Laporan inspeksi sedang diperbarui.' });
+    toast({ title: 'Action Saved', description: 'The inspection report is being updated.' });
     handleOpenChange(false);
 
     // Fire-and-forget background processing
@@ -182,7 +182,7 @@ export function FollowUpInspectionDialog({
 
         await updateDoc(inspectionDocRef, finalUpdateData);
       } catch (error) {
-        toast({ variant: 'destructive', title: 'Gagal Memperbarui', description: 'Gagal menyimpan pembaruan. Mengembalikan perubahan.' });
+        toast({ variant: 'destructive', title: 'Update Failed', description: 'Failed to save update. Reverting changes.' });
         updateItem(inspection);
       }
     };
