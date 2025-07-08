@@ -28,13 +28,13 @@ import { ObservationContext } from '@/contexts/observation-context';
 
 
 const formSchema = z.object({
-  location: z.string().min(1, 'Lokasi wajib diisi.'),
-  workDescription: z.string().min(10, { message: 'Deskripsi pekerjaan minimal 10 karakter.' }),
-  contractor: z.string().min(1, 'Kontraktor wajib diisi.'),
+  location: z.string().min(1, 'Location is required.'),
+  workDescription: z.string().min(10, { message: 'Work description must be at least 10 characters.' }),
+  contractor: z.string().min(1, 'Contractor is required.'),
   jsaPdf: z
-    .instanceof(File, { message: 'File JSA (PDF) wajib diunggah.' })
-    .refine((file) => file.type === 'application/pdf', 'File harus dalam format PDF.')
-    .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
+    .instanceof(File, { message: 'JSA (PDF) file is required.' })
+    .refine((file) => file.type === 'application/pdf', 'File must be a PDF.')
+    .refine((file) => file.size <= 10 * 1024 * 1024, `Maximum file size is 10MB.`),
   responsiblePersonUid: z.string().optional(),
 });
 
@@ -136,14 +136,14 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
       } else {
         form.setValue('jsaPdf', undefined, { shouldValidate: true });
         setFileName(null);
-        toast({ variant: 'destructive', title: 'File tidak valid', description: validation.error.issues[0].message });
+        toast({ variant: 'destructive', title: 'Invalid File', description: validation.error.issues[0].message });
       }
     }
   };
 
   const onSubmit = (values: FormValues) => {
     if (!user || !userProfile || !values.jsaPdf || !project) {
-        toast({ variant: 'destructive', title: 'Data tidak lengkap' });
+        toast({ variant: 'destructive', title: 'Incomplete Data' });
         return;
     }
     setIsSubmitting(true);
@@ -176,7 +176,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
     };
 
     addItem(optimisticItem);
-    toast({ title: 'Izin Kerja Dikirim', description: 'PTW Anda sedang diunggah.' });
+    toast({ title: 'PTW Submitted', description: 'Your PTW is being uploaded.' });
     handleOpenChange(false);
 
     const targetPath = `/proyek/${project.id}/ptw`;
@@ -222,7 +222,7 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
                   itemType: 'ptw',
                   responsiblePersonUid: values.responsiblePersonUid,
                   submitterName: userProfile.displayName,
-                  description: `Persetujuan PTW: ${values.workDescription}`,
+                  description: `PTW Approval: ${values.workDescription}`,
                   projectId,
               });
           }
@@ -244,17 +244,17 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
       <DialogContent className="sm:max-w-[525px] p-0 flex flex-col max-h-[90dvh]">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-2"><FileSignature className="h-5 w-5" /> Submit New PTW</DialogTitle>
-          <DialogDescription>Isi detail di bawah untuk mengajukan Izin Kerja baru.</DialogDescription>
+          <DialogDescription>Fill in the details below to submit a new Permit to Work.</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <Form {...form}>
             <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField name="location" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Lokasi</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih lokasi"/></SelectTrigger></FormControl><SelectContent>{renderSelectItems(locationOptions)}</SelectContent></Select><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Location</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a location"/></SelectTrigger></FormControl><SelectContent>{renderSelectItems(locationOptions)}</SelectContent></Select><FormMessage /></FormItem>
                 )} />
                 <FormField name="contractor" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Kontraktor</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih kontraktor"/></SelectTrigger></FormControl><SelectContent>{renderSelectItems(companyOptions)}</SelectContent></Select><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Contractor</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a contractor"/></SelectTrigger></FormControl><SelectContent>{renderSelectItems(companyOptions)}</SelectContent></Select><FormMessage /></FormItem>
                 )} />
               </div>
 
@@ -265,16 +265,16 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
                   <FormItem>
                     <FormLabel className="flex items-center gap-2">
                         <Users className="h-4 w-4" />
-                        Approver / Penyetuju
+                        Approver
                     </FormLabel>
                     <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value || 'none'} disabled={isSubmitting || isLoadingMembers}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={isLoadingMembers ? "Memuat..." : (members.length > 0 ? "Pilih approver" : "Tidak ada approver")} />
+                          <SelectValue placeholder={isLoadingMembers ? "Loading..." : (members.length > 0 ? "Select an approver" : "No approvers available")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">Tidak Ditugaskan</SelectItem>
+                        <SelectItem value="none">Unassigned</SelectItem>
                         {members.map(member => (
                           <SelectItem key={member.uid} value={member.uid}>
                             {member.displayName} ({member.position})
@@ -288,15 +288,15 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
               />
 
               <FormField name="workDescription" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Deskripsi Pekerjaan</FormLabel><FormControl><Textarea placeholder="Jelaskan detail pekerjaan yang akan dilakukan." rows={4} {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Work Description</FormLabel><FormControl><Textarea placeholder="Describe the work to be performed in detail." rows={4} {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField name="jsaPdf" control={form.control} render={() => (
-                <FormItem><FormLabel>Unggah JSA (PDF)</FormLabel>
+                <FormItem><FormLabel>Upload JSA (PDF)</FormLabel>
                   <FormControl>
                     <Input id="ptw-jsa-upload" type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
                   </FormControl>
                   <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
-                    <Upload className="mr-2 h-4 w-4" />{fileName ? 'Ganti File' : 'Pilih File PDF'}
+                    <Upload className="mr-2 h-4 w-4" />{fileName ? 'Change File' : 'Select PDF File'}
                   </Button>
                   {fileName && <div className="mt-2 text-sm text-muted-foreground flex items-center gap-2"><FileText className="h-4 w-4" /><span>{fileName}</span></div>}
                   <FormMessage />
@@ -307,10 +307,10 @@ export function SubmitPtwDialog({ isOpen, onOpenChange, project }: SubmitPtwDial
         </div>
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>Batal</Button>
+            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
               {isSubmitting && <Loader2 className="animate-spin" />}
-              Ajukan PTW
+              Submit PTW
             </Button>
           </div>
         </DialogFooter>
