@@ -38,13 +38,13 @@ function parseAndClampRating(value: string | number | undefined): number {
 // =================================================================================
 
 const DeeperAnalysisOutputSchema = z.object({
-  summary: z.string().describe('A very brief, one-sentence summary of the observation in Bahasa Indonesia.'),
+  summary: z.string().describe('A very brief, one-sentence summary of the observation in English.'),
   aiObserverSkillRating: z.number().min(1).max(5).describe('Rating of the observer skill from 1 to 5 based on the quality of the report.'),
-  aiObserverSkillExplanation: z.string().describe('A brief explanation for the observer skill rating in Bahasa Indonesia.'),
-  risks: z.string().describe('Bulleted list of potential dangers and safety risks (Bahasa Indonesia).'),
-  suggestedActions: z.string().describe('Bulleted list of clear, actionable recommendations (Bahasa Indonesia).'),
-  rootCauseAnalysis: z.string().describe('Brief, one-sentence analysis of the most likely root cause (Bahasa Indonesia).'),
-  relevantRegulations: z.string().describe('Bulleted list of *types* of applicable safety standards (Bahasa Indonesia).'),
+  aiObserverSkillExplanation: z.string().describe('A brief explanation for the observer skill rating in English.'),
+  risks: z.string().describe('Bulleted list of potential dangers and safety risks (English).'),
+  suggestedActions: z.string().describe('Bulleted list of clear, actionable recommendations (English).'),
+  rootCauseAnalysis: z.string().describe('Brief, one-sentence analysis of the most likely root cause (English).'),
+  relevantRegulations: z.string().describe('Bulleted list of *types* of applicable safety standards (English).'),
 });
 export type DeeperAnalysisOutput = z.infer<typeof DeeperAnalysisOutputSchema>;
 
@@ -60,7 +60,7 @@ const deeperAnalysisPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `You are a world-class HSSE expert analyst. Your task is to perform a detailed analysis of an observation report. Provide a concise but thorough analysis. Your response MUST be a raw JSON object only, in Bahasa Indonesia.
+    prompt: `You are a world-class HSSE expert analyst. Your task is to perform a detailed analysis of an observation report. Provide a concise but thorough analysis. Your response MUST be a raw JSON object only, in English.
 
 Analyze the provided observation data and generate the following points:
 
@@ -70,7 +70,7 @@ Analyze the provided observation data and generate the following points:
 4.  "risks": A bulleted list of potential dangers and safety risks. Start each point with a hyphen (-).
 5.  "suggestedActions": A bulleted list of clear, actionable recommendations. Start each point with a hyphen (-).
 6.  "rootCauseAnalysis": A brief, one-sentence analysis of the most likely root cause (e.g., procedure, training, equipment).
-7.  "relevantRegulations": A bulleted list of **types** of safety standards that apply (e.g., "Standar Bekerja di Ketinggian", "Prosedur Pengangkatan"). **Do not cite specific codes.**
+7.  "relevantRegulations": A bulleted list of **types** of safety standards that apply (e.g., "Working at Height Standards", "Lifting Procedures"). **Do not cite specific codes.**
 
 Observation Data to Analyze:
 {{{observationData}}}
@@ -116,16 +116,16 @@ const deeperAnalysisInspectionPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `Anda adalah seorang ahli inspeksi peralatan dan analis keselamatan. Tugas Anda adalah menganalisis data laporan inspeksi peralatan dan memberikan poin-poin analisis yang jelas dan praktis dalam Bahasa Indonesia.
-PENTING: Respons Anda harus berupa objek JSON mentah saja, tanpa penjelasan atau pemformatan tambahan.
+    prompt: `You are an expert equipment inspector and safety analyst. Your task is to analyze the provided equipment inspection report data and provide clear, practical analysis points in English.
+IMPORTANT: Your response must be a raw JSON object only, with no additional explanations or formatting.
 
-Berdasarkan data inspeksi yang diberikan, hasilkan objek JSON dengan format berikut. Semua respons harus dalam Bahasa Indonesia.
+Based on the provided inspection data, generate a JSON object with the following format. All responses must be in English.
 
-1.  "summary": Berikan ringkasan yang sangat singkat (satu atau dua kalimat) dari temuan inti inspeksi.
-2.  "risks": Jelaskan potensi bahaya dan risiko keselamatan yang timbul dari kondisi peralatan yang dilaporkan. Sajikan dalam bentuk **poin-poin singkat yang diawali dengan tanda hubung (-)**.
-3.  "suggestedActions": Berikan saran tindakan yang jelas dan dapat dieksekusi untuk perbaikan atau mitigasi. Sajikan dalam bentuk **poin-poin singkat yang diawali dengan tanda hubung (-)**.
+1.  "summary": Provide a very brief summary (one or two sentences) of the core inspection findings.
+2.  "risks": Explain the potential hazards and safety risks arising from the reported equipment condition. Present this as **brief bullet points starting with a hyphen (-)**.
+3.  "suggestedActions": Provide clear, executable suggestions for repair or mitigation. Present this as **brief bullet points starting with a hyphen (-)**.
 
-Data Inspeksi:
+Inspection Data:
 {{{inspectionData}}}`,
 });
 

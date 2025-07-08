@@ -250,13 +250,13 @@ export type SummarizeObservationDataInput = z.infer<typeof SummarizeObservationD
 
 // This now includes all fields from the background/deeper analysis.
 export const DeeperAnalysisOutputSchema = z.object({
-    summary: z.string().describe('A very brief, one-sentence summary of the observation in Bahasa Indonesia.'),
+    summary: z.string().describe('A very brief, one-sentence summary of the observation in English.'),
     aiObserverSkillRating: z.number().min(1).max(5).describe('Rating of the observer skill from 1 to 5.'),
-    aiObserverSkillExplanation: z.string().describe('A brief explanation for the observer skill rating in Bahasa Indonesia.'),
-    risks: z.string().describe('Bulleted list of potential dangers and safety risks (Bahasa Indonesia).'),
-    suggestedActions: z.string().describe('Bulleted list of clear, actionable recommendations (Bahasa Indonesia).'),
-    rootCauseAnalysis: z.string().describe('Brief, one-sentence analysis of the most likely root cause (Bahasa Indonesia).'),
-    relevantRegulations: z.string().describe('Bulleted list of *types* of applicable safety standards (Bahasa Indonesia).'),
+    aiObserverSkillExplanation: z.string().describe('A brief explanation for the observer skill rating in English.'),
+    risks: z.string().describe('Bulleted list of potential dangers and safety risks (English).'),
+    suggestedActions: z.string().describe('Bulleted list of clear, actionable recommendations (English).'),
+    rootCauseAnalysis: z.string().describe('Brief, one-sentence analysis of the most likely root cause (English).'),
+    relevantRegulations: z.string().describe('Bulleted list of *types* of applicable safety standards (English).'),
 });
 export type DeeperAnalysisOutput = z.infer<typeof DeeperAnalysisOutputSchema>;
 
@@ -267,9 +267,9 @@ export const AnalyzeInspectionInputSchema = z.object({
 export type AnalyzeInspectionInput = z.infer<typeof AnalyzeInspectionInputSchema>;
 
 export const AnalyzeInspectionOutputSchema = z.object({
-  summary: z.string().describe('Ringkasan singkat dari temuan inti inspeksi dalam Bahasa Indonesia.'),
-  risks: z.string().describe('Analisis potensi bahaya dan risiko dari temuan inspeksi, dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
-  suggestedActions: z.string().describe('Saran tindakan perbaikan atau pengecekan lebih lanjut, dalam bentuk poin-poin singkat (Bahasa Indonesia).'),
+  summary: z.string().describe('A brief summary of the core inspection findings in English.'),
+  risks: z.string().describe('Analysis of potential hazards and risks from the inspection findings, as bullet points (English).'),
+  suggestedActions: z.string().describe('Suggested actions for repair or further checks, as bullet points (English).'),
 });
 export type AnalyzeInspectionOutput = z.infer<typeof AnalyzeInspectionOutputSchema>;
 

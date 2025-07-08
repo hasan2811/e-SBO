@@ -31,20 +31,20 @@ async function getUserProfile(userId: string): Promise<UserProfile | null> {
 export async function runDeeperAnalysis(observationId: string): Promise<Observation> {
     const docRef = adminDb.collection('observations').doc(observationId);
     let docSnap = await docRef.get();
-    if (!docSnap.exists) throw new Error("Observasi tidak ditemukan.");
+    if (!docSnap.exists) throw new Error("Observation not found.");
     const observation = { id: docSnap.id, ...docSnap.data() } as Observation;
 
     const userProfile = await getUserProfile(observation.userId);
-    if (!userProfile) throw new Error("Profil pengguna tidak ditemukan.");
+    if (!userProfile) throw new Error("User profile not found.");
 
     if (!userProfile.aiEnabled) {
-      throw new Error("Fitur AI dinonaktifkan untuk pengguna ini.");
+      throw new Error("AI features are disabled for this user.");
     }
 
     await docRef.update({ aiStatus: 'processing' });
 
     try {
-        const observationData = `Temuan: ${observation.findings}\nRekomendasi: ${observation.recommendation}\nKategori Awal: ${observation.category}`;
+        const observationData = `Findings: ${observation.findings}\nRecommendation: ${observation.recommendation}\nInitial Category: ${observation.category}`;
         const deepAnalysis = await analyzeDeeperObservation({ observationData }, userProfile);
         
         docSnap = await docRef.get();
@@ -84,20 +84,20 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
 export async function runDeeperInspectionAnalysis(inspectionId: string): Promise<Inspection> {
     const docRef = adminDb.collection('inspections').doc(inspectionId);
     let docSnap = await docRef.get();
-    if (!docSnap.exists) throw new Error("Inspeksi tidak ditemukan.");
+    if (!docSnap.exists) throw new Error("Inspection not found.");
     const inspection = { id: docSnap.id, ...docSnap.data() } as Inspection;
 
     const userProfile = await getUserProfile(inspection.userId);
-    if (!userProfile) throw new Error("Profil pengguna tidak ditemukan.");
+    if (!userProfile) throw new Error("User profile not found.");
 
     if (!userProfile.aiEnabled) {
-        throw new Error("Fitur AI dinonaktifkan untuk pengguna ini.");
+        throw new Error("AI features are disabled for this user.");
     }
 
     await docRef.update({ aiStatus: 'processing' });
 
     try {
-        const inspectionData = `Nama Peralatan: ${inspection.equipmentName}\nJenis: ${inspection.equipmentType}\nTemuan: ${inspection.findings}\nRekomendasi: ${inspection.recommendation || 'N/A'}`;
+        const inspectionData = `Equipment Name: ${inspection.equipmentName}\nType: ${inspection.equipmentType}\nFindings: ${inspection.findings}\nRecommendation: ${inspection.recommendation || 'N/A'}`;
         const deepAnalysis = await analyzeDeeperInspection({ inspectionData }, userProfile);
         
         docSnap = await docRef.get();
