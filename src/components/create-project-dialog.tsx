@@ -27,7 +27,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/
 import { useProjects } from '@/hooks/use-projects';
 
 const formSchema = z.object({
-  name: z.string().min(3, { message: 'Nama proyek minimal harus 3 karakter.' }),
+  name: z.string().min(3, { message: 'Project name must be at least 3 characters.' }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -58,7 +58,7 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
 
   const onCreate = async (values: FormValues) => {
     if (!user) {
-      toast({ variant: 'destructive', title: 'Authentication Error', description: 'Anda harus login untuk membuat proyek.' });
+      toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to create a project.' });
       return;
     }
 
@@ -101,13 +101,13 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
       // Manually add project to local state for immediate UI update before redirecting
       addProject(newProjectData);
 
-      toast({ title: 'Sukses!', description: `Proyek "${values.name}" berhasil dibuat.` });
+      toast({ title: 'Success!', description: `Project "${values.name}" was created successfully.` });
       onOpenChange(false);
       router.push(`/proyek/${newProjectRef.id}/observasi`);
     } catch (error) {
       console.error("Failed to create project:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga saat menyimpan proyek.';
-      toast({ variant: 'destructive', title: 'Gagal Membuat Proyek', description: errorMessage });
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while saving the project.';
+      toast({ variant: 'destructive', title: 'Failed to Create Project', description: errorMessage });
     } finally {
       setIsCreating(false);
     }
@@ -129,10 +129,10 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderPlus className="h-5 w-5" />
-            Buat Proyek Baru
+            Create New Project
           </DialogTitle>
           <DialogDescription>
-            Isi detail proyek dan konfigurasikan opsi formulir khusus.
+            Fill in the project details and configure custom form options.
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto pr-6 -mr-6">
@@ -140,8 +140,8 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
             <form id={formId} onSubmit={form.handleSubmit(onCreate)} className="space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Detail Proyek</CardTitle>
-                        <CardDescription>Nama proyek wajib diisi. Nama ini akan terlihat oleh semua anggota proyek.</CardDescription>
+                        <CardTitle>Project Details</CardTitle>
+                        <CardDescription>The project name is required. This name will be visible to all project members.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <FormField
@@ -149,9 +149,9 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
                         name="name"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Nama Proyek *</FormLabel>
+                            <FormLabel>Project Name *</FormLabel>
                             <FormControl>
-                                <Input placeholder="Contoh: Proyek Konstruksi Jembatan" {...field} />
+                                <Input placeholder="e.g., Bridge Construction Project" {...field} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -162,31 +162,31 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
                 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Kustomisasi Formulir (Opsional)</CardTitle>
-                        <CardDescription>Tambahkan opsi dropdown khusus yang akan digunakan di formulir observasi pada proyek ini.</CardDescription>
+                        <CardTitle>Form Customization (Optional)</CardTitle>
+                        <CardDescription>Add custom dropdown options that will be used in observation forms for this project.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <CustomListInput
                             inputId="custom-categories-create"
-                            title="Kategori Observasi Kustom"
-                            description="Jika kosong, akan menggunakan daftar default: Unsafe Act, Unsafe Condition, dll."
-                            placeholder="Contoh: Pelanggaran Prosedur"
+                            title="Custom Observation Categories"
+                            description="If empty, the default list will be used."
+                            placeholder="e.g., Procedure Violation"
                             items={customCategories}
                             setItems={setCustomCategories}
                         />
                         <CustomListInput
                             inputId="custom-companies-create"
-                            title="Perusahaan Kustom"
-                            description="Jika kosong, akan menggunakan daftar default aplikasi."
-                            placeholder="Contoh: PT. Subkontraktor"
+                            title="Custom Companies"
+                            description="If empty, the application's default list will be used."
+                            placeholder="e.g., PT. Subcontractor"
                             items={customCompanies}
                             setItems={setCustomCompanies}
                         />
                         <CustomListInput
                             inputId="custom-locations-create"
-                            title="Lokasi Kustom"
-                            description="Jika kosong, akan menggunakan daftar default aplikasi."
-                            placeholder="Contoh: Area Fabrikasi"
+                            title="Custom Locations"
+                            description="If empty, the application's default list will be used."
+                            placeholder="e.g., Fabrication Area"
                             items={customLocations}
                             setItems={setCustomLocations}
                         />
@@ -197,11 +197,11 @@ export function CreateProjectDialog({ isOpen, onOpenChange }: CreateProjectDialo
         </div>
         <DialogFooter className="pt-4 border-t flex-shrink-0">
           <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isCreating}>
-            Batal
+            Cancel
           </Button>
           <Button type="submit" form={formId} disabled={isCreating || !form.formState.isValid}>
             {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Buat Proyek
+            Create Project
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -54,10 +54,10 @@ function ProjectSwitcher() {
                     <span>Project Hub</span>
                  </DropdownMenuItem>
                  <DropdownMenuSeparator />
-                <DropdownMenuLabel>Pilih Proyek</DropdownMenuLabel>
+                <DropdownMenuLabel>Select Project</DropdownMenuLabel>
                 <ScrollArea className="max-h-48">
                     {loading ? (
-                        <DropdownMenuItem disabled>Memuat...</DropdownMenuItem>
+                        <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
                     ) : projects.length > 0 ? (
                         projects.map((project) => (
                             <DropdownMenuItem key={project.id} onSelect={() => router.push(`/proyek/${project.id}/observasi`)}>
@@ -67,21 +67,21 @@ function ProjectSwitcher() {
                             </DropdownMenuItem>
                         ))
                     ) : (
-                        <DropdownMenuItem disabled>Tidak ada proyek</DropdownMenuItem>
+                        <DropdownMenuItem disabled>No projects</DropdownMenuItem>
                     )}
                 </ScrollArea>
             </DropdownMenuGroup>
           
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-                 <DropdownMenuLabel>Aksi Umum</DropdownMenuLabel>
+                 <DropdownMenuLabel>General Actions</DropdownMenuLabel>
                  <DropdownMenuItem onSelect={() => setCreateOpen(true)}>
                     <FolderPlus className="mr-2"/>
-                    <span>Buat Proyek Baru</span>
+                    <span>Create New Project</span>
                  </DropdownMenuItem>
                  <DropdownMenuItem onSelect={() => setJoinOpen(true)}>
                     <LogIn className="mr-2"/>
-                    <span>Gabung Proyek</span>
+                    <span>Join Project</span>
                  </DropdownMenuItem>
             </DropdownMenuGroup>
         </DropdownMenuContent>

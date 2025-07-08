@@ -85,7 +85,7 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
         setJoinableProjects(projectsWithOwners);
       } catch (error) {
         console.error("Failed to fetch joinable projects:", error);
-        toast({ variant: 'destructive', title: 'Gagal Memuat Proyek', description: 'Tidak dapat mengambil daftar proyek yang tersedia.' });
+        toast({ variant: 'destructive', title: 'Failed to Load Projects', description: 'Could not retrieve the list of available projects.' });
       } finally {
         setLoadingProjects(false);
       }
@@ -120,19 +120,19 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
       
       addProject(projectToJoin);
 
-      toast({ title: 'Sukses!', description: `Berhasil bergabung dengan proyek!` });
+      toast({ title: 'Success!', description: `Successfully joined the project!` });
       onOpenChange(false);
       router.push(`/proyek/${projectToJoin.id}/observasi`);
     } catch (error: any) {
-      let description = 'Terjadi kesalahan tak terduga.';
+      let description = 'An unexpected error occurred.';
       if (error.message === 'Project not found') {
-        description = 'Proyek dengan ID tersebut tidak ditemukan.';
+        description = 'Project with that ID was not found.';
       } else if (error.message === 'Project is not open for joining.') {
-        description = 'Proyek ini sedang ditutup untuk anggota baru.';
+        description = 'This project is currently closed to new members.';
       } else {
         description = error.message;
       }
-      toast({ variant: 'destructive', title: 'Gagal Bergabung', description });
+      toast({ variant: 'destructive', title: 'Failed to Join', description });
     } finally {
       setJoiningProjectId(null);
     }
@@ -144,10 +144,10 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <LogIn className="h-5 w-5" />
-            Gabung dengan Proyek
+            Join a Project
           </DialogTitle>
           <DialogDescription>
-            Pilih proyek dari daftar di bawah ini untuk bergabung.
+            Select a project from the list below to join.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 max-h-[60vh]">
@@ -179,14 +179,14 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
                             <Folder className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
                             <div>
                                 <CardTitle>{project.name}</CardTitle>
-                                <CardDescription>Proyek yang tersedia untuk diikuti</CardDescription>
+                                <CardDescription>Project available to join</CardDescription>
                             </div>
                         </div>
                     </CardHeader>
                     <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <User className="h-4 w-4" />
-                            <span className="font-medium">Pemilik: {project.owner?.displayName || 'Tidak Diketahui'}</span>
+                            <span className="font-medium">Owner: {project.owner?.displayName || 'Unknown'}</span>
                         </div>
                         <Button
                             size="sm"
@@ -196,14 +196,14 @@ export function JoinProjectDialog({ isOpen, onOpenChange }: JoinProjectDialogPro
                             {joiningProjectId === project.id ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             ) : null}
-                            Gabung
+                            Join
                         </Button>
                     </CardFooter>
                   </Card>
                 ))
               ) : (
                 <div className="text-center py-10">
-                  <p className="text-muted-foreground">Tidak ada proyek yang tersedia untuk diikuti saat ini.</p>
+                  <p className="text-muted-foreground">There are no available projects to join at this moment.</p>
                 </div>
               )}
             </div>
