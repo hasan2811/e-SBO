@@ -32,13 +32,13 @@ export async function createAssignmentNotification(params: NotificationParams) {
 
     switch (itemType) {
         case 'observation':
-            message = `${submitterName} menugaskan Anda laporan observasi baru: "${truncatedDescription}"`;
+            message = `${submitterName} assigned you a new observation report: "${truncatedDescription}"`;
             break;
         case 'inspection':
-            message = `${submitterName} menugaskan Anda laporan inspeksi baru: "${truncatedDescription}"`;
+            message = `${submitterName} assigned you a new inspection report: "${truncatedDescription}"`;
             break;
         case 'ptw':
-            message = `Anda ditugaskan oleh ${submitterName} untuk menyetujui PTW: "${truncatedDescription}"`;
+            message = `You've been assigned by ${submitterName} to approve a PTW: "${truncatedDescription}"`;
             break;
         default:
             console.warn(`[createAssignmentNotification] Unknown item type: ${itemType}`);

@@ -238,12 +238,12 @@ export function UserAccountSheet() {
                       <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
                     </div>
                     <div className='space-y-3 mt-3'>
-                      <Label htmlFor="position">Position / Jabatan</Label>
+                      <Label htmlFor="position">Position</Label>
                       <Input id="position" value={position} onChange={(e) => setPosition(e.target.value)} />
                     </div>
                      <div className='space-y-3 mt-3'>
-                      <Label htmlFor="company">Perusahaan</Label>
-                      <Input id="company" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="e.g., PT. Konstruksi Utama" />
+                      <Label htmlFor="company">Company</Label>
+                      <Input id="company" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="e.g., Acme Construction Inc." />
                     </div>
                   </div>
 

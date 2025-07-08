@@ -18,7 +18,6 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, writeBatch, doc } from 'firebase/firestore';
 import type { Notification, AllItems } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
-import { id as indonesianLocale } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
@@ -131,8 +130,8 @@ export function NotificationSheet() {
       </SheetTrigger>
       <SheetContent className="flex flex-col h-full p-0">
         <SheetHeader className="p-6 pb-4 border-b">
-          <SheetTitle>Notifikasi</SheetTitle>
-          <SheetDescription>Pembaruan terbaru dari proyek Anda.</SheetDescription>
+          <SheetTitle>Notifications</SheetTitle>
+          <SheetDescription>Recent updates from your projects.</SheetDescription>
         </SheetHeader>
         <ScrollArea className="flex-1">
           {isLoading ? (
@@ -154,7 +153,7 @@ export function NotificationSheet() {
                     <div className="flex-1 space-y-1">
                         <p className="text-sm font-medium leading-snug">{notification.message}</p>
                         <p className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: indonesianLocale })}
+                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                         </p>
                     </div>
                     {!notification.isRead && (
@@ -166,8 +165,8 @@ export function NotificationSheet() {
           ) : (
             <div className="text-center p-10 text-muted-foreground flex flex-col items-center justify-center h-full">
                 <BellRing className="h-12 w-12 mb-4" />
-                <h3 className="font-semibold text-lg text-foreground">Semua sudah terbaca</h3>
-                <p className="text-sm mt-1">Anda akan melihat notifikasi baru di sini.</p>
+                <h3 className="font-semibold text-lg text-foreground">All caught up</h3>
+                <p className="text-sm mt-1">You'll see new notifications here.</p>
             </div>
           )}
         </ScrollArea>
