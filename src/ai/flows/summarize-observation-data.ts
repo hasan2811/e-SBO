@@ -21,83 +21,60 @@ import {
 } from '@/lib/types';
 
 
-/**
- * Parses a rating value which might be a string or number, and ensures it's within the 1-5 range.
- * @param value The value to parse.
- * @returns A number between 1 and 5.
- */
-function parseAndClampRating(value: string | number | undefined): number {
-    if (value === undefined || value === null) return 3;
-    let numericValue = typeof value === 'string' ? parseInt(value, 10) : value;
-    if (isNaN(numericValue)) return 3;
-    return Math.max(1, Math.min(5, Math.round(numericValue)));
-}
-
 // =================================================================================
-// 1. DEEPER OBSERVATION ANALYSIS FLOW (ON-DEMAND)
+// 1. OBSERVATION ANALYSIS FLOW (ON-DEMAND)
 // =================================================================================
 
-const DeeperAnalysisOutputSchema = z.object({
+const ObservationAnalysisOutputSchema = z.object({
   summary: z.string().describe('A very brief, one-sentence summary of the observation in English.'),
-  aiObserverSkillRating: z.number().min(1).max(5).describe('Rating of the observer skill from 1 to 5 based on the quality of the report.'),
-  aiObserverSkillExplanation: z.string().describe('A brief explanation for the observer skill rating in English.'),
   risks: z.string().describe('Bulleted list of potential dangers and safety risks (English).'),
   suggestedActions: z.string().describe('Bulleted list of clear, actionable recommendations (English).'),
-  rootCauseAnalysis: z.string().describe('Brief, one-sentence analysis of the most likely root cause (English).'),
-  relevantRegulations: z.string().describe('Bulleted list of *types* of applicable safety standards (English).'),
 });
-export type DeeperAnalysisOutput = z.infer<typeof DeeperAnalysisOutputSchema>;
+export type DeeperAnalysisOutput = z.infer<typeof ObservationAnalysisOutputSchema>;
 
 
-const deeperAnalysisPrompt = ai.definePrompt({
-    name: 'deeperAnalysisPrompt',
+const observationAnalysisPrompt = ai.definePrompt({
+    name: 'observationAnalysisPrompt',
     model: 'googleai/gemini-1.5-flash-latest',
     input: { schema: SummarizeObservationDataInputSchema },
-    output: { schema: DeeperAnalysisOutputSchema },
+    output: { schema: ObservationAnalysisOutputSchema },
     config: {
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     },
-    prompt: `You are a world-class HSSE expert analyst. Your task is to perform a detailed analysis of an observation report. Provide a concise but thorough analysis. Your response MUST be a raw JSON object only, in English.
+    prompt: `You are a fast and efficient HSSE expert analyst. Your task is to perform a streamlined analysis of an observation report. Your response MUST be a raw JSON object only, in English.
 
 Analyze the provided observation data and generate the following points:
 
 1.  "summary": A very brief, one-sentence summary of the core finding.
-2.  "aiObserverSkillRating": A 1-5 rating of the observer's skill based on clarity and impact.
-3.  "aiObserverSkillExplanation": A brief, one-sentence explanation for the skill rating.
-4.  "risks": A bulleted list of potential dangers and safety risks. Start each point with a hyphen (-).
-5.  "suggestedActions": A bulleted list of clear, actionable recommendations. Start each point with a hyphen (-).
-6.  "rootCauseAnalysis": A brief, one-sentence analysis of the most likely root cause (e.g., procedure, training, equipment).
-7.  "relevantRegulations": A bulleted list of **types** of safety standards that apply (e.g., "Working at Height Standards", "Lifting Procedures"). **Do not cite specific codes.**
+2.  "risks": A bulleted list of the most critical potential dangers and safety risks. Start each point with a hyphen (-).
+3.  "suggestedActions": A bulleted list of the most important, clear, and actionable recommendations. Start each point with a hyphen (-).
 
 Observation Data to Analyze:
 {{{observationData}}}
 `,
 });
 
-const analyzeDeeperObservationFlow = ai.defineFlow(
+const analyzeObservationFlow = ai.defineFlow(
   {
-    name: 'analyzeDeeperObservationFlow',
+    name: 'analyzeObservationFlow',
     inputSchema: z.object({ payload: SummarizeObservationDataInputSchema, userProfile: UserProfileSchema }),
-    outputSchema: DeeperAnalysisOutputSchema,
+    outputSchema: ObservationAnalysisOutputSchema,
   },
   async ({ payload, userProfile }) => {
-    const response = await deeperAnalysisPrompt(payload);
+    const response = await observationAnalysisPrompt(payload);
     const output = response.output;
-    if (!output) throw new Error('AI deep analysis returned no structured output.');
-
-    return {
-      ...output,
-      aiObserverSkillRating: parseAndClampRating(output.aiObserverSkillRating),
-    };
+    if (!output) throw new Error('AI analysis returned no structured output.');
+    
+    return output;
   }
 );
 
 // This function is called for deeper, on-demand analysis from the UI OR as a background task.
 export async function analyzeDeeperObservation(input: SummarizeObservationDataInput, userProfile: UserProfile): Promise<DeeperAnalysisOutput> {
-  return analyzeDeeperObservationFlow({ payload: input, userProfile });
+  return analyzeObservationFlow({ payload: input, userProfile });
 }
 
 

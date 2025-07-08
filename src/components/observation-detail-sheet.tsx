@@ -86,9 +86,9 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     setIsAnalyzing(true);
     try {
       await runDeeperAnalysis(observation.id);
-      toast({ title: 'Deep Analysis Complete', description: 'New AI insights have been added to this report.' });
+      toast({ title: 'Analysis Complete', description: 'New AI insights have been added to this report.' });
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Analysis Failed', description: 'Failed to run the deep analysis.'})
+        toast({ variant: 'destructive', title: 'Analysis Failed', description: 'Failed to run the analysis.'})
     } finally {
         setIsAnalyzing(false);
     }
@@ -192,7 +192,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                         <CardContent className="space-y-4">
                            {observation.aiStatus === 'n/a' && (
                                 <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed">
-                                   <p className="text-sm text-muted-foreground">Run AI analysis to get deep insights on risks, actions, and more.</p>
+                                   <p className="text-sm text-muted-foreground">Run AI analysis to identify key risks and suggest actions.</p>
                                    <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={isAnalyzing}>
                                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4" />}
                                        Run AI Analysis
@@ -226,28 +226,13 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                               
                                 <div className="space-y-2">
                                   <Separator className="my-4"/>
-                                  <h4 className="text-sm font-semibold mb-2">Deep Analysis</h4>
-                                  <Accordion type="multiple" className="w-full">
-                                      {typeof observation.aiObserverSkillRating === 'number' && (
-                                          <AccordionItem value="observerRating">
-                                              <AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><UserCheck className="h-4 w-4 text-muted-foreground" />Report Quality</div></AccordionTrigger>
-                                              <AccordionContent className="pt-2 pl-8 space-y-2">
-                                                  <StarRating rating={observation.aiObserverSkillRating} />
-                                                  {observation.aiObserverSkillExplanation && <p className="text-sm text-muted-foreground">{observation.aiObserverSkillExplanation}</p>}
-                                              </AccordionContent>
-                                          </AccordionItem>
-                                      )}
+                                  <h4 className="text-sm font-semibold mb-2">Analysis Details</h4>
+                                  <Accordion type="multiple" className="w-full" defaultValue={['risks', 'actions']}>
                                       {observation.aiRisks && (
                                           <AccordionItem value="risks"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-destructive" />Potential Risks</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiRisks, AlertTriangle, "text-destructive")}</AccordionContent></AccordionItem>
                                       )}
                                       {observation.aiSuggestedActions && (
-                                          <AccordionItem value="actions"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-green-600" />Suggested Actions</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiSuggestedActions, CheckCircle2, "text-green-600")}</AccordionContent></AccordionItem>
-                                      )}
-                                      {observation.aiRootCauseAnalysis && (
-                                          <AccordionItem value="rootCause"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><Target className="h-4 w-4 text-muted-foreground" />Root Cause Analysis</div></AccordionTrigger><AccordionContent className="pt-2"><p className="text-sm text-muted-foreground pl-8">{observation.aiRootCauseAnalysis}</p></AccordionContent></AccordionItem>
-                                      )}
-                                      {observation.aiRelevantRegulations && (
-                                          <AccordionItem value="regulations" className="border-b-0"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" />Regulatory References</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiRelevantRegulations, FileText, "text-muted-foreground")}</AccordionContent></AccordionItem>
+                                          <AccordionItem value="actions" className="border-b-0"><AccordionTrigger className="text-sm font-semibold hover:no-underline"><div className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-green-600" />Suggested Actions</div></AccordionTrigger><AccordionContent className="pt-2">{renderBulletedList(observation.aiSuggestedActions, CheckCircle2, "text-green-600")}</AccordionContent></AccordionItem>
                                       )}
                                   </Accordion>
                                 </div>

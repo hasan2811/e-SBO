@@ -45,7 +45,7 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
 
     try {
         const observationData = `Findings: ${observation.findings}\nRecommendation: ${observation.recommendation}\nInitial Category: ${observation.category}`;
-        const deepAnalysis = await analyzeDeeperObservation({ observationData }, userProfile);
+        const analysis = await analyzeDeeperObservation({ observationData }, userProfile);
         
         docSnap = await docRef.get();
         if (!docSnap.exists) {
@@ -55,13 +55,9 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
         
         const updatePayload: Partial<Observation> = {
             aiStatus: 'completed',
-            aiSummary: deepAnalysis.summary,
-            aiObserverSkillRating: deepAnalysis.aiObserverSkillRating,
-            aiObserverSkillExplanation: deepAnalysis.aiObserverSkillExplanation,
-            aiRisks: deepAnalysis.risks,
-            aiSuggestedActions: deepAnalysis.suggestedActions,
-            aiRootCauseAnalysis: deepAnalysis.rootCauseAnalysis,
-            aiRelevantRegulations: deepAnalysis.relevantRegulations,
+            aiSummary: analysis.summary,
+            aiRisks: analysis.risks,
+            aiSuggestedActions: analysis.suggestedActions,
         };
 
         await docRef.update(updatePayload);

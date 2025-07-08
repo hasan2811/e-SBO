@@ -111,13 +111,8 @@ export type Observation = {
   aiStatus?: 'processing' | 'completed' | 'failed' | 'n/a';
   aiSummary?: string;
   aiSuggestedRiskLevel?: RiskLevel;
-  // Deep analysis fields
   aiRisks?: string;
   aiSuggestedActions?: string;
-  aiRelevantRegulations?: string;
-  aiRootCauseAnalysis?: string;
-  aiObserverSkillRating?: number;
-  aiObserverSkillExplanation?: string;
 };
 
 export type Inspection = {
@@ -250,13 +245,9 @@ export type SummarizeObservationDataInput = z.infer<typeof SummarizeObservationD
 
 // This now includes all fields from the background/deeper analysis.
 export const DeeperAnalysisOutputSchema = z.object({
-    summary: z.string().describe('A very brief, one-sentence summary of the observation in English.'),
-    aiObserverSkillRating: z.number().min(1).max(5).describe('Rating of the observer skill from 1 to 5.'),
-    aiObserverSkillExplanation: z.string().describe('A brief explanation for the observer skill rating in English.'),
-    risks: z.string().describe('Bulleted list of potential dangers and safety risks (English).'),
-    suggestedActions: z.string().describe('Bulleted list of clear, actionable recommendations (English).'),
-    rootCauseAnalysis: z.string().describe('Brief, one-sentence analysis of the most likely root cause (English).'),
-    relevantRegulations: z.string().describe('Bulleted list of *types* of applicable safety standards (English).'),
+  summary: z.string().describe('A very brief, one-sentence summary of the observation in English.'),
+  risks: z.string().describe('Bulleted list of potential dangers and safety risks (English).'),
+  suggestedActions: z.string().describe('Bulleted list of clear, actionable recommendations (English).'),
 });
 export type DeeperAnalysisOutput = z.infer<typeof DeeperAnalysisOutputSchema>;
 
