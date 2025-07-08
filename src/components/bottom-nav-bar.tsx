@@ -10,18 +10,18 @@ export function BottomNavBar({ projectId }: { projectId: string }) {
   const pathname = usePathname();
 
   const navItems = [
-    { href: `/proyek/${projectId}/observasi`, label: 'Observasi', icon: ClipboardList, activeColor: 'text-primary', borderColor: 'border-primary' },
-    { href: `/proyek/${projectId}/inspeksi`, label: 'Inspeksi', icon: Wrench, activeColor: 'text-chart-2', borderColor: 'border-chart-2' },
+    { href: `/proyek/${projectId}/observasi`, label: 'Observation', icon: ClipboardList, activeColor: 'text-primary', borderColor: 'border-primary' },
+    { href: `/proyek/${projectId}/inspeksi`, label: 'Inspection', icon: Wrench, activeColor: 'text-chart-2', borderColor: 'border-chart-2' },
     { href: `/proyek/${projectId}/ptw`, label: 'PTW', icon: FileSignature, activeColor: 'text-chart-5', borderColor: 'border-chart-5' },
-    { href: `/proyek/${projectId}/analisis`, label: 'Analisis', icon: BrainCircuit, activeColor: 'text-accent', borderColor: 'border-accent' },
+    { href: `/proyek/${projectId}/analisis`, label: 'Analysis', icon: BrainCircuit, activeColor: 'text-accent', borderColor: 'border-accent' },
   ];
 
   if (!projectId) return null;
 
-  // Find the active item, considering the base project path as the default for 'Observasi'
+  // Find the active item, considering the base project path as the default for 'Observation'
   const activeItem = navItems.find(item => 
     pathname === item.href || 
-    (item.label === 'Observasi' && pathname === `/proyek/${projectId}`)
+    (item.label === 'Observation' && pathname === `/proyek/${projectId}`)
   );
   
   const activeBorderColor = activeItem ? activeItem.borderColor : 'border-border';
@@ -34,7 +34,7 @@ export function BottomNavBar({ projectId }: { projectId: string }) {
       <div className="grid h-full max-w-lg grid-cols-4 mx-auto font-medium">
         {navItems.map((item) => {
           // Check if the current item is active, with the same default logic.
-          const isActive = pathname === item.href || (item.label === 'Observasi' && pathname === `/proyek/${projectId}`);
+          const isActive = pathname === item.href || (item.label === 'Observation' && pathname === `/proyek/${projectId}`);
           return (
             <Link
               key={item.label}
