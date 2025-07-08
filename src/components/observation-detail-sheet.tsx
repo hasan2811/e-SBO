@@ -8,7 +8,7 @@ import { StatusBadge, RiskBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, AlertTriangle, ArrowLeft, Folder, Trash2, SearchCheck, User, Calendar, MapPin, Building, Tag } from 'lucide-react';
+import { Sparkles, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, AlertTriangle, ArrowLeft, Folder, Trash2, SearchCheck, User, Calendar, MapPin, Building, Tag, Activity } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
