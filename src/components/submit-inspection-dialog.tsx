@@ -32,15 +32,15 @@ import { ObservationContext } from '@/contexts/observation-context';
 
 
 const formSchema = z.object({
-  location: z.string().min(1),
-  equipmentName: z.string().min(3, { message: 'Nama peralatan minimal 3 karakter.' }),
+  location: z.string().min(1, "Location is required."),
+  equipmentName: z.string().min(3, { message: 'Equipment name must be at least 3 characters.' }),
   equipmentType: z.enum(EQUIPMENT_TYPES),
   status: z.enum(INSPECTION_STATUSES),
-  findings: z.string().min(10, { message: 'Temuan harus diisi minimal 10 karakter.' }),
+  findings: z.string().min(10, { message: 'Findings must be at least 10 characters long.' }),
   recommendation: z.string().optional(),
   photo: z
-    .instanceof(File, { message: 'Foto wajib diunggah.' })
-    .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`),
+    .instanceof(File, { message: 'Photo is required.' })
+    .refine((file) => file.size <= 10 * 1024 * 1024, `The maximum file size is 10MB.`),
   responsiblePersonUid: z.string().optional(),
 });
 
@@ -178,14 +178,14 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
       } else {
         form.setValue('photo', undefined, { shouldValidate: true });
         setPhotoPreview(null);
-        toast({ variant: 'destructive', title: 'File tidak valid', description: validation.error.issues[0].message });
+        toast({ variant: 'destructive', title: 'Invalid File', description: validation.error.issues[0].message });
       }
     }
   };
 
   const onSubmit = (values: FormValues) => {
     if (!user || !userProfile || !values.photo || !project) {
-      toast({ variant: 'destructive', title: 'Data tidak lengkap' });
+      toast({ variant: 'destructive', title: 'Incomplete Data' });
       return;
     }
     
@@ -221,7 +221,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
     };
 
     addItem(optimisticItem);
-    toast({ title: 'Laporan Dikirim', description: 'Laporan inspeksi Anda sedang diunggah.' });
+    toast({ title: 'Report Submitted', description: 'Your inspection report is being uploaded.' });
     handleOpenChange(false);
 
     const targetPath = `/proyek/${project.id}/inspeksi`;
@@ -275,7 +275,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
                   itemType: 'inspection',
                   responsiblePersonUid: values.responsiblePersonUid,
                   submitterName: userProfile.displayName,
-                  description: `Inspeksi untuk: ${values.equipmentName}`,
+                  description: `Inspection for: ${values.equipmentName}`,
                   projectId,
               });
           }
@@ -297,24 +297,24 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
       <DialogContent className="sm:max-w-[525px] p-0 flex flex-col max-h-[90dvh]">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Submit New Inspection</DialogTitle>
-          <DialogDescription>Isi detail di bawah untuk menambahkan laporan inspeksi baru.</DialogDescription>
+          <DialogDescription>Fill in the details below to add a new inspection report.</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <Form {...form}>
             <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField name="equipmentName" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Nama Peralatan</FormLabel><FormControl><Input placeholder="e.g., Excavator EX-01" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Equipment Name</FormLabel><FormControl><Input placeholder="e.g., Excavator EX-01" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <FormField name="location" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Lokasi</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(locationOptions)}</SelectContent></Select><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Location</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(locationOptions)}</SelectContent></Select><FormMessage /></FormItem>
                 )} />
                 <FormField name="equipmentType" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Jenis Peralatan</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(EQUIPMENT_TYPES)}</SelectContent></Select><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Equipment Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(EQUIPMENT_TYPES)}</SelectContent></Select><FormMessage /></FormItem>
                 )} />
               </div>
               <FormField name="status" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Status Inspeksi</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(INSPECTION_STATUSES)}</SelectContent></Select><FormMessage /></FormItem>
+                <FormItem><FormLabel>Inspection Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renderSelectItems(INSPECTION_STATUSES)}</SelectContent></Select><FormMessage /></FormItem>
               )} />
               
               <FormField
@@ -324,16 +324,16 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
                   <FormItem>
                     <FormLabel className="flex items-center gap-2">
                         <Users className="h-4 w-4" />
-                        Penanggung Jawab (Opsional)
+                        Responsible Person (Optional)
                     </FormLabel>
                     <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value || 'none'} disabled={isSubmitting || isLoadingMembers}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={isLoadingMembers ? "Memuat..." : (members.length > 0 ? "Pilih penanggung jawab" : "Tidak ada yg bisa ditugaskan")} />
+                          <SelectValue placeholder={isLoadingMembers ? "Loading..." : (members.length > 0 ? "Select a responsible person" : "No one available to assign")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">Tidak Ditugaskan</SelectItem>
+                        <SelectItem value="none">Unassigned</SelectItem>
                         {members.map(member => (
                           <SelectItem key={member.uid} value={member.uid}>
                             {member.displayName} ({member.position})
@@ -347,7 +347,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
               />
               
               <FormField name="findings" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Temuan</FormLabel><FormControl><Textarea placeholder="Jelaskan detail temuan inspeksi." rows={3} {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Findings</FormLabel><FormControl><Textarea placeholder="Describe the inspection findings in detail." rows={3} {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               
               {isAiEnabled && (
@@ -360,24 +360,24 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
                   {aiSuggestions && (
                      <Alert className="bg-primary/5 border-primary/20 text-primary-foreground mt-4">
                       <Sparkles className="h-4 w-4 text-primary" />
-                      <AlertTitle className="text-primary font-semibold">Saran Asisten AI</AlertTitle>
+                      <AlertTitle className="text-primary font-semibold">AI Assistant Suggestions</AlertTitle>
                       <AlertDescription className="text-primary/90 space-y-3 mt-2">
                          {aiSuggestions.suggestedStatus && (
                            <div className="flex items-center justify-between">
-                             <p>Saran Status: <span className="font-semibold">{aiSuggestions.suggestedStatus}</span></p>
-                             <Button type="button" size="sm" variant="outline" onClick={() => form.setValue('status', aiSuggestions.suggestedStatus as InspectionStatus)}>Terapkan</Button>
+                             <p>Suggested Status: <span className="font-semibold">{aiSuggestions.suggestedStatus}</span></p>
+                             <Button type="button" size="sm" variant="outline" onClick={() => form.setValue('status', aiSuggestions.suggestedStatus as InspectionStatus)}>Apply</Button>
                            </div>
                          )}
                          {aiSuggestions.improvedFindings && (
                            <div>
-                              <p className="mb-1">Saran Perbaikan Temuan:</p>
+                              <p className="mb-1">Suggested Findings Improvement:</p>
                               <p className="p-2 bg-background/50 rounded text-sm">{aiSuggestions.improvedFindings}</p>
-                              <Button type="button" size="sm" variant="outline" className="mt-1" onClick={() => form.setValue('findings', aiSuggestions.improvedFindings)}>Terapkan</Button>
+                              <Button type="button" size="sm" variant="outline" className="mt-1" onClick={() => form.setValue('findings', aiSuggestions.improvedFindings)}>Apply</Button>
                            </div>
                          )}
                           {aiSuggestions.suggestedRecommendation && (
                            <div>
-                              <p className="mb-1">Saran Rekomendasi:</p>
+                              <p className="mb-1">Suggested Recommendation:</p>
                                <Button type="button" size="sm" variant="outline" className="w-full justify-start text-left h-auto whitespace-normal" onClick={() => form.setValue('recommendation', aiSuggestions.suggestedRecommendation)}>
                                   <Wand2 className="mr-2 h-4 w-4 flex-shrink-0" /> {aiSuggestions.suggestedRecommendation}
                                </Button>
@@ -390,17 +390,17 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
               )}
               
               <FormField name="recommendation" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Rekomendasi (Opsional)</FormLabel><FormControl><Textarea placeholder="Jelaskan tindakan yang direkomendasikan." rows={2} {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Recommendation (Optional)</FormLabel><FormControl><Textarea placeholder="Describe the recommended action." rows={2} {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField name="photo" control={form.control} render={() => (
-                <FormItem><FormLabel>Unggah Foto</FormLabel>
+                <FormItem><FormLabel>Upload Photo</FormLabel>
                   <FormControl>
                     <Input id="inspection-photo-upload" type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handlePhotoChange} />
                   </FormControl>
                   <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
-                    <Upload className="mr-2 h-4 w-4" />{photoPreview ? 'Ganti Foto' : 'Pilih Foto'}
+                    <Upload className="mr-2 h-4 w-4" />{photoPreview ? 'Change Photo' : 'Select Photo'}
                   </Button>
-                  {photoPreview && <div className="mt-2 relative w-full h-48 rounded-md overflow-hidden border"><Image src={photoPreview} alt="Pratinjau" fill sizes="100vw" className="object-cover" data-ai-hint="equipment inspection"/></div>}
+                  {photoPreview && <div className="mt-2 relative w-full h-48 rounded-md overflow-hidden border"><Image src={photoPreview} alt="Preview" fill sizes="100vw" className="object-cover" data-ai-hint="equipment inspection"/></div>}
                   <FormMessage />
                 </FormItem>
               )} />
@@ -409,10 +409,10 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
         </div>
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
           <div className="flex w-full justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>Batal</Button>
+            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
               {isSubmitting && <Loader2 className="animate-spin" />}
-              Kirim Laporan
+              Submit Report
             </Button>
           </div>
         </DialogFooter>
