@@ -58,8 +58,8 @@ const ExportCard = ({ project }: { project: Project }) => {
             if (allItems.length === 0) {
                 toast({
                     variant: 'destructive',
-                    title: 'Tidak Ada Data untuk Diekspor',
-                    description: `Tidak ada laporan di proyek ${project.name}.`
+                    title: 'No Data to Export',
+                    description: `There are no reports in the ${project.name} project.`
                 });
                 return;
             }
@@ -70,22 +70,22 @@ const ExportCard = ({ project }: { project: Project }) => {
 
             if (success) {
                 toast({
-                    title: 'Ekspor Berhasil',
-                    description: `Laporan untuk ${project.name} sedang diunduh.`
+                    title: 'Export Successful',
+                    description: `Reports for ${project.name} are being downloaded.`
                 });
             } else {
                 toast({
                     variant: 'destructive',
-                    title: 'Ekspor Gagal',
-                    description: 'Tidak ada data valid yang ditemukan untuk diekspor.'
+                    title: 'Export Failed',
+                    description: 'No valid data was found to export.'
                 });
             }
         } catch (error) {
             console.error("Export failed:", error);
             toast({
                 variant: 'destructive',
-                title: 'Ekspor Gagal',
-                description: 'Terjadi kesalahan saat mengambil data untuk ekspor.'
+                title: 'Export Failed',
+                description: 'An error occurred while fetching data for export.'
             });
         } finally {
             setIsExporting(false);
@@ -95,13 +95,13 @@ const ExportCard = ({ project }: { project: Project }) => {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Ekspor Data Laporan</CardTitle>
-                <CardDescription>Unduh semua data observasi, inspeksi, dan PTW dari proyek ini ke dalam file Excel.</CardDescription>
+                <CardTitle>Export Report Data</CardTitle>
+                <CardDescription>Download all observation, inspection, and PTW data from this project into an Excel file.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Button onClick={handleExport} disabled={isExporting} className="w-full sm:w-auto">
                     {isExporting ? <Loader2 className="animate-spin mr-2" /> : <Download className="mr-2" />}
-                    Mulai Ekspor
+                    Start Export
                 </Button>
             </CardContent>
         </Card>
@@ -126,15 +126,15 @@ const ProjectSettingsTab = ({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Akses Proyek</CardTitle>
-          <CardDescription>Kontrol siapa yang dapat bergabung dengan proyek ini.</CardDescription>
+          <CardTitle>Project Access</CardTitle>
+          <CardDescription>Control who can join this project.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
             <div className="space-y-0.5">
-              <Label htmlFor="project-open" className="font-medium">Buka untuk Bergabung</Label>
+              <Label htmlFor="project-open" className="font-medium">Open to Join</Label>
               <p className="text-xs text-muted-foreground">
-                Jika diaktifkan, pengguna mana pun dapat melihat dan bergabung dengan proyek ini.
+                If enabled, any user can see and join this project.
               </p>
             </div>
             <Switch
@@ -148,31 +148,31 @@ const ProjectSettingsTab = ({
       
       <Card>
         <CardHeader>
-          <CardTitle>Opsi Formulir Kustom</CardTitle>
-          <CardDescription>Kelola opsi dropdown untuk formulir di proyek ini.</CardDescription>
+          <CardTitle>Custom Form Options</CardTitle>
+          <CardDescription>Manage dropdown options for forms in this project.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <CustomListInput
             inputId="custom-categories-manage"
-            title="Kategori Observasi Kustom"
-            description="Jika kosong, akan menggunakan daftar default: Open, Close."
-            placeholder="Masukkan nama kategori baru"
+            title="Custom Observation Categories"
+            description="If empty, the default list will be used."
+            placeholder="Enter a new category name"
             items={customCategories}
             setItems={setCustomCategories}
           />
           <CustomListInput
             inputId="custom-companies-manage"
-            title="Perusahaan Kustom"
-            description="Tambahkan atau hapus opsi perusahaan untuk formulir."
-            placeholder="Masukkan nama perusahaan baru"
+            title="Custom Companies"
+            description="Add or remove company options for forms."
+            placeholder="Enter a new company name"
             items={customCompanies}
             setItems={setCustomCompanies}
           />
           <CustomListInput
             inputId="custom-locations-manage"
-            title="Lokasi Kustom"
-            description="Tambahkan atau hapus opsi lokasi untuk formulir."
-            placeholder="Masukkan nama lokasi baru"
+            title="Custom Locations"
+            description="Add or remove location options for forms."
+            placeholder="Enter a new location name"
             items={customLocations}
             setItems={setCustomLocations}
           />
@@ -223,13 +223,13 @@ const MemberListTab = ({
                                 <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
-                                <CardTitle className="truncate">{member.displayName || 'Pengguna Tidak Dikenal'}</CardTitle>
-                                <CardDescription className="truncate">{member.position || 'Tidak Ada Posisi'}</CardDescription>
+                                <CardTitle className="truncate">{member.displayName || 'Unknown User'}</CardTitle>
+                                <CardDescription className="truncate">{member.position || 'No Position'}</CardDescription>
                             </div>
                         </CardHeader>
                         <CardContent className="flex-1 space-y-4">
                             <div className="flex flex-wrap items-center gap-2">
-                                {isOwner && <Badge variant="secondary" className="border-amber-500/50"><Crown className="h-3 w-3 mr-1.5 text-amber-500" />Pemilik</Badge>}
+                                {isOwner && <Badge variant="secondary" className="border-amber-500/50"><Crown className="h-3 w-3 mr-1.5 text-amber-500" />Owner</Badge>}
                                 {memberRoles.canApprovePtw && <Badge variant="outline" className="text-green-700 border-green-300"><ShieldCheck className="h-3 w-3 mr-1.5" />Approver</Badge>}
                                 {memberRoles.canTakeAction && <Badge variant="outline" className="text-blue-700 border-blue-300"><Gavel className="h-3 w-3 mr-1.5" />Action Taker</Badge>}
                             </div>
@@ -239,15 +239,15 @@ const MemberListTab = ({
                                     <div className="space-y-3">
                                         <SwitchWithLabel
                                             id={`approve-${member.uid}`}
-                                            label="Izin Menyetujui PTW"
-                                            description="Dapat menyetujui Izin Kerja."
+                                            label="Can Approve PTW"
+                                            description="Can approve Permits to Work."
                                             checked={memberRoles.canApprovePtw ?? false}
                                             onCheckedChange={(val) => onRoleChange(member.uid, 'canApprovePtw', val)}
                                         />
                                         <SwitchWithLabel
                                             id={`action-${member.uid}`}
-                                            label="Izin Ambil Tindakan"
-                                            description="Dapat menyelesaikan laporan."
+                                            label="Can Take Action"
+                                            description="Can close out reports."
                                             checked={memberRoles.canTakeAction ?? false}
                                             onCheckedChange={(val) => onRoleChange(member.uid, 'canTakeAction', val)}
                                         />
@@ -263,7 +263,7 @@ const MemberListTab = ({
                                     className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                                     onClick={() => onRemoveClick(member)}
                                 >
-                                    <UserX className="mr-2" /> Keluarkan
+                                    <UserX className="mr-2" /> Remove
                                 </Button>
                             )}
                         </CardFooter>
@@ -391,15 +391,15 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
           await updateDoc(projectRef, updatedData);
           updateProject(initialProject.id, updatedData); // Optimistic update of global context
           toast({
-            title: 'Pengaturan Disimpan',
-            description: 'Pengaturan proyek Anda telah berhasil diperbarui.',
+            title: 'Settings Saved',
+            description: 'Your project settings have been successfully updated.',
           });
           onOpenChange(false);
         } catch (error) {
           toast({
             variant: 'destructive',
-            title: 'Gagal Menyimpan',
-            description: 'Tidak dapat menyimpan pengaturan proyek Anda. Silakan coba lagi.',
+            title: 'Save Failed',
+            description: 'Could not save your project settings. Please try again.',
           });
         } finally {
           setIsSaving(false);
@@ -420,10 +420,10 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                     <DialogHeader className="p-6 pb-4 flex-shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                           <FileCog />
-                          Kelola "{currentProject.name}"
+                          Manage "{currentProject.name}"
                         </DialogTitle>
                         <DialogDescription>
-                            Lihat anggota, kelola peran & pengaturan, dan ekspor data proyek.
+                            View members, manage roles & settings, and export project data.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -438,7 +438,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                                         </TabsTrigger>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Anggota & Peran</p>
+                                        <p>Members & Roles</p>
                                     </TooltipContent>
                                     </Tooltip>
                                     
@@ -449,7 +449,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                                         </TabsTrigger>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Pengaturan Proyek</p>
+                                        <p>Project Settings</p>
                                     </TooltipContent>
                                     </Tooltip>
 
@@ -460,7 +460,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                                         </TabsTrigger>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Ekspor Data</p>
+                                        <p>Export Data</p>
                                     </TooltipContent>
                                     </Tooltip>
                                 </TabsList>
@@ -500,7 +500,7 @@ export function ManageProjectDialog({ isOpen, onOpenChange, project: initialProj
                        <DialogFooter className="p-4 border-t bg-background flex-shrink-0">
                           <Button onClick={handleSaveChanges} disabled={isSaving}>
                               {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2" />}
-                              Simpan Perubahan
+                              Save Changes
                           </Button>
                       </DialogFooter>
                     )}
