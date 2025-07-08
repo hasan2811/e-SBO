@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -98,7 +97,12 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <div className="flex flex-col min-h-screen bg-secondary/50">
-        <DashboardHeader />
+        <DashboardHeader 
+          projectId={projectId}
+          onNewObservation={projectId ? () => setObservationDialogOpen(true) : undefined}
+          onNewInspection={projectId ? () => setInspectionDialogOpen(true) : undefined}
+          onNewPtw={projectId ? () => setPtwDialogOpen(true) : undefined}
+        />
         <div className={cn("flex-1", projectId && "md:grid md:grid-cols-[220px_1fr]")}>
           {projectId && <Sidebar projectId={projectId} />}
           <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 overflow-y-auto">

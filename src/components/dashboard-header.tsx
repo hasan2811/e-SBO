@@ -1,8 +1,7 @@
-
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, Check, Folder, FileCog, FolderPlus, LogIn, Download, Trash2, LogOut, Home } from 'lucide-react';
+import { ChevronsUpDown, Check, Folder, FileCog, FolderPlus, LogIn, Download, Trash2, LogOut, Home, PlusCircle, ClipboardList, Wrench, FileSignature } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserAccountSheet } from '@/components/user-account-sheet';
 import { AppLogo } from '@/components/app-logo';
@@ -93,24 +92,76 @@ function ProjectSwitcher() {
   );
 }
 
+interface NewReportButtonProps {
+  onNewObservation: () => void;
+  onNewInspection: () => void;
+  onNewPtw: () => void;
+}
 
-export function DashboardHeader() {
+function NewReportButton({ onNewObservation, onNewInspection, onNewPtw }: NewReportButtonProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button className="hidden md:inline-flex">
+          <PlusCircle className="mr-2" />
+          New Report
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Create New</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onNewObservation}>
+          <ClipboardList />
+          <span>New Observation</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={onNewInspection}>
+          <Wrench />
+          <span>New Inspection</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={onNewPtw}>
+          <FileSignature />
+          <span>New PTW</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+
+interface DashboardHeaderProps {
+  projectId: string | null;
+  onNewObservation?: () => void;
+  onNewInspection?: () => void;
+  onNewPtw?: () => void;
+}
+
+export function DashboardHeader({
+  projectId,
+  onNewObservation,
+  onNewInspection,
+  onNewPtw,
+}: DashboardHeaderProps) {
   return (
     <header className="bg-card border-b sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-                <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-                    <Link href="/beranda" aria-label="Home" className="flex-shrink-0">
-                        <AppLogo />
-                    </Link>
-                    <div className="border-l pl-2 sm:pl-4 flex-1 min-w-0">
-                       <ProjectSwitcher />
-                    </div>
+        <div className="flex items-center justify-between h-16 px-4 sm:px-6">
+            <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+                <Link href="/beranda" aria-label="Home" className="flex-shrink-0">
+                    <AppLogo />
+                </Link>
+                <div className="border-l pl-2 sm:pl-4 flex-1 min-w-0">
+                   <ProjectSwitcher />
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                    <NotificationSheet />
-                    <UserAccountSheet />
-                </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+                {projectId && onNewObservation && onNewInspection && onNewPtw && (
+                  <NewReportButton 
+                    onNewObservation={onNewObservation}
+                    onNewInspection={onNewInspection}
+                    onNewPtw={onNewPtw}
+                  />
+                )}
+                <NotificationSheet />
+                <UserAccountSheet />
             </div>
         </div>
     </header>
