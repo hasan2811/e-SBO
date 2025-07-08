@@ -46,8 +46,8 @@ export function DeleteMultipleDialog({
     // 1. Optimistic UI Update
     itemsToDelete.forEach(item => removeItem(item.id, item.itemType));
     toast({
-        title: 'Berhasil Dihapus',
-        description: `${count} item telah dihapus dari tampilan.`,
+        title: 'Successfully Deleted',
+        description: `${count} item(s) have been removed from view.`,
     });
     onSuccess();
     onOpenChange(false);
@@ -83,11 +83,11 @@ export function DeleteMultipleDialog({
             await batch.commit();
             await Promise.all(storageDeletePromises);
         } catch (error) {
-            console.error("Gagal menghapus beberapa item dari server:", error);
+            console.error("Failed to delete multiple items from server:", error);
             toast({
                 variant: 'destructive',
-                title: 'Sinkronisasi Gagal',
-                description: 'Beberapa item gagal dihapus dari server. Harap segarkan halaman.',
+                title: 'Sync Failed',
+                description: 'Some items failed to delete from the server. Please refresh the page.',
             });
         }
     };
@@ -101,14 +101,14 @@ export function DeleteMultipleDialog({
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Anda yakin ingin menghapus item ini?</AlertDialogTitle>
+          <AlertDialogTitle>Are you sure you want to delete these items?</AlertDialogTitle>
           <AlertDialogDescription>
-            Tindakan ini tidak dapat dibatalkan. Ini akan menghapus{' '}
-            <span className="font-bold">{itemsToDelete.length}</span> item yang dipilih secara permanen, termasuk semua data terkait seperti foto.
+            This action cannot be undone. This will permanently delete the selected{' '}
+            <span className="font-bold">{itemsToDelete.length}</span> item(s), including all related data like photos.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirmClick}
             disabled={isDeleting}
@@ -119,7 +119,7 @@ export function DeleteMultipleDialog({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            Ya, hapus semua
+            Yes, delete all
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

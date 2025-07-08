@@ -27,11 +27,11 @@ export default function ProjectPtwPage() {
   if (!project) {
     return (
       <div className="text-center py-10">
-        <h2 className="text-2xl font-bold">Proyek Tidak Ditemukan</h2>
-        <p className="text-muted-foreground">Proyek mungkin telah dihapus atau Anda tidak memiliki izin.</p>
+        <h2 className="text-2xl font-bold">Project Not Found</h2>
+        <p className="text-muted-foreground">The project may have been deleted or you don't have permission.</p>
         <Button onClick={() => router.push('/beranda')} className="mt-4">
           <ArrowLeft className="mr-2" />
-          Kembali
+          Back
         </Button>
       </div>
     );
@@ -42,7 +42,7 @@ export default function ProjectPtwPage() {
       projectId={projectId} 
       itemTypeFilter="ptw"
       itemIdToOpen={itemIdToOpen}
-      title="Izin Kerja"
+      title="Permit to Work"
     />
   );
 }

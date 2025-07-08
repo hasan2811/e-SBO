@@ -43,9 +43,9 @@ export function MultiActionButton({ onNewObservation, onNewInspection, onNewPtw 
     : { duration: 0 };
 
   const actions = [
-    { label: 'Buat Observasi', icon: ClipboardList, action: onNewObservation, color: 'bg-accent' },
-    { label: 'Buat Inspeksi', icon: Wrench, action: onNewInspection, color: 'bg-chart-2' },
-    { label: 'Buat PTW', icon: FileSignature, action: onNewPtw, color: 'bg-chart-5' },
+    { label: 'New Observation', icon: ClipboardList, action: onNewObservation, color: 'bg-accent' },
+    { label: 'New Inspection', icon: Wrench, action: onNewInspection, color: 'bg-chart-2' },
+    { label: 'New PTW', icon: FileSignature, action: onNewPtw, color: 'bg-chart-5' },
   ];
 
   return (
@@ -96,7 +96,7 @@ export function MultiActionButton({ onNewObservation, onNewInspection, onNewPtw 
             >
               <Plus className="h-8 w-8 transition-transform" />
             </motion.div>
-            <span className="sr-only">{isOpen ? 'Tutup menu aksi' : 'Buka menu aksi'}</span>
+            <span className="sr-only">{isOpen ? 'Close action menu' : 'Open action menu'}</span>
           </Button>
         </div>
       </TooltipProvider>
