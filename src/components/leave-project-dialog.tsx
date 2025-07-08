@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -53,8 +52,8 @@ export function LeaveProjectDialog({
     // 1. Optimistic UI update for an instant response
     removeProject(project.id);
     toast({
-      title: 'Berhasil Meninggalkan Proyek',
-      description: `Anda telah meninggalkan proyek "${project.name}".`,
+      title: 'Successfully Left Project',
+      description: `You have left the project "${project.name}".`,
     });
     onSuccess?.(project.id); // Close the dialog immediately
 
@@ -76,8 +75,8 @@ export function LeaveProjectDialog({
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Sinkronisasi Gagal',
-        description: 'Gagal meninggalkan proyek dari server. Muat ulang halaman jika proyek muncul kembali.',
+        title: 'Sync Failed',
+        description: 'Failed to leave the project on the server. Please reload if the project reappears.',
       });
     }
   };
@@ -86,14 +85,14 @@ export function LeaveProjectDialog({
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Anda yakin ingin meninggalkan proyek ini?</AlertDialogTitle>
+          <AlertDialogTitle>Are you sure you want to leave this project?</AlertDialogTitle>
           <AlertDialogDescription>
-            Anda akan meninggalkan proyek{' '}
-            <span className="font-bold">"{project?.name}"</span>. Anda akan kehilangan akses ke semua datanya. Anda hanya bisa bergabung kembali jika diundang lagi.
+            You are about to leave the project{' '}
+            <span className="font-bold">"{project?.name}"</span>. You will lose access to all of its data. You can only rejoin if invited again.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLeaving}>Batal</AlertDialogCancel>
+          <AlertDialogCancel disabled={isLeaving}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleLeave}
             disabled={isLeaving}
@@ -104,7 +103,7 @@ export function LeaveProjectDialog({
             ) : (
               <LogOut className="mr-2 h-4 w-4" />
             )}
-            Ya, tinggalkan proyek
+            Yes, leave project
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

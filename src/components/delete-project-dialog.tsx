@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -52,8 +51,8 @@ export function DeleteProjectDialog({
     // 1. Optimistic UI update for instant response
     removeProject(project.id);
     toast({
-      title: 'Proyek Dihapus',
-      description: `Proyek "${project.name}" sedang dihapus di latar belakang.`,
+      title: 'Project Deletion Initiated',
+      description: `Project "${project.name}" is being deleted in the background.`,
     });
     onSuccess?.(project.id); // Close the dialog immediately
 
@@ -112,8 +111,8 @@ export function DeleteProjectDialog({
         console.error("Error deleting project from server:", error);
         toast({
             variant: 'destructive',
-            title: 'Sinkronisasi Gagal',
-            description: 'Gagal menghapus proyek dari server. Muat ulang halaman jika proyek muncul kembali.',
+            title: 'Sync Failed',
+            description: 'Failed to delete project from the server. Please reload if the project reappears.',
         });
         }
     };
@@ -125,13 +124,13 @@ export function DeleteProjectDialog({
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Hapus Proyek Secara Permanen?</AlertDialogTitle>
+          <AlertDialogTitle>Permanently Delete Project?</AlertDialogTitle>
           <AlertDialogDescription>
-            Tindakan ini akan secara permanen menghapus proyek "{project.name}" dan SEMUA datanya untuk SEMUA anggota. Tindakan ini tidak dapat dibatalkan.
+            This will permanently delete the "{project.name}" project and ALL of its data for ALL members. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isProcessing}>Batal</AlertDialogCancel>
+          <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={isProcessing}
@@ -142,7 +141,7 @@ export function DeleteProjectDialog({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            Ya, Hapus Semuanya
+            Yes, Delete Everything
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
