@@ -81,7 +81,7 @@ const ObservationListItem = React.memo(function ObservationListItem({ observatio
             <CardContent className="p-4 pl-6 flex items-start gap-4">
                  {isSelectionMode && (
                     <div className="flex items-center h-16">
-                        <Checkbox checked={isSelected} onCheckedChange={onToggle} aria-label={`Pilih ${observation.referenceId}`} />
+                        <Checkbox checked={isSelected} onCheckedChange={onToggle} aria-label={`Select ${observation.referenceId}`} />
                     </div>
                 )}
                 {observation.photoUrl ? (
@@ -151,7 +151,7 @@ const InspectionListItem = React.memo(function InspectionListItem({ inspection, 
             <CardContent className="p-4 pl-6 flex items-start gap-4">
                 {isSelectionMode && (
                     <div className="flex items-center h-16">
-                        <Checkbox checked={isSelected} onCheckedChange={onToggle} aria-label={`Pilih ${inspection.referenceId}`} />
+                        <Checkbox checked={isSelected} onCheckedChange={onToggle} aria-label={`Select ${inspection.referenceId}`} />
                     </div>
                 )}
                 {inspection.photoUrl ? (
@@ -221,7 +221,7 @@ const PtwListItem = React.memo(function PtwListItem({ ptw, onSelect, isSelected,
             <CardContent className="p-4 pl-6 flex items-start gap-4">
                 {isSelectionMode && (
                     <div className="flex items-center h-16">
-                        <Checkbox checked={isSelected} onCheckedChange={onToggle} aria-label={`Pilih ${ptw.referenceId}`} />
+                        <Checkbox checked={isSelected} onCheckedChange={onToggle} aria-label={`Select ${ptw.referenceId}`} />
                     </div>
                 )}
                 <div className="relative h-16 w-16 flex-shrink-0 rounded-md bg-muted flex items-center justify-center">
@@ -302,7 +302,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
                 case 'ptw': if (getPtwById(itemIdToOpen)) { setSelectedPtwId(itemIdToOpen); itemExists = true; } break;
             }
 
-            if (!itemExists) toast({ variant: 'destructive', title: 'Laporan Tidak Ditemukan' });
+            if (!itemExists) toast({ variant: 'destructive', title: 'Report Not Found' });
             router.replace(pathname, { scroll: false });
         }
     };
@@ -310,7 +310,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
   }, [itemIdToOpen, isLoading, itemTypeFilter, getObservationById, getInspectionById, getPtwById, pathname, router, toast]);
 
   const filterOptions = React.useMemo(() => {
-    const all = { value: 'all', label: 'Semua' };
+    const all = { value: 'all', label: 'All' };
     let statusOptions = [all];
     let riskOptions = [all];
 
@@ -393,16 +393,16 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
     setIsExporting(true);
     try {
         if (filteredData.length === 0) {
-            toast({ variant: 'destructive', title: 'Tidak Ada Data', description: 'Tidak ada data untuk diekspor dengan filter saat ini.' });
+            toast({ variant: 'destructive', title: 'No Data', description: 'There is no data to export with the current filters.' });
             return;
         }
         const fileName = `${title.replace(/\s/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}`;
         const success = await exportToExcel(filteredData, fileName);
         if (success) {
-            toast({ title: 'Ekspor Dimulai', description: 'File Excel Anda sedang diunduh.' });
+            toast({ title: 'Export Started', description: 'Your Excel file is being downloaded.' });
         }
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Ekspor Gagal', description: 'Terjadi kesalahan saat mengekspor data.' });
+        toast({ variant: 'destructive', title: 'Export Failed', description: 'An error occurred while exporting the data.' });
     } finally {
         setIsExporting(false);
     }
@@ -414,11 +414,11 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
 
   function EmptyState() {
     const messages = {
-        observation: { icon: ClipboardList, title: 'Belum Ada Observasi', text: 'Belum ada laporan observasi untuk proyek ini.' },
-        inspection: { icon: Wrench, title: 'Belum Ada Inspeksi', text: 'Belum ada laporan inspeksi untuk proyek ini.' },
-        ptw: { icon: FileSignature, title: 'Belum Ada Izin Kerja', text: 'Belum ada izin kerja untuk proyek ini.' },
+        observation: { icon: ClipboardList, title: 'No Observations Yet', text: 'There are no observation reports for this project yet.' },
+        inspection: { icon: Wrench, title: 'No Inspections Yet', text: 'There are no inspection reports for this project yet.' },
+        ptw: { icon: FileSignature, title: 'No Permits to Work Yet', text: 'There are no work permits for this project yet.' },
     };
-    if (searchTerm || statusFilter !== 'all' || riskFilter !== 'all') return <div className="text-center py-16 text-muted-foreground bg-card rounded-lg border-dashed"><Search className="mx-auto h-12 w-12" /><h3 className="mt-4 text-xl font-semibold">Tidak Ada Hasil</h3><p className="mt-2 text-sm max-w-xs mx-auto">Tidak ada laporan yang cocok dengan filter Anda.</p></div>;
+    if (searchTerm || statusFilter !== 'all' || riskFilter !== 'all') return <div className="text-center py-16 text-muted-foreground bg-card rounded-lg border-dashed"><Search className="mx-auto h-12 w-12" /><h3 className="mt-4 text-xl font-semibold">No Results</h3><p className="mt-2 text-sm max-w-xs mx-auto">No reports match your filters.</p></div>;
     const currentType = messages[itemTypeFilter];
     return <div className="text-center py-16 text-muted-foreground bg-card rounded-lg border-dashed"><currentType.icon className="mx-auto h-12 w-12" /><h3 className="mt-4 text-xl font-semibold">{currentType.title}</h3><p className="mt-2 text-sm max-w-xs mx-auto">{currentType.text}</p></div>;
   }
@@ -440,10 +440,10 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
         <div className="flex flex-row justify-between items-center gap-4">
             {isSelectionMode ? (
                 <div className="flex items-center gap-4 w-full">
-                    <Button variant="ghost" onClick={() => handleSelectionMode(false)}>Batal</Button>
-                    <p className="font-semibold text-sm flex-1">{selectedIds.size} dipilih</p>
+                    <Button variant="ghost" onClick={() => handleSelectionMode(false)}>Cancel</Button>
+                    <p className="font-semibold text-sm flex-1">{selectedIds.size} selected</p>
                     <Button size="sm" variant="destructive" disabled={selectedIds.size === 0} onClick={() => setBulkDeleteOpen(true)}>
-                        <Trash2 /> Hapus
+                        <Trash2 /> Delete
                     </Button>
                 </div>
             ) : (
@@ -453,19 +453,19 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
                       <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
                               <MoreVertical />
-                              <span className="sr-only">Opsi Lainnya</span>
+                              <span className="sr-only">More Options</span>
                           </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                           <DropdownMenuItem onSelect={() => setIsFilterVisible(prev => !prev)}>
-                              <Filter /><span>Filter & Cari</span>
+                              <Filter /><span>Filter & Search</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => handleSelectionMode(true)}>
-                              <ListChecks /><span>Pilih Laporan</span>
+                              <ListChecks /><span>Select Reports</span>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onSelect={handleExport} disabled={isExporting}>
-                              <FileDown /><span>Ekspor ke Excel</span>
+                              <FileDown /><span>Export to Excel</span>
                           </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -480,7 +480,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         <div className="relative sm:col-span-2 lg:col-span-2">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Cari berdasarkan kata kunci..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-full" autoFocus/>
+                            <Input placeholder="Search by keyword..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-full" autoFocus/>
                             {searchTerm && <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}><X className="h-4 w-4"/></Button>}
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -497,14 +497,14 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
                                 <SelectTrigger><SelectValue/></SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectLabel>Tingkat Risiko</SelectLabel>
+                                        <SelectLabel>Risk Level</SelectLabel>
                                         {filterOptions.riskOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
                         )}
                         <Button variant="ghost" onClick={handleResetFilters} className="sm:col-span-2 lg:col-span-4 mt-2">
-                           <RotateCcw /> Reset Filter
+                           <RotateCcw /> Reset Filters
                         </Button>
                     </div>
                 </Card>
@@ -536,7 +536,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
             <div className="flex justify-center mt-6">
                 <Button onClick={loadMore} variant="outline" disabled={isLoadingMore}>
                     {isLoadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Muat Lebih Banyak
+                    Load More
                 </Button>
             </div>
         )}
