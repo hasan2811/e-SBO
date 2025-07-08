@@ -8,9 +8,8 @@ import { StatusBadge, RiskBadge } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, FileText, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, RefreshCw, AlertTriangle, Activity, Target, UserCheck, Star, ArrowLeft, Folder, Trash2, SearchCheck, User, Calendar, MapPin, Building, Tag } from 'lucide-react';
+import { Sparkles, ShieldAlert, ListChecks, Gavel, CheckCircle2, Loader2, AlertTriangle, ArrowLeft, Folder, Trash2, SearchCheck, User, Calendar, MapPin, Building, Tag } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
-import { StarRating } from './star-rating';
 import { format } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
 import { useProjects } from '@/hooks/use-projects';
@@ -192,7 +191,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                         <CardContent className="space-y-4">
                            {observation.aiStatus === 'n/a' && (
                                 <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed">
-                                   <p className="text-sm text-muted-foreground">Run AI analysis to identify key risks and suggest actions.</p>
+                                   <p className="text-sm text-muted-foreground">Run AI analysis to get deep insights on risks, actions, and more.</p>
                                    <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={isAnalyzing}>
                                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4" />}
                                        Run AI Analysis

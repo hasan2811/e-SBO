@@ -110,7 +110,6 @@ export type Observation = {
   // AI Fields
   aiStatus?: 'processing' | 'completed' | 'failed' | 'n/a';
   aiSummary?: string;
-  aiSuggestedRiskLevel?: RiskLevel;
   aiRisks?: string;
   aiSuggestedActions?: string;
 };
