@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -53,7 +54,7 @@ const ProjectCard = ({
                  <Folder className="h-6 w-6 text-primary" />
               </div>
               <CardTitle className="truncate text-xl font-bold">{project.name}</CardTitle>
-              <CardDescription>Klik untuk membuka proyek.</CardDescription>
+              <CardDescription>Click to open project.</CardDescription>
             </div>
             
             <div onClick={handleActionClick} className="flex-shrink-0 -mr-2 -mt-2">
@@ -65,7 +66,7 @@ const ProjectCard = ({
                     className="h-9 w-9"
                   >
                     <MoreVertical className="h-5 w-5" />
-                    <span className="sr-only">Tindakan Proyek</span>
+                    <span className="sr-only">Project Actions</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -73,18 +74,18 @@ const ProjectCard = ({
                     <>
                       <DropdownMenuItem onSelect={onManageClick}>
                         <FileCog />
-                        <span>Kelola Proyek</span>
+                        <span>Manage Project</span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onSelect={onDeleteClick} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                         <Trash2 />
-                        <span>Hapus Proyek</span>
+                        <span>Delete Project</span>
                       </DropdownMenuItem>
                     </>
                   ) : (
                     <DropdownMenuItem onSelect={onLeaveClick}>
                       <LogOut />
-                      <span>Keluar dari Proyek</span>
+                      <span>Leave Project</span>
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -98,12 +99,12 @@ const ProjectCard = ({
         <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-6 mt-auto">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Users className="h-4 w-4" />
-            <span>{project.memberUids.length} Anggota</span>
+            <span>{project.memberUids.length} Members</span>
           </div>
           {isOwner && (
             <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold">
                 <Crown className="h-4 w-4 text-amber-500" />
-                <span>Pemilik</span>
+                <span>Owner</span>
             </div>
           )}
         </CardFooter>
@@ -209,14 +210,14 @@ export default function ProjectHubPage() {
       <div className="flex h-full items-center justify-center pt-16">
         <Alert variant="destructive" className="max-w-lg">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Gagal Memuat Proyek</AlertTitle>
+          <AlertTitle>Failed to Load Projects</AlertTitle>
           <AlertDescription>
-            <p>Terjadi kesalahan saat mencoba mengambil daftar proyek Anda.</p>
+            <p>An error occurred while trying to fetch your project list.</p>
             <code className="mt-4 relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
               {projectsError}
             </code>
             <p className="mt-4">
-              Silakan coba muat ulang halaman. Jika masalah berlanjut, kemungkinan ada masalah dengan konfigurasi database yang memerlukan perbaikan oleh administrator.
+              Please try reloading the page. If the problem persists, there may be an issue with the database configuration that requires an administrator's attention.
             </p>
           </AlertDescription>
         </Alert>
@@ -233,8 +234,8 @@ export default function ProjectHubPage() {
               <h1 className="text-3xl font-bold tracking-tight">Project Hub</h1>
               <p className="text-muted-foreground mt-1">
                   {projects.length > 0 
-                  ? `Anda memiliki ${projects.length} proyek. Pilih satu untuk melanjutkan.` 
-                  : `Selamat datang, ${userProfile?.displayName}. Mulai dengan membuat atau bergabung dengan proyek.`
+                  ? `You have ${projects.length} project(s). Select one to continue.` 
+                  : `Welcome, ${userProfile?.displayName}. Get started by creating or joining a project.`
                   }
               </p>
             </div>
@@ -242,11 +243,11 @@ export default function ProjectHubPage() {
                   <div className="flex-shrink-0 flex gap-2 sm:gap-4">
                       <Button onClick={() => setCreateDialogOpen(true)}>
                           <FolderPlus />
-                          Buat Proyek
+                          Create Project
                       </Button>
                       <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
                           <LogIn />
-                          Gabung Proyek
+                          Join Project
                       </Button>
                   </div>
               )}
@@ -277,19 +278,19 @@ export default function ProjectHubPage() {
                           <div className="mx-auto bg-primary/10 rounded-full p-4 w-fit mb-4">
                               <PackageOpen className="h-12 w-12 text-primary" />
                           </div>
-                          <CardTitle className="text-2xl font-bold">Mulai Proyek Pertama Anda</CardTitle>
+                          <CardTitle className="text-2xl font-bold">Start Your First Project</CardTitle>
                           <CardDescription className="mt-2 max-w-sm mx-auto">
-                          Anda belum menjadi anggota proyek apa pun. Buat yang baru atau gabung dengan tim Anda.
+                          You are not a member of any projects yet. Create a new one or join your team.
                           </CardDescription>
                       </CardHeader>
                       <CardFooter className="flex flex-col sm:flex-row gap-4 p-6 bg-muted/50 border-t">
                           <Button onClick={() => setCreateDialogOpen(true)} className="w-full">
                           <FolderPlus />
-                          Buat Proyek Baru
+                          Create New Project
                           </Button>
                           <Button variant="outline" onClick={() => setJoinDialogOpen(true)} className="w-full">
                           <LogIn />
-                          Gabung Proyek
+                          Join Project
                           </Button>
                       </CardFooter>
                   </Card>
