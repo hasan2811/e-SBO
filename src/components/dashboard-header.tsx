@@ -39,9 +39,9 @@ function ProjectSwitcher() {
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full sm:w-auto text-lg font-bold p-1 sm:p-2 h-auto justify-start text-left"
+            className="w-full text-lg font-bold p-1 sm:p-2 h-auto justify-start text-left"
           >
-            <span className="truncate max-w-[200px] sm:max-w-[300px]">
+            <span className="truncate">
               {selectedProject ? selectedProject.name : "Project Hub"}
             </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -97,17 +97,17 @@ function ProjectSwitcher() {
 export function DashboardHeader() {
   return (
     <header className="bg-card border-b sticky top-0 z-30">
-        <div className="px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-                <div className="flex items-center gap-2 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
                     <Link href="/beranda" aria-label="Home" className="flex-shrink-0">
                         <AppLogo />
                     </Link>
-                    <div className="border-l pl-2 sm:pl-4">
+                    <div className="border-l pl-2 sm:pl-4 flex-1 min-w-0">
                        <ProjectSwitcher />
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                     <NotificationSheet />
                     <UserAccountSheet />
                 </div>
