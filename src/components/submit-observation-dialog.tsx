@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -33,11 +32,11 @@ import { ObservationContext } from '@/contexts/observation-context';
 const formSchema = z.object({
   photo: z
     .instanceof(File)
-    .refine((file) => file.size <= 10 * 1024 * 1024, `Ukuran file maksimal adalah 10MB.`)
+    .refine((file) => file.size <= 10 * 1024 * 1024, `The maximum file size is 10MB.`)
     .optional(),
   location: z.string({ required_error: "Location is required." }).min(1, "Location is required."),
   company: z.string({ required_error: "Company is required." }).min(1, "Company is required."),
-  findings: z.string().min(10, { message: 'Temuan harus diisi minimal 10 karakter.' }),
+  findings: z.string().min(10, { message: 'Findings must be at least 10 characters long.' }),
   recommendation: z.string().optional(),
   category: z.string().min(1, "Category is required."),
   riskLevel: z.enum(RISK_LEVELS),
@@ -151,7 +150,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                     setMembers(responsibleMembers);
                 } catch (error) {
                     console.error("Failed to fetch project members:", error);
-                    toast({ variant: 'destructive', title: 'Gagal memuat anggota proyek' });
+                    toast({ variant: 'destructive', title: 'Failed to load project members' });
                 } finally {
                     setIsLoadingMembers(false);
                 }
@@ -191,7 +190,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         setPhotoPreview(null);
         toast({
           variant: 'destructive',
-          title: 'File tidak valid',
+          title: 'Invalid File',
           description: validation.error.issues[0].message,
         });
       }
@@ -200,7 +199,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
 
   const onSubmit = (values: FormValues) => {
     if (!user || !userProfile || !project) {
-      toast({ variant: 'destructive', title: 'Data tidak lengkap' });
+      toast({ variant: 'destructive', title: 'Incomplete Data' });
       return;
     }
     setIsSubmitting(true);
@@ -237,7 +236,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     };
 
     addItem(optimisticItem);
-    toast({ title: 'Laporan Dikirim', description: 'Laporan Anda sedang diunggah di latar belakang.' });
+    toast({ title: 'Report Submitted', description: 'Your observation report is being uploaded.' });
     handleOpenChange(false);
     
     const targetPath = `/proyek/${project.id}/observasi`;
@@ -329,8 +328,8 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
           </DialogTitle>
           <DialogDescription>
             {isAiEnabled
-              ? "Isi laporan Anda. AI akan memberikan saran dan analisis mendalam."
-              : "Isi detail di bawah untuk menambahkan laporan observasi baru."
+              ? "Fill out your report. The AI will provide suggestions and in-depth analysis."
+              : "Fill in the details below to add a new observation report."
             }
           </DialogDescription>
         </DialogHeader>
@@ -343,7 +342,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                 name="photo"
                 render={() => (
                   <FormItem>
-                    <FormLabel>Unggah Foto (Opsional)</FormLabel>
+                    <FormLabel>Upload Photo (Optional)</FormLabel>
                     <FormControl>
                       <Input
                         id="observation-photo-upload"
@@ -362,11 +361,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                       disabled={isSubmitting}
                     >
                       <Upload />
-                      {photoPreview ? 'Ganti Foto' : 'Pilih Foto'}
+                      {photoPreview ? 'Change Photo' : 'Select Photo'}
                     </Button>
                     {photoPreview && (
                       <div className="mt-2 relative w-full h-48 rounded-md overflow-hidden border">
-                        <Image src={photoPreview} alt="Pratinjau Foto" fill sizes="(max-width: 525px) 100vw, 525px" className="object-cover" data-ai-hint="site observation" />
+                        <Image src={photoPreview} alt="Photo Preview" fill sizes="(max-width: 525px) 100vw, 525px" className="object-cover" data-ai-hint="site observation" />
                       </div>
                     )}
                     <FormMessage />
@@ -379,10 +378,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   name="location"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Lokasi</FormLabel>
+                      <FormLabel>Location</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Pilih lokasi" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Select a location" /></SelectTrigger>
                         </FormControl>
                         <SelectContent>{renderSelectItems(locationOptions)}</SelectContent>
                       </Select>
@@ -395,10 +394,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   name="company"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Perusahaan</FormLabel>
+                      <FormLabel>Company</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Pilih perusahaan" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Select a company" /></SelectTrigger>
                         </FormControl>
                         <SelectContent>{renderSelectItems(companyOptions)}</SelectContent>
                       </Select>
@@ -414,10 +413,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Kategori</FormLabel>
+                      <FormLabel>Category</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
                         </FormControl>
                         <SelectContent>{renderSelectItems(categoryOptions)}</SelectContent>
                       </Select>
@@ -430,10 +429,10 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   name="riskLevel"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tingkat Risiko</FormLabel>
+                      <FormLabel>Risk Level</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Pilih tingkat risiko" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Select a risk level" /></SelectTrigger>
                         </FormControl>
                         <SelectContent>{renderSelectItems(RISK_LEVELS)}</SelectContent>
                       </Select>
@@ -450,16 +449,16 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
                           <Users className="h-4 w-4" />
-                          Penanggung Jawab (Opsional)
+                          Responsible Person (Optional)
                       </FormLabel>
                       <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value || 'none'} disabled={isSubmitting || isLoadingMembers}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={isLoadingMembers ? "Memuat..." : (members.length > 0 ? "Pilih penanggung jawab" : "Tidak ada yg bisa ditugaskan")} />
+                            <SelectValue placeholder={isLoadingMembers ? "Loading..." : (members.length > 0 ? "Select a responsible person" : "No one available to assign")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="none">Tidak Ditugaskan</SelectItem>
+                          <SelectItem value="none">Unassigned</SelectItem>
                           {members.map(member => (
                             <SelectItem key={member.uid} value={member.uid}>
                               {member.displayName} ({member.position})
@@ -477,9 +476,9 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                 name="findings"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Temuan</FormLabel>
+                    <FormLabel>Findings</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Jelaskan detail temuan observasi sejelas mungkin." rows={5} {...field} disabled={isSubmitting} />
+                      <Textarea placeholder="Describe the observation findings as clearly as possible." rows={5} {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -496,31 +495,31 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                   {aiSuggestions && (
                      <Alert className="bg-primary/5 border-primary/20 text-primary-foreground mt-4">
                       <Sparkles className="h-4 w-4 text-primary" />
-                      <AlertTitle className="text-primary font-semibold">Saran Asisten AI</AlertTitle>
+                      <AlertTitle className="text-primary font-semibold">AI Assistant Suggestions</AlertTitle>
                       <AlertDescription className="text-primary/90 space-y-3 mt-2">
                           <div className='space-y-2'>
                             {aiSuggestions.suggestedCategory && (
                               <div className="flex items-center justify-between">
-                                <p>Saran Kategori: <span className="font-semibold">{aiSuggestions.suggestedCategory}</span></p>
+                                <p>Suggested Category: <span className="font-semibold">{aiSuggestions.suggestedCategory}</span></p>
                               </div>
                             )}
                              {aiSuggestions.suggestedRiskLevel && (
                               <div className="flex items-center justify-between">
-                                <p>Saran Risiko: <span className="font-semibold">{aiSuggestions.suggestedRiskLevel}</span></p>
-                                <Button type="button" size="sm" variant="outline" onClick={() => form.setValue('riskLevel', aiSuggestions.suggestedRiskLevel as RiskLevel)}>Terapkan</Button>
+                                <p>Suggested Risk: <span className="font-semibold">{aiSuggestions.suggestedRiskLevel}</span></p>
+                                <Button type="button" size="sm" variant="outline" onClick={() => form.setValue('riskLevel', aiSuggestions.suggestedRiskLevel as RiskLevel)}>Apply</Button>
                               </div>
                             )}
                           </div>
                          {aiSuggestions.improvedFindings && (
                            <div>
-                              <p className="mb-1">Saran Perbaikan Temuan:</p>
+                              <p className="mb-1">Suggested Findings Improvement:</p>
                               <p className="p-2 bg-background/50 rounded text-sm">{aiSuggestions.improvedFindings}</p>
-                              <Button type="button" size="sm" variant="outline" className="mt-1" onClick={() => form.setValue('findings', aiSuggestions.improvedFindings)}>Terapkan</Button>
+                              <Button type="button" size="sm" variant="outline" className="mt-1" onClick={() => form.setValue('findings', aiSuggestions.improvedFindings)}>Apply</Button>
                            </div>
                          )}
                           {aiSuggestions.suggestedRecommendation && (
                            <div>
-                              <p className="mb-1">Saran Rekomendasi:</p>
+                              <p className="mb-1">Suggested Recommendation:</p>
                                <Button type="button" size="sm" variant="outline" className="w-full justify-start text-left h-auto whitespace-normal" onClick={() => form.setValue('recommendation', aiSuggestions.suggestedRecommendation)}>
                                   <Wand2 className="mr-2 h-4 w-4 flex-shrink-0" /> {aiSuggestions.suggestedRecommendation}
                                </Button>
@@ -537,9 +536,9 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
                 name="recommendation"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Rekomendasi (Opsional)</FormLabel>
+                    <FormLabel>Recommendation (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Tulis rekomendasi Anda di sini, atau gunakan saran AI." rows={3} {...field} disabled={isSubmitting} />
+                      <Textarea placeholder="Write your recommendation here, or use the AI suggestion." rows={3} {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -552,11 +551,11 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
         <DialogFooter className="p-6 pt-4 border-t flex flex-col gap-2">
           <div className="flex w-full justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
-              Batal
+              Cancel
             </Button>
             <Button type="submit" form={formId} disabled={!form.formState.isValid || isSubmitting}>
               {isSubmitting && <Loader2 className="animate-spin" />}
-              Kirim Laporan
+              Submit Report
             </Button>
           </div>
         </DialogFooter>
