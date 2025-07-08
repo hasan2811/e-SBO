@@ -68,8 +68,8 @@ const RiskDistributionChart = ({ data, isLoading }: { data: Array<{ name: string
     return (
      <Card>
         <CardHeader>
-            <CardTitle>Distribusi Risiko</CardTitle>
-            <CardDescription>Persentase observasi berdasarkan tingkat risiko.</CardDescription>
+            <CardTitle>Risk Distribution</CardTitle>
+            <CardDescription>Percentage of observations by risk level.</CardDescription>
         </CardHeader>
         <CardContent>
             {isLoading ? <Skeleton className="w-full h-[250px]" /> : data.length > 0 ? (
@@ -84,7 +84,7 @@ const RiskDistributionChart = ({ data, isLoading }: { data: Array<{ name: string
                     <Legend />
                 </PieChartContainer>
             </ChartContainer>
-            ) : <p className="text-sm text-muted-foreground text-center pt-10">Data tidak cukup untuk menampilkan chart.</p>}
+            ) : <p className="text-sm text-muted-foreground text-center pt-10">Not enough data to display chart.</p>}
         </CardContent>
     </Card>
     );
@@ -92,14 +92,14 @@ const RiskDistributionChart = ({ data, isLoading }: { data: Array<{ name: string
 
 const DailyTrendChart = ({ data, isLoading }: { data: Array<any>, isLoading: boolean }) => {
     const chartConfig = {
-        pending: { label: "Tertunda", color: "hsl(var(--chart-5))" },
-        completed: { label: "Selesai", color: "hsl(var(--chart-2))" },
+        pending: { label: "Pending", color: "hsl(var(--chart-5))" },
+        completed: { label: "Completed", color: "hsl(var(--chart-2))" },
     };
     return (
          <Card>
             <CardHeader>
-                <CardTitle>Tren Harian (7 Hari Terakhir)</CardTitle>
-                <CardDescription>Jumlah observasi yang tertunda vs. selesai per hari.</CardDescription>
+                <CardTitle>Daily Trend (Last 7 Days)</CardTitle>
+                <CardDescription>Number of pending vs. completed observations per day.</CardDescription>
             </CardHeader>
             <CardContent>
                 {isLoading ? <Skeleton className="w-full h-[250px]" /> : (
@@ -166,7 +166,7 @@ export default function AnalysisPage() {
         }).reverse();
         
         last7Days.forEach(day => {
-            trendData[day] = { day: new Date(day).toLocaleDateString('id-ID', { weekday: 'short'}), pending: 0, completed: 0 };
+            trendData[day] = { day: new Date(day).toLocaleDateString('en-US', { weekday: 'short'}), pending: 0, completed: 0 };
         });
 
         observations.forEach(obs => {
@@ -189,7 +189,7 @@ export default function AnalysisPage() {
             return;
         }
         if (totalObservations === 0) {
-            toast({ variant: 'destructive', title: 'Tidak ada data', description: 'Tidak ada data observasi untuk dianalisis.' });
+            toast({ variant: 'destructive', title: 'No Data', description: 'There is no observation data to analyze.' });
             return;
         }
         setIsAnalyzing(true);
@@ -204,11 +204,11 @@ export default function AnalysisPage() {
                 dailyTrend,
             }, userProfile);
             setAnalysisResult(result);
-            toast({ title: "Analisis Selesai", description: "AI telah menghasilkan wawasan baru untuk proyek Anda." });
+            toast({ title: "Analysis Complete", description: "AI has generated new insights for your project." });
         } catch (error) {
             console.error("AI Analysis failed:", error);
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-            toast({ variant: 'destructive', title: 'Analisis Gagal', description: errorMessage });
+            toast({ variant: 'destructive', title: 'Analysis Failed', description: errorMessage });
         } finally {
             setIsAnalyzing(false);
         }
@@ -220,11 +220,11 @@ export default function AnalysisPage() {
                 <Card className="w-full max-w-lg text-center p-8">
                     <CardHeader>
                         <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
-                        <CardTitle className="mt-4">Fitur AI Dinonaktifkan</CardTitle>
+                        <CardTitle className="mt-4">AI Features Disabled</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-muted-foreground">
-                           Fitur analisis AI saat ini dinonaktifkan untuk akun Anda. Anda dapat mengaktifkannya di pengaturan akun Anda.
+                           AI analysis features are currently disabled for your account. You can enable them in your account settings.
                         </p>
                     </CardContent>
                 </Card>
@@ -236,19 +236,19 @@ export default function AnalysisPage() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Dashboard Analisis AI</h1>
-                    <p className="text-muted-foreground">Wawasan cerdas yang didukung oleh AI untuk data HSSE proyek Anda.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">AI Analysis Dashboard</h1>
+                    <p className="text-muted-foreground">AI-powered insights for your project's HSSE data.</p>
                 </div>
                 <Button onClick={handleAnalyze} disabled={isAnalyzing || isLoading}>
                     {isAnalyzing ? <Loader2 className="mr-2 animate-spin" /> : <Sparkles className="mr-2" />}
-                    Jalankan Analisis AI
+                    Run AI Analysis
                 </Button>
             </div>
             
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <StatCard title="Total Observasi" value={`${totalObservations}`} description="Jumlah total laporan" icon={TrendingUp} isLoading={isLoading} />
-                <StatCard title="Isu Tertunda" value={`${pendingPercentage}%`} description={`${pendingCount} dari ${totalObservations} laporan`} icon={BellRing} isLoading={isLoading} />
-                <StatCard title="Risiko Kritis" value={`${criticalPercentage}%`} description={`${criticalCount} dari ${totalObservations} laporan`} icon={ShieldAlert} isLoading={isLoading} />
+                <StatCard title="Total Observations" value={`${totalObservations}`} description="Total number of reports" icon={TrendingUp} isLoading={isLoading} />
+                <StatCard title="Pending Issues" value={`${pendingPercentage}%`} description={`${pendingCount} of ${totalObservations} reports`} icon={BellRing} isLoading={isLoading} />
+                <StatCard title="Critical Risks" value={`${criticalPercentage}%`} description={`${criticalCount} of ${totalObservations} reports`} icon={ShieldAlert} isLoading={isLoading} />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -259,15 +259,15 @@ export default function AnalysisPage() {
             {isAnalyzing && (
                  <div className="text-center py-10">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-                    <p className="mt-4 text-muted-foreground">AI sedang menganalisis data Anda... ini mungkin memakan waktu sejenak.</p>
+                    <p className="mt-4 text-muted-foreground">AI is analyzing your data... this may take a moment.</p>
                 </div>
             )}
 
             {analysisResult && (
                 <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
-                   <AiInsightCard title="Tren Utama" content={analysisResult.keyTrends} icon={TrendingUp} />
-                   <AiInsightCard title="Risiko Baru" content={analysisResult.emergingRisks} icon={AlertTriangle} />
-                   <AiInsightCard title="Sorotan Positif" content={analysisResult.positiveHighlights} icon={Sparkles} />
+                   <AiInsightCard title="Key Trends" content={analysisResult.keyTrends} icon={TrendingUp} />
+                   <AiInsightCard title="Emerging Risks" content={analysisResult.emergingRisks} icon={AlertTriangle} />
+                   <AiInsightCard title="Positive Highlights" content={analysisResult.positiveHighlights} icon={Sparkles} />
                 </div>
             )}
         </div>
