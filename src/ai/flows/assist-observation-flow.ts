@@ -10,6 +10,19 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { RISK_LEVELS, RiskLevel, AssistObservationInput, AssistObservationInputSchema, AssistObservationOutput, AssistObservationOutputSchema, UserProfile, UserProfileSchema } from '@/lib/types';
 
+// Define the output schema for the flow once to be reused.
+const FlowOutputSchema = z.object({
+    suggestedCategory: z.string(),
+    suggestedRiskLevel: z.enum(RISK_LEVELS),
+    improvedFindings: z.string(),
+    suggestedRecommendation: z.string(),
+});
+type FlowOutput = z.infer<typeof FlowOutputSchema>;
+
+// In-memory cache with a Time-To-Live (TTL) to store AI suggestions.
+const suggestionCache = new Map<string, { timestamp: number; data: FlowOutput }>();
+const CACHE_TTL = 3600 * 1000; // 1 hour in milliseconds
+
 /**
  * Finds the best match for a given value from a list of options, or returns a default.
  * It's case-insensitive and checks for partial matches.
@@ -65,15 +78,18 @@ const assistObservationFlow = ai.defineFlow(
         payload: AssistObservationInputSchema,
         userProfile: UserProfileSchema,
     }),
-    outputSchema: z.object({
-        suggestedCategory: z.string(),
-        suggestedRiskLevel: z.enum(RISK_LEVELS),
-        improvedFindings: z.string(),
-        suggestedRecommendation: z.string(),
-    }),
+    outputSchema: FlowOutputSchema,
   },
-  async ({ payload, userProfile }) => {
+  async ({ payload, userProfile }): Promise<FlowOutput> => {
+    // 1. Check cache for a recent, valid entry.
+    const cached = suggestionCache.get(payload.findings);
+    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+      console.log('Returning cached AI observation assistance.');
+      return cached.data;
+    }
+
     try {
+        // 2. If not in cache, call the AI model.
         const response = await assistObservationPrompt(payload);
         const output = response.output;
 
@@ -86,6 +102,9 @@ const assistObservationFlow = ai.defineFlow(
             ...output,
             suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
         };
+        
+        // 3. Store the successful response in the cache.
+        suggestionCache.set(payload.findings, { timestamp: Date.now(), data: sanitizedOutput });
         
         return sanitizedOutput;
     } catch (error: any) {
