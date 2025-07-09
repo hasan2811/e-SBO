@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -91,7 +92,7 @@ export function SubmitObservationDialog({ isOpen, onOpenChange, project }: Submi
     mode: 'onChange',
   });
 
-  const [debouncedFindings] = useDebounce(form.watch('findings'), 1000);
+  const [debouncedFindings] = useDebounce(form.watch('findings'), 1500);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
