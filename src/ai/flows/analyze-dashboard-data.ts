@@ -36,7 +36,7 @@ const analyzeDashboardPrompt = ai.definePrompt({
     config: {
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
         ],
     },
     prompt: `You are a senior HSSE data analyst. Your task is to analyze project data and provide a fast, concise executive summary. Your response must be in Bahasa Indonesia and formatted as a raw JSON object only. Be direct and focus on the most critical insights.
