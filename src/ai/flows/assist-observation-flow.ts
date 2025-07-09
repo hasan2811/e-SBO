@@ -73,20 +73,36 @@ const assistObservationFlow = ai.defineFlow(
     }),
   },
   async ({ payload, userProfile }) => {
-    const response = await assistObservationPrompt(payload);
-    const output = response.output;
+    try {
+        const response = await assistObservationPrompt(payload);
+        const output = response.output;
 
-    if (!output) {
-      throw new Error('AI assistant returned no structured output.');
+        if (!output) {
+            throw new Error('AI assistant returned no structured output.');
+        }
+
+        // Sanitize and validate the output to make the flow more resilient
+        const sanitizedOutput = {
+            ...output,
+            suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
+        };
+        
+        return sanitizedOutput;
+    } catch (error: any) {
+        console.error("Original AI assistance error:", error);
+
+        const errorMessage = error.message?.toLowerCase() || '';
+
+        if (errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
+             throw new Error("API quota has been exceeded. Please try again later or upgrade your plan.");
+        }
+        if (errorMessage.includes('503') || errorMessage.includes('service_unavailable')) {
+             throw new Error("The service is currently busy. Please try again in a moment.");
+        }
+
+        // For other errors, re-throw a generic message.
+        throw new Error('An unexpected error occurred during AI assistance.');
     }
-
-    // Sanitize and validate the output to make the flow more resilient
-    const sanitizedOutput = {
-      ...output,
-      suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
-    };
-    
-    return sanitizedOutput;
   }
 );
 
