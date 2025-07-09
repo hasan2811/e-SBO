@@ -108,15 +108,15 @@ const assistObservationFlow = ai.defineFlow(
         
         return sanitizedOutput;
     } catch (error: any) {
-        console.error("Original AI assistance error:", error);
+        console.error("AI Assistance Error (Observation):", error);
 
         const errorMessage = error.message?.toLowerCase() || '';
 
         if (errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
-             throw new Error("API quota has been exceeded. Please try again later or upgrade your plan.");
+             throw new Error("The API quota has been exhausted. Please contact the developer.");
         }
         if (errorMessage.includes('503') || errorMessage.includes('service_unavailable')) {
-             throw new Error("The service is currently busy. Please try again in a moment.");
+             throw new Error("The AI service is currently busy. Please try again in a moment.");
         }
 
         // For other errors, re-throw a generic message.

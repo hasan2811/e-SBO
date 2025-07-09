@@ -66,20 +66,32 @@ const analyzeDashboardDataFlow = ai.defineFlow(
     outputSchema: AnalyzeDashboardDataOutputSchema,
   },
   async ({ payload, userProfile }) => {
-    const promptInput = {
-        ...payload,
-        riskDistribution: JSON.stringify(payload.riskDistribution),
-        companyDistribution: JSON.stringify(payload.companyDistribution),
-        dailyTrend: JSON.stringify(payload.dailyTrend),
-    };
+    try {
+        const promptInput = {
+            ...payload,
+            riskDistribution: JSON.stringify(payload.riskDistribution),
+            companyDistribution: JSON.stringify(payload.companyDistribution),
+            dailyTrend: JSON.stringify(payload.dailyTrend),
+        };
 
-    const response = await analyzeDashboardPrompt(promptInput);
-    const output = response.output;
+        const response = await analyzeDashboardPrompt(promptInput);
+        const output = response.output;
 
-    if (!output) {
-      throw new Error('AI dashboard analysis returned no structured output.');
+        if (!output) {
+          throw new Error('AI dashboard analysis returned no structured output.');
+        }
+        return output;
+    } catch (error: any) {
+        console.error("Dashboard Analysis Error:", error);
+        const errorMessage = error.message?.toLowerCase() || '';
+        if (errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
+             throw new Error("The API quota has been exhausted. Please contact the developer.");
+        }
+        if (errorMessage.includes('503') || errorMessage.includes('service_unavailable')) {
+             throw new Error("The AI service is currently busy. Please try again in a moment.");
+        }
+        throw new Error('An unexpected error occurred during dashboard analysis.');
     }
-    return output;
   }
 );
 

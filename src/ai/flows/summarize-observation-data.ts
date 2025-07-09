@@ -64,11 +64,23 @@ const analyzeObservationFlow = ai.defineFlow(
     outputSchema: ObservationAnalysisOutputSchema,
   },
   async ({ payload, userProfile }) => {
-    const response = await observationAnalysisPrompt(payload);
-    const output = response.output;
-    if (!output) throw new Error('AI analysis returned no structured output.');
-    
-    return output;
+    try {
+        const response = await observationAnalysisPrompt(payload);
+        const output = response.output;
+        if (!output) throw new Error('AI analysis returned no structured output.');
+        
+        return output;
+    } catch (error: any) {
+        console.error("Deeper Observation Analysis Error:", error);
+        const errorMessage = error.message?.toLowerCase() || '';
+        if (errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
+             throw new Error("The API quota has been exhausted. Please contact the developer.");
+        }
+        if (errorMessage.includes('503') || errorMessage.includes('service_unavailable')) {
+             throw new Error("The AI service is currently busy. Please try again in a moment.");
+        }
+        throw new Error('An unexpected error occurred during AI analysis.');
+    }
   }
 );
 
@@ -113,9 +125,21 @@ const analyzeDeeperInspectionFlow = ai.defineFlow(
     outputSchema: AnalyzeInspectionOutputSchema,
   },
   async ({ payload, userProfile }) => {
-    const response = await deeperAnalysisInspectionPrompt(payload);
-    if (!response.output) throw new Error('AI deep inspection analysis returned no structured output.');
-    return response.output;
+    try {
+        const response = await deeperAnalysisInspectionPrompt(payload);
+        if (!response.output) throw new Error('AI deep inspection analysis returned no structured output.');
+        return response.output;
+    } catch (error: any) {
+        console.error("Deeper Inspection Analysis Error:", error);
+        const errorMessage = error.message?.toLowerCase() || '';
+        if (errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
+             throw new Error("The API quota has been exhausted. Please contact the developer.");
+        }
+        if (errorMessage.includes('503') || errorMessage.includes('service_unavailable')) {
+             throw new Error("The AI service is currently busy. Please try again in a moment.");
+        }
+        throw new Error('An unexpected error occurred during AI analysis.');
+    }
   }
 );
 
