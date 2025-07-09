@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -72,7 +71,7 @@ export function UserAccountSheet() {
   const [displayName, setDisplayName] = React.useState('');
   const [position, setPosition] = React.useState('');
   const [company, setCompany] = React.useState('');
-  const [aiEnabled, setAiEnabled] = React.useState(true);
+  const [aiEnabled, setAiEnabled] = React.useState(false);
   
   const isLoading = authLoading || (user && projectsLoading);
   const hasProject = projects.length > 0;
@@ -82,7 +81,7 @@ export function UserAccountSheet() {
       setDisplayName(userProfile.displayName || '');
       setPosition(userProfile.position || 'Not Set');
       setCompany(userProfile.company || '');
-      setAiEnabled(userProfile.aiEnabled ?? true);
+      setAiEnabled(userProfile.aiEnabled ?? false);
     }
   }, [userProfile]);
   
@@ -91,7 +90,7 @@ export function UserAccountSheet() {
       setDisplayName(userProfile.displayName || '');
       setPosition(userProfile.position || 'Not Set');
       setCompany(userProfile.company || '');
-      setAiEnabled(userProfile.aiEnabled ?? true);
+      setAiEnabled(userProfile.aiEnabled ?? false);
       setIsEditing(true);
     }
   };
@@ -333,7 +332,7 @@ export function UserAccountSheet() {
               <Separator />
 
               <div className="text-center text-xs text-muted-foreground space-y-1">
-                <p>Copyright © 2024 CV Arzan Sirah Persada. All rights reserved.</p>
+                <p>Copyright © 2024 Arzan. All rights reserved.</p>
               </div>
 
             </div>

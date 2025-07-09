@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -67,7 +66,7 @@ export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: Submit
   const [isAiLoading, setIsAiLoading] = React.useState(false);
   const [members, setMembers] = React.useState<UserProfile[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = React.useState(false);
-  const isAiEnabled = userProfile?.aiEnabled ?? true;
+  const isAiEnabled = userProfile?.aiEnabled ?? false;
 
   const locationOptions = React.useMemo(() => 
     (project?.customLocations && project.customLocations.length > 0) ? project.customLocations : DEFAULT_LOCATIONS,

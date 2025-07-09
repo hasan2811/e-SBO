@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -110,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       position: 'Not Set',
       company: 'Unassigned',
       projectIds: [],
-      aiEnabled: true,
+      aiEnabled: false,
     });
   };
   
