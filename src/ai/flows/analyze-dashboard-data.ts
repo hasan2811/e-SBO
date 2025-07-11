@@ -13,13 +13,14 @@ import {
     AnalyzeDashboardDataOutput,
     AnalyzeDashboardDataOutputSchema,
     UserProfile,
+    UserProfileSchema,
 } from '@/lib/types';
 
 
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
-    model: 'googleai/gemini-pro',
-    input: { schema: z.object({ summaryText: z.string() }) },
+    model: 'googleai/gemini-1.5-flash',
+    input: { schema: z.object({ summaryText: AnalyzeDashboardDataInputSchema }) },
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
         safetySettings: [

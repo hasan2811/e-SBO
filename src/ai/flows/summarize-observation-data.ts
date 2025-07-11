@@ -35,7 +35,7 @@ export type DeeperAnalysisOutput = z.infer<typeof ObservationAnalysisOutputSchem
 
 const observationAnalysisPrompt = ai.definePrompt({
     name: 'observationAnalysisPrompt',
-    model: 'googleai/gemini-pro',
+    model: 'googleai/gemini-1.5-flash',
     input: { schema: SummarizeObservationDataInputSchema },
     output: { schema: ObservationAnalysisOutputSchema },
     config: {
@@ -96,7 +96,7 @@ export async function analyzeDeeperObservation(input: SummarizeObservationDataIn
 
 const deeperAnalysisInspectionPrompt = ai.definePrompt({
     name: 'deeperAnalysisInspectionPrompt',
-    model: 'googleai/gemini-pro',
+    model: 'googleai/gemini-1.5-flash',
     input: { schema: AnalyzeInspectionInputSchema },
     output: { schema: AnalyzeInspectionOutputSchema }, // Re-uses the full output schema
     config: {
