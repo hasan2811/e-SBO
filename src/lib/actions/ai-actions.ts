@@ -61,7 +61,6 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
     await docRef.update({ aiStatus: 'processing' });
 
     try {
-        // Prompt Pruning: Truncate long texts and include key context.
         const observationData = `
           Category: ${observation.category}
           Risk Level: ${observation.riskLevel}
@@ -119,7 +118,6 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
     await docRef.update({ aiStatus: 'processing' });
 
     try {
-        // Prompt Pruning: Truncate long texts and include key context.
         const inspectionData = `
           Equipment Name: ${inspection.equipmentName}
           Type: ${inspection.equipmentType}

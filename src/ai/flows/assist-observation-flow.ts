@@ -90,8 +90,7 @@ const assistObservationFlow = ai.defineFlow(
 
     try {
         // 2. If not in cache, call the AI model.
-        const response = await assistObservationPrompt(payload);
-        const output = response.output;
+        const { output } = await assistObservationPrompt(payload);
 
         if (!output) {
             throw new Error('AI assistant returned no structured output.');

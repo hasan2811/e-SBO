@@ -49,7 +49,6 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   },
   async ({ summaryText, userProfile }) => {
     try {
-        // Correctly call the prompt with the expected object structure
         const { output } = await analyzeDashboardPrompt({ summaryText });
 
         if (!output) {

@@ -72,8 +72,7 @@ const assistInspectionFlow = ai.defineFlow(
   },
   async ({ payload, userProfile }) => {
     try {
-        const response = await assistInspectionPrompt(payload);
-        const output = response.output;
+        const { output } = await assistInspectionPrompt(payload);
 
         if (!output) {
           throw new Error('AI assistant returned no structured output for inspection.');
