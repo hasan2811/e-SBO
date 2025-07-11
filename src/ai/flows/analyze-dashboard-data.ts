@@ -20,7 +20,7 @@ import {
 
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
-    model: 'googleai/gemini-pro',
+    model: 'googleai/gemini-1.5-flash',
     input: { schema: z.object({ summaryText: AnalyzeDashboardDataInputSchema }) },
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
@@ -49,6 +49,7 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   },
   async ({ summaryText, userProfile }) => {
     try {
+        // Correctly call the prompt with the expected object structure
         const { output } = await analyzeDashboardPrompt({ summaryText });
 
         if (!output) {
@@ -63,6 +64,9 @@ const analyzeDashboardDataFlow = ai.defineFlow(
         }
         if (errorMessage.includes('503') || errorMessage.includes('service_unavailable')) {
              throw new Error("The AI service is currently busy. Please try again in a moment.");
+        }
+        if (error.message.includes('not supported in this region')) {
+            throw new Error("The configured AI model is not available in your current region.");
         }
         throw new Error('An unexpected error occurred during dashboard analysis.');
     }
