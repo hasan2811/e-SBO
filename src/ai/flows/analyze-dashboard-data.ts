@@ -10,7 +10,6 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import {
     AnalyzeDashboardDataInput,
-    AnalyzeDashboardDataInputSchema,
     AnalyzeDashboardDataOutput,
     AnalyzeDashboardDataOutputSchema,
     UserProfile,
@@ -21,7 +20,7 @@ import {
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
     model: 'googleai/gemini-1.5-flash',
-    input: { schema: AnalyzeDashboardDataInputSchema },
+    input: { schema: z.object({ summaryText: z.string() }) },
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
         safetySettings: [
