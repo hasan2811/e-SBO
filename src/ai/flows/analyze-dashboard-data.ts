@@ -19,7 +19,7 @@ import {
 
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
-    model: 'googleai/gemini-1.5-flash',
+    model: 'googleai/gemini-2.0-flash',
     input: { schema: z.object({ summaryText: z.string() }) },
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {

@@ -37,7 +37,7 @@ function findClosestMatch<T extends string>(value: string | undefined, options: 
 
 const assistInspectionPrompt = ai.definePrompt({
     name: 'assistInspectionPrompt',
-    model: 'googleai/gemini-1.5-flash',
+    model: 'googleai/gemini-2.0-flash',
     input: { schema: AssistInspectionInputSchema },
     output: { schema: AssistInspectionOutputSchema },
     config: {
