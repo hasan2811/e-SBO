@@ -117,7 +117,9 @@ const assistObservationFlow = ai.defineFlow(
         if (errorMessage.includes('503') || errorMessage.includes('service_unavailable')) {
              throw new Error("The AI service is currently busy. Please try again in a moment.");
         }
-
+        if (errorMessage.includes('safety concerns')) {
+            throw new Error("AI suggestion was blocked due to safety concerns.");
+        }
         // For other errors, re-throw a generic message.
         throw new Error('An unexpected error occurred during AI assistance.');
     }

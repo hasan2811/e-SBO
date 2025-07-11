@@ -81,6 +81,9 @@ const analyzeObservationFlow = ai.defineFlow(
         if (error.message.includes('not supported in this region')) {
             throw new Error("The configured AI model is not available in your current region.");
         }
+        if (error.message.includes('safety concerns')) {
+            throw new Error("AI analysis was blocked due to safety concerns in the input data.");
+        }
         throw new Error('An unexpected error occurred during AI analysis.');
     }
   }
@@ -142,6 +145,9 @@ const analyzeDeeperInspectionFlow = ai.defineFlow(
         }
         if (error.message.includes('not supported in this region')) {
             throw new Error("The configured AI model is not available in your current region.");
+        }
+        if (error.message.includes('safety concerns')) {
+            throw new Error("AI analysis was blocked due to safety concerns in the input data.");
         }
         throw new Error('An unexpected error occurred during AI analysis.');
     }
