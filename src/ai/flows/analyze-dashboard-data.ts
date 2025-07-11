@@ -10,7 +10,6 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import {
     AnalyzeDashboardDataInput,
-    AnalyzeDashboardDataInputSchema,
     AnalyzeDashboardDataOutput,
     AnalyzeDashboardDataOutputSchema,
     UserProfile,
@@ -42,10 +41,9 @@ Analyze this data:
 const analyzeDashboardDataFlow = ai.defineFlow(
   {
     name: 'analyzeDashboardDataFlow',
-    // No inputSchema here to avoid redundant validation and ambiguity.
     outputSchema: AnalyzeDashboardDataOutputSchema,
   },
-  async ({ summaryText }: { summaryText: string }) => {
+  async (summaryText: string) => { // Directly accept the summary string
     try {
         // The call now correctly passes an object that matches the prompt's input schema.
         const { output } = await analyzeDashboardPrompt({ summaryText });
@@ -74,5 +72,5 @@ export async function analyzeDashboardData(summaryText: AnalyzeDashboardDataInpu
     throw new Error('AI features are disabled for this user.');
   }
   // It passes the necessary data to the flow.
-  return analyzeDashboardDataFlow({ summaryText });
+  return analyzeDashboardDataFlow(summaryText);
 }
