@@ -23,6 +23,7 @@ const analyzeDashboardPrompt = ai.definePrompt({
     input: { schema: z.object({ summaryText: z.string() }) },
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
+        stream: false,
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },

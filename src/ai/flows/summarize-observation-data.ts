@@ -39,6 +39,7 @@ const observationAnalysisPrompt = ai.definePrompt({
     input: { schema: SummarizeObservationDataInputSchema },
     output: { schema: ObservationAnalysisOutputSchema },
     config: {
+        stream: false,
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
@@ -81,7 +82,7 @@ const analyzeObservationFlow = ai.defineFlow(
         if (error.message.includes('not supported in this region')) {
             throw new Error("The configured AI model is not available in your current region.");
         }
-        if (errorMessage.includes('safety concerns')) {
+        if (error.message.includes('safety concerns')) {
             throw new Error("AI analysis was blocked due to safety concerns in the input data.");
         }
         throw new Error('An unexpected error occurred during AI analysis.');
@@ -105,6 +106,7 @@ const deeperAnalysisInspectionPrompt = ai.definePrompt({
     input: { schema: AnalyzeInspectionInputSchema },
     output: { schema: AnalyzeInspectionOutputSchema }, // Re-uses the full output schema
     config: {
+        stream: false,
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
@@ -146,7 +148,7 @@ const analyzeDeeperInspectionFlow = ai.defineFlow(
         if (error.message.includes('not supported in this region')) {
             throw new Error("The configured AI model is not available in your current region.");
         }
-        if (errorMessage.includes('safety concerns')) {
+        if (error.message.includes('safety concerns')) {
             throw new Error("AI analysis was blocked due to safety concerns in the input data.");
         }
         throw new Error('An unexpected error occurred during AI analysis.');
