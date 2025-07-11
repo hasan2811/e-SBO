@@ -68,7 +68,9 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   async ({ payload, userProfile }) => {
     try {
         const promptInput = {
-            ...payload,
+            totalObservations: payload.totalObservations,
+            pendingPercentage: payload.pendingPercentage,
+            criticalPercentage: payload.criticalPercentage,
             riskDistribution: JSON.stringify(payload.riskDistribution),
             companyDistribution: JSON.stringify(payload.companyDistribution),
             dailyTrend: JSON.stringify(payload.dailyTrend),
