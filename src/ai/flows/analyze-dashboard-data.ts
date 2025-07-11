@@ -21,7 +21,8 @@ import {
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
     model: 'googleai/gemini-1.5-flash',
-    input: { schema: AnalyzeDashboardDataInputSchema }, // The prompt now correctly expects a single string
+    // The prompt now expects an object with a `summaryText` property.
+    input: { schema: z.object({ summaryText: AnalyzeDashboardDataInputSchema }) },
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
         safetySettings: [
@@ -29,13 +30,13 @@ const analyzeDashboardPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
         ],
     },
-    // The template is changed from {{{input}}} to {{input}} to correctly handle a single string input.
+    // The template is changed to correctly reference the `summaryText` property.
     prompt: `You are a senior HSSE data analyst. Your task is to analyze the following project data summary and provide a fast, concise executive summary in Bahasa Indonesia.
 Your response MUST be a raw JSON object containing a single key "analysis" with a string value.
 The string value should be a bulleted list of the 3-4 most critical insights. Start each bullet point with a hyphen (-).
 
 Analyze this data:
-{{input}}
+{{{summaryText}}}
 `,
 });
 
@@ -50,8 +51,8 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   },
   async ({ summaryText, userProfile }) => {
     try {
-        // Correctly pass the summaryText string to the prompt
-        const response = await analyzeDashboardPrompt(summaryText); 
+        // Correctly pass an object with the summaryText to the prompt.
+        const response = await analyzeDashboardPrompt({ summaryText });
         const output = response.output;
 
         if (!output) {
