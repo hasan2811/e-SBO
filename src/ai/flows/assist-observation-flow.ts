@@ -50,7 +50,7 @@ function findClosestMatch<T extends string>(value: string | undefined, options: 
 
 const assistObservationPrompt = ai.definePrompt({
     name: 'assistObservationPrompt',
-    model: 'googleai/gemini-1.5-flash-latest',
+    model: 'googleai/gemini-1.5-flash',
     input: { schema: AssistObservationInputSchema },
     output: { schema: AssistObservationOutputSchema },
     config: {

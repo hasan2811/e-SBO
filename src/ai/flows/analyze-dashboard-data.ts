@@ -20,7 +20,7 @@ import {
 
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
-    model: 'googleai/gemini-1.5-flash-latest',
+    model: 'googleai/gemini-1.5-flash',
     input: { schema: z.string() }, // The prompt now correctly expects a single string
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
