@@ -21,7 +21,7 @@ import {
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
     model: 'googleai/gemini-1.5-flash-latest',
-    input: { schema: AnalyzeDashboardDataInputSchema },
+    input: { schema: z.string() }, // The prompt now correctly expects a single string
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
         safetySettings: [
@@ -42,14 +42,15 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   {
     name: 'analyzeDashboardDataFlow',
     inputSchema: z.object({
-        payload: z.string(),
+        payload: AnalyzeDashboardDataInputSchema, // Use the main input schema
         userProfile: UserProfileSchema,
     }),
     outputSchema: AnalyzeDashboardDataOutputSchema,
   },
   async ({ payload, userProfile }) => {
     try {
-        const response = await analyzeDashboardPrompt(payload);
+        // Correctly pass the string input from the payload to the prompt
+        const response = await analyzeDashboardPrompt(payload.input); 
         const output = response.output;
 
         if (!output) {

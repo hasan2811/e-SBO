@@ -190,7 +190,9 @@ export type Notification = {
 // AI Flow Schemas and Types
 
 // analyze-dashboard-data
-export const AnalyzeDashboardDataInputSchema = z.string().describe("A summary of dashboard metrics in text format.");
+export const AnalyzeDashboardDataInputSchema = z.object({
+  input: z.string().describe("A summary of dashboard metrics in text format."),
+});
 export type AnalyzeDashboardDataInput = z.infer<typeof AnalyzeDashboardDataInputSchema>;
 
 export const AnalyzeDashboardDataOutputSchema = z.object({

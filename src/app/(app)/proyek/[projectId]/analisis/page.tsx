@@ -102,6 +102,7 @@ const DailyTrendChart = ({ data, isLoading }: { data: Array<any>, isLoading: boo
     );
 };
 
+
 export default function AnalysisPage() {
     const params = useParams();
     const projectId = params.projectId as string;
@@ -187,7 +188,7 @@ export default function AnalysisPage() {
         `;
 
         try {
-            const result = await analyzeDashboardData(summaryText, userProfile);
+            const result = await analyzeDashboardData({ input: summaryText }, userProfile);
             setAnalysisResult(result);
             toast({ title: "Analysis Complete", description: "AI has generated new insights for your project." });
         } catch (error) {
