@@ -18,20 +18,21 @@ import {
 } from '@/lib/types';
 
 
-// New schema for the prompt itself, where complex objects are pre-stringified.
-const AnalyzeDashboardPromptInputSchema = z.object({
-  totalObservations: z.number(),
-  pendingPercentage: z.number(),
-  criticalPercentage: z.number(),
-  riskDistribution: z.string().describe("A JSON string representing the risk distribution."),
-  companyDistribution: z.string().describe("A JSON string representing the company observation distribution."),
-  dailyTrend: z.string().describe("A JSON string representing the daily observation trend for the last 7 days."),
+// Define a new schema specifically for the prompt, where complex objects are pre-stringified.
+const AnalyzeDashboardPromptSchema = z.object({
+    totalObservations: z.number(),
+    pendingPercentage: z.number(),
+    criticalPercentage: z.number(),
+    riskDistribution: z.string().describe("A JSON string representing the risk distribution."),
+    companyDistribution: z.string().describe("A JSON string representing the company observation distribution."),
+    dailyTrend: z.string().describe("A JSON string representing the daily observation trend for the last 7 days."),
 });
+
 
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
     model: 'googleai/gemini-1.5-flash-latest',
-    input: { schema: AnalyzeDashboardPromptInputSchema },
+    input: { schema: AnalyzeDashboardPromptSchema },
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
         safetySettings: [
@@ -67,6 +68,7 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   },
   async ({ payload, userProfile }) => {
     try {
+        // Correctly prepare the data for the prompt by stringifying the complex objects.
         const promptInput = {
             totalObservations: payload.totalObservations,
             pendingPercentage: payload.pendingPercentage,
