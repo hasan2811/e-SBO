@@ -9,6 +9,23 @@ import {
 } from '@/ai/flows/summarize-observation-data';
 
 /**
+ * Truncates text to a specified maximum length without cutting words.
+ * @param text The text to truncate.
+ * @param maxLength The maximum length of the truncated text.
+ * @returns The truncated text.
+ */
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  // Find the last space within the maxLength
+  const lastSpace = text.lastIndexOf(' ', maxLength);
+  // If no space is found, just cut at maxLength
+  const cutOff = lastSpace > 0 ? lastSpace : maxLength;
+  return text.substring(0, cutOff) + '...';
+}
+
+/**
  * Gets a user's profile from Firestore.
  * This is a helper function for server-side actions.
  * @param userId The UID of the user.
@@ -44,7 +61,16 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
     await docRef.update({ aiStatus: 'processing' });
 
     try {
-        const observationData = `Findings: ${observation.findings}\nRecommendation: ${observation.recommendation}\nInitial Category: ${observation.category}`;
+        // Prompt Pruning: Truncate long texts and include key context.
+        const observationData = `
+          Category: ${observation.category}
+          Risk Level: ${observation.riskLevel}
+          Status: ${observation.status}
+          Location: ${observation.location}
+          Findings: ${truncateText(observation.findings, 500)}
+          Recommendation: ${truncateText(observation.recommendation, 500)}
+        `.trim();
+
         const analysis = await analyzeDeeperObservation({ observationData }, userProfile);
         
         docSnap = await docRef.get();
@@ -93,7 +119,16 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
     await docRef.update({ aiStatus: 'processing' });
 
     try {
-        const inspectionData = `Equipment Name: ${inspection.equipmentName}\nType: ${inspection.equipmentType}\nFindings: ${inspection.findings}\nRecommendation: ${inspection.recommendation || 'N/A'}`;
+        // Prompt Pruning: Truncate long texts and include key context.
+        const inspectionData = `
+          Equipment Name: ${inspection.equipmentName}
+          Type: ${inspection.equipmentType}
+          Status: ${inspection.status}
+          Location: ${inspection.location}
+          Findings: ${truncateText(inspection.findings, 500)}
+          Recommendation: ${truncateText(inspection.recommendation || 'N/A', 500)}
+        `.trim();
+
         const deepAnalysis = await analyzeDeeperInspection({ inspectionData }, userProfile);
         
         docSnap = await docRef.get();
