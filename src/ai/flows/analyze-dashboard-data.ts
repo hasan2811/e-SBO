@@ -21,7 +21,7 @@ import {
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
     model: 'googleai/gemini-1.5-flash',
-    input: { schema: z.string() }, // The prompt now correctly expects a single string
+    input: { schema: AnalyzeDashboardDataInputSchema }, // The prompt now correctly expects a single string
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
         safetySettings: [
@@ -43,15 +43,15 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   {
     name: 'analyzeDashboardDataFlow',
     inputSchema: z.object({
-        payload: AnalyzeDashboardDataInputSchema, // Use the main input schema
+        summaryText: AnalyzeDashboardDataInputSchema, // Use the main input schema, which is z.string()
         userProfile: UserProfileSchema,
     }),
     outputSchema: AnalyzeDashboardDataOutputSchema,
   },
-  async ({ payload, userProfile }) => {
+  async ({ summaryText, userProfile }) => {
     try {
-        // Correctly pass the string input from the payload to the prompt
-        const response = await analyzeDashboardPrompt(payload.input); 
+        // Correctly pass the summaryText string to the prompt
+        const response = await analyzeDashboardPrompt(summaryText); 
         const output = response.output;
 
         if (!output) {
@@ -72,9 +72,9 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   }
 );
 
-export async function analyzeDashboardData(input: AnalyzeDashboardDataInput, userProfile: UserProfile): Promise<AnalyzeDashboardDataOutput> {
+export async function analyzeDashboardData(summaryText: AnalyzeDashboardDataInput, userProfile: UserProfile): Promise<AnalyzeDashboardDataOutput> {
   if (!userProfile.aiEnabled) {
     throw new Error('AI features are disabled for this user.');
   }
-  return analyzeDashboardDataFlow({ payload: input, userProfile });
+  return analyzeDashboardDataFlow({ summaryText, userProfile });
 }

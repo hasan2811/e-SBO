@@ -188,7 +188,7 @@ export default function AnalysisPage() {
         `;
 
         try {
-            const result = await analyzeDashboardData({ input: summaryText }, userProfile);
+            const result = await analyzeDashboardData(summaryText, userProfile);
             setAnalysisResult(result);
             toast({ title: "Analysis Complete", description: "AI has generated new insights for your project." });
         } catch (error) {

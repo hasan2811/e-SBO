@@ -190,9 +190,7 @@ export type Notification = {
 // AI Flow Schemas and Types
 
 // analyze-dashboard-data
-export const AnalyzeDashboardDataInputSchema = z.object({
-  input: z.string().describe("A summary of dashboard metrics in text format."),
-});
+export const AnalyzeDashboardDataInputSchema = z.string().describe("A summary of dashboard metrics in text format.");
 export type AnalyzeDashboardDataInput = z.infer<typeof AnalyzeDashboardDataInputSchema>;
 
 export const AnalyzeDashboardDataOutputSchema = z.object({
@@ -255,24 +253,3 @@ export const AnalyzeInspectionOutputSchema = z.object({
   suggestedActions: z.string().describe('Suggested actions for repair or further checks, as bullet points (English).'),
 });
 export type AnalyzeInspectionOutput = z.infer<typeof AnalyzeInspectionOutputSchema>;
-
-
-// smart-notify-flow
-export const SmartNotifyInputSchema = z.object({
-    observationId: z.string(),
-    projectId: z.string(),
-    company: z.string(),
-    findings: z.string(),
-    riskLevel: z.nativeEnum(Object.fromEntries(RISK_LEVELS.map(level => [level, level])) as { [K in RiskLevel]: K }),
-    submitterId: z.string().describe("The UID of the user who submitted the observation, to be excluded from notifications."),
-    submittedByDisplayName: z.string().describe("The display name of the user who submitted the observation, for use in message generation."),
-});
-export type SmartNotifyInput = z.infer<typeof SmartNotifyInputSchema>;
-
-export const SmartNotifyOutputSchema = z.object({
-  notifications: z.array(z.object({
-    uid: z.string().describe("The UID of the user to notify."),
-    message: z.string().describe("The personalized notification message for this user, in Bahasa Indonesia.")
-  })).describe('A list of personalized notifications to be sent.'),
-});
-export type SmartNotifyOutput = z.infer<typeof SmartNotifyOutputSchema>;
