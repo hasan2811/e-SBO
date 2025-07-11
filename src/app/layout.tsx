@@ -8,7 +8,7 @@ import '@/app/globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 // Using URL-encoded SVG for the favicon to ensure cache busting and compatibility.
-const logoSvgDataUri = "data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2329ABE2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M12 2L2 6v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-10-4z' /%3e%3cpath d='m9 12 2 2 4-4' /%3e%3c/svg%3e";
+const logoSvgDataUri = "data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10' fill='%2329ABE2' stroke='%2329ABE2'/%3e%3cpath d='m9 12 2 2 4-4' stroke='white'/%3e%3c/svg%3e";
 
 
 export const metadata: Metadata = {
