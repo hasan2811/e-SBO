@@ -14,7 +14,6 @@ import {
     AnalyzeDashboardDataOutput,
     AnalyzeDashboardDataOutputSchema,
     UserProfile,
-    UserProfileSchema,
 } from '@/lib/types';
 
 
@@ -38,18 +37,17 @@ Analyze this data:
 `,
 });
 
+// This flow is now simplified to directly call the prompt without a complex input schema.
+// It receives TypeScript types directly from the exported function.
 const analyzeDashboardDataFlow = ai.defineFlow(
   {
     name: 'analyzeDashboardDataFlow',
-    inputSchema: z.object({
-        summaryText: AnalyzeDashboardDataInputSchema,
-        userProfile: UserProfileSchema,
-    }),
+    // No inputSchema here to avoid redundant validation and ambiguity.
     outputSchema: AnalyzeDashboardDataOutputSchema,
   },
-  async ({ summaryText, userProfile }) => {
+  async ({ summaryText }: { summaryText: string }) => {
     try {
-        // This is the fix: The prompt expects an object { summaryText: "..." }, not just the string.
+        // The call now correctly passes an object that matches the prompt's input schema.
         const { output } = await analyzeDashboardPrompt({ summaryText });
 
         if (!output) {
@@ -70,9 +68,11 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   }
 );
 
+// This is the exported function that the client calls. It acts as the entry point.
 export async function analyzeDashboardData(summaryText: AnalyzeDashboardDataInput, userProfile: UserProfile): Promise<AnalyzeDashboardDataOutput> {
   if (!userProfile.aiEnabled) {
     throw new Error('AI features are disabled for this user.');
   }
-  return analyzeDashboardDataFlow({ summaryText, userProfile });
+  // It passes the necessary data to the flow.
+  return analyzeDashboardDataFlow({ summaryText });
 }
