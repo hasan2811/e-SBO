@@ -50,8 +50,7 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   async ({ summaryText, userProfile }) => {
     try {
         // This is the fix: The prompt expects an object { summaryText: "..." }, not just the string.
-        const response = await analyzeDashboardPrompt({ summaryText });
-        const output = response.output;
+        const { output } = await analyzeDashboardPrompt({ summaryText });
 
         if (!output) {
           throw new Error('AI dashboard analysis returned no structured output.');
