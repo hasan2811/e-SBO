@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, PieChart as PieChartContainer, BarChart as BarChartContainer } from '@/components/ui/chart';
 import { Pie, Cell, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
-import { Sparkles, Loader2, AlertTriangle, TrendingUp, BellRing, ShieldAlert, BrainCircuit } from 'lucide-react';
+import { Sparkles, Loader2, AlertTriangle, TrendingUp, BellRing, ShieldAlert, BrainCircuit, ListChecks } from 'lucide-react';
 
 const StatCard = ({ title, value, description, icon: Icon, isLoading }: { title: string, value: string, description: string, icon: React.ElementType, isLoading: boolean }) => (
     <Card>
@@ -35,24 +35,6 @@ const StatCard = ({ title, value, description, icon: Icon, isLoading }: { title:
                     <p className="text-xs text-muted-foreground">{description}</p>
                 </>
             )}
-        </CardContent>
-    </Card>
-);
-
-const AiInsightCard = ({ title, content, icon: Icon }: { title: string, content: string, icon: React.ElementType }) => (
-    <Card className="h-full">
-        <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-                <Icon className="h-5 w-5 text-primary" />
-                {title}
-            </CardTitle>
-        </CardHeader>
-        <CardContent>
-            <div className="space-y-2 text-sm text-muted-foreground">
-                {content.split('- ').filter(line => line.trim()).map((line, index) => (
-                    <p key={index}>- {line.trim()}</p>
-                ))}
-            </div>
         </CardContent>
     </Card>
 );
@@ -118,7 +100,7 @@ const DailyTrendChart = ({ data, isLoading }: { data: Array<any>, isLoading: boo
             </CardContent>
         </Card>
     );
-}
+};
 
 export default function AnalysisPage() {
     const params = useParams();
@@ -194,15 +176,18 @@ export default function AnalysisPage() {
         }
         setIsAnalyzing(true);
         setAnalysisResult(null);
+
+        // Create a simple text summary of the dashboard data
+        const summaryText = `
+          Total Observations: ${totalObservations}
+          Pending Issues: ${pendingPercentage}% (${pendingCount} reports)
+          Critical Risks: ${criticalPercentage}% (${criticalCount} reports)
+          Risk Distribution: ${JSON.stringify(riskDistribution)}
+          Company Distribution: ${JSON.stringify(companyDistribution)}
+        `;
+
         try {
-            const result = await analyzeDashboardData({
-                totalObservations,
-                pendingPercentage: parseFloat(pendingPercentage),
-                criticalPercentage: parseFloat(criticalPercentage),
-                riskDistribution,
-                companyDistribution,
-                dailyTrend,
-            }, userProfile);
+            const result = await analyzeDashboardData(summaryText, userProfile);
             setAnalysisResult(result);
             toast({ title: "Analysis Complete", description: "AI has generated new insights for your project." });
         } catch (error) {
@@ -264,11 +249,24 @@ export default function AnalysisPage() {
             )}
 
             {analysisResult && (
-                <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
-                   <AiInsightCard title="Key Trends" content={analysisResult.keyTrends} icon={TrendingUp} />
-                   <AiInsightCard title="Emerging Risks" content={analysisResult.emergingRisks} icon={AlertTriangle} />
-                   <AiInsightCard title="Positive Highlights" content={analysisResult.positiveHighlights} icon={Sparkles} />
-                </div>
+              <Card>
+                  <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                          <BrainCircuit className="h-5 w-5 text-primary" />
+                          AI Executive Summary
+                      </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                          {analysisResult.analysis.split('- ').filter(line => line.trim()).map((line, index) => (
+                              <div key={index} className="flex items-start gap-2">
+                                <ListChecks className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                                <p>{line.trim()}</p>
+                              </div>
+                          ))}
+                      </div>
+                  </CardContent>
+              </Card>
             )}
         </div>
     );

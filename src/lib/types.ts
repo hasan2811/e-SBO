@@ -190,20 +190,11 @@ export type Notification = {
 // AI Flow Schemas and Types
 
 // analyze-dashboard-data
-export const AnalyzeDashboardDataInputSchema = z.object({
-  totalObservations: z.number(),
-  pendingPercentage: z.number(),
-  criticalPercentage: z.number(),
-  riskDistribution: z.array(z.object({ name: z.string(), count: z.number() })),
-  companyDistribution: z.array(z.object({ name: z.string(), count: z.number() })),
-  dailyTrend: z.array(z.object({ day: z.string(), pending: z.number(), completed: z.number() })),
-});
+export const AnalyzeDashboardDataInputSchema = z.string().describe("A summary of dashboard metrics in text format.");
 export type AnalyzeDashboardDataInput = z.infer<typeof AnalyzeDashboardDataInputSchema>;
 
 export const AnalyzeDashboardDataOutputSchema = z.object({
-  keyTrends: z.string().describe('Bulleted list of the 2-3 most important overall trends (Bahasa Indonesia).'),
-  emergingRisks: z.string().describe('Bulleted list of 1-2 potential new risks or areas needing attention (Bahasa Indonesia).'),
-  positiveHighlights: z.string().describe('Bulleted list of 1-2 positive developments or successes (Bahasa Indonesia).'),
+  analysis: z.string().describe('A bulleted list of 3-4 key insights, trends, or risks based on the data, in Bahasa Indonesia. Each point should start with a hyphen (-).'),
 });
 export type AnalyzeDashboardDataOutput = z.infer<typeof AnalyzeDashboardDataOutputSchema>;
 

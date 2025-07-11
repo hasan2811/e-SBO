@@ -17,21 +17,11 @@ import {
     UserProfileSchema,
 } from '@/lib/types';
 
-// This is the schema for the prompt itself, which expects stringified JSON for complex data.
-const AnalyzeDashboardPromptInputSchema = z.object({
-    totalObservations: z.number(),
-    pendingPercentage: z.number(),
-    criticalPercentage: z.number(),
-    riskDistribution: z.string().describe("A JSON string representing the risk distribution."),
-    companyDistribution: z.string().describe("A JSON string representing the company observation distribution."),
-    dailyTrend: z.string().describe("A JSON string representing the daily observation trend for the last 7 days."),
-});
-
 
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
     model: 'googleai/gemini-1.5-flash-latest',
-    input: { schema: AnalyzeDashboardPromptInputSchema },
+    input: { schema: AnalyzeDashboardDataInputSchema },
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
         safetySettings: [
@@ -39,43 +29,27 @@ const analyzeDashboardPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
         ],
     },
-    prompt: `You are a senior HSSE data analyst. Your task is to analyze project data and provide a fast, concise executive summary. Your response must be in Bahasa Indonesia and formatted as a raw JSON object only. Be direct and focus on the most critical insights.
+    prompt: `You are a senior HSSE data analyst. Your task is to analyze the following project data summary and provide a fast, concise executive summary in Bahasa Indonesia.
+Your response MUST be a raw JSON object containing a single key "analysis" with a string value.
+The string value should be a bulleted list of the 3-4 most critical insights. Start each bullet point with a hyphen (-).
 
-Analyze the following data points:
-- Total Observations: {{totalObservations}}
-- Percentage of Pending Observations: {{pendingPercentage}}%
-- Percentage of Critical Risk Observations: {{criticalPercentage}}%
-- Risk Level Distribution: {{{riskDistribution}}}
-- Observations by Company: {{{companyDistribution}}}
-- Daily Trend (Last 7 Days): {{{dailyTrend}}}
-
-Based on this data, provide the following insights in Bahasa Indonesia. Each point should be a bullet point starting with a hyphen (-).
-
-1.  "keyTrends": Identify the 2-3 most significant high-level trends. Focus on major shifts, dominant categories, or consistent patterns.
-2.  "emergingRisks": Pinpoint 1-2 potential new risks or areas that require immediate attention. Look for negative trends, concentrations of risk, or anomalies.
-3.  "positiveHighlights": Find 1-2 positive developments. This could be a decrease in pending items, successful completion rates, or low critical findings.`,
+Analyze this data:
+{{{input}}}
+`,
 });
 
 const analyzeDashboardDataFlow = ai.defineFlow(
   {
     name: 'analyzeDashboardDataFlow',
     inputSchema: z.object({
-        payload: AnalyzeDashboardDataInputSchema, // The input from the client has arrays of objects
+        payload: z.string(),
         userProfile: UserProfileSchema,
     }),
     outputSchema: AnalyzeDashboardDataOutputSchema,
   },
   async ({ payload, userProfile }) => {
     try {
-        // Explicitly convert the array data into JSON strings for the prompt.
-        const promptInput = {
-            ...payload,
-            riskDistribution: JSON.stringify(payload.riskDistribution),
-            companyDistribution: JSON.stringify(payload.companyDistribution),
-            dailyTrend: JSON.stringify(payload.dailyTrend),
-        };
-
-        const response = await analyzeDashboardPrompt(promptInput);
+        const response = await analyzeDashboardPrompt(payload);
         const output = response.output;
 
         if (!output) {
