@@ -75,7 +75,7 @@ const RiskDistributionChart = ({ data, isLoading }: { data: Array<{ name: string
             {isLoading ? <Skeleton className="w-full h-[250px]" /> : data.length > 0 ? (
             <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
                 <PieChartContainer>
-                    <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                    <ChartTooltip content={<ChartTooltipContent nameKey="count" />} />
                     <Pie data={data} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}>
                        {data.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -154,7 +154,8 @@ export default function AnalysisPage() {
             acc[obs.company] = (acc[obs.company] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
-        return Object.entries(counts).map(([name, value]) => ({ name, value }));
+        // ** FIX: Use 'count' instead of 'value' to match the schema **
+        return Object.entries(counts).map(([name, count]) => ({ name, count }));
     }, [observations]);
 
     const dailyTrend = React.useMemo(() => {

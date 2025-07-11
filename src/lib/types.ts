@@ -195,7 +195,7 @@ export const AnalyzeDashboardDataInputSchema = z.object({
   pendingPercentage: z.number(),
   criticalPercentage: z.number(),
   riskDistribution: z.array(z.object({ name: z.string(), count: z.number() })),
-  companyDistribution: z.array(z.object({ name: z.string(), value: z.number() })),
+  companyDistribution: z.array(z.object({ name: z.string(), count: z.number() })),
   dailyTrend: z.array(z.object({ day: z.string(), pending: z.number(), completed: z.number() })),
 });
 export type AnalyzeDashboardDataInput = z.infer<typeof AnalyzeDashboardDataInputSchema>;
