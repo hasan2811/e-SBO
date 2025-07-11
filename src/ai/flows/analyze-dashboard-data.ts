@@ -10,6 +10,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import {
     AnalyzeDashboardDataInput,
+    AnalyzeDashboardDataInputSchema, // Ensure this is imported
     AnalyzeDashboardDataOutput,
     AnalyzeDashboardDataOutputSchema,
     UserProfile,
