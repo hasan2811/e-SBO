@@ -36,16 +36,17 @@ Analyze this data:
 `,
 });
 
-// This flow is now simplified to directly call the prompt without a complex input schema.
-// It receives TypeScript types directly from the exported function.
 const analyzeDashboardDataFlow = ai.defineFlow(
   {
     name: 'analyzeDashboardDataFlow',
+    inputSchema: z.object({
+      summaryText: z.string(),
+      userProfile: UserProfileSchema,
+    }),
     outputSchema: AnalyzeDashboardDataOutputSchema,
   },
-  async (summaryText: string) => { // Directly accept the summary string
+  async ({ summaryText, userProfile }) => {
     try {
-        // The call now correctly passes an object that matches the prompt's input schema.
         const { output } = await analyzeDashboardPrompt({ summaryText });
 
         if (!output) {
@@ -66,11 +67,9 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   }
 );
 
-// This is the exported function that the client calls. It acts as the entry point.
 export async function analyzeDashboardData(summaryText: AnalyzeDashboardDataInput, userProfile: UserProfile): Promise<AnalyzeDashboardDataOutput> {
   if (!userProfile.aiEnabled) {
     throw new Error('AI features are disabled for this user.');
   }
-  // It passes the necessary data to the flow.
-  return analyzeDashboardDataFlow(summaryText);
+  return analyzeDashboardDataFlow({ summaryText, userProfile });
 }
