@@ -65,8 +65,8 @@ const analyzeObservationFlow = ai.defineFlow(
   },
   async ({ payload, userProfile }) => {
     try {
-        const response = await observationAnalysisPrompt(payload);
-        const output = response.output;
+        // Correctly call the prompt with the expected object structure.
+        const { output } = await observationAnalysisPrompt(payload);
         if (!output) throw new Error('AI analysis returned no structured output.');
         
         return output;
@@ -126,9 +126,9 @@ const analyzeDeeperInspectionFlow = ai.defineFlow(
   },
   async ({ payload, userProfile }) => {
     try {
-        const response = await deeperAnalysisInspectionPrompt(payload);
-        if (!response.output) throw new Error('AI deep inspection analysis returned no structured output.');
-        return response.output;
+        const { output } = await deeperAnalysisInspectionPrompt(payload);
+        if (!output) throw new Error('AI deep inspection analysis returned no structured output.');
+        return output;
     } catch (error: any) {
         console.error("Deeper Inspection Analysis Error:", error);
         const errorMessage = error.message?.toLowerCase() || '';
