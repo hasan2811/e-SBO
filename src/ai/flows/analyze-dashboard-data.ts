@@ -75,9 +75,12 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   }
 );
 
-export async function analyzeDashboardData(summaryText: AnalyzeDashboardDataInput, userProfile: UserProfile): Promise<AnalyzeDashboardDataOutput> {
+export async function analyzeDashboardData(input: AnalyzeDashboardDataInput, userProfile: UserProfile): Promise<AnalyzeDashboardDataOutput> {
   if (!userProfile.aiEnabled) {
     throw new Error('AI features are disabled for this user.');
   }
-  return analyzeDashboardDataFlow({ summaryText, userProfile });
+  if (!input || input.trim() === '') {
+    throw new Error('Cannot run analysis: The dashboard data summary is empty.');
+  }
+  return analyzeDashboardDataFlow({ summaryText: input, userProfile });
 }

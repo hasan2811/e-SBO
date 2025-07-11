@@ -22,7 +22,8 @@ function truncateText(text: string | null | undefined, maxLength: number): strin
   if (text.length <= maxLength) {
     return text;
   }
-  const lastSpace = text.lastIndexOf(' ', maxLength);
+  // Find the last space within the maxLength to avoid cutting words
+  const lastSpace = text.substring(0, maxLength).lastIndexOf(' ');
   const cutOff = lastSpace > 0 ? lastSpace : maxLength;
   return text.substring(0, cutOff) + '...';
 }
@@ -68,9 +69,10 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
     await docRef.update({ aiStatus: 'processing' });
 
     try {
-        const findingsText = truncateText(observation.findings, 500);
+        const findingsText = truncateText(observation.findings, 1000);
         const recommendationText = truncateText(observation.recommendation, 500);
 
+        // Build the prompt dynamically, only including fields that have content.
         let observationData = `
           Category: ${observation.category}
           Risk Level: ${observation.riskLevel}
@@ -82,10 +84,10 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
         if (recommendationText) {
             observationData += `\nRecommendation: ${recommendationText}`;
         }
-        
-        // Server-side logging to debug the exact prompt being sent.
-        console.log(`[runDeeperAnalysis] Prompt being sent to AI for observation ${observationId}:`, observationData);
 
+        // Server-side logging to debug the exact prompt being sent.
+        console.log(`[runDeeperAnalysis] Sending prompt for observation ${observationId}:`, observationData);
+        
         const analysis = await analyzeDeeperObservation({ observationData }, userProfile);
         
         docSnap = await docRef.get();
@@ -139,7 +141,7 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
     await docRef.update({ aiStatus: 'processing' });
 
     try {
-        const findingsText = truncateText(inspection.findings, 500);
+        const findingsText = truncateText(inspection.findings, 1000);
         const recommendationText = truncateText(inspection.recommendation, 500);
 
         let inspectionData = `
@@ -154,8 +156,7 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
             inspectionData += `\nRecommendation: ${recommendationText}`;
         }
         
-        // Server-side logging to debug the exact prompt being sent.
-        console.log(`[runDeeperInspectionAnalysis] Prompt being sent to AI for inspection ${inspectionId}:`, inspectionData);
+        console.log(`[runDeeperInspectionAnalysis] Sending prompt for inspection ${inspectionId}:`, inspectionData);
 
         const deepAnalysis = await analyzeDeeperInspection({ inspectionData }, userProfile);
         
