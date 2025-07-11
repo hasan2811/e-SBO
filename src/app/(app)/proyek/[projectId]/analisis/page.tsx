@@ -154,7 +154,6 @@ export default function AnalysisPage() {
             acc[obs.company] = (acc[obs.company] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
-        // ** FIX: Use 'count' instead of 'value' to match the schema **
         return Object.entries(counts).map(([name, count]) => ({ name, count }));
     }, [observations]);
 

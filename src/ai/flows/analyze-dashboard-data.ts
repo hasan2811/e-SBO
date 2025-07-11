@@ -17,17 +17,21 @@ import {
     UserProfileSchema,
 } from '@/lib/types';
 
-// ** FIX: Define a single schema for the prompt that accepts stringified JSON **
-const AnalyzeDashboardPromptSchema = AnalyzeDashboardDataInputSchema.extend({
+// This is the schema for the prompt itself, which expects stringified JSON for complex data.
+const AnalyzeDashboardPromptInputSchema = z.object({
+    totalObservations: z.number(),
+    pendingPercentage: z.number(),
+    criticalPercentage: z.number(),
     riskDistribution: z.string().describe("A JSON string representing the risk distribution."),
     companyDistribution: z.string().describe("A JSON string representing the company observation distribution."),
     dailyTrend: z.string().describe("A JSON string representing the daily observation trend for the last 7 days."),
 });
 
+
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
     model: 'googleai/gemini-1.5-flash-latest',
-    input: { schema: AnalyzeDashboardPromptSchema }, // Use the unified schema
+    input: { schema: AnalyzeDashboardPromptInputSchema },
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
         safetySettings: [
@@ -56,14 +60,14 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   {
     name: 'analyzeDashboardDataFlow',
     inputSchema: z.object({
-        payload: AnalyzeDashboardDataInputSchema,
+        payload: AnalyzeDashboardDataInputSchema, // The input from the client has arrays of objects
         userProfile: UserProfileSchema,
     }),
     outputSchema: AnalyzeDashboardDataOutputSchema,
   },
   async ({ payload, userProfile }) => {
     try {
-        // ** FIX: Correctly prepare the data for the prompt by stringifying the complex objects **
+        // Explicitly convert the array data into JSON strings for the prompt.
         const promptInput = {
             ...payload,
             riskDistribution: JSON.stringify(payload.riskDistribution),
