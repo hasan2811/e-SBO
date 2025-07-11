@@ -10,17 +10,19 @@ import {
 
 /**
  * Truncates text to a specified maximum length without cutting words.
+ * Returns an empty string if the input text is falsy.
  * @param text The text to truncate.
  * @param maxLength The maximum length of the truncated text.
- * @returns The truncated text.
+ * @returns The truncated text or an empty string.
  */
-function truncateText(text: string, maxLength: number): string {
+function truncateText(text: string | null | undefined, maxLength: number): string {
+  if (!text) {
+    return '';
+  }
   if (text.length <= maxLength) {
     return text;
   }
-  // Find the last space within the maxLength
   const lastSpace = text.lastIndexOf(' ', maxLength);
-  // If no space is found, just cut at maxLength
   const cutOff = lastSpace > 0 ? lastSpace : maxLength;
   return text.substring(0, cutOff) + '...';
 }
@@ -57,18 +59,32 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
     if (!userProfile.aiEnabled) {
       throw new Error("AI features are disabled for this user.");
     }
+    
+    // Validate that there is content to analyze
+    if (!observation.findings || observation.findings.trim() === '') {
+        throw new Error("Cannot run analysis: The observation's 'findings' field is empty.");
+    }
 
     await docRef.update({ aiStatus: 'processing' });
 
     try {
-        const observationData = `
+        const findingsText = truncateText(observation.findings, 500);
+        const recommendationText = truncateText(observation.recommendation, 500);
+
+        let observationData = `
           Category: ${observation.category}
           Risk Level: ${observation.riskLevel}
           Status: ${observation.status}
           Location: ${observation.location}
-          Findings: ${truncateText(observation.findings, 500)}
-          Recommendation: ${truncateText(observation.recommendation, 500)}
+          Findings: ${findingsText}
         `.trim();
+        
+        if (recommendationText) {
+            observationData += `\nRecommendation: ${recommendationText}`;
+        }
+        
+        // Server-side logging to debug the exact prompt being sent.
+        console.log(`[runDeeperAnalysis] Prompt being sent to AI for observation ${observationId}:`, observationData);
 
         const analysis = await analyzeDeeperObservation({ observationData }, userProfile);
         
@@ -115,17 +131,31 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
         throw new Error("AI features are disabled for this user.");
     }
 
+    // Validate that there is content to analyze
+    if (!inspection.findings || inspection.findings.trim() === '') {
+        throw new Error("Cannot run analysis: The inspection's 'findings' field is empty.");
+    }
+
     await docRef.update({ aiStatus: 'processing' });
 
     try {
-        const inspectionData = `
+        const findingsText = truncateText(inspection.findings, 500);
+        const recommendationText = truncateText(inspection.recommendation, 500);
+
+        let inspectionData = `
           Equipment Name: ${inspection.equipmentName}
           Type: ${inspection.equipmentType}
           Status: ${inspection.status}
           Location: ${inspection.location}
-          Findings: ${truncateText(inspection.findings, 500)}
-          Recommendation: ${truncateText(inspection.recommendation || 'N/A', 500)}
+          Findings: ${findingsText}
         `.trim();
+
+        if (recommendationText) {
+            inspectionData += `\nRecommendation: ${recommendationText}`;
+        }
+        
+        // Server-side logging to debug the exact prompt being sent.
+        console.log(`[runDeeperInspectionAnalysis] Prompt being sent to AI for inspection ${inspectionId}:`, inspectionData);
 
         const deepAnalysis = await analyzeDeeperInspection({ inspectionData }, userProfile);
         
