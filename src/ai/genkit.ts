@@ -8,7 +8,7 @@ import {googleAI} from '@genkit-ai/googleai';
 
 // Your web app's Firebase configuration, with the correct storageBucket name.
 const firebaseConfig = {
-  apiKey: "AIzaSyD-P_1XOQ9xQOgxwMApClEFoqHcxs7fYPI",
+  apiKey: "AIzaSyBiL2rG3cd5VRK6VcX5Op_2T1CcehOBVRc",
 };
 
 
