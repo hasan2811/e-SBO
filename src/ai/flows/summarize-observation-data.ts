@@ -44,6 +44,7 @@ const observationAnalysisPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
         ],
+        temperature: 0.8,
     },
     prompt: `You are a fast and efficient HSSE expert analyst. Your task is to perform a streamlined analysis of an observation report. Your response MUST be a raw JSON object only, in English.
 
@@ -111,6 +112,7 @@ const deeperAnalysisInspectionPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
         ],
+        temperature: 0.8,
     },
     prompt: `You are an expert equipment inspector and safety analyst. Your task is to analyze the provided equipment inspection report data and provide clear, practical analysis points in English.
 IMPORTANT: Your response must be a raw JSON object only, with no additional explanations or formatting.

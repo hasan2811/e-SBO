@@ -59,6 +59,7 @@ const assistObservationPrompt = ai.definePrompt({
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
         ],
+        temperature: 0.8,
     },
     prompt: `You are an extremely fast AI assistant for an HSSE application. Your task is to instantly analyze the user's text and provide suggestions. Your response MUST be a raw JSON object and nothing else. Prioritize speed.
 
