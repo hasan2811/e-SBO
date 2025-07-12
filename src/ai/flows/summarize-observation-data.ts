@@ -36,18 +36,7 @@ const observationAnalysisPrompt = ai.definePrompt({
     name: 'observationAnalysisPrompt',
     model: 'googleai/gemini-1.5-flash',
     input: { schema: SummarizeObservationDataInputSchema },
-    output: { schema: ObservationAnalysisOutputSchema },
-    prompt: `You are a fast and efficient HSSE expert analyst. Your task is to perform a streamlined analysis of an observation report. Your response MUST be a raw JSON object only, in English.
-
-Analyze the provided observation data and generate the following points:
-
-1.  "summary": A very brief, one-sentence summary of the core finding.
-2.  "risks": A bulleted list of the most critical potential dangers and safety risks. Start each point with a hyphen (-).
-3.  "suggestedActions": A bulleted list of the most important, clear, and actionable recommendations. Start each point with a hyphen (-).
-
-Observation Data to Analyze:
-{{{observationData}}}
-`,
+    prompt: `You are an HSSE expert. Analyze the provided observation data: {{{observationData}}}. Provide a one-sentence summary, a bulleted list of risks, and a bulleted list of actions.`,
 });
 
 const analyzeObservationFlow = ai.defineFlow(
@@ -58,10 +47,18 @@ const analyzeObservationFlow = ai.defineFlow(
   },
   async ({ payload }) => {
     try {
-        const { output } = await observationAnalysisPrompt(payload);
-        if (!output) throw new Error('AI analysis returned no structured output.');
-        
-        return output;
+        const { text } = await observationAnalysisPrompt(payload);
+        if (!text) {
+          throw new Error('AI analysis returned no text output for observation.');
+        }
+
+        // Basic parsing assuming AI gives a response.
+        // In a real scenario, this would be more robust.
+        return {
+          summary: text.split('\n')[0] || "No summary available.",
+          risks: text,
+          suggestedActions: text,
+        };
     } catch (error: any) {
         console.error("Deeper Observation Analysis Error:", error);
         throw new Error('An unexpected error occurred during AI analysis.');

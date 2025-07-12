@@ -78,11 +78,12 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
         if (recommendationText) {
             observationData += `; Recommendation: ${recommendationText}`;
         }
-
-        // Server-side logging to debug the exact prompt being sent.
-        console.log(`[runDeeperAnalysis] Sending prompt for observation ${observationId}:`, observationData);
+        
+        console.log(`[DEBUG_OBS_PROMPT]: ${observationData}`);
         
         const analysis = await analyzeDeeperObservation({ observationData }, userProfile);
+
+        console.log(`[DEBUG_OBS_RAW_RESPONSE]: ${JSON.stringify(analysis)}`);
         
         docSnap = await docRef.get();
         if (!docSnap.exists) {
