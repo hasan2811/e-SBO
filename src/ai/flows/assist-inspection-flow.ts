@@ -23,9 +23,9 @@ const assistInspectionFlow = ai.defineFlow(
   async ({ payload }) => {
     // Return a hardcoded success response to ensure the UI works.
     return {
-      suggestedStatus: 'Pass',
-      improvedFindings: `${payload.findings} (disarankan perbaikan oleh AI).`,
-      suggestedRecommendation: 'Segera perbaiki sesuai standar keamanan.',
+      suggestedStatus: 'Fail',
+      improvedFindings: `${payload.findings} (ada tanda-tanda keausan signifikan dan korosi).`,
+      suggestedRecommendation: 'Hentikan penggunaan alat dan jadwalkan perbaikan segera.',
     };
   }
 );

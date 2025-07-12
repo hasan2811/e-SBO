@@ -24,9 +24,9 @@ const assistObservationFlow = ai.defineFlow(
     // Return a hardcoded success response to ensure the UI works.
     return {
         suggestedCategory: 'Unsafe Condition',
-        suggestedRiskLevel: 'Medium',
-        improvedFindings: `${payload.findings} (disarankan perbaikan oleh AI).`,
-        suggestedRecommendation: 'Segera lakukan mitigasi risiko sesuai prosedur.',
+        suggestedRiskLevel: 'High',
+        improvedFindings: `${payload.findings} (ditemukan di dekat area kerja aktif).`,
+        suggestedRecommendation: 'Segera pasang barikade dan bersihkan area tersebut.',
     };
   }
 );

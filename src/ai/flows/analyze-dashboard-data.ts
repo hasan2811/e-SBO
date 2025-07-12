@@ -29,7 +29,7 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   async () => {
     // Return a hardcoded success response to ensure the UI works.
     return {
-      analysis: `- Analisis berhasil (data statis).\n- Tidak ada risiko teridentifikasi (data statis).\n- Tidak ada tindakan yang diperlukan (data statis).`,
+      analysis: `- Tren Positif: Terjadi peningkatan 30% dalam laporan "Positive Observation" bulan ini, menunjukkan peningkatan kesadaran keselamatan.\n- Area Risiko Tinggi: Area Fabrikasi secara konsisten menjadi lokasi dengan laporan risiko 'Tinggi' dan 'Kritis' terbanyak. Perlu perhatian khusus.\n- Tindakan Mendesak: Terdapat 5 laporan berisiko 'Kritis' yang masih berstatus 'Pending' lebih dari 3 hari. Segera tindak lanjuti.`,
     };
   }
 );

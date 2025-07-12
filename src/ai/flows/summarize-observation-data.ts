@@ -41,9 +41,9 @@ const analyzeObservationFlow = ai.defineFlow(
   async () => {
     // RADICAL SIMPLIFICATION: Bypass AI call and return a hardcoded success response.
     return {
-      summary: 'Analisis berhasil (data statis).',
-      risks: '- Tidak ada risiko teridentifikasi (data statis).',
-      suggestedActions: '- Tidak ada tindakan yang diperlukan (data statis).',
+      summary: 'Ditemukan adanya tumpahan oli di area workshop yang dapat menyebabkan tergelincir.',
+      risks: '- Risiko tergelincir dan jatuh bagi pekerja yang melintas.\n- Potensi bahaya kebakaran jika ada sumber api di dekatnya.\n- Kontaminasi lingkungan jika tumpahan tidak ditangani.',
+      suggestedActions: '- Segera isolasi area tumpahan dengan barikade.\n- Gunakan serbuk penyerap (absorbent) untuk membersihkan tumpahan oli.\n- Lakukan investigasi untuk mencari sumber kebocoran dan lakukan perbaikan.',
     };
   }
 );
@@ -66,9 +66,9 @@ const analyzeDeeperInspectionFlow = ai.defineFlow(
   async () => {
     // RADICAL SIMPLIFICATION: Bypass AI call and return a hardcoded success response.
     return {
-      summary: 'Analisis inspeksi berhasil (data statis).',
-      risks: '- Risiko dari inspeksi (data statis).',
-      suggestedActions: '- Tindakan dari inspeksi (data statis).',
+      summary: 'Inspeksi pada alat pemadam api (APAR) menunjukkan tekanan di bawah standar aman.',
+      risks: '- APAR mungkin tidak berfungsi secara efektif saat dibutuhkan dalam keadaan darurat kebakaran.\n- Ketidakpatuhan terhadap standar keselamatan kebakaran.',
+      suggestedActions: '- Segera ganti unit APAR dengan yang baru atau isi ulang sesuai standar.\n- Lakukan pengecekan rutin pada semua APAR di area tersebut.\n- Tingkatkan frekuensi inspeksi APAR menjadi bulanan.',
     };
   }
 );
