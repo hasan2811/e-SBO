@@ -21,7 +21,7 @@ import {
 
 
 // =================================================================================
-// 1. OBSERVATION ANALYSIS FLOW
+// 1. OBSERVATION ANALYSIS FLOW (RADICAL DEBUGGING)
 // =================================================================================
 
 const ObservationAnalysisOutputSchema = z.object({
@@ -32,40 +32,21 @@ const ObservationAnalysisOutputSchema = z.object({
 export type DeeperAnalysisOutput = z.infer<typeof ObservationAnalysisOutputSchema>;
 
 
-const observationAnalysisPrompt = ai.definePrompt({
-    name: 'observationAnalysisPrompt',
-    model: 'googleai/gemini-1.5-flash',
-    input: { schema: SummarizeObservationDataInputSchema },
-    config: {
-        temperature: 0.1,
-    },
-    prompt: `Berikan ringkasan satu kalimat.`,
-});
-
 const analyzeObservationFlow = ai.defineFlow(
   {
     name: 'analyzeObservationFlow',
     inputSchema: z.object({ payload: SummarizeObservationDataInputSchema, userProfile: UserProfileSchema }),
     outputSchema: ObservationAnalysisOutputSchema,
   },
-  async ({ payload }) => {
-    try {
-        const { text } = await observationAnalysisPrompt(payload);
-        if (!text) {
-          throw new Error('AI analysis returned no text output for observation.');
-        }
-
-        // Basic parsing assuming AI gives a response.
-        // In a real scenario, this would be more robust.
-        return {
-          summary: text,
-          risks: 'Risks analysis not available in this mode.',
-          suggestedActions: 'Actions analysis not available in this mode.',
-        };
-    } catch (error: any) {
-        console.error("Deeper Observation Analysis Error:", error);
-        throw new Error('An unexpected error occurred during AI analysis.');
-    }
+  async () => {
+    // RADICAL DEBUGGING: Bypass AI call entirely and return a hardcoded success response.
+    // This is to isolate if the error happens during the AI call itself, even with a simple prompt.
+    console.log('[RADICAL DEBUG] Bypassing AI call in analyzeObservationFlow. Returning static data.');
+    return {
+      summary: 'Analysis successful (static data).',
+      risks: '- No risks identified (static data).',
+      suggestedActions: '- No actions needed (static data).',
+    };
   }
 );
 
