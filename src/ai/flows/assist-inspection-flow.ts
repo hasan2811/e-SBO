@@ -40,13 +40,6 @@ const assistInspectionPrompt = ai.definePrompt({
     model: 'googleai/gemini-1.5-flash',
     input: { schema: AssistInspectionInputSchema },
     output: { schema: AssistInspectionOutputSchema },
-    config: {
-        stream: false,
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        ],
-    },
     prompt: `You are an extremely fast AI assistant for an HSSE application specializing in equipment inspection. Your task is to instantly analyze the user's text and provide suggestions. Your response MUST be a raw JSON object and nothing else. Prioritize speed.
 
 Analyze the user's findings below and provide the following in Bahasa Indonesia:

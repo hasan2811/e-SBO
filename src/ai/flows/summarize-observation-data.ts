@@ -37,13 +37,6 @@ const observationAnalysisPrompt = ai.definePrompt({
     model: 'googleai/gemini-1.5-flash',
     input: { schema: SummarizeObservationDataInputSchema },
     output: { schema: ObservationAnalysisOutputSchema },
-    config: {
-        stream: false,
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        ],
-    },
     prompt: `You are a fast and efficient HSSE expert analyst. Your task is to perform a streamlined analysis of an observation report. Your response MUST be a raw JSON object only, in English.
 
 Analyze the provided observation data and generate the following points:
@@ -90,13 +83,6 @@ const deeperAnalysisInspectionPrompt = ai.definePrompt({
     model: 'googleai/gemini-1.5-flash',
     input: { schema: AnalyzeInspectionInputSchema },
     output: { schema: AnalyzeInspectionOutputSchema },
-    config: {
-        stream: false,
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        ],
-    },
     prompt: `You are an expert equipment inspector and safety analyst. Your task is to analyze the provided equipment inspection report data and provide clear, practical analysis points in English.
 IMPORTANT: Your response must be a raw JSON object only, with no additional explanations or formatting.
 
