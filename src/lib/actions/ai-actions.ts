@@ -69,20 +69,14 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
     await docRef.update({ aiStatus: 'processing' });
 
     try {
-        const findingsText = truncateText(observation.findings, 1000);
-        const recommendationText = truncateText(observation.recommendation, 500);
+        const findingsText = truncateText(observation.findings, 500);
+        const recommendationText = truncateText(observation.recommendation, 250);
 
         // Build the prompt dynamically, only including fields that have content.
-        let observationData = `
-          Category: ${observation.category}
-          Risk Level: ${observation.riskLevel}
-          Status: ${observation.status}
-          Location: ${observation.location}
-          Findings: ${findingsText}
-        `.trim();
+        let observationData = `Category: ${observation.category}; Risk Level: ${observation.riskLevel}; Status: ${observation.status}; Location: ${observation.location}; Findings: ${findingsText}`;
         
         if (recommendationText) {
-            observationData += `\nRecommendation: ${recommendationText}`;
+            observationData += `; Recommendation: ${recommendationText}`;
         }
 
         // Server-side logging to debug the exact prompt being sent.
@@ -141,19 +135,13 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
     await docRef.update({ aiStatus: 'processing' });
 
     try {
-        const findingsText = truncateText(inspection.findings, 1000);
-        const recommendationText = truncateText(inspection.recommendation, 500);
+        const findingsText = truncateText(inspection.findings, 500);
+        const recommendationText = truncateText(inspection.recommendation, 250);
 
-        let inspectionData = `
-          Equipment Name: ${inspection.equipmentName}
-          Type: ${inspection.equipmentType}
-          Status: ${inspection.status}
-          Location: ${inspection.location}
-          Findings: ${findingsText}
-        `.trim();
+        let inspectionData = `Equipment: ${inspection.equipmentName} (${inspection.equipmentType}); Status: ${inspection.status}; Location: ${inspection.location}; Findings: ${findingsText}`;
 
         if (recommendationText) {
-            inspectionData += `\nRecommendation: ${recommendationText}`;
+            inspectionData += `; Recommendation: ${recommendationText}`;
         }
         
         console.log(`[runDeeperInspectionAnalysis] Sending prompt for inspection ${inspectionId}:`, inspectionData);
