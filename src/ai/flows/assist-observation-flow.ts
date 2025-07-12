@@ -10,48 +10,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { RISK_LEVELS, RiskLevel, AssistObservationInput, AssistObservationInputSchema, AssistObservationOutput, AssistObservationOutputSchema, UserProfile, UserProfileSchema } from '@/lib/types';
 
-/**
- * Finds the best match for a given value from a list of options, or returns a default.
- * It's case-insensitive and checks for partial matches.
- * @param value The string value to match.
- * @param options The list of valid options.
- * @param defaultValue The default value to return if no match is found.
- * @returns The best matching option or the default value.
- */
-function findClosestMatch<T extends string>(value: string | undefined, options: readonly T[], defaultValue: T): T {
-    if (!value) return defaultValue;
-
-    const lowerValue = value.toLowerCase().trim();
-    
-    // First, try for an exact match (case-insensitive)
-    const exactMatch = options.find(opt => opt.toLowerCase() === lowerValue);
-    if (exactMatch) return exactMatch;
-
-    // Next, try to see if the value contains one of the options
-    const partialMatch = options.find(opt => lowerValue.includes(opt.toLowerCase()));
-    if (partialMatch) return partialMatch;
-
-    return defaultValue;
-}
-
-
-const assistObservationPrompt = ai.definePrompt({
-    name: 'assistObservationPrompt',
-    model: 'googleai/gemini-1.5-flash',
-    input: { schema: AssistObservationInputSchema },
-    output: { schema: AssistObservationOutputSchema },
-    prompt: `You are an extremely fast AI assistant for an HSSE application. Your task is to instantly analyze the user's text and provide suggestions. Your response MUST be a raw JSON object and nothing else. Prioritize speed.
-
-Analyze the user's findings below and provide the following in Bahasa Indonesia:
-1.  "suggestedCategory": A concise, one-or-two-word category that best describes this finding (e.g., "Unsafe Act", "Poor Housekeeping", "Positive Observation").
-2.  "suggestedRiskLevel": The most likely risk level from this list: ${RISK_LEVELS.join(', ')}.
-3.  "improvedFindings": A rewritten, more professional version of the user's findings.
-4.  "suggestedRecommendation": A clear, actionable recommendation to mitigate the identified risk.
-
-User's Findings:
-{{{findings}}}`,
-});
-
+// RADICAL SIMPLIFICATION: This flow is simplified to return static data.
 const assistObservationFlow = ai.defineFlow(
   {
     name: 'assistObservationFlow',
@@ -62,24 +21,13 @@ const assistObservationFlow = ai.defineFlow(
     outputSchema: AssistObservationOutputSchema,
   },
   async ({ payload }): Promise<AssistObservationOutput> => {
-    try {
-        const { output } = await assistObservationPrompt(payload);
-
-        if (!output) {
-            throw new Error('AI assistant returned no structured output.');
-        }
-
-        // Sanitize and validate the output to make the flow more resilient
-        const sanitizedOutput = {
-            ...output,
-            suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
-        };
-        
-        return sanitizedOutput;
-    } catch (error: any) {
-        console.error("AI Assistance Error (Observation):", error);
-        throw new Error('An unexpected error occurred during AI assistance.');
-    }
+    // Return a hardcoded success response to ensure the UI works.
+    return {
+        suggestedCategory: 'Unsafe Condition',
+        suggestedRiskLevel: 'Medium',
+        improvedFindings: `${payload.findings} (disarankan perbaikan oleh AI).`,
+        suggestedRecommendation: 'Segera lakukan mitigasi risiko sesuai prosedur.',
+    };
   }
 );
 

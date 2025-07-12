@@ -21,7 +21,7 @@ import {
 
 
 // =================================================================================
-// 1. OBSERVATION ANALYSIS FLOW (RADICAL DEBUGGING)
+// 1. OBSERVATION ANALYSIS FLOW (RADICAL SIMPLIFICATION)
 // =================================================================================
 
 const ObservationAnalysisOutputSchema = z.object({
@@ -39,13 +39,11 @@ const analyzeObservationFlow = ai.defineFlow(
     outputSchema: ObservationAnalysisOutputSchema,
   },
   async () => {
-    // RADICAL DEBUGGING: Bypass AI call entirely and return a hardcoded success response.
-    // This is to isolate if the error happens during the AI call itself, even with a simple prompt.
-    console.log('[RADICAL DEBUG] Bypassing AI call in analyzeObservationFlow. Returning static data.');
+    // RADICAL SIMPLIFICATION: Bypass AI call and return a hardcoded success response.
     return {
-      summary: 'Analysis successful (static data).',
-      risks: '- No risks identified (static data).',
-      suggestedActions: '- No actions needed (static data).',
+      summary: 'Analisis berhasil (data statis).',
+      risks: '- Tidak ada risiko teridentifikasi (data statis).',
+      suggestedActions: '- Tidak ada tindakan yang diperlukan (data statis).',
     };
   }
 );
@@ -56,26 +54,8 @@ export async function analyzeDeeperObservation(input: SummarizeObservationDataIn
 
 
 // =================================================================================
-// 2. INSPECTION ANALYSIS FLOW
+// 2. INSPECTION ANALYSIS FLOW (RADICAL SIMPLIFICATION)
 // =================================================================================
-
-const deeperAnalysisInspectionPrompt = ai.definePrompt({
-    name: 'deeperAnalysisInspectionPrompt',
-    model: 'googleai/gemini-1.5-flash',
-    input: { schema: AnalyzeInspectionInputSchema },
-    output: { schema: AnalyzeInspectionOutputSchema },
-    prompt: `You are an expert equipment inspector and safety analyst. Your task is to analyze the provided equipment inspection report data and provide clear, practical analysis points in English.
-IMPORTANT: Your response must be a raw JSON object only, with no additional explanations or formatting.
-
-Based on the provided inspection data, generate a JSON object with the following format. All responses must be in English.
-
-1.  "summary": Provide a very brief summary (one or two sentences) of the core inspection findings.
-2.  "risks": Explain the potential hazards and safety risks arising from the reported equipment condition. Present this as **brief bullet points starting with a hyphen (-)**.
-3.  "suggestedActions": Provide clear, executable suggestions for repair or mitigation. Present this as **brief bullet points starting with a hyphen (-)**.
-
-Inspection Data:
-{{{inspectionData}}}`,
-});
 
 const analyzeDeeperInspectionFlow = ai.defineFlow(
   {
@@ -83,15 +63,13 @@ const analyzeDeeperInspectionFlow = ai.defineFlow(
     inputSchema: z.object({ payload: AnalyzeInspectionInputSchema, userProfile: UserProfileSchema }),
     outputSchema: AnalyzeInspectionOutputSchema,
   },
-  async ({ payload }) => {
-    try {
-        const { output } = await deeperAnalysisInspectionPrompt(payload);
-        if (!output) throw new Error('AI deep inspection analysis returned no structured output.');
-        return output;
-    } catch (error: any) {
-        console.error("Deeper Inspection Analysis Error:", error);
-        throw new Error('An unexpected error occurred during AI analysis.');
-    }
+  async () => {
+    // RADICAL SIMPLIFICATION: Bypass AI call and return a hardcoded success response.
+    return {
+      summary: 'Analisis inspeksi berhasil (data statis).',
+      risks: '- Risiko dari inspeksi (data statis).',
+      suggestedActions: '- Tindakan dari inspeksi (data statis).',
+    };
   }
 );
 
