@@ -21,10 +21,8 @@ const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
     model: 'googleai/gemini-1.5-flash',
     input: { schema: z.object({ summaryText: z.string() }) },
-    output: { schema: AnalyzeDashboardDataOutputSchema },
     prompt: `You are a senior HSSE data analyst. Your task is to analyze the following project data summary and provide a fast, concise executive summary in Bahasa Indonesia.
-Your response MUST be a raw JSON object containing a single key "analysis" with a string value.
-The string value should be a bulleted list of the 3-4 most critical insights. Start each bullet point with a hyphen (-).
+Your response MUST be a bulleted list of the 3-4 most critical insights. Start each bullet point with a hyphen (-). Do NOT wrap your response in JSON or any other special formatting.
 
 Analyze this data:
 {{{summaryText}}}
@@ -42,12 +40,13 @@ const analyzeDashboardDataFlow = ai.defineFlow(
   },
   async ({ summaryText }) => {
     try {
-        const { output } = await analyzeDashboardPrompt({ summaryText });
+        const { text } = await analyzeDashboardPrompt({ summaryText });
 
-        if (!output) {
-          throw new Error('AI dashboard analysis returned no structured output.');
+        if (!text) {
+          throw new Error('AI dashboard analysis returned no text output.');
         }
-        return output;
+        // Manually construct the expected output object from the raw text response
+        return { analysis: text };
     } catch (error: any) {
         console.error("Dashboard Analysis Error:", error);
         throw new Error('An unexpected error occurred during dashboard analysis.');
