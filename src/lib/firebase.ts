@@ -5,12 +5,12 @@ import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
-// Your web app's Firebase configuration, corrected to match the target project.
+// Your web app's Firebase configuration, using the correct API key.
 const firebaseConfig = {
-  apiKey: "AIzaSyD-P_1XOQ9xQOgxwMApClEFoqHcxs7fYPI",
-  authDomain: "inspectwise-dashboard-poa61.firebaseapp.com",
-  projectId: "inspectwise-dashboard-poa61",
-  storageBucket: "inspectwise-dashboard-poa61.appspot.com",
+  apiKey: "AIzaSyBiL2rG3cd5VRK6VcX5Op_2T1CcehOBVRc",
+  authDomain: "hssetech-e1710.firebaseapp.com",
+  projectId: "hssetech-e1710",
+  storageBucket: "hssetech-e1710.firebasestorage.app",
   messagingSenderId: "789147047426",
   appId: "1:789147047426:web:7a37fdc4adfb51905bb91b",
   measurementId: "G-X84C2SP8MH"
