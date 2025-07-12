@@ -19,16 +19,16 @@ import {
 
 const analyzeDashboardPrompt = ai.definePrompt({
     name: 'analyzeDashboardPrompt',
-    model: 'googleai/gemini-2.0-flash',
+    model: 'googleai/gemini-1.5-flash',
     input: { schema: z.object({ summaryText: z.string() }) },
     output: { schema: AnalyzeDashboardDataOutputSchema },
     config: {
         stream: false,
+        temperature: 0.8,
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
         ],
-        temperature: 0.8,
     },
     prompt: `You are a senior HSSE data analyst. Your task is to analyze the following project data summary and provide a fast, concise executive summary in Bahasa Indonesia.
 Your response MUST be a raw JSON object containing a single key "analysis" with a string value.
@@ -48,7 +48,7 @@ const analyzeDashboardDataFlow = ai.defineFlow(
     }),
     outputSchema: AnalyzeDashboardDataOutputSchema,
   },
-  async ({ summaryText, userProfile }) => {
+  async ({ summaryText }) => {
     try {
         const { output } = await analyzeDashboardPrompt({ summaryText });
 
@@ -58,19 +58,6 @@ const analyzeDashboardDataFlow = ai.defineFlow(
         return output;
     } catch (error: any) {
         console.error("Dashboard Analysis Error:", error);
-        const errorMessage = error.message?.toLowerCase() || '';
-        if (errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
-             throw new Error("The API quota has been exhausted. Please contact the developer.");
-        }
-        if (errorMessage.includes('503') || errorMessage.includes('service_unavailable')) {
-             throw new Error("The AI service is currently busy. Please try again in a moment.");
-        }
-        if (error.message.includes('not supported in this region')) {
-            throw new Error("The configured AI model is not available in your current region.");
-        }
-        if (error.message.includes('safety concerns')) {
-            throw new Error("AI analysis was blocked due to safety concerns in the input data.");
-        }
         throw new Error('An unexpected error occurred during dashboard analysis.');
     }
   }

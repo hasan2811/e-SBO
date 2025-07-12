@@ -10,19 +10,6 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { RISK_LEVELS, RiskLevel, AssistObservationInput, AssistObservationInputSchema, AssistObservationOutput, AssistObservationOutputSchema, UserProfile, UserProfileSchema } from '@/lib/types';
 
-// Define the output schema for the flow once to be reused.
-const FlowOutputSchema = z.object({
-    suggestedCategory: z.string(),
-    suggestedRiskLevel: z.enum(RISK_LEVELS),
-    improvedFindings: z.string(),
-    suggestedRecommendation: z.string(),
-});
-type FlowOutput = z.infer<typeof FlowOutputSchema>;
-
-// In-memory cache with a Time-To-Live (TTL) to store AI suggestions.
-const suggestionCache = new Map<string, { timestamp: number; data: FlowOutput }>();
-const CACHE_TTL = 3600 * 1000; // 1 hour in milliseconds
-
 /**
  * Finds the best match for a given value from a list of options, or returns a default.
  * It's case-insensitive and checks for partial matches.
@@ -50,7 +37,7 @@ function findClosestMatch<T extends string>(value: string | undefined, options: 
 
 const assistObservationPrompt = ai.definePrompt({
     name: 'assistObservationPrompt',
-    model: 'googleai/gemini-2.0-flash',
+    model: 'googleai/gemini-1.5-flash',
     input: { schema: AssistObservationInputSchema },
     output: { schema: AssistObservationOutputSchema },
     config: {
@@ -80,18 +67,10 @@ const assistObservationFlow = ai.defineFlow(
         payload: AssistObservationInputSchema,
         userProfile: UserProfileSchema,
     }),
-    outputSchema: FlowOutputSchema,
+    outputSchema: AssistObservationOutputSchema,
   },
-  async ({ payload, userProfile }): Promise<FlowOutput> => {
-    // 1. Check cache for a recent, valid entry.
-    const cached = suggestionCache.get(payload.findings);
-    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
-      console.log('Returning cached AI observation assistance.');
-      return cached.data;
-    }
-
+  async ({ payload }): Promise<AssistObservationOutput> => {
     try {
-        // 2. If not in cache, call the AI model.
         const { output } = await assistObservationPrompt(payload);
 
         if (!output) {
@@ -104,25 +83,9 @@ const assistObservationFlow = ai.defineFlow(
             suggestedRiskLevel: findClosestMatch(output.suggestedRiskLevel, RISK_LEVELS, 'Low'),
         };
         
-        // 3. Store the successful response in the cache.
-        suggestionCache.set(payload.findings, { timestamp: Date.now(), data: sanitizedOutput });
-        
         return sanitizedOutput;
     } catch (error: any) {
         console.error("AI Assistance Error (Observation):", error);
-
-        const errorMessage = error.message?.toLowerCase() || '';
-
-        if (errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
-             throw new Error("The API quota has been exhausted. Please contact the developer.");
-        }
-        if (errorMessage.includes('503') || errorMessage.includes('service_unavailable')) {
-             throw new Error("The AI service is currently busy. Please try again in a moment.");
-        }
-        if (errorMessage.includes('safety concerns')) {
-            throw new Error("AI suggestion was blocked due to safety concerns.");
-        }
-        // For other errors, re-throw a generic message.
         throw new Error('An unexpected error occurred during AI assistance.');
     }
   }
@@ -138,10 +101,8 @@ export async function assistObservation(input: AssistObservationInput, userProfi
     };
   }
   const result = await assistObservationFlow({ payload: input, userProfile });
-  // Ensure the final return type matches the expected Zod schema for the exported function.
   return {
       ...result,
-      suggestedCategory: result.suggestedCategory,
       suggestedRiskLevel: result.suggestedRiskLevel as RiskLevel,
   };
 }

@@ -37,16 +37,16 @@ function findClosestMatch<T extends string>(value: string | undefined, options: 
 
 const assistInspectionPrompt = ai.definePrompt({
     name: 'assistInspectionPrompt',
-    model: 'googleai/gemini-2.0-flash',
+    model: 'googleai/gemini-1.5-flash',
     input: { schema: AssistInspectionInputSchema },
     output: { schema: AssistInspectionOutputSchema },
     config: {
         stream: false,
+        temperature: 0.8,
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
         ],
-        temperature: 0.8,
     },
     prompt: `You are an extremely fast AI assistant for an HSSE application specializing in equipment inspection. Your task is to instantly analyze the user's text and provide suggestions. Your response MUST be a raw JSON object and nothing else. Prioritize speed.
 
@@ -72,7 +72,7 @@ const assistInspectionFlow = ai.defineFlow(
         suggestedRecommendation: z.string(),
     }),
   },
-  async ({ payload, userProfile }) => {
+  async ({ payload }) => {
     try {
         const { output } = await assistInspectionPrompt(payload);
 
@@ -89,16 +89,6 @@ const assistInspectionFlow = ai.defineFlow(
         return sanitizedOutput;
     } catch (error: any) {
         console.error("AI Assistance Error (Inspection):", error);
-        const errorMessage = error.message?.toLowerCase() || '';
-        if (errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
-             throw new Error("The API quota has been exhausted. Please contact the developer.");
-        }
-        if (errorMessage.includes('503') || errorMessage.includes('service_unavailable')) {
-             throw new Error("The AI service is currently busy. Please try again in a moment.");
-        }
-        if (errorMessage.includes('safety concerns')) {
-            throw new Error("AI suggestion was blocked due to safety concerns.");
-        }
         throw new Error('An unexpected error occurred during AI assistance.');
     }
   }
