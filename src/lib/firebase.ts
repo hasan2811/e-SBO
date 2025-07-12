@@ -7,7 +7,7 @@ import { getAnalytics, isSupported } from 'firebase/analytics';
 
 // Your web app's Firebase configuration, using the correct API key.
 const firebaseConfig = {
-  apiKey: "AIzaSyBiL2rG3cd5VRK6VcX5Op_2T1CcehOBVRc",
+  apiKey: "AIzaSyD-P_1XOQ9xQOgxwMApClEFoqHcxs7fYPI",
   authDomain: "hssetech-e1710.firebaseapp.com",
   projectId: "hssetech-e1710",
   storageBucket: "hssetech-e1710.firebasestorage.app",
