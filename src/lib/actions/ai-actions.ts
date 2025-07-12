@@ -49,6 +49,13 @@ async function getUserProfile(userId: string): Promise<UserProfile | null> {
  * @param observationId The ID of the observation to analyze.
  */
 export async function runDeeperAnalysis(observationId: string): Promise<Observation> {
+    // ## Validation Guard ##
+    console.log('[DEBUG_FIRESTORE] Attempting analysis for Observation ID:', observationId);
+    if (typeof observationId !== 'string' || !observationId.trim()) {
+        console.error('[DEBUG_FIRESTORE ERROR] Invalid Observation ID received:', observationId);
+        throw new Error('Invalid or missing observationId provided.');
+    }
+    
     const docRef = adminDb.collection('observations').doc(observationId);
     let docSnap = await docRef.get();
     if (!docSnap.exists) throw new Error("Observation not found.");
@@ -63,6 +70,7 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
     
     // Validate that there is content to analyze
     if (!observation.findings || observation.findings.trim() === '') {
+        await docRef.update({ aiStatus: 'failed' });
         throw new Error("Cannot run analysis: The observation's 'findings' field is empty.");
     }
 
@@ -72,7 +80,6 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
         const findingsText = truncateText(observation.findings, 500);
         const recommendationText = truncateText(observation.recommendation, 250);
 
-        // Build the prompt dynamically, only including fields that have content.
         let observationData = `Category: ${observation.category}; Risk Level: ${observation.riskLevel}; Status: ${observation.status}; Location: ${observation.location}; Findings: ${findingsText}`;
         
         if (recommendationText) {
@@ -81,6 +88,7 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
         
         console.log(`[DEBUG_OBS_PROMPT]: ${observationData}`);
         
+        // This is the simplified prompt call
         const analysis = await analyzeDeeperObservation({ observationData }, userProfile);
 
         console.log(`[DEBUG_OBS_RAW_RESPONSE]: ${JSON.stringify(analysis)}`);
@@ -116,6 +124,13 @@ export async function runDeeperAnalysis(observationId: string): Promise<Observat
  * @param inspectionId The ID of the inspection to analyze.
  */
 export async function runDeeperInspectionAnalysis(inspectionId: string): Promise<Inspection> {
+    // ## Validation Guard ##
+    console.log('[DEBUG_FIRESTORE] Attempting analysis for Inspection ID:', inspectionId);
+    if (typeof inspectionId !== 'string' || !inspectionId.trim()) {
+      console.error('[DEBUG_FIRESTORE ERROR] Invalid Inspection ID received:', inspectionId);
+      throw new Error('Invalid or missing inspectionId provided.');
+    }
+
     const docRef = adminDb.collection('inspections').doc(inspectionId);
     let docSnap = await docRef.get();
     if (!docSnap.exists) throw new Error("Inspection not found.");
@@ -128,8 +143,8 @@ export async function runDeeperInspectionAnalysis(inspectionId: string): Promise
         throw new Error("AI features are disabled for this user.");
     }
 
-    // Validate that there is content to analyze
     if (!inspection.findings || inspection.findings.trim() === '') {
+        await docRef.update({ aiStatus: 'failed' });
         throw new Error("Cannot run analysis: The inspection's 'findings' field is empty.");
     }
 
