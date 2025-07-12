@@ -25,8 +25,8 @@ const assistObservationFlow = ai.defineFlow(
     return {
         suggestedCategory: 'Unsafe Condition',
         suggestedRiskLevel: 'High',
-        improvedFindings: `${payload.findings} (ditemukan di dekat area kerja aktif).`,
-        suggestedRecommendation: 'Segera pasang barikade dan bersihkan area tersebut.',
+        improvedFindings: `${payload.findings} (found near an active work area).`,
+        suggestedRecommendation: 'Immediately set up a barricade and clean the area.',
     };
   }
 );

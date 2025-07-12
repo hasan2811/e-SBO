@@ -41,9 +41,9 @@ const analyzeObservationFlow = ai.defineFlow(
   async () => {
     // RADICAL SIMPLIFICATION: Bypass AI call and return a hardcoded success response.
     return {
-      summary: 'Ditemukan adanya tumpahan oli di area workshop yang dapat menyebabkan tergelincir.',
-      risks: '- Risiko tergelincir dan jatuh bagi pekerja yang melintas.\n- Potensi bahaya kebakaran jika ada sumber api di dekatnya.\n- Kontaminasi lingkungan jika tumpahan tidak ditangani.',
-      suggestedActions: '- Segera isolasi area tumpahan dengan barikade.\n- Gunakan serbuk penyerap (absorbent) untuk membersihkan tumpahan oli.\n- Lakukan investigasi untuk mencari sumber kebocoran dan lakukan perbaikan.',
+      summary: 'An oil spill was found in the workshop area, creating a slip hazard.',
+      risks: '- Risk of slips and falls for workers passing through.\n- Potential fire hazard if ignition sources are nearby.\n- Environmental contamination if the spill is not handled properly.',
+      suggestedActions: '- Immediately isolate the spill area with barricades.\n- Use absorbent powder to clean up the oil spill.\n- Investigate the source of the leak and perform repairs.',
     };
   }
 );
@@ -66,9 +66,9 @@ const analyzeDeeperInspectionFlow = ai.defineFlow(
   async () => {
     // RADICAL SIMPLIFICATION: Bypass AI call and return a hardcoded success response.
     return {
-      summary: 'Inspeksi pada alat pemadam api (APAR) menunjukkan tekanan di bawah standar aman.',
-      risks: '- APAR mungkin tidak berfungsi secara efektif saat dibutuhkan dalam keadaan darurat kebakaran.\n- Ketidakpatuhan terhadap standar keselamatan kebakaran.',
-      suggestedActions: '- Segera ganti unit APAR dengan yang baru atau isi ulang sesuai standar.\n- Lakukan pengecekan rutin pada semua APAR di area tersebut.\n- Tingkatkan frekuensi inspeksi APAR menjadi bulanan.',
+      summary: 'Inspection of a fire extinguisher (APAR) shows its pressure is below the safe standard.',
+      risks: '- The extinguisher may not function effectively when needed in a fire emergency.\n- Non-compliance with fire safety standards.',
+      suggestedActions: '- Immediately replace the unit with a new or recharged one.\n- Conduct a routine check on all fire extinguishers in the area.\n- Increase the frequency of extinguisher inspections to monthly.',
     };
   }
 );
