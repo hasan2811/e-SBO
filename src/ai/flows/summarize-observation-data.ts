@@ -36,7 +36,10 @@ const observationAnalysisPrompt = ai.definePrompt({
     name: 'observationAnalysisPrompt',
     model: 'googleai/gemini-1.5-flash',
     input: { schema: SummarizeObservationDataInputSchema },
-    prompt: `You are an HSSE expert. Analyze the provided observation data: {{{observationData}}}. Provide a one-sentence summary, a bulleted list of risks, and a bulleted list of actions.`,
+    config: {
+        temperature: 0.1,
+    },
+    prompt: `Berikan ringkasan satu kalimat.`,
 });
 
 const analyzeObservationFlow = ai.defineFlow(
@@ -55,9 +58,9 @@ const analyzeObservationFlow = ai.defineFlow(
         // Basic parsing assuming AI gives a response.
         // In a real scenario, this would be more robust.
         return {
-          summary: text.split('\n')[0] || "No summary available.",
-          risks: text,
-          suggestedActions: text,
+          summary: text,
+          risks: 'Risks analysis not available in this mode.',
+          suggestedActions: 'Actions analysis not available in this mode.',
         };
     } catch (error: any) {
         console.error("Deeper Observation Analysis Error:", error);
