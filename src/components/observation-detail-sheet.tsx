@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -55,7 +56,7 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
   const { userProfile } = useAuth();
-  const { getObservationById, removeItem } = React.useContext(ObservationContext)!;
+  const { getObservationById } = React.useContext(ObservationContext)!;
   const { toast } = useToast();
 
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
@@ -310,7 +311,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
           isOpen={isActionDialogOpen}
           onOpenChange={setActionDialogOpen}
           observation={observation}
-          updateItem={updateItem}
       />
     )}
     </>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -51,18 +52,17 @@ interface TakeActionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   observation?: Observation;
-  updateItem: (item: AllItems) => void;
 }
 
 export function TakeActionDialog({
   isOpen,
   onOpenChange,
   observation,
-  updateItem,
 }: TakeActionDialogProps) {
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+  const { updateItem } = React.useContext(ObservationContext)!;
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const [isSubmitting, setIsSubmitting] = React.useState(false);

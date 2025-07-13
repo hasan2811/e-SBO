@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -23,7 +24,7 @@ interface DeletePtwDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   ptw: Ptw;
-  onSuccess?: () => void;
+  onSuccess: () => void;
 }
 
 export function DeletePtwDialog({
@@ -45,8 +46,7 @@ export function DeletePtwDialog({
         title: 'PTW Deleted',
         description: `Permit to Work "${ptw.referenceId}" is being removed.`,
     });
-    onOpenChange(false);
-    onSuccess?.();
+    onSuccess();
     
     // 2. Background Deletion
     const deleteInBackground = async () => {

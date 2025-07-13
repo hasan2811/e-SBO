@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -23,7 +24,7 @@ interface DeleteInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   inspection: Inspection;
-  onSuccess?: () => void;
+  onSuccess: () => void;
 }
 
 export function DeleteInspectionDialog({
@@ -45,8 +46,7 @@ export function DeleteInspectionDialog({
       title: 'Report Deleted',
       description: `Inspection report "${inspection.referenceId}" is being removed.`,
     });
-    onOpenChange(false);
-    onSuccess?.();
+    onSuccess();
 
 
     // 2. Background Deletion

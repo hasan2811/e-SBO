@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -23,7 +24,7 @@ interface DeleteObservationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   observation: Observation;
-  onSuccess?: () => void;
+  onSuccess: () => void;
 }
 
 export function DeleteObservationDialog({
@@ -45,8 +46,7 @@ export function DeleteObservationDialog({
         title: 'Report Deleted',
         description: `Observation report "${observation.referenceId}" is being removed.`,
     });
-    onOpenChange(false);
-    onSuccess?.();
+    onSuccess();
 
 
     // 2. Background Deletion
@@ -71,10 +71,6 @@ export function DeleteObservationDialog({
           title: 'Sync Failed',
           description: 'The report failed to delete from the server. Please refresh the page.',
         });
-        // Here you might want to add logic to re-add the item to the UI if deletion fails.
-        // For now, we rely on a page refresh to correct the state.
-      } finally {
-        // No need to set isDeleting to false here as the component will unmount
       }
     };
     
