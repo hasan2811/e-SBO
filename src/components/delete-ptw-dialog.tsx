@@ -24,14 +24,12 @@ interface DeletePtwDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   ptw: Ptw;
-  onSuccess: () => void;
 }
 
 export function DeletePtwDialog({
   isOpen,
   onOpenChange,
   ptw,
-  onSuccess,
 }: DeletePtwDialogProps) {
   const { toast } = useToast();
   const { removeItem } = React.useContext(ObservationContext)!;
@@ -46,7 +44,6 @@ export function DeletePtwDialog({
       title: 'PTW Deleted',
       description: `Permit to Work "${ptw.referenceId}" has been removed from view.`,
     });
-    onSuccess();
     onOpenChange(false);
     
     // 2. Background deletion

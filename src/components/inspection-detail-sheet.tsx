@@ -64,23 +64,15 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
-  const [inspection, setInspection] = React.useState<Inspection | null>(null);
 
+  const inspection = inspectionId ? getInspectionById(inspectionId) : null;
+  
+  // Effect to automatically close the sheet if the inspection is deleted from context
   React.useEffect(() => {
-    if (inspectionId) {
-      const foundInspection = getInspectionById(inspectionId);
-      if (foundInspection) {
-        setInspection(foundInspection);
-      }
-    } else {
-      setInspection(null);
+    if (isOpen && !inspection) {
+      onOpenChange(false);
     }
-  }, [inspectionId, getInspectionById, isOpen]);
-
-  const handleSuccessfulDelete = () => {
-    onOpenChange(false);
-    setDeleteDialogOpen(false);
-  };
+  }, [isOpen, inspection, onOpenChange]);
   
   const handleRunDeeperAnalysis = async () => {
     if (!inspection || !userProfile) return;
@@ -308,7 +300,6 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                 isOpen={isDeleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
                 inspection={inspection}
-                onSuccess={handleSuccessfulDelete}
             />
             {isFollowUpOpen && (
               <FollowUpInspectionDialog

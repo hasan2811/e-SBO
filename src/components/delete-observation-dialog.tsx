@@ -24,14 +24,12 @@ interface DeleteObservationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   observation: Observation;
-  onSuccess: () => void;
 }
 
 export function DeleteObservationDialog({
   isOpen,
   onOpenChange,
   observation,
-  onSuccess,
 }: DeleteObservationDialogProps) {
   const { toast } = useToast();
   const { removeItem } = React.useContext(ObservationContext)!;
@@ -46,7 +44,6 @@ export function DeleteObservationDialog({
       title: 'Report Deleted',
       description: `Observation report "${observation.referenceId}" has been removed from view.`,
     });
-    onSuccess(); // Closes the detail sheet
     onOpenChange(false); // Closes this dialog
 
     // 2. Background deletion: Perform the actual database and storage deletion in the background.

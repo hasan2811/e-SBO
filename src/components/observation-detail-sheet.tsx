@@ -62,23 +62,15 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
-  const [observation, setObservation] = React.useState<Observation | null>(null);
-  
-  React.useEffect(() => {
-    if (observationId) {
-      const foundObservation = getObservationById(observationId);
-      if (foundObservation) {
-        setObservation(foundObservation);
-      }
-    } else {
-      setObservation(null);
-    }
-  }, [observationId, getObservationById, isOpen]);
 
-  const handleSuccessfulDelete = () => {
-    onOpenChange(false);
-    setDeleteDialogOpen(false);
-  };
+  const observation = observationId ? getObservationById(observationId) : null;
+  
+  // Effect to automatically close the sheet if the observation is deleted from context
+  React.useEffect(() => {
+    if (isOpen && !observation) {
+      onOpenChange(false);
+    }
+  }, [isOpen, observation, onOpenChange]);
   
   const handleRunDeeperAnalysis = async () => {
     if (!observation || !userProfile) return;
@@ -306,7 +298,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
             isOpen={isDeleteDialogOpen}
             onOpenChange={setDeleteDialogOpen}
             observation={observation}
-            onSuccess={handleSuccessfulDelete}
         />
         {isActionDialogOpen && (
           <TakeActionDialog

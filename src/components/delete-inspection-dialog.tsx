@@ -24,14 +24,12 @@ interface DeleteInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   inspection: Inspection;
-  onSuccess: () => void;
 }
 
 export function DeleteInspectionDialog({
   isOpen,
   onOpenChange,
   inspection,
-  onSuccess,
 }: DeleteInspectionDialogProps) {
   const { toast } = useToast();
   const { removeItem } = React.useContext(ObservationContext)!;
@@ -46,7 +44,6 @@ export function DeleteInspectionDialog({
       title: 'Report Deleted',
       description: `Inspection report "${inspection.referenceId}" has been removed from view.`,
     });
-    onSuccess();
     onOpenChange(false);
 
     // 2. Background deletion

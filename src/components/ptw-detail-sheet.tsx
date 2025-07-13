@@ -47,23 +47,15 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   const { projects } = useProjects();
   const { userProfile } = useAuth();
   const { getPtwById } = React.useContext(ObservationContext)!;
-  const [ptw, setPtw] = React.useState<Ptw | null>(null);
-
+  
+  const ptw = ptwId ? getPtwById(ptwId) : null;
+  
+  // Effect to automatically close the sheet if the PTW is deleted from context
   React.useEffect(() => {
-    if (ptwId) {
-      const foundPtw = getPtwById(ptwId);
-      if (foundPtw) {
-        setPtw(foundPtw);
-      }
-    } else {
-      setPtw(null);
+    if (isOpen && !ptw) {
+      onOpenChange(false);
     }
-  }, [ptwId, getPtwById, isOpen]);
-
-  const handleSuccessfulDelete = () => {
-    onOpenChange(false);
-    setDeleteDialogOpen(false);
-  };
+  }, [isOpen, ptw, onOpenChange]);
 
   const projectName = ptw?.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
   const project = ptw ? projects.find(p => p.id === ptw.projectId) : null;
@@ -221,7 +213,6 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                 isOpen={isDeleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
                 ptw={ptw}
-                onSuccess={handleSuccessfulDelete}
             />
             {isApproveDialogOpen && (
               <ApprovePtwDialog
