@@ -24,14 +24,12 @@ interface DeletePtwDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   ptw: Ptw;
-  onSuccess?: () => void;
 }
 
 export function DeletePtwDialog({
   isOpen,
   onOpenChange,
   ptw,
-  onSuccess,
 }: DeletePtwDialogProps) {
   const { toast } = useToast();
   const { removeItem } = React.useContext(ObservationContext)!;
@@ -41,7 +39,7 @@ export function DeletePtwDialog({
     setIsDeleting(true);
 
     removeItem(ptw.id, 'ptw');
-    onSuccess?.();
+    onOpenChange(false);
     
     const deleteInBackground = async () => {
       try {
@@ -68,9 +66,6 @@ export function DeletePtwDialog({
           title: 'Sync Failed',
           description: 'The PTW failed to delete from the server. Please refresh the page.',
         });
-      } finally {
-        setIsDeleting(false);
-        onOpenChange(false);
       }
     };
 

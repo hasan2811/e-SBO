@@ -137,7 +137,7 @@ const ProjectCardSkeleton = () => (
 
 export default function ProjectHubPage() {
   const { userProfile, loading: authLoading } = useAuth();
-  const { projects, loading: projectsLoading, error: projectsError, removeProject } = useProjects();
+  const { projects, loading: projectsLoading, error: projectsError } = useProjects();
   const { isFastConnection } = usePerformance();
   const router = useRouter();
 
@@ -151,18 +151,16 @@ export default function ProjectHubPage() {
   const isLoading = projectsLoading || authLoading;
 
   const handleLeaveOrDeleteSuccess = (removedProjectId: string) => {
-    // This function handles the smart navigation logic.
+    // This function is now simplified, as the local state removal is handled
+    // by the optimistic UI updates in the dialogs themselves.
+    // Its main purpose is now smart navigation.
     setProjectToLeave(null);
     setProjectToDelete(null);
-    removeProject(removedProjectId); // Ensure local state is updated if not already
     
-    // Smart navigation
     const remainingProjects = projects.filter(p => p.id !== removedProjectId);
     if (remainingProjects.length > 0) {
-      // Navigate to the first remaining project
       router.push(`/proyek/${remainingProjects[0].id}/observasi`);
     } 
-    // If no projects are left, we stay on the hub page, which will show the empty state.
   };
   
   const containerVariants = {

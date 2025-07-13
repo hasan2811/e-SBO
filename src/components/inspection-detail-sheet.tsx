@@ -64,6 +64,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isFollowUpOpen, setFollowUpOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
+  const [inspectionForDeletion, setInspectionForDeletion] = React.useState<Inspection | null>(null);
 
   const inspection = inspectionId ? getInspectionById(inspectionId) : null;
   
@@ -86,9 +87,12 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
     }
   };
   
-  const handleDeleteSuccess = () => {
-    setDeleteDialogOpen(false);
-    onOpenChange(false);
+  const handleDeleteClick = () => {
+    if (inspection) {
+        setInspectionForDeletion(inspection);
+        onOpenChange(false); // Close the sheet first
+        setDeleteDialogOpen(true); // Then open the dialog
+    }
   };
 
   const isAiEnabled = userProfile?.aiEnabled ?? false;
@@ -118,7 +122,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                     </div>
                   </div>
                   {canDelete && (
-                    <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Delete Inspection">
+                    <Button variant="destructive" size="icon" onClick={handleDeleteClick} className="flex-shrink-0" aria-label="Delete Inspection">
                         <Trash2 />
                     </Button>
                   )}
@@ -298,22 +302,20 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
         </SheetContent>
       </Sheet>
       
-      {inspection && (
-        <>
-            <DeleteInspectionDialog
-                isOpen={isDeleteDialogOpen}
-                onOpenChange={setDeleteDialogOpen}
-                inspection={inspection}
-                onSuccess={handleDeleteSuccess}
-            />
-            {isFollowUpOpen && (
-              <FollowUpInspectionDialog
-                isOpen={isFollowUpOpen}
-                onOpenChange={setFollowUpOpen}
-                inspection={inspection}
-              />
-            )}
-        </>
+      {inspectionForDeletion && (
+          <DeleteInspectionDialog
+              isOpen={isDeleteDialogOpen}
+              onOpenChange={setDeleteDialogOpen}
+              inspection={inspectionForDeletion}
+          />
+      )}
+
+      {inspection && isFollowUpOpen && (
+        <FollowUpInspectionDialog
+          isOpen={isFollowUpOpen}
+          onOpenChange={setFollowUpOpen}
+          inspection={inspection}
+        />
       )}
     </>
   );

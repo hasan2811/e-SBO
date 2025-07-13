@@ -24,14 +24,12 @@ interface DeleteObservationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   observation: Observation;
-  onSuccess?: () => void;
 }
 
 export function DeleteObservationDialog({
   isOpen,
   onOpenChange,
   observation,
-  onSuccess,
 }: DeleteObservationDialogProps) {
   const { toast } = useToast();
   const { removeItem } = React.useContext(ObservationContext)!;
@@ -41,7 +39,9 @@ export function DeleteObservationDialog({
     setIsDeleting(true);
 
     removeItem(observation.id, 'observation');
-    onSuccess?.();
+    
+    // UI is updated optimistically, now handle background deletion.
+    onOpenChange(false);
 
     const deleteInBackground = async () => {
       try {
@@ -70,8 +70,7 @@ export function DeleteObservationDialog({
           description: 'The report failed to delete from the server. Please refresh the page.',
         });
       } finally {
-        setIsDeleting(false);
-        onOpenChange(false);
+        // No need to set isDeleting to false here as the component will unmount
       }
     };
     

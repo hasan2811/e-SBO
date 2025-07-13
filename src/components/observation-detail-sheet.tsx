@@ -62,6 +62,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
+  const [observationForDeletion, setObservationForDeletion] = React.useState<Observation | null>(null);
 
   const observation = observationId ? getObservationById(observationId) : null;
   
@@ -85,10 +86,13 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     }
   }
   
-  const handleDeleteSuccess = () => {
-    setDeleteDialogOpen(false);
-    onOpenChange(false);
-  }
+  const handleDeleteClick = () => {
+    if (observation) {
+        setObservationForDeletion(observation);
+        onOpenChange(false); // Close the sheet first
+        setDeleteDialogOpen(true); // Then open the dialog
+    }
+  };
 
   const isAiEnabled = userProfile?.aiEnabled ?? false;
   const projectName = observation?.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
@@ -119,7 +123,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                         
                         <div className="flex items-center gap-2">
                            {canDelete && (
-                                <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Delete Observation">
+                                <Button variant="destructive" size="icon" onClick={handleDeleteClick} className="flex-shrink-0" aria-label="Delete Observation">
                                     <Trash2 />
                                 </Button>
                            )}
@@ -296,22 +300,20 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
       </SheetContent>
     </Sheet>
     
-    {observation && (
-      <>
-        <DeleteObservationDialog
-            isOpen={isDeleteDialogOpen}
-            onOpenChange={setDeleteDialogOpen}
-            observation={observation}
-            onSuccess={handleDeleteSuccess}
-        />
-        {isActionDialogOpen && (
-          <TakeActionDialog
-              isOpen={isActionDialogOpen}
-              onOpenChange={setActionDialogOpen}
-              observation={observation}
-          />
-        )}
-      </>
+    {observationForDeletion && (
+      <DeleteObservationDialog
+          isOpen={isDeleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          observation={observationForDeletion}
+      />
+    )}
+
+    {observation && isActionDialogOpen && (
+      <TakeActionDialog
+          isOpen={isActionDialogOpen}
+          onOpenChange={setActionDialogOpen}
+          observation={observation}
+      />
     )}
     </>
   );

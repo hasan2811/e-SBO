@@ -24,14 +24,12 @@ interface DeleteInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   inspection: Inspection;
-  onSuccess?: () => void;
 }
 
 export function DeleteInspectionDialog({
   isOpen,
   onOpenChange,
   inspection,
-  onSuccess,
 }: DeleteInspectionDialogProps) {
   const { toast } = useToast();
   const { removeItem } = React.useContext(ObservationContext)!;
@@ -41,7 +39,7 @@ export function DeleteInspectionDialog({
     setIsDeleting(true);
 
     removeItem(inspection.id, 'inspection');
-    onSuccess?.();
+    onOpenChange(false);
 
     const deleteInBackground = async () => {
       try {
@@ -68,9 +66,6 @@ export function DeleteInspectionDialog({
           title: 'Sync Failed',
           description: 'The report failed to delete from the server. Please refresh the page.',
         });
-      } finally {
-        setIsDeleting(false);
-        onOpenChange(false);
       }
     };
     
