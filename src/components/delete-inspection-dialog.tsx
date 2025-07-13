@@ -38,9 +38,15 @@ export function DeleteInspectionDialog({
   const handleDelete = () => {
     setIsDeleting(true);
 
+    // 1. Optimistic UI Update
     removeItem(inspection.id, 'inspection');
+    toast({
+      title: 'Report Deleted',
+      description: `Inspection report "${inspection.referenceId}" is being removed.`,
+    });
     onOpenChange(false);
 
+    // 2. Background Deletion
     const deleteInBackground = async () => {
       try {
         const docRef = doc(db, 'inspections', inspection.id);
@@ -55,10 +61,6 @@ export function DeleteInspectionDialog({
         }
         await Promise.all(storagePromises);
 
-        toast({
-          title: 'Report Deleted',
-          description: `Inspection report "${inspection.referenceId}" has been permanently removed.`,
-        });
       } catch (error) {
         console.error("Failed to delete inspection from server:", error);
         toast({

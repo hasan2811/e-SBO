@@ -38,11 +38,15 @@ export function DeleteObservationDialog({
   const handleDelete = () => {
     setIsDeleting(true);
 
+    // 1. Optimistic UI Update
     removeItem(observation.id, 'observation');
-    
-    // UI is updated optimistically, now handle background deletion.
+    toast({
+        title: 'Report Deleted',
+        description: `Observation report "${observation.referenceId}" is being removed.`,
+    });
     onOpenChange(false);
 
+    // 2. Background Deletion
     const deleteInBackground = async () => {
       try {
         const docRef = doc(db, 'observations', observation.id);
@@ -57,11 +61,6 @@ export function DeleteObservationDialog({
         }
         await Promise.all(storagePromises);
         
-        toast({
-          title: 'Report Deleted',
-          description: `Observation report "${observation.referenceId}" has been permanently deleted.`,
-        });
-
       } catch (error) {
         console.error("Failed to delete observation from server:", error);
         toast({
@@ -69,6 +68,8 @@ export function DeleteObservationDialog({
           title: 'Sync Failed',
           description: 'The report failed to delete from the server. Please refresh the page.',
         });
+        // Here you might want to add logic to re-add the item to the UI if deletion fails.
+        // For now, we rely on a page refresh to correct the state.
       } finally {
         // No need to set isDeleting to false here as the component will unmount
       }

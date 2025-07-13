@@ -218,7 +218,12 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
       {ptwForDeletion && (
         <DeletePtwDialog
             isOpen={isDeleteDialogOpen}
-            onOpenChange={setDeleteDialogOpen}
+            onOpenChange={(open) => {
+              if (!open) {
+                setPtwForDeletion(null);
+              }
+              setDeleteDialogOpen(open);
+            }}
             ptw={ptwForDeletion}
         />
       )}

@@ -38,9 +38,15 @@ export function DeletePtwDialog({
   const handleDelete = () => {
     setIsDeleting(true);
 
+    // 1. Optimistic UI Update
     removeItem(ptw.id, 'ptw');
+    toast({
+        title: 'PTW Deleted',
+        description: `Permit to Work "${ptw.referenceId}" is being removed.`,
+    });
     onOpenChange(false);
     
+    // 2. Background Deletion
     const deleteInBackground = async () => {
       try {
         const docRef = doc(db, 'ptws', ptw.id);
@@ -55,10 +61,6 @@ export function DeletePtwDialog({
         }
         await Promise.all(storagePromises);
 
-        toast({
-          title: 'PTW Deleted',
-          description: `Permit to Work "${ptw.referenceId}" has been permanently deleted.`,
-        });
       } catch (error) {
         console.error("Failed to delete PTW from server:", error);
         toast({

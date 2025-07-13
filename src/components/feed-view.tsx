@@ -59,6 +59,12 @@ const ObservationListItem = React.memo(function ObservationListItem({ observatio
             onSelect();
         }
     };
+    
+    // Prevents the checkbox click from propagating to the card
+    const handleCheckboxClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onToggle();
+    };
 
     return (
         <Card onClick={handleCardClick} className={cn("transition-all cursor-pointer hover:border-primary/50 relative overflow-hidden", isSelected && "ring-2 ring-primary border-primary")}>
@@ -82,8 +88,8 @@ const ObservationListItem = React.memo(function ObservationListItem({ observatio
             
             <CardContent className="p-4 pl-6 flex items-start gap-4">
                  {isSelectionMode && (
-                    <div className="flex items-center h-16">
-                        <Checkbox checked={isSelected} onCheckedChange={onToggle} aria-label={`Select ${observation.referenceId}`} />
+                    <div className="flex items-center h-16" onClick={handleCheckboxClick}>
+                        <Checkbox checked={isSelected} aria-label={`Select ${observation.referenceId}`} />
                     </div>
                 )}
                 {observation.photoUrl ? (
@@ -130,6 +136,11 @@ const InspectionListItem = React.memo(function InspectionListItem({ inspection, 
         }
     };
     
+    const handleCheckboxClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onToggle();
+    };
+    
     return (
         <Card onClick={handleCardClick} className={cn("transition-all cursor-pointer hover:border-primary/50 relative overflow-hidden", isSelected && "ring-2 ring-primary border-primary")}>
             <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-muted-foreground" />
@@ -152,8 +163,8 @@ const InspectionListItem = React.memo(function InspectionListItem({ inspection, 
             
             <CardContent className="p-4 pl-6 flex items-start gap-4">
                 {isSelectionMode && (
-                    <div className="flex items-center h-16">
-                        <Checkbox checked={isSelected} onCheckedChange={onToggle} aria-label={`Select ${inspection.referenceId}`} />
+                    <div className="flex items-center h-16" onClick={handleCheckboxClick}>
+                        <Checkbox checked={isSelected} aria-label={`Select ${inspection.referenceId}`} />
                     </div>
                 )}
                 {inspection.photoUrl ? (
@@ -200,6 +211,11 @@ const PtwListItem = React.memo(function PtwListItem({ ptw, onSelect, isSelected,
         }
     };
     
+    const handleCheckboxClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onToggle();
+    };
+    
     return (
        <Card onClick={handleCardClick} className={cn("transition-all cursor-pointer hover:border-primary/50 relative overflow-hidden", isSelected && "ring-2 ring-primary border-primary")}>
             <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-muted-foreground" />
@@ -222,8 +238,8 @@ const PtwListItem = React.memo(function PtwListItem({ ptw, onSelect, isSelected,
 
             <CardContent className="p-4 pl-6 flex items-start gap-4">
                 {isSelectionMode && (
-                    <div className="flex items-center h-16">
-                        <Checkbox checked={isSelected} onCheckedChange={onToggle} aria-label={`Select ${ptw.referenceId}`} />
+                    <div className="flex items-center h-16" onClick={handleCheckboxClick}>
+                        <Checkbox checked={isSelected} aria-label={`Select ${ptw.referenceId}`} />
                     </div>
                 )}
                 <div className="relative h-16 w-16 flex-shrink-0 rounded-md bg-muted flex items-center justify-center">

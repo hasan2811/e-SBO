@@ -303,7 +303,12 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     {observationForDeletion && (
       <DeleteObservationDialog
           isOpen={isDeleteDialogOpen}
-          onOpenChange={setDeleteDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setObservationForDeletion(null);
+            }
+            setDeleteDialogOpen(open);
+          }}
           observation={observationForDeletion}
       />
     )}

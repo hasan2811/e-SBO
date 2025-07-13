@@ -305,7 +305,12 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
       {inspectionForDeletion && (
           <DeleteInspectionDialog
               isOpen={isDeleteDialogOpen}
-              onOpenChange={setDeleteDialogOpen}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setInspectionForDeletion(null);
+                }
+                setDeleteDialogOpen(open);
+              }}
               inspection={inspectionForDeletion}
           />
       )}
