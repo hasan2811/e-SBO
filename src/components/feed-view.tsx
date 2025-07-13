@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { usePathname, useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
-import { useObservations } from '@/hooks/use-observations';
+import { useObservations, FeedFilters } from '@/hooks/use-observations';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from './ui/badge';
@@ -26,6 +26,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { exportToExcel } from '@/lib/export';
 import { RISK_LEVELS, OBSERVATION_STATUSES, INSPECTION_STATUSES, PTW_STATUSES } from '@/lib/types';
+import { useDebounce } from 'use-debounce';
 
 
 const ITEMS_PER_PAGE = 10;
@@ -263,37 +264,61 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
   const { isFastConnection } = usePerformance();
   
   const context = React.useContext(ObservationContext)!;
-  const itemsForFeed = context.items[itemTypeFilter];
-  const isLoading = context.isLoading[itemTypeFilter];
-  const { getObservationById, getInspectionById, getPtwById } = context;
-  useObservations(projectId, itemTypeFilter);
+  const { 
+    items, 
+    isLoading, 
+    hasMore, 
+    lastDoc,
+    getObservationById, 
+    getInspectionById, 
+    getPtwById,
+    setLastDoc
+  } = context;
+
+  const itemsForFeed = items[itemTypeFilter];
+  const isLoadingFeed = isLoading[itemTypeFilter];
+  const hasMoreItems = hasMore[itemTypeFilter];
+  const lastVisibleDoc = lastDoc[itemTypeFilter];
+
+  // --- Filter and Search State ---
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
+  const [isFilterVisible, setIsFilterVisible] = React.useState(false);
+  const [statusFilter, setStatusFilter] = React.useState('all');
+  const [riskFilter, setRiskFilter] = React.useState('all');
   
+  const filters: FeedFilters = React.useMemo(() => ({
+      status: statusFilter,
+      riskLevel: riskFilter,
+      searchTerm: debouncedSearchTerm,
+  }), [statusFilter, riskFilter, debouncedSearchTerm]);
+
+  // Pass filters and pagination state to the data-fetching hook
+  useObservations(projectId, itemTypeFilter, filters, ITEMS_PER_PAGE, lastVisibleDoc);
+
+  // --- UI and Interaction State ---
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
   const [selectedPtwId, setSelectedPtwId] = React.useState<string | null>(null);
   
-  // --- Filter and Search State ---
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [isFilterVisible, setIsFilterVisible] = React.useState(false);
-  const [statusFilter, setStatusFilter] = React.useState('all');
-  const [riskFilter, setRiskFilter] = React.useState('all');
-
-
-  const [visibleCount, setVisibleCount] = React.useState(ITEMS_PER_PAGE);
-  const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+  // Reset pagination when filters change
+  React.useEffect(() => {
+      setLastDoc(itemTypeFilter, null);
+  // We want this to run ONLY when filters change, not on every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, itemTypeFilter]);
 
   // --- Bulk Actions State ---
   const [isSelectionMode, setIsSelectionMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [isBulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
-
   
   const triggeredOpen = React.useRef(false);
   
   React.useEffect(() => {
     const openItemFromUrl = async () => {
-        if (itemIdToOpen && !isLoading && !triggeredOpen.current) {
+        if (itemIdToOpen && !isLoadingFeed && !triggeredOpen.current) {
             triggeredOpen.current = true;
             let itemExists = false;
             
@@ -308,7 +333,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
         }
     };
     openItemFromUrl();
-  }, [itemIdToOpen, isLoading, itemTypeFilter, getObservationById, getInspectionById, getPtwById, pathname, router, toast]);
+  }, [itemIdToOpen, isLoadingFeed, itemTypeFilter, getObservationById, getInspectionById, getPtwById, pathname, router, toast]);
 
   const filterOptions = React.useMemo(() => {
     const all = { value: 'all', label: 'All' };
@@ -330,39 +355,23 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
     return { statusOptions, riskOptions };
   }, [itemTypeFilter]);
 
-  const filteredData = React.useMemo(() => {
-    let items = itemsForFeed as AllItems[];
+  // Client-side search filtering on the currently loaded items
+  const itemsToDisplay = React.useMemo(() => {
+    if (!debouncedSearchTerm) return itemsForFeed;
+    const lowercasedSearch = debouncedSearchTerm.toLowerCase();
+    return itemsForFeed.filter(item => {
+        if (item.itemType === 'observation') return item.findings.toLowerCase().includes(lowercasedSearch) || item.recommendation.toLowerCase().includes(lowercasedSearch) || item.company.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
+        if (item.itemType === 'inspection') return item.findings.toLowerCase().includes(lowercasedSearch) || item.equipmentName.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
+        if (item.itemType === 'ptw') return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
+        return false;
+    });
+  }, [itemsForFeed, debouncedSearchTerm]);
 
-    if (searchTerm) {
-        const lowercasedSearch = searchTerm.toLowerCase();
-        items = items.filter(item => {
-            if (item.itemType === 'observation') return item.findings.toLowerCase().includes(lowercasedSearch) || item.recommendation.toLowerCase().includes(lowercasedSearch) || item.company.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
-            if (item.itemType === 'inspection') return item.findings.toLowerCase().includes(lowercasedSearch) || item.equipmentName.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
-            if (item.itemType === 'ptw') return item.workDescription.toLowerCase().includes(lowercasedSearch) || item.contractor.toLowerCase().includes(lowercasedSearch) || item.location.toLowerCase().includes(lowercasedSearch);
-            return false;
-        });
-    }
-
-    if (statusFilter !== 'all') {
-        items = items.filter(item => item.status === statusFilter);
-    }
-    
-    if (itemTypeFilter === 'observation' && riskFilter !== 'all') {
-        items = items.filter(item => (item as Observation).riskLevel === riskFilter);
-    }
-
-    return items;
-  }, [itemsForFeed, searchTerm, statusFilter, riskFilter, itemTypeFilter]);
-
-  const itemsToDisplay = React.useMemo(() => filteredData.slice(0, visibleCount), [filteredData, visibleCount]);
-  const hasMore = visibleCount < filteredData.length;
 
   const loadMore = () => {
-      setIsLoadingMore(true);
-      setTimeout(() => {
-          setVisibleCount(prev => prev + ITEMS_PER_PAGE);
-          setIsLoadingMore(false);
-      }, 500);
+      if (!isLoadingFeed && hasMoreItems && lastVisibleDoc) {
+        setLastDoc(itemTypeFilter, lastVisibleDoc);
+      }
   };
   
   const handleToggleSelection = (id: string) => {
@@ -393,12 +402,12 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
   const handleExport = async () => {
     setIsExporting(true);
     try {
-        if (filteredData.length === 0) {
+        if (itemsForFeed.length === 0) {
             toast({ variant: 'destructive', title: 'No Data', description: 'There is no data to export with the current filters.' });
             return;
         }
         const fileName = `${title.replace(/\s/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}`;
-        const success = await exportToExcel(filteredData, fileName);
+        const success = await exportToExcel(itemsForFeed, fileName);
         if (success) {
             toast({ title: 'Export Started', description: 'Your Excel file is being downloaded.' });
         }
@@ -419,7 +428,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
         inspection: { icon: Wrench, title: 'No Inspections Yet', text: 'There are no inspection reports for this project yet.' },
         ptw: { icon: FileSignature, title: 'No Permits to Work Yet', text: 'There are no work permits for this project yet.' },
     };
-    if (searchTerm || statusFilter !== 'all' || riskFilter !== 'all') return <div className="text-center py-16 text-muted-foreground bg-card rounded-lg border-dashed"><Search className="mx-auto h-12 w-12" /><h3 className="mt-4 text-xl font-semibold">No Results</h3><p className="mt-2 text-sm max-w-xs mx-auto">No reports match your filters.</p></div>;
+    if (debouncedSearchTerm || statusFilter !== 'all' || riskFilter !== 'all') return <div className="text-center py-16 text-muted-foreground bg-card rounded-lg border-dashed"><Search className="mx-auto h-12 w-12" /><h3 className="mt-4 text-xl font-semibold">No Results</h3><p className="mt-2 text-sm max-w-xs mx-auto">No reports match your filters.</p></div>;
     const currentType = messages[itemTypeFilter];
     return <div className="text-center py-16 text-muted-foreground bg-card rounded-lg border-dashed"><currentType.icon className="mx-auto h-12 w-12" /><h3 className="mt-4 text-xl font-semibold">{currentType.title}</h3><p className="mt-2 text-sm max-w-xs mx-auto">{currentType.text}</p></div>;
   }
@@ -514,7 +523,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
         </AnimatePresence>
 
       <main className="mt-6">
-        {isLoading && itemsToDisplay.length === 0 ? <FeedSkeleton /> : itemsToDisplay.length > 0 ? (
+        {isLoadingFeed && itemsForFeed.length === 0 ? <FeedSkeleton /> : itemsToDisplay.length > 0 ? (
           <motion.div className="space-y-3" variants={containerVariants} initial="hidden" animate="show">
              {itemsToDisplay.map((item, index) => (
                 <motion.div key={item.id} variants={itemVariants}>
@@ -533,10 +542,10 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
           </motion.div>
         ) : <EmptyState />}
 
-        {hasMore && (
+        {hasMoreItems && (
             <div className="flex justify-center mt-6">
-                <Button onClick={loadMore} variant="outline" disabled={isLoadingMore}>
-                    {isLoadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button onClick={loadMore} variant="outline" disabled={isLoadingFeed}>
+                    {isLoadingFeed && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Load More
                 </Button>
             </div>

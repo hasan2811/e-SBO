@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import type { AllItems, Observation, Inspection, Ptw } from '@/lib/types';
+import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 
 interface ObservationState {
   observation: Observation[];
@@ -22,16 +23,32 @@ interface ErrorState {
     ptw: string | null;
 }
 
+interface PaginationState {
+    observation: boolean;
+    inspection: boolean;
+    ptw: boolean;
+}
+
+interface LastDocState {
+    observation: QueryDocumentSnapshot<DocumentData> | null;
+    inspection: QueryDocumentSnapshot<DocumentData> | null;
+    ptw: QueryDocumentSnapshot<DocumentData> | null;
+}
+
 interface ObservationContextType {
   items: ObservationState;
   isLoading: LoadingState;
   error: ErrorState;
+  hasMore: PaginationState;
+  lastDoc: LastDocState;
   getObservationById: (id: string) => Observation | undefined;
   getInspectionById: (id: string) => Inspection | undefined;
   getPtwById: (id: string) => Ptw | undefined;
-  setItems: (itemType: AllItems['itemType'], items: AllItems[]) => void;
+  setItems: (itemType: AllItems['itemType'], items: AllItems[] | ((prev: AllItems[]) => AllItems[])) => void;
   setIsLoading: (itemType: AllItems['itemType'], value: boolean) => void;
   setError: (itemType: AllItems['itemType'], message: string | null) => void;
+  setHasMore: (itemType: AllItems['itemType'], value: boolean) => void;
+  setLastDoc: (itemType: AllItems['itemType'], doc: QueryDocumentSnapshot<DocumentData> | null) => void;
   updateItem: (item: AllItems) => void;
   removeItem: (id: string, itemType: AllItems['itemType']) => void;
   addItem: (item: AllItems) => void;
@@ -43,17 +60,22 @@ const initialState = {
   items: { observation: [], inspection: [], ptw: [] },
   isLoading: { observation: true, inspection: true, ptw: true },
   error: { observation: null, inspection: null, ptw: null },
+  hasMore: { observation: false, inspection: false, ptw: false },
+  lastDoc: { observation: null, inspection: null, ptw: null },
 };
 
 export function ObservationProvider({ children }: { children: React.ReactNode }) {
   const [items, setItemsState] = React.useState<ObservationState>(initialState.items);
   const [isLoading, setIsLoadingState] = React.useState<LoadingState>(initialState.isLoading);
   const [error, setErrorState] = React.useState<ErrorState>(initialState.error);
+  const [hasMore, setHasMoreState] = React.useState<PaginationState>(initialState.hasMore);
+  const [lastDoc, setLastDocState] = React.useState<LastDocState>(initialState.lastDoc);
 
-  const setItems = React.useCallback((itemType: AllItems['itemType'], newItems: AllItems[]) => {
+
+  const setItems = React.useCallback((itemType: AllItems['itemType'], newItems: AllItems[] | ((prev: AllItems[]) => AllItems[])) => {
     setItemsState(prev => ({
       ...prev,
-      [itemType]: newItems,
+      [itemType]: typeof newItems === 'function' ? newItems(prev[itemType]) : newItems,
     }));
   }, []);
 
@@ -68,6 +90,20 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     setErrorState(prev => ({
       ...prev,
       [itemType]: message,
+    }));
+  }, []);
+
+  const setHasMore = React.useCallback((itemType: AllItems['itemType'], value: boolean) => {
+    setHasMoreState(prev => ({
+      ...prev,
+      [itemType]: value,
+    }));
+  }, []);
+  
+  const setLastDoc = React.useCallback((itemType: AllItems['itemType'], doc: QueryDocumentSnapshot<DocumentData> | null) => {
+    setLastDocState(prev => ({
+        ...prev,
+        [itemType]: doc,
     }));
   }, []);
 
@@ -118,16 +154,20 @@ export function ObservationProvider({ children }: { children: React.ReactNode })
     items, 
     isLoading, 
     error,
+    hasMore,
+    lastDoc,
     setItems,
     setIsLoading,
     setError,
+    setHasMore,
+    setLastDoc,
     getObservationById, 
     getInspectionById, 
     getPtwById,
     updateItem,
     removeItem,
     addItem,
-  }), [items, isLoading, error, setItems, setIsLoading, setError, getObservationById, getInspectionById, getPtwById, updateItem, removeItem, addItem]);
+  }), [items, isLoading, error, hasMore, lastDoc, setItems, setIsLoading, setError, setHasMore, setLastDoc, getObservationById, getInspectionById, getPtwById, updateItem, removeItem, addItem]);
 
   return <ObservationContext.Provider value={value}>{children}</ObservationContext.Provider>;
 }
