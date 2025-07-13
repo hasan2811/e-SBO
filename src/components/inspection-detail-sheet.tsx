@@ -67,7 +67,6 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
 
   const inspection = inspectionId ? getInspectionById(inspectionId) : null;
   
-  // Effect to automatically close the sheet if the inspection is deleted from context
   React.useEffect(() => {
     if (isOpen && !inspection) {
       onOpenChange(false);
@@ -87,6 +86,11 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
     }
   };
   
+  const handleDeleteSuccess = () => {
+    setDeleteDialogOpen(false);
+    onOpenChange(false);
+  };
+
   const isAiEnabled = userProfile?.aiEnabled ?? false;
   const projectName = inspection?.projectId ? projects.find(p => p.id === inspection.projectId)?.name : null;
   const project = inspection ? projects.find(p => p.id === inspection.projectId) : null;
@@ -300,6 +304,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
                 isOpen={isDeleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
                 inspection={inspection}
+                onSuccess={handleDeleteSuccess}
             />
             {isFollowUpOpen && (
               <FollowUpInspectionDialog

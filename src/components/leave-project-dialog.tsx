@@ -37,7 +37,7 @@ export function LeaveProjectDialog({
   const { removeProject } = useProjects();
   const [isLeaving, setIsLeaving] = React.useState(false);
 
-  const handleLeave = async () => {
+  const handleLeave = () => {
     if (!user || !project) {
       toast({
         variant: 'destructive',
@@ -49,36 +49,40 @@ export function LeaveProjectDialog({
 
     setIsLeaving(true);
 
-    // 1. Optimistic UI update for an instant response
-    removeProject(project.id);
-    toast({
-      title: 'Successfully Left Project',
-      description: `You have left the project "${project.name}".`,
-    });
-    onSuccess?.(project.id); // Close the dialog immediately
+    onSuccess?.(project.id); 
 
-    // 2. Background DB operation
-    try {
-      const projectRef = doc(db, 'projects', project.id);
-      const userRef = doc(db, 'users', user.uid);
+    const leaveInBackground = async () => {
+        try {
+            removeProject(project.id);
+            const projectRef = doc(db, 'projects', project.id);
+            const userRef = doc(db, 'users', user.uid);
 
-      await runTransaction(db, async (transaction) => {
-        // Remove user from project's member list
-        transaction.update(projectRef, {
-          memberUids: arrayRemove(user.uid),
-        });
-        // Remove project from user's project list
-        transaction.update(userRef, {
-          projectIds: arrayRemove(project.id),
-        });
-      });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Sync Failed',
-        description: 'Failed to leave the project on the server. Please reload if the project reappears.',
-      });
-    }
+            await runTransaction(db, async (transaction) => {
+                transaction.update(projectRef, {
+                memberUids: arrayRemove(user.uid),
+                });
+                transaction.update(userRef, {
+                projectIds: arrayRemove(project.id),
+                });
+            });
+
+            toast({
+                title: 'Successfully Left Project',
+                description: `You have left the project "${project.name}".`,
+            });
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Sync Failed',
+                description: 'Failed to leave the project on the server. Please reload if the project reappears.',
+            });
+        } finally {
+            setIsLeaving(false);
+            onOpenChange(false);
+        }
+    };
+
+    leaveInBackground();
   };
 
   return (

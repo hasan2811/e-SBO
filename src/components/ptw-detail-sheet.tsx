@@ -50,12 +50,16 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   
   const ptw = ptwId ? getPtwById(ptwId) : null;
   
-  // Effect to automatically close the sheet if the PTW is deleted from context
   React.useEffect(() => {
     if (isOpen && !ptw) {
       onOpenChange(false);
     }
   }, [isOpen, ptw, onOpenChange]);
+
+  const handleDeleteSuccess = () => {
+    setDeleteDialogOpen(false);
+    onOpenChange(false);
+  };
 
   const projectName = ptw?.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
   const project = ptw ? projects.find(p => p.id === ptw.projectId) : null;
@@ -213,6 +217,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                 isOpen={isDeleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
                 ptw={ptw}
+                onSuccess={handleDeleteSuccess}
             />
             {isApproveDialogOpen && (
               <ApprovePtwDialog

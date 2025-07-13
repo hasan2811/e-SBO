@@ -24,12 +24,14 @@ interface DeleteObservationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   observation: Observation;
+  onSuccess?: () => void;
 }
 
 export function DeleteObservationDialog({
   isOpen,
   onOpenChange,
   observation,
+  onSuccess,
 }: DeleteObservationDialogProps) {
   const { toast } = useToast();
   const { removeItem } = React.useContext(ObservationContext)!;
@@ -38,15 +40,9 @@ export function DeleteObservationDialog({
   const handleDelete = () => {
     setIsDeleting(true);
 
-    // 1. Optimistic UI update: Remove the item from the local state immediately.
     removeItem(observation.id, 'observation');
-    toast({
-      title: 'Report Deleted',
-      description: `Observation report "${observation.referenceId}" has been removed from view.`,
-    });
-    onOpenChange(false); // Closes this dialog
+    onSuccess?.();
 
-    // 2. Background deletion: Perform the actual database and storage deletion in the background.
     const deleteInBackground = async () => {
       try {
         const docRef = doc(db, 'observations', observation.id);
@@ -60,6 +56,11 @@ export function DeleteObservationDialog({
           storagePromises.push(deleteObject(ref(storage, observation.actionTakenPhotoStoragePath)).catch(err => console.error(err)));
         }
         await Promise.all(storagePromises);
+        
+        toast({
+          title: 'Report Deleted',
+          description: `Observation report "${observation.referenceId}" has been permanently deleted.`,
+        });
 
       } catch (error) {
         console.error("Failed to delete observation from server:", error);
@@ -68,7 +69,9 @@ export function DeleteObservationDialog({
           title: 'Sync Failed',
           description: 'The report failed to delete from the server. Please refresh the page.',
         });
-        // In a more robust app, we might re-add the item to the context here.
+      } finally {
+        setIsDeleting(false);
+        onOpenChange(false);
       }
     };
     

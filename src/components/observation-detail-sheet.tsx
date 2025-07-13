@@ -65,7 +65,6 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
 
   const observation = observationId ? getObservationById(observationId) : null;
   
-  // Effect to automatically close the sheet if the observation is deleted from context
   React.useEffect(() => {
     if (isOpen && !observation) {
       onOpenChange(false);
@@ -86,6 +85,11 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     }
   }
   
+  const handleDeleteSuccess = () => {
+    setDeleteDialogOpen(false);
+    onOpenChange(false);
+  }
+
   const isAiEnabled = userProfile?.aiEnabled ?? false;
   const projectName = observation?.projectId ? projects.find(p => p.id === observation.projectId)?.name : null;
   const project = observation?.projectId ? projects.find(p => p.id === observation.projectId) : null;
@@ -298,6 +302,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
             isOpen={isDeleteDialogOpen}
             onOpenChange={setDeleteDialogOpen}
             observation={observation}
+            onSuccess={handleDeleteSuccess}
         />
         {isActionDialogOpen && (
           <TakeActionDialog

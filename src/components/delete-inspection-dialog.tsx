@@ -24,12 +24,14 @@ interface DeleteInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   inspection: Inspection;
+  onSuccess?: () => void;
 }
 
 export function DeleteInspectionDialog({
   isOpen,
   onOpenChange,
   inspection,
+  onSuccess,
 }: DeleteInspectionDialogProps) {
   const { toast } = useToast();
   const { removeItem } = React.useContext(ObservationContext)!;
@@ -38,15 +40,9 @@ export function DeleteInspectionDialog({
   const handleDelete = () => {
     setIsDeleting(true);
 
-    // 1. Optimistic UI update
     removeItem(inspection.id, 'inspection');
-    toast({
-      title: 'Report Deleted',
-      description: `Inspection report "${inspection.referenceId}" has been removed from view.`,
-    });
-    onOpenChange(false);
+    onSuccess?.();
 
-    // 2. Background deletion
     const deleteInBackground = async () => {
       try {
         const docRef = doc(db, 'inspections', inspection.id);
@@ -60,6 +56,11 @@ export function DeleteInspectionDialog({
           storagePromises.push(deleteObject(ref(storage, inspection.actionTakenPhotoStoragePath)).catch(e => console.error(e)));
         }
         await Promise.all(storagePromises);
+
+        toast({
+          title: 'Report Deleted',
+          description: `Inspection report "${inspection.referenceId}" has been permanently removed.`,
+        });
       } catch (error) {
         console.error("Failed to delete inspection from server:", error);
         toast({
@@ -67,7 +68,9 @@ export function DeleteInspectionDialog({
           title: 'Sync Failed',
           description: 'The report failed to delete from the server. Please refresh the page.',
         });
-        // In a more robust app, we might re-add the item to the context here.
+      } finally {
+        setIsDeleting(false);
+        onOpenChange(false);
       }
     };
     

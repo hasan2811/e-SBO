@@ -24,12 +24,14 @@ interface DeletePtwDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   ptw: Ptw;
+  onSuccess?: () => void;
 }
 
 export function DeletePtwDialog({
   isOpen,
   onOpenChange,
   ptw,
+  onSuccess,
 }: DeletePtwDialogProps) {
   const { toast } = useToast();
   const { removeItem } = React.useContext(ObservationContext)!;
@@ -38,15 +40,9 @@ export function DeletePtwDialog({
   const handleDelete = () => {
     setIsDeleting(true);
 
-    // 1. Optimistic UI update
     removeItem(ptw.id, 'ptw');
-    toast({
-      title: 'PTW Deleted',
-      description: `Permit to Work "${ptw.referenceId}" has been removed from view.`,
-    });
-    onOpenChange(false);
+    onSuccess?.();
     
-    // 2. Background deletion
     const deleteInBackground = async () => {
       try {
         const docRef = doc(db, 'ptws', ptw.id);
@@ -60,6 +56,11 @@ export function DeletePtwDialog({
           storagePromises.push(deleteObject(ref(storage, ptw.stampedPdfStoragePath)).catch(err => console.error(err)));
         }
         await Promise.all(storagePromises);
+
+        toast({
+          title: 'PTW Deleted',
+          description: `Permit to Work "${ptw.referenceId}" has been permanently deleted.`,
+        });
       } catch (error) {
         console.error("Failed to delete PTW from server:", error);
         toast({
@@ -67,6 +68,9 @@ export function DeletePtwDialog({
           title: 'Sync Failed',
           description: 'The PTW failed to delete from the server. Please refresh the page.',
         });
+      } finally {
+        setIsDeleting(false);
+        onOpenChange(false);
       }
     };
 
