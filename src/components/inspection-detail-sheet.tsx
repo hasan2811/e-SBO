@@ -86,6 +86,7 @@ export function InspectionDetailSheet({ inspectionId, isOpen, onOpenChange }: In
   };
   
   const handleDeleteSuccess = () => {
+    setDeleteDialogOpen(false);
     onOpenChange(false); // Close the sheet after deletion is confirmed
   };
 

@@ -56,6 +56,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
   }, [isOpen, ptw, onOpenChange]);
 
   const handleDeleteSuccess = () => {
+    setDeleteDialogOpen(false);
     onOpenChange(false); // Close the sheet after deletion is confirmed
   };
 

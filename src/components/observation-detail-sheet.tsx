@@ -65,6 +65,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   const observation = observationId ? getObservationById(observationId) : null;
   
   React.useEffect(() => {
+    // If the sheet is open but the observation has been deleted (e.g. from a background sync), close the sheet.
     if (isOpen && !observation) {
       onOpenChange(false);
     }
@@ -85,7 +86,8 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
   }
   
   const handleDeleteSuccess = () => {
-    onOpenChange(false); // Close the sheet after deletion is confirmed
+    setDeleteDialogOpen(false); // Close the dialog
+    onOpenChange(false); // Close the sheet
   };
 
   const isAiEnabled = userProfile?.aiEnabled ?? false;
@@ -308,6 +310,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
           isOpen={isActionDialogOpen}
           onOpenChange={setActionDialogOpen}
           observation={observation}
+          updateItem={updateItem}
       />
     )}
     </>

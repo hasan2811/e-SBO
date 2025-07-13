@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -8,7 +7,7 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { Loader2, Upload, ListChecks } from 'lucide-react';
 
-import type { Observation } from '@/lib/types';
+import type { Observation, AllItems } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
@@ -52,17 +51,18 @@ interface TakeActionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   observation?: Observation;
+  updateItem: (item: AllItems) => void;
 }
 
 export function TakeActionDialog({
   isOpen,
   onOpenChange,
   observation,
+  updateItem,
 }: TakeActionDialogProps) {
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { updateItem } = React.useContext(ObservationContext)!;
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
