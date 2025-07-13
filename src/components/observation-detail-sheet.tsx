@@ -55,14 +55,13 @@ const renderBulletedList = (text: string, Icon: React.ElementType, iconClassName
 export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: ObservationDetailSheetProps) {
   const { projects } = useProjects();
   const { userProfile } = useAuth();
-  const { getObservationById } = React.useContext(ObservationContext)!;
+  const { getObservationById, removeItem } = React.useContext(ObservationContext)!;
   const { toast } = useToast();
 
   const [isActionDialogOpen, setActionDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
-  const [observationForDeletion, setObservationForDeletion] = React.useState<Observation | null>(null);
-
+  
   const observation = observationId ? getObservationById(observationId) : null;
   
   React.useEffect(() => {
@@ -85,12 +84,8 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
     }
   }
   
-  const handleDeleteClick = () => {
-    if (observation) {
-        setObservationForDeletion(observation);
-        onOpenChange(false); // Close the sheet first
-        setDeleteDialogOpen(true); // Then open the dialog
-    }
+  const handleDeleteSuccess = () => {
+    onOpenChange(false); // Close the sheet after deletion is confirmed
   };
 
   const isAiEnabled = userProfile?.aiEnabled ?? false;
@@ -122,7 +117,7 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                         
                         <div className="flex items-center gap-2">
                            {canDelete && (
-                                <Button variant="destructive" size="icon" onClick={handleDeleteClick} className="flex-shrink-0" aria-label="Delete Observation">
+                                <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Delete Observation">
                                     <Trash2 />
                                 </Button>
                            )}
@@ -299,16 +294,12 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
       </SheetContent>
     </Sheet>
     
-    {observationForDeletion && (
+    {observation && (
       <DeleteObservationDialog
           isOpen={isDeleteDialogOpen}
-          onOpenChange={(open) => {
-            if (!open) {
-              setObservationForDeletion(null);
-            }
-            setDeleteDialogOpen(open);
-          }}
-          observation={observationForDeletion}
+          onOpenChange={setDeleteDialogOpen}
+          observation={observation}
+          onSuccess={handleDeleteSuccess}
       />
     )}
 

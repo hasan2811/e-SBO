@@ -42,7 +42,6 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType, labe
 export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetProps) {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isApproveDialogOpen, setApproveDialogOpen] = React.useState(false);
-  const [ptwForDeletion, setPtwForDeletion] = React.useState<Ptw | null>(null);
   
   const { projects } = useProjects();
   const { userProfile } = useAuth();
@@ -56,12 +55,8 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
     }
   }, [isOpen, ptw, onOpenChange]);
 
-  const handleDeleteClick = () => {
-    if (ptw) {
-        setPtwForDeletion(ptw);
-        onOpenChange(false); // Close the sheet first
-        setDeleteDialogOpen(true); // Then open the dialog
-    }
+  const handleDeleteSuccess = () => {
+    onOpenChange(false); // Close the sheet after deletion is confirmed
   };
 
   const projectName = ptw?.projectId ? projects.find(p => p.id === ptw.projectId)?.name : null;
@@ -90,7 +85,7 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
                       </div>
                   </div>
                   {canDelete && (
-                    <Button variant="destructive" size="icon" onClick={handleDeleteClick} className="flex-shrink-0" aria-label="Delete PTW">
+                    <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} className="flex-shrink-0" aria-label="Delete PTW">
                         <Trash2 />
                     </Button>
                   )}
@@ -214,16 +209,12 @@ export function PtwDetailSheet({ ptwId, isOpen, onOpenChange }: PtwDetailSheetPr
         </SheetContent>
       </Sheet>
       
-      {ptwForDeletion && (
+      {ptw && (
         <DeletePtwDialog
             isOpen={isDeleteDialogOpen}
-            onOpenChange={(open) => {
-              if (!open) {
-                setPtwForDeletion(null);
-              }
-              setDeleteDialogOpen(open);
-            }}
-            ptw={ptwForDeletion}
+            onOpenChange={setDeleteDialogOpen}
+            ptw={ptw}
+            onSuccess={handleDeleteSuccess}
         />
       )}
       

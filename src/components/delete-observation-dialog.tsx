@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -24,12 +23,14 @@ interface DeleteObservationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   observation: Observation;
+  onSuccess?: () => void;
 }
 
 export function DeleteObservationDialog({
   isOpen,
   onOpenChange,
   observation,
+  onSuccess,
 }: DeleteObservationDialogProps) {
   const { toast } = useToast();
   const { removeItem } = React.useContext(ObservationContext)!;
@@ -45,6 +46,8 @@ export function DeleteObservationDialog({
         description: `Observation report "${observation.referenceId}" is being removed.`,
     });
     onOpenChange(false);
+    onSuccess?.();
+
 
     // 2. Background Deletion
     const deleteInBackground = async () => {

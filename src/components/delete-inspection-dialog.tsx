@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -24,12 +23,14 @@ interface DeleteInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   inspection: Inspection;
+  onSuccess?: () => void;
 }
 
 export function DeleteInspectionDialog({
   isOpen,
   onOpenChange,
   inspection,
+  onSuccess,
 }: DeleteInspectionDialogProps) {
   const { toast } = useToast();
   const { removeItem } = React.useContext(ObservationContext)!;
@@ -45,6 +46,8 @@ export function DeleteInspectionDialog({
       description: `Inspection report "${inspection.referenceId}" is being removed.`,
     });
     onOpenChange(false);
+    onSuccess?.();
+
 
     // 2. Background Deletion
     const deleteInBackground = async () => {
