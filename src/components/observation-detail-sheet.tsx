@@ -192,10 +192,10 @@ export function ObservationDetailSheet({ observationId, isOpen, onOpenChange }: 
                         <CardContent className="space-y-4">
                            {observation.aiStatus === 'n/a' && (
                                 <div className="flex flex-col items-start gap-3 p-4 rounded-lg border border-dashed">
-                                   <p className="text-sm text-muted-foreground">Show AI insight to get a summary, risks, and suggested actions.</p>
+                                   <p className="text-sm text-muted-foreground">Run AI analysis to get a summary, risks, and suggested actions.</p>
                                    <Button variant="outline" onClick={handleRunDeeperAnalysis} disabled={isAnalyzing}>
                                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4" />}
-                                       Show AI Insight
+                                       Run AI Analysis
                                    </Button>
                                </div>
                            )}
