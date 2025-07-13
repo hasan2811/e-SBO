@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -12,7 +13,7 @@ import { format } from 'date-fns';
 import { useDebounce } from 'use-debounce';
 import { assistInspection } from '@/ai/flows/assist-inspection-flow';
 
-import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope, AssistInspectionOutput, UserProfile } from '@/lib/types';
+import type { Inspection, InspectionStatus, EquipmentType, Location, Project, Scope, AssistInspectionOutput, UserProfile, AllItems } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
@@ -27,7 +28,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { DEFAULT_LOCATIONS, EQUIPMENT_TYPES, INSPECTION_STATUSES } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { createAssignmentNotification } from '@/lib/actions/notification-actions';
-import { ObservationContext } from '@/contexts/observation-context';
 
 
 const formSchema = z.object({
@@ -49,13 +49,13 @@ interface SubmitInspectionDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   project: Project | null;
+  addItem: (item: AllItems) => void;
 }
 
-export function SubmitInspectionDialog({ isOpen, onOpenChange, project }: SubmitInspectionDialogProps) {
+export function SubmitInspectionDialog({ isOpen, onOpenChange, project, addItem }: SubmitInspectionDialogProps) {
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { addItem } = React.useContext(ObservationContext)!;
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const formId = React.useId();
   const pathname = usePathname();

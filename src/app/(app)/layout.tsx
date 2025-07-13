@@ -14,7 +14,7 @@ import { usePerformance } from '@/contexts/performance-context';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import { ProjectProvider } from '@/contexts/project-context';
-import { ObservationProvider } from '@/contexts/observation-context';
+import { ObservationProvider, ObservationContext } from '@/contexts/observation-context';
 
 
 // Dynamically import heavy dialogs to reduce initial bundle size
@@ -30,6 +30,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { projects, loading: projectsLoading } = useProjects();
   const { isFastConnection } = usePerformance();
+  const { addItem } = React.useContext(ObservationContext)!;
 
   const [isObservationDialogOpen, setObservationDialogOpen] = React.useState(false);
   const [isInspectionDialogOpen, setInspectionDialogOpen] = React.useState(false);
@@ -159,6 +160,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                   isOpen={isInspectionDialogOpen}
                   onOpenChange={setInspectionDialogOpen}
                   project={currentProject}
+                  addItem={addItem}
               />
             )}
             {isPtwDialogOpen && (
