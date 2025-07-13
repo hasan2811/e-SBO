@@ -268,17 +268,14 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
     items, 
     isLoading, 
     hasMore, 
-    lastDoc,
     getObservationById, 
     getInspectionById, 
     getPtwById,
-    setLastDoc
   } = context;
 
   const itemsForFeed = items[itemTypeFilter];
   const isLoadingFeed = isLoading[itemTypeFilter];
   const hasMoreItems = hasMore[itemTypeFilter];
-  const lastVisibleDoc = lastDoc[itemTypeFilter];
 
   // --- Filter and Search State ---
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -293,21 +290,13 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
       searchTerm: debouncedSearchTerm,
   }), [statusFilter, riskFilter, debouncedSearchTerm]);
 
-  // Pass filters and pagination state to the data-fetching hook
-  useObservations(projectId, itemTypeFilter, filters, ITEMS_PER_PAGE, lastVisibleDoc);
+  const { loadMore, refetch } = useObservations(projectId, itemTypeFilter, filters, ITEMS_PER_PAGE);
 
   // --- UI and Interaction State ---
   const [selectedObservationId, setSelectedObservationId] = React.useState<string | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = React.useState<string | null>(null);
   const [selectedPtwId, setSelectedPtwId] = React.useState<string | null>(null);
   
-  // Reset pagination when filters change
-  React.useEffect(() => {
-      setLastDoc(itemTypeFilter, null);
-  // We want this to run ONLY when filters change, not on every render.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, itemTypeFilter]);
-
   // --- Bulk Actions State ---
   const [isSelectionMode, setIsSelectionMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
@@ -366,13 +355,6 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
         return false;
     });
   }, [itemsForFeed, debouncedSearchTerm]);
-
-
-  const loadMore = () => {
-      if (!isLoadingFeed && hasMoreItems && lastVisibleDoc) {
-        setLastDoc(itemTypeFilter, lastVisibleDoc);
-      }
-  };
   
   const handleToggleSelection = (id: string) => {
     setSelectedIds(prev => {
@@ -397,6 +379,7 @@ export function FeedView({ projectId, itemTypeFilter, itemIdToOpen, title }: Fee
     setSearchTerm('');
     setStatusFilter('all');
     setRiskFilter('all');
+    refetch(); // Manually trigger a refetch
   };
 
   const handleExport = async () => {
