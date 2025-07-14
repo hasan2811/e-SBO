@@ -46,8 +46,9 @@ export function DeleteObservationDialog({
         title: 'Report Deleted',
         description: `Observation report "${observation.referenceId}" is being removed.`,
     });
+    
+    // Call onSuccess to close the DetailSheet and the dialog itself
     onSuccess();
-
 
     // 2. Background Deletion
     const deleteInBackground = async () => {
@@ -71,6 +72,8 @@ export function DeleteObservationDialog({
           title: 'Sync Failed',
           description: 'The report failed to delete from the server. Please refresh the page.',
         });
+        // Here you might want to re-add the item to the context if the deletion fails,
+        // but for now, we rely on the live listener to correct the state.
       }
     };
     
@@ -87,7 +90,7 @@ export function DeleteObservationDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting} onClick={() => onOpenChange(false)}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}

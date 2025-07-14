@@ -46,6 +46,8 @@ export function DeletePtwDialog({
         title: 'PTW Deleted',
         description: `Permit to Work "${ptw.referenceId}" is being removed.`,
     });
+    
+    // Call onSuccess to close the DetailSheet and the dialog itself
     onSuccess();
     
     // 2. Background Deletion
@@ -86,7 +88,7 @@ export function DeletePtwDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting} onClick={() => onOpenChange(false)}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
