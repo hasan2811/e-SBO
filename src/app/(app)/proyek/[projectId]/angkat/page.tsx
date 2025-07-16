@@ -18,8 +18,8 @@ import { usePerformance } from '@/contexts/performance-context';
 
 // Constants for visualization, based on user's original detailed script
 const PIXELS_PER_METER = 10;
-const PADDING_HORIZONTAL = 20; // Reduced padding to make crane larger
-const PADDING_VERTICAL = 40;   // Reduced padding to make crane larger
+const PADDING_HORIZONTAL = 20; 
+const PADDING_VERTICAL = 40;   
 const CRANE_BODY_LENGTH_M = 12.8;
 const CRANE_BODY_HEIGHT_M = 4.0;
 const CHASSIS_WIDTH_M = CRANE_BODY_LENGTH_M * 0.9;
@@ -164,7 +164,7 @@ export default function LiftingPlanPage() {
           const autoFitScale = Math.max(0.01, Math.min(scaleX, scaleY));
 
           const groundYPx = clientHeight - PADDING_VERTICAL;
-          const craneBaseXPx = clientWidth / 2;
+          const craneBaseXPx = PADDING_HORIZONTAL + (COUNTERWEIGHT_LENGTH_M * PIXELS_PER_METER * autoFitScale);
 
           ctx.save();
           ctx.translate(craneBaseXPx, groundYPx);
@@ -172,8 +172,8 @@ export default function LiftingPlanPage() {
           ctx.strokeStyle = '#333';
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.moveTo(-clientWidth / 2, 0);
-          ctx.lineTo(clientWidth / 2, 0);
+          ctx.moveTo(-clientWidth, 0);
+          ctx.lineTo(clientWidth, 0);
           ctx.stroke();
 
           // --- Drawing functions ---
@@ -408,5 +408,3 @@ export default function LiftingPlanPage() {
         </div>
     );
 }
-
-    
