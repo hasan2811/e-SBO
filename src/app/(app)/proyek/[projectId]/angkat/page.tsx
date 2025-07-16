@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 
+// Constants for visualization, based on user's original detailed script
 const PIXELS_PER_METER = 10;
 const PADDING_HORIZONTAL = 100;
 const PADDING_VERTICAL = 120;
@@ -134,24 +135,23 @@ export default function LiftingPlanPage() {
           ctx.save();
           
           const boomAngleDeg = parseFloat(results.boomAngle) || 0;
-          const currentRadius = parseFloat(radius.toString()) || 0;
-          const currentBoomLength = parseFloat(boomLength.toString()) || 0;
-          const currentLiftHeight = parseFloat(results.liftHeight) || 0;
+          const currentRadiusM = parseFloat(radius.toString()) || 0;
+          const currentBoomLengthM = parseFloat(boomLength.toString()) || 0;
+          const currentLiftHeightM = parseFloat(results.liftHeight) || 0;
 
-          // Drawing dimensions based on current inputs for better auto-fitting
-          const drawingWidthM = (CRANE_BODY_LENGTH_M * 1.2) + currentRadius;
-          const drawingHeightM = (CRANE_BODY_HEIGHT_M * 1.5) + currentBoomLength;
-
+          const drawingWidthM = currentRadiusM + CRANE_BODY_LENGTH_M + OUTRIGGER_H_LENGTH_M * 2;
+          const drawingHeightM = currentBoomLengthM + CRANE_BODY_HEIGHT_M;
+          
           const scaleX = (canvas.width - PADDING_HORIZONTAL * 2) / (drawingWidthM * PIXELS_PER_METER);
           const scaleY = (canvas.height - PADDING_VERTICAL * 2) / (drawingHeightM * PIXELS_PER_METER);
-          const autoFitScale = Math.min(scaleX, scaleY, 1.2);
+          const autoFitScale = Math.min(scaleX, scaleY, 1.5);
           
-          const groundY = canvas.height - PADDING_VERTICAL;
-          const craneBaseX = PADDING_HORIZONTAL;
+          const groundYPx = canvas.height - PADDING_VERTICAL;
+          const craneBaseXPx = PADDING_HORIZONTAL;
           
-          ctx.translate(craneBaseX, groundY);
-          
-          // Ground
+          ctx.translate(craneBaseXPx, groundYPx);
+
+          // --- Ground Line ---
           ctx.strokeStyle = '#333';
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -159,7 +159,7 @@ export default function LiftingPlanPage() {
           ctx.lineTo(canvas.width, 0);
           ctx.stroke();
 
-          // Chassis/Base
+          // --- Crane Body (Chassis) ---
           ctx.fillStyle = '#FFA500'; // Orange
           ctx.strokeStyle = '#333';
           ctx.lineWidth = 1;
@@ -168,43 +168,70 @@ export default function LiftingPlanPage() {
           ctx.fillRect(0, -chassisHeightPx, chassisWidthPx, chassisHeightPx);
           ctx.strokeRect(0, -chassisHeightPx, chassisWidthPx, chassisHeightPx);
 
-          // Superstructure
+          // --- Driver's Cabin ---
+          const cabinWidthPx = CABIN_WIDTH_M * PIXELS_PER_METER * autoFitScale;
+          const cabinHeightPx = CABIN_HEIGHT_M * PIXELS_PER_METER * autoFitScale;
+          const cabinX = chassisWidthPx - cabinWidthPx;
+          const cabinY = -chassisHeightPx - cabinHeightPx;
+          ctx.fillRect(cabinX, cabinY, cabinWidthPx, cabinHeightPx);
+          ctx.strokeRect(cabinX, cabinY, cabinWidthPx, cabinHeightPx);
+          ctx.fillStyle = '#ADD8E6'; // Light blue for window
+          ctx.fillRect(cabinX + cabinWidthPx * 0.1, cabinY + cabinHeightPx * 0.1, cabinWidthPx * 0.8, cabinHeightPx * 0.5);
+          
+          ctx.fillStyle = '#FFA500'; // Reset color
+
+          // --- Wheels ---
+          const wheelRadiusPx = WHEEL_RADIUS_M * PIXELS_PER_METER * autoFitScale;
+          const wheelYPx = 0 - wheelRadiusPx;
+          ctx.fillStyle = '#2d3748';
+          ctx.beginPath();
+          ctx.arc(chassisWidthPx * 0.15, wheelYPx, wheelRadiusPx, 0, Math.PI * 2);
+          ctx.arc(chassisWidthPx * 0.45, wheelYPx, wheelRadiusPx, 0, Math.PI * 2);
+          ctx.arc(chassisWidthPx * 0.85, wheelYPx, wheelRadiusPx, 0, Math.PI * 2);
+          ctx.fill();
+
+          // --- Superstructure ---
           const superstructureWidthPx = SUPERSTRUCTURE_WIDTH_M * PIXELS_PER_METER * autoFitScale;
           const superstructureHeightPx = SUPERSTRUCTURE_HEIGHT_M * PIXELS_PER_METER * autoFitScale;
-          const superstructureXPx = (chassisWidthPx * 0.3); // Positioned more to the rear
+          const superstructureXPx = (chassisWidthPx * 0.3);
           const superstructureYPx = -chassisHeightPx - superstructureHeightPx;
           ctx.fillRect(superstructureXPx, superstructureYPx, superstructureWidthPx, superstructureHeightPx);
           ctx.strokeRect(superstructureXPx, superstructureYPx, superstructureWidthPx, superstructureHeightPx);
           
-          const pivotX = superstructureXPx + (superstructureWidthPx * 0.7); // Pivot point on superstructure
+          // --- Pivot Point ---
+          const pivotX = superstructureXPx + (superstructureWidthPx * 0.7);
           const pivotY = superstructureYPx + (superstructureHeightPx / 2);
 
-          // Boom
+          // --- Boom ---
           ctx.save();
           ctx.translate(pivotX, pivotY);
           ctx.rotate(-boomAngleDeg * Math.PI / 180);
-          const totalBoomLengthPixels = currentBoomLength * PIXELS_PER_METER * autoFitScale;
+          const totalBoomLengthPixels = currentBoomLengthM * PIXELS_PER_METER * autoFitScale;
           const boomThicknessPx = BOOM_THICKNESS_BASE_M * PIXELS_PER_METER * autoFitScale;
-          ctx.fillStyle = '#FFD700';
+          ctx.fillStyle = '#FFD700'; // Yellow
           ctx.fillRect(0, -boomThicknessPx / 2, totalBoomLengthPixels, boomThicknessPx);
           ctx.strokeRect(0, -boomThicknessPx / 2, totalBoomLengthPixels, boomThicknessPx);
           
           // Pivot circle
           ctx.beginPath();
-          ctx.arc(0, 0, boomThicknessPx, 0, 2 * Math.PI);
+          ctx.arc(0, 0, boomThicknessPx * 0.8, 0, 2 * Math.PI);
           ctx.fillStyle = '#333';
           ctx.fill();
           
           ctx.restore();
 
-          // Hook Line and Load
-          const boomEndX = craneBaseX + pivotX + totalBoomLengthPixels * Math.cos(boomAngleDeg * Math.PI / 180);
-          const boomEndY = groundY + pivotY - totalBoomLengthPixels * Math.sin(boomAngleDeg * Math.PI / 180);
-          const hookX = craneBaseX + pivotX + currentRadius * PIXELS_PER_METER * autoFitScale;
-          const hookY = groundY - currentLiftHeight * PIXELS_PER_METER * autoFitScale;
+          // --- Hook Line and Load ---
+          const boomTipX = pivotX + totalBoomLengthPixels * Math.cos(boomAngleDeg * Math.PI / 180);
+          const boomTipY = pivotY - totalBoomLengthPixels * Math.sin(boomAngleDeg * Math.PI / 180);
+          
+          const hookX = pivotX + currentRadiusM * PIXELS_PER_METER * autoFitScale;
+          const hookY = 0 - currentLiftHeightM * PIXELS_PER_METER * autoFitScale;
+
+          // Hook line
           ctx.beginPath();
-          ctx.moveTo(boomEndX, boomEndY);
+          ctx.moveTo(boomTipX, boomTipY);
           ctx.lineTo(hookX, hookY);
+          ctx.strokeStyle = '#333';
           ctx.stroke();
           
           if (loadWeight > 0) {
@@ -236,7 +263,6 @@ export default function LiftingPlanPage() {
             radiusMax: Math.max(...chart.flatMap(b => b.capacities.map(c => c.radius))),
         };
         setCraneConfig(newConfig);
-        // Clamp existing values or reset them
         setBoomLength(current => Math.max(newConfig.boomMin, Math.min(newConfig.boomMax, current)));
         setRadius(current => Math.max(newConfig.radiusMin, Math.min(newConfig.radiusMax, current)));
     }, [craneType]);
