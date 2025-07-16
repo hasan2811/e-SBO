@@ -98,15 +98,15 @@ export default function LiftingPlanPage() {
 
         if (isNaN(boom) || isNaN(rad) || isNaN(weight) || isNaN(sf) || boom <= 0 || sf < 1.0) {
             setResults({
-                boomAngle: '--', liftHeight: '--', loadMoment: 'Input tidak valid', ratedCapacity: '--',
-                safeCapacity: 'Input tidak valid', status: 'Periksa input', statusColor: '#e53e3e',
+                boomAngle: '--', liftHeight: '--', loadMoment: 'Invalid Input', ratedCapacity: '--',
+                safeCapacity: 'Invalid Input', status: 'Check input', statusColor: '#e53e3e',
             });
             return;
         }
 
         if (rad > boom) {
             setResults({
-                boomAngle: 'Tidak Mungkin', liftHeight: '0.00', loadMoment: '--', ratedCapacity: '0.00',
+                boomAngle: 'Impossible', liftHeight: '0.00', loadMoment: '--', ratedCapacity: '0.00',
                 safeCapacity: '0.00', status: 'Radius > Boom', statusColor: '#e53e3e',
             });
             return;
@@ -128,7 +128,7 @@ export default function LiftingPlanPage() {
             loadMoment: loadMoment.toFixed(2),
             ratedCapacity: ratedCapacity.toFixed(2),
             safeCapacity: safeCapacity.toFixed(2),
-            status: isOverload ? 'OVERLOAD! TIDAK AMAN' : 'AMAN',
+            status: isOverload ? 'OVERLOAD! UNSAFE' : 'SAFE',
             statusColor: isOverload ? '#e53e3e' : '#22c55e',
         });
     }, [boomLength, radius, loadWeight, safetyFactor, craneType, getRatedCapacity]);
@@ -324,17 +324,17 @@ export default function LiftingPlanPage() {
           
           let yOffset = PADDING_VERTICAL;
           
-          ctx.fillText('Hasil Perhitungan:', PADDING_HORIZONTAL, yOffset);
+          ctx.fillText('Calculation Results:', PADDING_HORIZONTAL, yOffset);
           yOffset += 24;
           
           ctx.font = `normal ${FONT_SIZE_LABEL_PX - 2}px Inter`;
           
           const resultItems = [
-            `Sudut Boom: ${results.boomAngle} °`,
-            `Tinggi Angkat: ${results.liftHeight} m`,
-            `Momen Beban: ${results.loadMoment} t-m`,
-            `Kapasitas Nominal: ${results.ratedCapacity} t`,
-            `Kapasitas Aman: ${results.safeCapacity} t`,
+            `Boom Angle: ${results.boomAngle} °`,
+            `Lift Height: ${results.liftHeight} m`,
+            `Load Moment: ${results.loadMoment} t-m`,
+            `Rated Capacity: ${results.ratedCapacity} t`,
+            `Safe Capacity: ${results.safeCapacity} t`,
           ];
           
           resultItems.forEach(item => {
@@ -417,8 +417,8 @@ export default function LiftingPlanPage() {
         >
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Lifting Plan 2D</h1>
-                    <p className="text-muted-foreground">Perencanaan Pengangkatan Mobile Crane 2D</p>
+                    <h1 className="text-3xl font-bold tracking-tight">2D Lifting Plan</h1>
+                    <p className="text-muted-foreground">2D Mobile Crane Lifting Plan</p>
                 </div>
             </div>
 
@@ -428,31 +428,31 @@ export default function LiftingPlanPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <SlidersHorizontal/>
-                                Input Parameter
+                                Input Parameters
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <Label htmlFor="craneType">Tipe Mobile Crane</Label>
+                                <Label htmlFor="craneType">Mobile Crane Type</Label>
                                 <Select value={craneType} onValueChange={setCraneType}>
                                     <SelectTrigger id="craneType"><SelectValue/></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="SANYSTC250">SANY STC250 Truck Crane</SelectItem>
-                                        <SelectItem value="mobileCrane50T">Mobile Crane 50 Ton (Contoh)</SelectItem>
-                                        <SelectItem value="mobileCrane100T">Mobile Crane 100 Ton (Contoh)</SelectItem>
+                                        <SelectItem value="mobileCrane50T">Mobile Crane 50 Ton (Example)</SelectItem>
+                                        <SelectItem value="mobileCrane100T">Mobile Crane 100 Ton (Example)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div>
-                                <Label htmlFor="boomLength">Panjang Boom ({boomLength.toFixed(2)} m)</Label>
+                                <Label htmlFor="boomLength">Boom Length ({boomLength.toFixed(2)} m)</Label>
                                 <Slider id="boomLength" value={[boomLength]} min={craneConfig.boomMin} max={craneConfig.boomMax} step={0.1} onValueChange={(v) => setBoomLength(v[0])} />
                             </div>
                             <div>
-                                <Label htmlFor="radius">Radius Kerja ({radius.toFixed(2)} m)</Label>
+                                <Label htmlFor="radius">Working Radius ({radius.toFixed(2)} m)</Label>
                                 <Slider id="radius" value={[radius]} min={craneConfig.radiusMin} max={craneConfig.radiusMax} step={0.1} onValueChange={(v) => setRadius(v[0])} />
                             </div>
                             <div>
-                                <Label htmlFor="loadWeight">Berat Beban (ton)</Label>
+                                <Label htmlFor="loadWeight">Load Weight (ton)</Label>
                                 <Input 
                                     id="loadWeight" 
                                     type="text"
@@ -462,7 +462,7 @@ export default function LiftingPlanPage() {
                                 />
                             </div>
                              <div>
-                                <Label htmlFor="safetyFactor">Faktor Keamanan (e.g., 1.25 for 80%)</Label>
+                                <Label htmlFor="safetyFactor">Safety Factor (e.g., 1.25 for 80%)</Label>
                                 <Input 
                                     id="safetyFactor" 
                                     type="text"
@@ -480,7 +480,7 @@ export default function LiftingPlanPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <BarChart/>
-                                Visualisasi Mobile Crane 2D
+                                2D Mobile Crane Visualization
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-2 sm:p-4">
@@ -499,7 +499,7 @@ export default function LiftingPlanPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Gauge/>
-                                Spesifikasi Crane: {craneType}
+                                Crane Specifications: {craneType}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
