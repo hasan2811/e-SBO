@@ -311,8 +311,8 @@ export default function LiftingPlanPage() {
           ctx.fillStyle = '#000000';
           ctx.font = `bold ${actualFontSizeLabel}px Inter`;
           ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
-          ctx.fillText(`Radius: ${radius.toFixed(2)} m`, (pivotX * autoFitScale + hookXPx) / 2, 15);
+          ctx.textBaseline = 'top';
+          ctx.fillText(`Radius: ${radius.toFixed(2)} m`, (pivotX * autoFitScale + hookXPx) / 2, 5);
           
           ctx.restore(); // Restore to origin before drawing text overlay
 
@@ -485,7 +485,6 @@ export default function LiftingPlanPage() {
                 )}
             </motion.div>
 
-        </div>
+        </motion.div>
     );
 }
-
