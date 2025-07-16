@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { usePerformance } from '@/contexts/performance-context';
 
 // Constants for visualization, based on user's original detailed script
 const PIXELS_PER_METER = 10;
@@ -45,6 +46,7 @@ const FONT_SIZE_LOAD_PX = 16;
 
 export default function LiftingPlanPage() {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const { isFastConnection } = usePerformance();
     const [craneType, setCraneType] = React.useState<string>('SANYSTC250');
     const [boomLength, setBoomLength] = React.useState<number>(10.65);
     const [radius, setRadius] = React.useState<number>(3);
@@ -149,7 +151,13 @@ export default function LiftingPlanPage() {
         };
 
         const draw = () => {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          // Set canvas internal resolution to its displayed size for HiDPI rendering
+          const { clientWidth, clientHeight } = canvas;
+          canvas.width = clientWidth * window.devicePixelRatio;
+          canvas.height = clientHeight * window.devicePixelRatio;
+          ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+          ctx.clearRect(0, 0, clientWidth, clientHeight);
           ctx.save();
           
           const boomAngleDeg = parseFloat(results.boomAngle) || 0;
@@ -158,11 +166,11 @@ export default function LiftingPlanPage() {
 
           const { widthM: maxDrawingWidthM, heightM: maxDrawingHeightM } = getCraneMaxDrawingDimensionsMeters(craneType);
           
-          const scaleX = (canvas.width - PADDING_HORIZONTAL * 2) / (maxDrawingWidthM * PIXELS_PER_METER);
-          const scaleY = (canvas.height - PADDING_VERTICAL * 2) / (maxDrawingHeightM * PIXELS_PER_METER);
+          const scaleX = (clientWidth - PADDING_HORIZONTAL * 2) / (maxDrawingWidthM * PIXELS_PER_METER);
+          const scaleY = (clientHeight - PADDING_VERTICAL * 2) / (maxDrawingHeightM * PIXELS_PER_METER);
           const autoFitScale = Math.min(scaleX, scaleY, 1.5);
           
-          const groundYPx = canvas.height - PADDING_VERTICAL;
+          const groundYPx = clientHeight - PADDING_VERTICAL;
           const craneBaseXPx = PADDING_HORIZONTAL;
           
           ctx.translate(craneBaseXPx, groundYPx);
@@ -172,7 +180,7 @@ export default function LiftingPlanPage() {
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.moveTo(-PADDING_HORIZONTAL, 0);
-          ctx.lineTo(canvas.width, 0);
+          ctx.lineTo(clientWidth, 0);
           ctx.stroke();
 
           // --- Crane Body (Chassis) ---
@@ -279,7 +287,7 @@ export default function LiftingPlanPage() {
 
         draw();
 
-    }, [results, boomLength, radius, loadWeight, craneType]);
+    }, [results, boomLength, radius, loadWeight, craneType, isFastConnection]);
 
     React.useEffect(() => {
         const specs = CRANE_DATA[craneType]?.specifications;
@@ -372,7 +380,10 @@ export default function LiftingPlanPage() {
                     <CardTitle>Visualisasi Mobile Crane 2D</CardTitle>
                 </CardHeader>
                 <CardContent className="p-2 sm:p-4">
-                    <canvas ref={canvasRef} width="800" height="600" className="w-full h-auto bg-card border rounded-md"></canvas>
+                    <canvas 
+                        ref={canvasRef} 
+                        className="w-full aspect-[4/3] bg-card border rounded-md"
+                    ></canvas>
                 </CardContent>
             </Card>
         </div>
