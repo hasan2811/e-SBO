@@ -401,10 +401,12 @@ export default function LiftingPlanPage() {
                 <CardContent className="p-2 sm:p-4">
                     <canvas 
                         ref={canvasRef} 
-                        className="w-full aspect-[4/3] bg-card border rounded-md"
+                        className="w-full aspect-[3/4] bg-card border rounded-md"
                     ></canvas>
                 </CardContent>
             </Card>
         </div>
     );
 }
+
+    
