@@ -135,21 +135,6 @@ export default function LiftingPlanPage() {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         
-        const getCraneMaxDrawingDimensionsMeters = (type: string) => {
-            const currentCraneData = CRANE_DATA[type];
-            if (!currentCraneData) return { widthM: 50, heightM: 50 }; 
-            const maxBoomLength = parseFloat(currentCraneData.specifications['Panjang Boom Penuh'].replace(' m', ''));
-            const maxRadius = currentCraneData.loadChart.reduce((maxR, boomEntry) => {
-                const currentMaxR = boomEntry.capacities.reduce((innerMaxR, capEntry) => Math.max(innerMaxR, capEntry.radius), 0);
-                return Math.max(maxR, currentMaxR);
-            }, 0);
-            
-            const horizontalSpanM = (CHASSIS_WIDTH_M / 2) + maxRadius + COUNTERWEIGHT_LENGTH_M + PADDING_HORIZONTAL / PIXELS_PER_METER;
-            const verticalSpanM = CHASSIS_HEIGHT_M + maxBoomLength + PADDING_VERTICAL / PIXELS_PER_METER;
-
-            return { widthM: horizontalSpanM, heightM: verticalSpanM };
-        };
-
         const draw = () => {
           const { clientWidth, clientHeight } = canvas;
           canvas.width = clientWidth * window.devicePixelRatio;
@@ -157,7 +142,8 @@ export default function LiftingPlanPage() {
           ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
           ctx.clearRect(0, 0, clientWidth, clientHeight);
 
-          const { widthM: maxDrawingWidthM, heightM: maxDrawingHeightM } = getCraneMaxDrawingDimensionsMeters(craneType);
+          const maxDrawingWidthM = (CHASSIS_WIDTH_M / 2) + craneConfig.radiusMax + COUNTERWEIGHT_LENGTH_M + PADDING_HORIZONTAL / PIXELS_PER_METER;
+          const maxDrawingHeightM = CHASSIS_HEIGHT_M + craneConfig.boomMax + PADDING_VERTICAL / PIXELS_PER_METER;
           
           const scaleX = clientWidth / (maxDrawingWidthM * PIXELS_PER_METER);
           const scaleY = clientHeight / (maxDrawingHeightM * PIXELS_PER_METER);
@@ -254,7 +240,7 @@ export default function LiftingPlanPage() {
           ctx.fillRect(0, -boomThicknessPx / 2, totalBoomLengthPixels, boomThicknessPx);
           ctx.strokeRect(0, -boomThicknessPx / 2, totalBoomLengthPixels, boomThicknessPx);
           
-          const actualFontSizeLabel = Math.max(10, FONT_SIZE_LABEL_PX); // No need to divide by scale here
+          const actualFontSizeLabel = Math.max(10, FONT_SIZE_LABEL_PX); 
           ctx.font = `${actualFontSizeLabel}px Inter`;
           ctx.fillStyle = '#000000';
           ctx.textAlign = 'center';
@@ -269,10 +255,11 @@ export default function LiftingPlanPage() {
           ctx.restore();
 
           // --- Hook Line and Load ---
-          const boomTipX = pivotX * autoFitScale + totalBoomLengthPixels * Math.cos(parseFloat(results.boomAngle) * Math.PI / 180);
-          const boomTipY = pivotY * autoFitScale - totalBoomLengthPixels * Math.sin(parseFloat(results.boomAngle) * Math.PI / 180);
+          const boomAngleRad = parseFloat(results.boomAngle) * Math.PI / 180;
+          const boomTipX = (pivotX * autoFitScale) + totalBoomLengthPixels * Math.cos(boomAngleRad);
+          const boomTipY = (pivotY * autoFitScale) - totalBoomLengthPixels * Math.sin(boomAngleRad);
           
-          const hookX = pivotX * autoFitScale + radius * PIXELS_PER_METER * autoFitScale;
+          const hookX = (pivotX * autoFitScale) + (radius * PIXELS_PER_METER * autoFitScale);
           const hookY = -parseFloat(results.liftHeight) * PIXELS_PER_METER * autoFitScale;
           
           ctx.beginPath();
@@ -306,7 +293,7 @@ export default function LiftingPlanPage() {
 
         draw();
 
-    }, [results, boomLength, radius, loadWeight, craneType, isFastConnection]);
+    }, [results, boomLength, radius, loadWeight, craneType, isFastConnection, craneConfig]);
 
     React.useEffect(() => {
         const specs = CRANE_DATA[craneType]?.specifications;
