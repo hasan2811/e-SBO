@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import { motion } from 'framer-motion';
 import {
   CRANE_DATA,
   type CraneData,
@@ -15,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { usePerformance } from '@/contexts/performance-context';
+import { BarChart, Gauge, SlidersHorizontal } from 'lucide-react';
 
 // Constants for visualization, based on user's original detailed script
 const PIXELS_PER_METER = 10;
@@ -67,7 +69,7 @@ export default function LiftingPlanPage() {
         ratedCapacity: '--',
         safeCapacity: '--',
         status: '--',
-        statusColor: 'text-gray-700',
+        statusColor: '#374151', // equivalent to text-gray-700
     });
     
     // ## HELPER FUNCTIONS FOR CALCULATIONS ##
@@ -97,7 +99,7 @@ export default function LiftingPlanPage() {
         if (isNaN(boom) || isNaN(rad) || isNaN(weight) || isNaN(sf) || boom <= 0 || sf < 1.0) {
             setResults({
                 boomAngle: '--', liftHeight: '--', loadMoment: 'Input tidak valid', ratedCapacity: '--',
-                safeCapacity: 'Input tidak valid', status: 'Periksa input', statusColor: 'text-destructive',
+                safeCapacity: 'Input tidak valid', status: 'Periksa input', statusColor: '#e53e3e',
             });
             return;
         }
@@ -105,7 +107,7 @@ export default function LiftingPlanPage() {
         if (rad > boom) {
             setResults({
                 boomAngle: 'Tidak Mungkin', liftHeight: '0.00', loadMoment: '--', ratedCapacity: '0.00',
-                safeCapacity: '0.00', status: 'Radius melebihi panjang boom', statusColor: 'text-destructive',
+                safeCapacity: '0.00', status: 'Radius > Boom', statusColor: '#e53e3e',
             });
             return;
         }
@@ -127,7 +129,7 @@ export default function LiftingPlanPage() {
             ratedCapacity: ratedCapacity.toFixed(2),
             safeCapacity: safeCapacity.toFixed(2),
             status: isOverload ? 'OVERLOAD! TIDAK AMAN' : 'AMAN',
-            statusColor: isOverload ? 'text-destructive' : 'text-green-500',
+            statusColor: isOverload ? '#e53e3e' : '#22c55e',
         });
     }, [boomLength, radius, loadWeight, safetyFactor, craneType, getRatedCapacity]);
     
@@ -249,7 +251,7 @@ export default function LiftingPlanPage() {
           ctx.strokeRect(0, -boomThicknessPx / 2, totalBoomLengthPixels, boomThicknessPx);
           
           const actualFontSizeLabel = Math.max(10, FONT_SIZE_LABEL_PX); 
-          ctx.font = `${actualFontSizeLabel}px Inter`;
+          ctx.font = `bold ${actualFontSizeLabel}px Inter`;
           ctx.fillStyle = '#000000';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -291,7 +293,7 @@ export default function LiftingPlanPage() {
               ctx.fillRect(hookXPx - loadSizePx / 2, hookYPx, loadSizePx, loadSizePx);
               ctx.fillStyle = '#fff';
               const actualFontSizeLoad = Math.max(8, FONT_SIZE_LOAD_PX);
-              ctx.font = `${actualFontSizeLoad}px Inter`;
+              ctx.font = `bold ${actualFontSizeLoad}px Inter`;
               ctx.textAlign = 'center';
               ctx.fillText(`${loadWeightValue}t`, hookXPx, hookYPx + loadSizePx / 2 + 5);
           }
@@ -307,10 +309,43 @@ export default function LiftingPlanPage() {
           ctx.setLineDash([]);
           
           ctx.fillStyle = '#000000';
-          ctx.font = `${actualFontSizeLabel}px Inter`;
+          ctx.font = `bold ${actualFontSizeLabel}px Inter`;
           ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(`Radius: ${radius.toFixed(2)} m`, (pivotX * autoFitScale + hookXPx) / 2, -15);
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(`Radius: ${radius.toFixed(2)} m`, (pivotX * autoFitScale + hookXPx) / 2, 15);
+          
+          ctx.restore(); // Restore to origin before drawing text overlay
+
+          // --- Draw Text Overlay for Results ---
+          ctx.save();
+          ctx.font = `bold ${FONT_SIZE_LABEL_PX}px Inter`;
+          ctx.fillStyle = '#111827';
+          ctx.textAlign = 'left';
+          
+          let yOffset = PADDING_VERTICAL;
+          
+          ctx.fillText('Hasil Perhitungan:', PADDING_HORIZONTAL, yOffset);
+          yOffset += 24;
+          
+          ctx.font = `normal ${FONT_SIZE_LABEL_PX - 2}px Inter`;
+          
+          const resultItems = [
+            `Sudut Boom: ${results.boomAngle} °`,
+            `Tinggi Angkat: ${results.liftHeight} m`,
+            `Momen Beban: ${results.loadMoment} t-m`,
+            `Kapasitas Nominal: ${results.ratedCapacity} t`,
+            `Kapasitas Aman: ${results.safeCapacity} t`,
+          ];
+          
+          resultItems.forEach(item => {
+            ctx.fillText(item, PADDING_HORIZONTAL, yOffset);
+            yOffset += 18;
+          });
+          
+          yOffset += 8; // Add a bit of space before the status
+          ctx.font = `bold ${FONT_SIZE_LABEL_PX}px Inter`;
+          ctx.fillStyle = results.statusColor;
+          ctx.fillText(results.status, PADDING_HORIZONTAL, yOffset);
           
           ctx.restore();
         };
@@ -346,8 +381,23 @@ export default function LiftingPlanPage() {
     
     const currentSpecs = CRANE_DATA[craneType]?.specifications;
 
+    const pageVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { staggerChildren: isFastConnection ? 0.1 : 0 } },
+    };
+
+    const itemVariants = {
+        hidden: { y: 20, opacity: 0 },
+        visible: { y: 0, opacity: 1 },
+    };
+
     return (
-        <div className="space-y-6">
+        <motion.div 
+            className="space-y-6"
+            variants={pageVariants}
+            initial="hidden"
+            animate="visible"
+        >
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Lifting Plan 2D</h1>
@@ -356,75 +406,86 @@ export default function LiftingPlanPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-1">
-                    <CardHeader><CardTitle>Input Parameter</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <Label htmlFor="craneType">Tipe Mobile Crane</Label>
-                            <Select value={craneType} onValueChange={setCraneType}>
-                                <SelectTrigger id="craneType"><SelectValue/></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="SANYSTC250">SANY STC250 Truck Crane</SelectItem>
-                                    <SelectItem value="mobileCrane50T">Mobile Crane 50 Ton (Contoh)</SelectItem>
-                                    <SelectItem value="mobileCrane100T">Mobile Crane 100 Ton (Contoh)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label htmlFor="boomLength">Panjang Boom ({boomLength.toFixed(2)} m)</Label>
-                            <Slider id="boomLength" value={[boomLength]} min={craneConfig.boomMin} max={craneConfig.boomMax} step={0.1} onValueChange={(v) => setBoomLength(v[0])} />
-                        </div>
-                        <div>
-                            <Label htmlFor="radius">Radius Kerja ({radius.toFixed(2)} m)</Label>
-                            <Slider id="radius" value={[radius]} min={craneConfig.radiusMin} max={craneConfig.radiusMax} step={0.1} onValueChange={(v) => setRadius(v[0])} />
-                        </div>
-                        <div>
-                            <Label htmlFor="loadWeight">Berat Beban (ton)</Label>
-                            <Input id="loadWeight" type="number" value={loadWeight} onChange={(e) => setLoadWeight(parseFloat(e.target.value) || 0)} min={0} />
-                        </div>
-                         <div>
-                            <Label htmlFor="safetyFactor">Faktor Keamanan (e.g., 1.25 for 80%)</Label>
-                            <Input id="safetyFactor" type="number" value={safetyFactor} onChange={(e) => setSafetyFactor(parseFloat(e.target.value) || 1)} min={1} step={0.05} />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <div className="lg:col-span-2 space-y-6">
+                <motion.div variants={itemVariants} className="lg:col-span-1">
                     <Card>
-                        <CardHeader><CardTitle>Hasil Perhitungan</CardTitle></CardHeader>
-                        <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                            <div className="font-semibold">Sudut Boom: <span className="font-normal">{results.boomAngle} °</span></div>
-                            <div className="font-semibold">Tinggi Angkat: <span className="font-normal">{results.liftHeight} m</span></div>
-                            <div className="font-semibold">Momen Beban: <span className="font-normal">{results.loadMoment} t-m</span></div>
-                            <div className="font-semibold">Kapasitas Nominal: <span className="font-normal">{results.ratedCapacity} t</span></div>
-                            <div className="font-semibold">Kapasitas Aman: <span className="font-normal">{results.safeCapacity} t</span></div>
-                            <div className={cn("font-bold", results.statusColor)}>{results.status}</div>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <SlidersHorizontal/>
+                                Input Parameter
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div>
+                                <Label htmlFor="craneType">Tipe Mobile Crane</Label>
+                                <Select value={craneType} onValueChange={setCraneType}>
+                                    <SelectTrigger id="craneType"><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="SANYSTC250">SANY STC250 Truck Crane</SelectItem>
+                                        <SelectItem value="mobileCrane50T">Mobile Crane 50 Ton (Contoh)</SelectItem>
+                                        <SelectItem value="mobileCrane100T">Mobile Crane 100 Ton (Contoh)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label htmlFor="boomLength">Panjang Boom ({boomLength.toFixed(2)} m)</Label>
+                                <Slider id="boomLength" value={[boomLength]} min={craneConfig.boomMin} max={craneConfig.boomMax} step={0.1} onValueChange={(v) => setBoomLength(v[0])} />
+                            </div>
+                            <div>
+                                <Label htmlFor="radius">Radius Kerja ({radius.toFixed(2)} m)</Label>
+                                <Slider id="radius" value={[radius]} min={craneConfig.radiusMin} max={craneConfig.radiusMax} step={0.1} onValueChange={(v) => setRadius(v[0])} />
+                            </div>
+                            <div>
+                                <Label htmlFor="loadWeight">Berat Beban (ton)</Label>
+                                <Input id="loadWeight" type="number" value={loadWeight} onChange={(e) => setLoadWeight(parseFloat(e.target.value) || 0)} min={0} />
+                            </div>
+                             <div>
+                                <Label htmlFor="safetyFactor">Faktor Keamanan (e.g., 1.25 for 80%)</Label>
+                                <Input id="safetyFactor" type="number" value={safetyFactor} onChange={(e) => setSafetyFactor(parseFloat(e.target.value) || 1)} min={1} step={0.05} />
+                            </div>
                         </CardContent>
                     </Card>
-                    {currentSpecs && (
-                        <Card>
-                            <CardHeader><CardTitle>Spesifikasi Crane</CardTitle></CardHeader>
-                            <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                                {Object.entries(currentSpecs).map(([key, value]) => (
-                                    <div key={key}><span className="font-semibold text-muted-foreground">{key}:</span> {value}</div>
-                                ))}
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
-            </div>
+                </motion.div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Visualisasi Mobile Crane 2D</CardTitle>
-                </CardHeader>
-                <CardContent className="p-2 sm:p-4">
-                    <canvas 
-                        ref={canvasRef} 
-                        className="w-full aspect-[3/4] bg-card border rounded-md"
-                    ></canvas>
-                </CardContent>
-            </Card>
+                <motion.div variants={itemVariants} className="lg:col-span-2">
+                    <Card className="h-full">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <BarChart/>
+                                Visualisasi Mobile Crane 2D
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-2 sm:p-4">
+                            <canvas 
+                                ref={canvasRef} 
+                                className="w-full aspect-[3/4] bg-muted/50 border rounded-md"
+                            ></canvas>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            </div>
+            
+            <motion.div variants={itemVariants}>
+                {currentSpecs && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Gauge/>
+                                Spesifikasi Crane: {craneType}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
+                            {Object.entries(currentSpecs).map(([key, value]) => (
+                                <div key={key} className="flex flex-col">
+                                    <span className="font-semibold text-muted-foreground">{key}</span> 
+                                    <span className="text-foreground">{value}</span>
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                )}
+            </motion.div>
+
         </div>
     );
 }
+
