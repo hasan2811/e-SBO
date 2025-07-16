@@ -168,7 +168,7 @@ export default function LiftingPlanPage() {
           
           const scaleX = (clientWidth - PADDING_HORIZONTAL * 2) / (maxDrawingWidthM * PIXELS_PER_METER);
           const scaleY = (clientHeight - PADDING_VERTICAL * 2) / (maxDrawingHeightM * PIXELS_PER_METER);
-          const autoFitScale = Math.min(scaleX, scaleY, 1.5);
+          const autoFitScale = Math.max(0, Math.min(scaleX, scaleY, 1.5));
           
           const groundYPx = clientHeight - PADDING_VERTICAL;
           const craneBaseXPx = PADDING_HORIZONTAL;
