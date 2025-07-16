@@ -52,8 +52,8 @@ export default function LiftingPlanPage() {
     const [craneType, setCraneType] = React.useState<string>('SANYSTC250');
     const [boomLength, setBoomLength] = React.useState<number>(10.65);
     const [radius, setRadius] = React.useState<number>(5);
-    const [loadWeight, setLoadWeight] = React.useState<number>(5);
-    const [safetyFactor, setSafetyFactor] = React.useState<number>(1.25);
+    const [loadWeight, setLoadWeight] = React.useState<string>("5");
+    const [safetyFactor, setSafetyFactor] = React.useState<string>("1.25");
 
     const [craneConfig, setCraneConfig] = React.useState({
         boomMin: 10.65,
@@ -93,8 +93,8 @@ export default function LiftingPlanPage() {
     const calculateLiftingPlan = React.useCallback(() => {
         const boom = boomLength;
         const rad = radius;
-        const weight = loadWeight;
-        const sf = safetyFactor;
+        const weight = parseFloat(loadWeight) || 0;
+        const sf = parseFloat(safetyFactor) || 1;
 
         if (isNaN(boom) || isNaN(rad) || isNaN(weight) || isNaN(sf) || boom <= 0 || sf < 1.0) {
             setResults({
@@ -286,7 +286,7 @@ export default function LiftingPlanPage() {
           ctx.stroke();
 
           // Draw the load at the hook's position
-          const loadWeightValue = loadWeight;
+          const loadWeightValue = parseFloat(loadWeight) || 0;
           if (loadWeightValue > 0) {
               const loadSizePx = LOAD_SIZE_M * PIXELS_PER_METER * autoFitScale;
               ctx.fillStyle = '#38a169';
@@ -391,6 +391,23 @@ export default function LiftingPlanPage() {
         visible: { y: 0, opacity: 1 },
     };
 
+    const handleNumericInput = (
+      value: string,
+      setter: (value: string) => void,
+      allowDecimal: boolean = false
+    ) => {
+      let cleanValue = value.replace(/[^0-9.]/g, ''); // Allow only numbers and dot
+      if (allowDecimal) {
+        const parts = cleanValue.split('.');
+        if (parts.length > 2) {
+          cleanValue = `${parts[0]}.${parts.slice(1).join('')}`;
+        }
+      } else {
+        cleanValue = cleanValue.replace(/\./g, '');
+      }
+      setter(cleanValue);
+    };
+
     return (
         <motion.div 
             className="space-y-6"
@@ -436,11 +453,23 @@ export default function LiftingPlanPage() {
                             </div>
                             <div>
                                 <Label htmlFor="loadWeight">Berat Beban (ton)</Label>
-                                <Input id="loadWeight" type="number" value={loadWeight} onChange={(e) => setLoadWeight(parseFloat(e.target.value) || 0)} min={0} />
+                                <Input 
+                                    id="loadWeight" 
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={loadWeight} 
+                                    onChange={(e) => handleNumericInput(e.target.value, setLoadWeight, true)}
+                                />
                             </div>
                              <div>
                                 <Label htmlFor="safetyFactor">Faktor Keamanan (e.g., 1.25 for 80%)</Label>
-                                <Input id="safetyFactor" type="number" value={safetyFactor} onChange={(e) => setSafetyFactor(parseFloat(e.target.value) || 1)} min={1} step={0.05} />
+                                <Input 
+                                    id="safetyFactor" 
+                                    type="text"
+                                    inputMode="decimal" 
+                                    value={safetyFactor} 
+                                    onChange={(e) => handleNumericInput(e.target.value, setSafetyFactor, true)}
+                                />
                             </div>
                         </CardContent>
                     </Card>
