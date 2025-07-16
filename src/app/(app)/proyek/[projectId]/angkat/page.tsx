@@ -49,19 +49,17 @@ export default function LiftingPlanPage() {
     const { isFastConnection } = usePerformance();
     const [craneType, setCraneType] = React.useState<string>('SANYSTC250');
     const [boomLength, setBoomLength] = React.useState<number>(10.65);
-    const [radius, setRadius] = React.useState<number>(3);
+    const [boomAngle, setBoomAngle] = React.useState<number>(45); // New state for boom angle
     const [loadWeight, setLoadWeight] = React.useState<number>(5);
     const [safetyFactor, setSafetyFactor] = React.useState<number>(1.25);
 
     const [craneConfig, setCraneConfig] = React.useState({
         boomMin: 10.65,
         boomMax: 33.5,
-        radiusMin: 3,
-        radiusMax: 25,
     });
     
     const [results, setResults] = React.useState({
-        boomAngle: '0',
+        radius: '0', // Radius is now a calculated result
         liftHeight: '0',
         loadMoment: '--',
         ratedCapacity: '--',
@@ -90,31 +88,32 @@ export default function LiftingPlanPage() {
 
     const calculateLiftingPlan = React.useCallback(() => {
         const boom = boomLength;
-        const rad = radius;
+        const angle = boomAngle;
         const weight = loadWeight;
         const sf = safetyFactor;
 
-        if (isNaN(boom) || isNaN(rad) || isNaN(weight) || isNaN(sf) || boom <= 0 || rad <= 0 || sf < 1.0) {
+        if (isNaN(boom) || isNaN(angle) || isNaN(weight) || isNaN(sf) || boom <= 0 || sf < 1.0) {
             setResults({
-                boomAngle: '0', liftHeight: '0', loadMoment: 'Input tidak valid', ratedCapacity: '--',
+                radius: '0', liftHeight: '0', loadMoment: 'Input tidak valid', ratedCapacity: '--',
                 safeCapacity: 'Input tidak valid', status: 'Periksa input', statusColor: 'text-destructive',
             });
             return;
         }
+        
+        const boomAngleRad = angle * Math.PI / 180;
 
-        let boomAngleRad = Math.acos(rad / boom);
-        if (isNaN(boomAngleRad) || rad > boom) {
-            boomAngleRad = 0;
-        }
-        const boomAngleDeg = (boomAngleRad * 180 / Math.PI);
-        const liftHeight = (boom * Math.sin(boomAngleRad));
-        const loadMoment = (weight * rad);
-        const ratedCapacity = getRatedCapacity(craneType, boom, rad);
+        // The load hangs from the middle of the boom now.
+        const effectiveBoomLengthForLoad = boom / 2;
+        const radius = effectiveBoomLengthForLoad * Math.cos(boomAngleRad);
+        const liftHeight = effectiveBoomLengthForLoad * Math.sin(boomAngleRad);
+        
+        const loadMoment = (weight * radius);
+        const ratedCapacity = getRatedCapacity(craneType, boom, radius);
         const safeCapacity = ratedCapacity / sf;
         const isOverload = weight > safeCapacity;
 
         setResults({
-            boomAngle: boomAngleDeg.toFixed(2),
+            radius: radius.toFixed(2),
             liftHeight: liftHeight.toFixed(2),
             loadMoment: loadMoment.toFixed(2),
             ratedCapacity: ratedCapacity.toFixed(2),
@@ -122,7 +121,7 @@ export default function LiftingPlanPage() {
             status: isOverload ? 'OVERLOAD! TIDAK AMAN' : 'AMAN',
             statusColor: isOverload ? 'text-destructive' : 'text-green-500',
         });
-    }, [boomLength, radius, loadWeight, safetyFactor, craneType, getRatedCapacity]);
+    }, [boomLength, boomAngle, loadWeight, safetyFactor, craneType, getRatedCapacity]);
     
     // ## USEEFFECT TRIGGERS ##
     React.useEffect(() => {
@@ -142,7 +141,7 @@ export default function LiftingPlanPage() {
           ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
           ctx.clearRect(0, 0, clientWidth, clientHeight);
 
-          const maxDrawingWidthM = (CHASSIS_WIDTH_M / 2) + craneConfig.radiusMax + COUNTERWEIGHT_LENGTH_M + PADDING_HORIZONTAL / PIXELS_PER_METER;
+          const maxDrawingWidthM = (CHASSIS_WIDTH_M / 2) + craneConfig.boomMax + COUNTERWEIGHT_LENGTH_M + PADDING_HORIZONTAL / PIXELS_PER_METER;
           const maxDrawingHeightM = CHASSIS_HEIGHT_M + craneConfig.boomMax + PADDING_VERTICAL / PIXELS_PER_METER;
           
           const scaleX = clientWidth / (maxDrawingWidthM * PIXELS_PER_METER);
@@ -233,7 +232,7 @@ export default function LiftingPlanPage() {
           // --- Boom ---
           ctx.save();
           ctx.translate(pivotX * autoFitScale, pivotY * autoFitScale);
-          ctx.rotate(-parseFloat(results.boomAngle) * Math.PI / 180);
+          ctx.rotate(-boomAngle * Math.PI / 180);
           const totalBoomLengthPixels = boomLength * PIXELS_PER_METER * autoFitScale;
           const boomThicknessPx = BOOM_THICKNESS_BASE_M * PIXELS_PER_METER * autoFitScale;
           ctx.fillStyle = '#FFD700';
@@ -245,7 +244,7 @@ export default function LiftingPlanPage() {
           ctx.fillStyle = '#000000';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(`Boom: ${boomLength} m`, totalBoomLengthPixels / 2, -boomThicknessPx / 2 - 15);
+          ctx.fillText(`Boom: ${boomLength.toFixed(2)} m`, totalBoomLengthPixels / 2, -boomThicknessPx / 2 - 15);
           
           ctx.beginPath();
           ctx.arc(0, 0, boomThicknessPx * 0.8, 0, 2 * Math.PI);
@@ -255,11 +254,11 @@ export default function LiftingPlanPage() {
           ctx.restore();
 
           // --- Hook Line and Load ---
-          const boomAngleRad = parseFloat(results.boomAngle) * Math.PI / 180;
+          const boomAngleRad = boomAngle * Math.PI / 180;
           const boomTipX = (pivotX * autoFitScale) + totalBoomLengthPixels * Math.cos(boomAngleRad);
           const boomTipY = (pivotY * autoFitScale) - totalBoomLengthPixels * Math.sin(boomAngleRad);
           
-          const hookX = (pivotX * autoFitScale) + (radius * PIXELS_PER_METER * autoFitScale);
+          const hookX = (pivotX * autoFitScale) + (parseFloat(results.radius) * PIXELS_PER_METER * autoFitScale);
           const hookY = -parseFloat(results.liftHeight) * PIXELS_PER_METER * autoFitScale;
           
           ctx.beginPath();
@@ -286,29 +285,25 @@ export default function LiftingPlanPage() {
           ctx.font = `${actualFontSizeLabel}px Inter`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(`Radius: ${radius} m`, hookX, 20);
+          ctx.fillText(`Radius: ${results.radius} m`, hookX, 20);
           
           ctx.restore();
         };
 
         draw();
 
-    }, [results, boomLength, radius, loadWeight, craneType, isFastConnection, craneConfig]);
+    }, [results, boomLength, boomAngle, loadWeight, craneType, isFastConnection, craneConfig]);
 
     React.useEffect(() => {
         const specs = CRANE_DATA[craneType]?.specifications;
-        const chart = CRANE_DATA[craneType]?.loadChart;
-        if (!specs || !chart) return;
+        if (!specs) return;
 
         const newConfig = {
             boomMin: parseFloat(specs['Panjang Boom Dasar'].replace(' m', '')),
             boomMax: parseFloat(specs['Panjang Boom Penuh'].replace(' m', '')),
-            radiusMin: Math.min(...chart.flatMap(b => b.capacities.map(c => c.radius))),
-            radiusMax: Math.max(...chart.flatMap(b => b.capacities.map(c => c.radius))),
         };
         setCraneConfig(newConfig);
         setBoomLength(current => Math.max(newConfig.boomMin, Math.min(newConfig.boomMax, current)));
-        setRadius(current => Math.max(newConfig.radiusMin, Math.min(newConfig.radiusMax, current)));
     }, [craneType]);
     
     const currentSpecs = CRANE_DATA[craneType]?.specifications;
@@ -342,8 +337,8 @@ export default function LiftingPlanPage() {
                             <Slider id="boomLength" value={[boomLength]} min={craneConfig.boomMin} max={craneConfig.boomMax} step={0.1} onValueChange={(v) => setBoomLength(v[0])} />
                         </div>
                         <div>
-                            <Label htmlFor="radius">Radius Kerja ({radius.toFixed(2)} m)</Label>
-                            <Slider id="radius" value={[radius]} min={craneConfig.radiusMin} max={craneConfig.radiusMax} step={0.1} onValueChange={(v) => setRadius(v[0])} />
+                            <Label htmlFor="boomAngle">Sudut Boom ({boomAngle.toFixed(2)}°)</Label>
+                            <Slider id="boomAngle" value={[boomAngle]} min={0} max={80} step={1} onValueChange={(v) => setBoomAngle(v[0])} />
                         </div>
                         <div>
                             <Label htmlFor="loadWeight">Berat Beban (ton)</Label>
@@ -360,7 +355,7 @@ export default function LiftingPlanPage() {
                     <Card>
                         <CardHeader><CardTitle>Hasil Perhitungan</CardTitle></CardHeader>
                         <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                            <div className="font-semibold">Sudut Boom: <span className="font-normal">{results.boomAngle}°</span></div>
+                            <div className="font-semibold">Radius Kerja: <span className="font-normal">{results.radius} m</span></div>
                             <div className="font-semibold">Tinggi Angkat: <span className="font-normal">{results.liftHeight} m</span></div>
                             <div className="font-semibold">Momen Beban: <span className="font-normal">{results.loadMoment} t-m</span></div>
                             <div className="font-semibold">Kapasitas Nominal: <span className="font-normal">{results.ratedCapacity} t</span></div>
