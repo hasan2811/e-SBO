@@ -1,10 +1,12 @@
+
 'use client';
 
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ClipboardList, Wrench, FileSignature, BrainCircuit } from 'lucide-react';
+import { ClipboardList, Wrench, FileSignature, BrainCircuit, Crane } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ScrollArea, ScrollBar } from './ui/scroll-area';
 
 export function BottomNavBar({ projectId }: { projectId: string }) {
   const pathname = usePathname();
@@ -13,12 +15,12 @@ export function BottomNavBar({ projectId }: { projectId: string }) {
     { href: `/proyek/${projectId}/observasi`, label: 'Observation', icon: ClipboardList, activeColor: 'text-primary', borderColor: 'border-primary' },
     { href: `/proyek/${projectId}/inspeksi`, label: 'Inspection', icon: Wrench, activeColor: 'text-chart-2', borderColor: 'border-chart-2' },
     { href: `/proyek/${projectId}/ptw`, label: 'PTW', icon: FileSignature, activeColor: 'text-chart-5', borderColor: 'border-chart-5' },
+    { href: `/proyek/${projectId}/angkat`, label: 'Lifting', icon: Crane, activeColor: 'text-cyan-500', borderColor: 'border-cyan-500' },
     { href: `/proyek/${projectId}/analisis`, label: 'Analysis', icon: BrainCircuit, activeColor: 'text-accent', borderColor: 'border-accent' },
   ];
 
   if (!projectId) return null;
 
-  // Find the active item, considering the base project path as the default for 'Observation'
   const activeItem = navItems.find(item => 
     pathname === item.href || 
     (item.label === 'Observation' && pathname === `/proyek/${projectId}`)
@@ -31,16 +33,15 @@ export function BottomNavBar({ projectId }: { projectId: string }) {
         "md:hidden fixed bottom-0 left-0 z-40 w-full h-16 bg-card border-t-2 transition-colors duration-300",
         activeBorderColor
     )}>
-      <div className="grid h-full max-w-lg grid-cols-4 mx-auto font-medium">
+      <div className="grid h-full max-w-lg grid-cols-5 mx-auto font-medium">
         {navItems.map((item) => {
-          // Check if the current item is active, with the same default logic.
           const isActive = pathname === item.href || (item.label === 'Observation' && pathname === `/proyek/${projectId}`);
           return (
             <Link
               key={item.label}
               href={item.href}
               className={cn(
-                'inline-flex flex-col items-center justify-center px-5 hover:bg-muted/50 transition-colors',
+                'inline-flex flex-col items-center justify-center px-2 hover:bg-muted/50 transition-colors',
                 isActive ? item.activeColor : 'text-muted-foreground'
               )}
             >
@@ -53,3 +54,5 @@ export function BottomNavBar({ projectId }: { projectId: string }) {
     </nav>
   );
 }
+
+    

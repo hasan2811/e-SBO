@@ -1,8 +1,9 @@
+
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ClipboardList, Wrench, FileSignature, BrainCircuit } from 'lucide-react';
+import { ClipboardList, Wrench, FileSignature, BrainCircuit, Crane } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Sidebar({ projectId }: { projectId: string }) {
@@ -13,6 +14,7 @@ export function Sidebar({ projectId }: { projectId: string }) {
     { href: `/proyek/${projectId}/inspeksi`, label: 'Inspeksi', icon: Wrench },
     { href: `/proyek/${projectId}/ptw`, label: 'PTW', icon: FileSignature },
     { href: `/proyek/${projectId}/analisis`, label: 'Analisis AI', icon: BrainCircuit },
+    { href: `/proyek/${projectId}/angkat`, label: 'Lifting Plan', icon: Crane },
   ];
 
   if (!projectId) return null;
@@ -43,3 +45,5 @@ export function Sidebar({ projectId }: { projectId: string }) {
     </aside>
   );
 }
+
+    

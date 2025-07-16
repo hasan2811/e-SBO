@@ -253,3 +253,139 @@ export const AnalyzeInspectionOutputSchema = z.object({
   suggestedActions: z.string().describe('Suggested actions for repair or further checks, as bullet points (English).'),
 });
 export type AnalyzeInspectionOutput = z.infer<typeof AnalyzeInspectionOutputSchema>;
+
+// Lifting Plan Types
+export interface CraneLoadChartCapacity {
+    radius: number;
+    capacity: number;
+}
+export interface CraneLoadChartEntry {
+    boom: number;
+    capacities: CraneLoadChartCapacity[];
+}
+export interface CraneSpecifications {
+    'Kapasitas Angkat Maks.': string;
+    'Panjang Keseluruhan': string;
+    'Lebar Keseluruhan': string;
+    'Tinggi Keseluruhan': string;
+    'Bentangan Outrigger (P x L)': string;
+    'Panjang Boom Dasar': string;
+    'Panjang Boom Penuh': string;
+    'Berat Counterweight': string;
+}
+export interface CraneData {
+    specifications: CraneSpecifications;
+    loadChart: CraneLoadChartEntry[];
+}
+export const CRANE_DATA: Record<string, CraneData> = {
+    'SANYSTC250': {
+        specifications: {
+            'Kapasitas Angkat Maks.': '25 Ton',
+            'Panjang Keseluruhan': '12.8 m',
+            'Lebar Keseluruhan': '2.5 m',
+            'Tinggi Keseluruhan': '4.0 m',
+            'Bentangan Outrigger (P x L)': '5.3 m x 6.2 m',
+            'Panjang Boom Dasar': '10.65 m',
+            'Panjang Boom Penuh': '33.5 m',
+            'Berat Counterweight': '3.8 Ton'
+        },
+        loadChart: [
+            { boom: 10.65, capacities: [
+                { radius: 3, capacity: 25.0 }, { radius: 3.5, capacity: 25.0 }, { radius: 4, capacity: 24.3 },
+                { radius: 4.5, capacity: 21.82 }, { radius: 5, capacity: 18.9 }, { radius: 5.5, capacity: 17.35 },
+                { radius: 6, capacity: 15.8 }, { radius: 7, capacity: 12.2 }, { radius: 8, capacity: 9.7 }
+            ]},
+            { boom: 14.5, capacities: [
+                { radius: 3, capacity: 18.0 }, { radius: 3.5, capacity: 18.0 }, { radius: 4, capacity: 18.0 },
+                { radius: 4.5, capacity: 17.0 }, { radius: 5, capacity: 16.5 }, { radius: 5.5, capacity: 16.0 },
+                { radius: 6, capacity: 14.5 }, { radius: 7, capacity: 12.2 }, { radius: 8, capacity: 10.0 },
+                { radius: 9, capacity: 8.5 }, { radius: 10, capacity: 7.5 }, { radius: 11, capacity: 6.25 },
+                { radius: 12, capacity: 5.5 }, { radius: 13, capacity: 4.6 }, { radius: 14, capacity: 4.0 },
+                { radius: 15, capacity: 3.5 }
+            ]},
+            { boom: 18.3, capacities: [
+                { radius: 3.5, capacity: 15.0 }, { radius: 4, capacity: 14.9 }, { radius: 4.5, capacity: 14.9 },
+                { radius: 5, capacity: 14.5 }, { radius: 5.5, capacity: 13.8 }, { radius: 6, capacity: 13.3 },
+                { radius: 7, capacity: 11.3 }, { radius: 8, capacity: 9.8 }, { radius: 9, capacity: 8.25 },
+                { radius: 10, capacity: 6.9 }, { radius: 11, capacity: 5.85 }, { radius: 12, capacity: 5.16 },
+                { radius: 13, capacity: 4.55 }, { radius: 14, capacity: 4.0 }, { radius: 15, capacity: 3.5 },
+                { radius: 16, capacity: 3.2 }, { radius: 17, capacity: 2.8 }, { radius: 18, capacity: 2.6 }
+            ]},
+            { boom: 22.1, capacities: [
+                { radius: 4, capacity: 11.0 }, { radius: 4.5, capacity: 11.0 }, { radius: 5, capacity: 11.0 },
+                { radius: 5.5, capacity: 11.0 }, { radius: 6, capacity: 11.0 }, { radius: 7, capacity: 9.5 },
+                { radius: 8, capacity: 8.5 }, { radius: 9, capacity: 7.55 }, { radius: 10, capacity: 6.7 },
+                { radius: 11, capacity: 5.8 }, { radius: 12, capacity: 5.1 }, { radius: 13, capacity: 4.51 },
+                { radius: 14, capacity: 4.0 }, { radius: 15, capacity: 3.55 }, { radius: 16, capacity: 3.15 },
+                { radius: 17, capacity: 2.8 }, { radius: 18, capacity: 2.58 }, { radius: 19, capacity: 2.21 },
+                { radius: 20, capacity: 2.05 }, { radius: 21, capacity: 1.8 }, { radius: 22, capacity: 1.65 }
+            ]},
+            { boom: 25.9, capacities: [
+                { radius: 5, capacity: 9.15 }, { radius: 5.5, capacity: 9.15 }, { radius: 6, capacity: 8.9 },
+                { radius: 7, capacity: 8.3 }, { radius: 8, capacity: 7.6 }, { radius: 9, capacity: 7.2 },
+                { radius: 10, capacity: 6.5 }, { radius: 11, capacity: 5.7 }, { radius: 12, capacity: 5.1 },
+                { radius: 13, capacity: 4.4 }, { radius: 14, capacity: 3.9 }, { radius: 15, capacity: 3.55 },
+                { radius: 16, capacity: 3.15 }, { radius: 17, capacity: 2.85 }, { radius: 18, capacity: 2.58 },
+                { radius: 19, capacity: 2.2 }, { radius: 20, capacity: 2.0 }, { radius: 21, capacity: 1.8 },
+                { radius: 22, capacity: 1.6 }, { radius: 23, capacity: 1.4 }, { radius: 24, capacity: 1.3 },
+                { radius: 25, capacity: 1.1 }
+            ]},
+            { boom: 29.7, capacities: [
+                { radius: 5, capacity: 7.5 }, { radius: 5.5, capacity: 7.5 }, { radius: 6, capacity: 7.5 },
+                { radius: 7, capacity: 7.4 }, { radius: 8, capacity: 6.5 }, { radius: 9, capacity: 6.2 },
+                { radius: 10, capacity: 5.7 }, { radius: 11, capacity: 5.2 }, { radius: 12, capacity: 4.8 },
+                { radius: 13, capacity: 4.2 }, { radius: 14, capacity: 3.85 }, { radius: 15, capacity: 3.7 },
+                { radius: 16, capacity: 3.15 }, { radius: 17, capacity: 2.9 }, { radius: 18, capacity: 2.55 },
+                { radius: 19, capacity: 2.2 }, { radius: 20, capacity: 1.97 }, { radius: 21, capacity: 1.8 },
+                { radius: 22, capacity: 1.6 }, { radius: 23, capacity: 1.4 }, { radius: 24, capacity: 1.3 },
+                { radius: 25, capacity: 1.1 }
+            ]},
+            { boom: 33.5, capacities: [
+                { radius: 8, capacity: 6.15 }, { radius: 9, capacity: 5.6 }, { radius: 10, capacity: 5.1 },
+                { radius: 11, capacity: 4.8 }, { radius: 12, capacity: 4.38 }, { radius: 13, capacity: 4.2 },
+                { radius: 14, capacity: 3.85 }, { radius: 15, capacity: 3.7 }, { radius: 16, capacity: 3.15 },
+                { radius: 17, capacity: 2.9 }, { radius: 18, capacity: 2.55 }, { radius: 19, capacity: 2.2 },
+                { radius: 20, capacity: 1.97 }, { radius: 21, capacity: 1.8 }, { radius: 22, capacity: 1.6 },
+                { radius: 23, capacity: 1.4 }, { radius: 24, capacity: 1.3 }, { radius: 25, capacity: 1.1 }
+            ]}
+        ]
+    },
+    'mobileCrane50T': {
+        specifications: {
+            'Kapasitas Angkat Maks.': '50 Ton',
+            'Panjang Keseluruhan': '12.0 m',
+            'Lebar Keseluruhan': '2.8 m',
+            'Tinggi Keseluruhan': '3.9 m',
+            'Bentangan Outrigger (P x L)': '6.0 m x 6.5 m',
+            'Panjang Boom Dasar': '11.0 m',
+            'Panjang Boom Penuh': '40.0 m',
+            'Berat Counterweight': '5.0 Ton'
+        },
+        loadChart: [
+            { boom: 20, capacities: [{ radius: 5, capacity: 50 }, { radius: 10, capacity: 25 }, { radius: 15, capacity: 15 }, { radius: 20, capacity: 10 }] },
+            { boom: 30, capacities: [{ radius: 10, capacity: 20 }, { radius: 15, capacity: 12 }, { radius: 20, capacity: 8 }, { radius: 25, capacity: 6 }] },
+            { boom: 40, capacities: [{ radius: 15, capacity: 10 }, { radius: 20, capacity: 7 }, { radius: 25, capacity: 5 }, { radius: 30, capacity: 4 }] },
+            { boom: 50, capacities: [{ radius: 20, capacity: 6 }, { radius: 25, capacity: 4 }, { radius: 30, capacity: 3 }, { radius: 35, capacity: 2 }] },
+        ]
+    },
+    'mobileCrane100T': {
+        specifications: {
+            'Kapasitas Angkat Maks.': '100 Ton',
+            'Panjang Keseluruhan': '14.5 m',
+            'Lebar Keseluruhan': '3.0 m',
+            'Tinggi Keseluruhan': '4.2 m',
+            'Bentangan Outrigger (P x L)': '7.0 m x 7.5 m',
+            'Panjang Boom Dasar': '12.0 m',
+            'Panjang Boom Penuh': '60.0 m',
+            'Berat Counterweight': '10.0 Ton'
+        },
+        loadChart: [
+            { boom: 30, capacities: [{ radius: 10, capacity: 80 }, { radius: 15, capacity: 50 }, { radius: 20, capacity: 30 }, { radius: 25, capacity: 20 }] },
+            { boom: 40, capacities: [{ radius: 15, capacity: 40 }, { radius: 20, capacity: 25 }, { radius: 25, capacity: 18 }, { radius: 30, capacity: 12 }] },
+            { boom: 60, capacities: [{ radius: 20, capacity: 20 }, { radius: 30, capacity: 12 }, { radius: 40, capacity: 8 }, { radius: 50, capacity: 5 }] },
+            { boom: 80, capacities: [{ radius: 30, capacity: 10 }, { radius: 40, capacity: 7 }, { radius: 50, capacity: 4 }, { radius: 60, capacity: 2 }] },
+        ]
+    }
+};
+
+    
