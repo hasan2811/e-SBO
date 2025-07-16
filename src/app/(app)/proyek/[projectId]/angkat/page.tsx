@@ -135,48 +135,40 @@ export default function LiftingPlanPage() {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         
-        // Helper function to get max dimensions for stable scaling
         const getCraneMaxDrawingDimensionsMeters = (type: string) => {
             const currentCraneData = CRANE_DATA[type];
-            if (!currentCraneData) return { widthM: 50, heightM: 50 }; // Fallback
+            if (!currentCraneData) return { widthM: 50, heightM: 50 }; 
             const maxBoomLength = parseFloat(currentCraneData.specifications['Panjang Boom Penuh'].replace(' m', ''));
             const maxRadius = currentCraneData.loadChart.reduce((maxR, boomEntry) => {
                 const currentMaxR = boomEntry.capacities.reduce((innerMaxR, capEntry) => Math.max(innerMaxR, capEntry.radius), 0);
                 return Math.max(maxR, currentMaxR);
             }, 0);
             
-            const horizontalSpanM = (CHASSIS_WIDTH_M + OUTRIGGER_H_LENGTH_M) + maxRadius;
-            const verticalSpanM = (CHASSIS_HEIGHT_M + SUPERSTRUCTURE_HEIGHT_M + OPERATOR_CABIN_HEIGHT_M) + maxBoomLength;
+            const horizontalSpanM = (CHASSIS_WIDTH_M / 2) + maxRadius + COUNTERWEIGHT_LENGTH_M + PADDING_HORIZONTAL / PIXELS_PER_METER;
+            const verticalSpanM = CHASSIS_HEIGHT_M + maxBoomLength + PADDING_VERTICAL / PIXELS_PER_METER;
+
             return { widthM: horizontalSpanM, heightM: verticalSpanM };
         };
 
         const draw = () => {
-          // Set canvas internal resolution to its displayed size for HiDPI rendering
           const { clientWidth, clientHeight } = canvas;
           canvas.width = clientWidth * window.devicePixelRatio;
           canvas.height = clientHeight * window.devicePixelRatio;
           ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-
           ctx.clearRect(0, 0, clientWidth, clientHeight);
-          ctx.save();
-          
-          const boomAngleDeg = parseFloat(results.boomAngle) || 0;
-          const currentRadiusM = parseFloat(radius.toString()) || 0;
-          const currentBoomLengthM = parseFloat(boomLength.toString()) || 0;
 
           const { widthM: maxDrawingWidthM, heightM: maxDrawingHeightM } = getCraneMaxDrawingDimensionsMeters(craneType);
           
-          const scaleX = (clientWidth - PADDING_HORIZONTAL * 2) / (maxDrawingWidthM * PIXELS_PER_METER);
-          const scaleY = (clientHeight - PADDING_VERTICAL * 2) / (maxDrawingHeightM * PIXELS_PER_METER);
-          const autoFitScale = Math.max(0, Math.min(scaleX, scaleY, 1.5));
-          
-          const groundYPx = clientHeight - PADDING_VERTICAL;
-          // Center the base of the crane horizontally for better stability
-          const craneBaseXPx = clientWidth / 2;
-          
-          ctx.translate(craneBaseXPx, groundYPx);
+          const scaleX = clientWidth / (maxDrawingWidthM * PIXELS_PER_METER);
+          const scaleY = clientHeight / (maxDrawingHeightM * PIXELS_PER_METER);
+          const autoFitScale = Math.max(0.01, Math.min(scaleX, scaleY));
 
-          // --- Ground Line ---
+          const groundYPx = clientHeight - PADDING_VERTICAL;
+          const craneBaseXPx = clientWidth / 2;
+
+          ctx.save();
+          ctx.translate(craneBaseXPx, groundYPx);
+          
           ctx.strokeStyle = '#333';
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -184,93 +176,91 @@ export default function LiftingPlanPage() {
           ctx.lineTo(clientWidth / 2, 0);
           ctx.stroke();
 
-          // All drawing is now relative to the center bottom of the canvas
-          
+          // --- Drawing functions ---
+          const drawRect = (x: number, y: number, w: number, h: number) => {
+              ctx.fillRect(x * autoFitScale, y * autoFitScale, w * autoFitScale, h * autoFitScale);
+              ctx.strokeRect(x * autoFitScale, y * autoFitScale, w * autoFitScale, h * autoFitScale);
+          };
+          const drawArc = (x: number, y: number, r: number, start: number, end: number) => {
+              ctx.beginPath();
+              ctx.arc(x * autoFitScale, y * autoFitScale, r * autoFitScale, start, end);
+              ctx.fill();
+          };
+
           // --- Crane Body (Chassis) ---
           ctx.fillStyle = '#FFA500';
           ctx.strokeStyle = '#333';
           ctx.lineWidth = 1;
-          const chassisWidthPx = CHASSIS_WIDTH_M * PIXELS_PER_METER * autoFitScale;
-          const chassisHeightPx = CHASSIS_HEIGHT_M * PIXELS_PER_METER * autoFitScale;
-          const chassisX = -chassisWidthPx / 2; // Center chassis
-          ctx.fillRect(chassisX, -chassisHeightPx, chassisWidthPx, chassisHeightPx);
-          ctx.strokeRect(chassisX, -chassisHeightPx, chassisWidthPx, chassisHeightPx);
+          const chassisWidthPx = CHASSIS_WIDTH_M * PIXELS_PER_METER;
+          const chassisHeightPx = CHASSIS_HEIGHT_M * PIXELS_PER_METER;
+          const chassisX = -chassisWidthPx / 2;
+          drawRect(chassisX, -chassisHeightPx, chassisWidthPx, chassisHeightPx);
 
           // --- Driver's Cabin ---
-          const cabinWidthPx = CABIN_WIDTH_M * PIXELS_PER_METER * autoFitScale;
-          const cabinHeightPx = CABIN_HEIGHT_M * PIXELS_PER_METER * autoFitScale;
+          const cabinWidthPx = CABIN_WIDTH_M * PIXELS_PER_METER;
+          const cabinHeightPx = CABIN_HEIGHT_M * PIXELS_PER_METER;
           const cabinX = chassisX + chassisWidthPx - cabinWidthPx;
           const cabinY = -chassisHeightPx - cabinHeightPx;
-          ctx.fillRect(cabinX, cabinY, cabinWidthPx, cabinHeightPx);
-          ctx.strokeRect(cabinX, cabinY, cabinWidthPx, cabinHeightPx);
+          drawRect(cabinX, cabinY, cabinWidthPx, cabinHeightPx);
           ctx.fillStyle = '#ADD8E6';
-          ctx.fillRect(cabinX + cabinWidthPx * 0.1, cabinY + cabinHeightPx * 0.1, cabinWidthPx * 0.8, cabinHeightPx * 0.5);
+          drawRect(cabinX + cabinWidthPx * 0.1, cabinY + cabinHeightPx * 0.1, cabinWidthPx * 0.8, cabinHeightPx * 0.5);
           
           // --- Wheels ---
           ctx.fillStyle = '#2d3748';
-          const wheelRadiusPx = WHEEL_RADIUS_M * PIXELS_PER_METER * autoFitScale;
+          const wheelRadiusPx = WHEEL_RADIUS_M * PIXELS_PER_METER;
           const wheelYPx = -wheelRadiusPx;
           const wheelPositions = [0.15, 0.45, 0.85];
           wheelPositions.forEach(pos => {
-              ctx.beginPath();
-              ctx.arc(chassisX + chassisWidthPx * pos, wheelYPx, wheelRadiusPx, 0, Math.PI * 2);
-              ctx.fill();
+              drawArc(chassisX + chassisWidthPx * pos, wheelYPx, wheelRadiusPx, 0, Math.PI * 2);
           });
           
           // --- Superstructure ---
-          const superstructureWidthPx = SUPERSTRUCTURE_WIDTH_M * PIXELS_PER_METER * autoFitScale;
-          const superstructureHeightPx = SUPERSTRUCTURE_HEIGHT_M * PIXELS_PER_METER * autoFitScale;
-          // Center superstructure on chassis
+          const superstructureWidthPx = SUPERSTRUCTURE_WIDTH_M * PIXELS_PER_METER;
+          const superstructureHeightPx = SUPERSTRUCTURE_HEIGHT_M * PIXELS_PER_METER;
           const superstructureXPx = -superstructureWidthPx / 2;
           const superstructureYPx = -chassisHeightPx - superstructureHeightPx;
-          ctx.fillStyle = '#FFD700'; // Superstructure is often yellow too
-          ctx.fillRect(superstructureXPx, superstructureYPx, superstructureWidthPx, superstructureHeightPx);
-          ctx.strokeRect(superstructureXPx, superstructureYPx, superstructureWidthPx, superstructureHeightPx);
-
+          ctx.fillStyle = '#FFD700';
+          drawRect(superstructureXPx, superstructureYPx, superstructureWidthPx, superstructureHeightPx);
+          
           // --- Pivot Point ---
-          // Pivot is now at the center of the superstructure
           const pivotX = 0;
           const pivotY = superstructureYPx + (superstructureHeightPx / 2);
           
-          // --- Operator Cabin (on superstructure) ---
-          const operatorCabinWidthPx = OPERATOR_CABIN_WIDTH_M * PIXELS_PER_METER * autoFitScale;
-          const operatorCabinHeightPx = OPERATOR_CABIN_HEIGHT_M * PIXELS_PER_METER * autoFitScale;
+          // --- Operator Cabin ---
+          const operatorCabinWidthPx = OPERATOR_CABIN_WIDTH_M * PIXELS_PER_METER;
+          const operatorCabinHeightPx = OPERATOR_CABIN_HEIGHT_M * PIXELS_PER_METER;
           const operatorCabinX = superstructureXPx + superstructureWidthPx - operatorCabinWidthPx;
           const operatorCabinY = superstructureYPx - operatorCabinHeightPx;
           ctx.fillStyle = '#FFA500';
-          ctx.fillRect(operatorCabinX, operatorCabinY, operatorCabinWidthPx, operatorCabinHeightPx);
-          ctx.strokeRect(operatorCabinX, operatorCabinY, operatorCabinWidthPx, operatorCabinHeightPx);
+          drawRect(operatorCabinX, operatorCabinY, operatorCabinWidthPx, operatorCabinHeightPx);
           ctx.fillStyle = '#ADD8E6';
-          ctx.fillRect(operatorCabinX + operatorCabinWidthPx * 0.1, operatorCabinY + operatorCabinHeightPx * 0.1, operatorCabinWidthPx * 0.8, operatorCabinHeightPx * 0.5);
+          drawRect(operatorCabinX + operatorCabinWidthPx * 0.1, operatorCabinY + operatorCabinHeightPx * 0.1, operatorCabinWidthPx * 0.8, operatorCabinHeightPx * 0.5);
 
           // --- Counterweight ---
-          const counterweightLengthPx = COUNTERWEIGHT_LENGTH_M * PIXELS_PER_METER * autoFitScale;
-          const counterweightHeightPx = COUNTERWEIGHT_HEIGHT_M * PIXELS_PER_METER * autoFitScale;
+          const counterweightLengthPx = COUNTERWEIGHT_LENGTH_M * PIXELS_PER_METER;
+          const counterweightHeightPx = COUNTERWEIGHT_HEIGHT_M * PIXELS_PER_METER;
           const counterweightX = superstructureXPx - counterweightLengthPx;
           const counterweightY = superstructureYPx + (superstructureHeightPx / 2) - (counterweightHeightPx / 2);
           ctx.fillStyle = '#718096';
-          ctx.fillRect(counterweightX, counterweightY, counterweightLengthPx, counterweightHeightPx);
-          ctx.strokeRect(counterweightX, counterweightY, counterweightLengthPx, counterweightHeightPx);
+          drawRect(counterweightX, counterweightY, counterweightLengthPx, counterweightHeightPx);
 
           // --- Boom ---
           ctx.save();
-          ctx.translate(pivotX, pivotY);
-          ctx.rotate(-boomAngleDeg * Math.PI / 180);
-          const totalBoomLengthPixels = currentBoomLengthM * PIXELS_PER_METER * autoFitScale;
+          ctx.translate(pivotX * autoFitScale, pivotY * autoFitScale);
+          ctx.rotate(-parseFloat(results.boomAngle) * Math.PI / 180);
+          const totalBoomLengthPixels = boomLength * PIXELS_PER_METER * autoFitScale;
           const boomThicknessPx = BOOM_THICKNESS_BASE_M * PIXELS_PER_METER * autoFitScale;
           ctx.fillStyle = '#FFD700';
           ctx.fillRect(0, -boomThicknessPx / 2, totalBoomLengthPixels, boomThicknessPx);
           ctx.strokeRect(0, -boomThicknessPx / 2, totalBoomLengthPixels, boomThicknessPx);
           
-          const actualFontSizeLabel = Math.max(10, FONT_SIZE_LABEL_PX / autoFitScale);
-          ctx.fillStyle = '#000000';
+          const actualFontSizeLabel = Math.max(10, FONT_SIZE_LABEL_PX); // No need to divide by scale here
           ctx.font = `${actualFontSizeLabel}px Inter`;
+          ctx.fillStyle = '#000000';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          const textBoomX = totalBoomLengthPixels / 2;
-          const textBoomY = -boomThicknessPx / 2 - (10 / autoFitScale);
-          ctx.fillText(`Boom: ${currentBoomLengthM} m`, textBoomX, textBoomY);
-
+          ctx.fillText(`Boom: ${boomLength} m`, totalBoomLengthPixels / 2, -boomThicknessPx / 2 - 15);
+          
           ctx.beginPath();
           ctx.arc(0, 0, boomThicknessPx * 0.8, 0, 2 * Math.PI);
           ctx.fillStyle = '#333';
@@ -279,32 +269,29 @@ export default function LiftingPlanPage() {
           ctx.restore();
 
           // --- Hook Line and Load ---
-          const boomTipX = pivotX + totalBoomLengthPixels * Math.cos(boomAngleDeg * Math.PI / 180);
-          const boomTipY = pivotY - totalBoomLengthPixels * Math.sin(boomAngleDeg * Math.PI / 180);
+          const boomTipX = pivotX * autoFitScale + totalBoomLengthPixels * Math.cos(parseFloat(results.boomAngle) * Math.PI / 180);
+          const boomTipY = pivotY * autoFitScale - totalBoomLengthPixels * Math.sin(parseFloat(results.boomAngle) * Math.PI / 180);
           
-          // Radius is now relative to the pivot (crane center)
-          const hookX = pivotX + currentRadiusM * PIXELS_PER_METER * autoFitScale;
+          const hookX = pivotX * autoFitScale + radius * PIXELS_PER_METER * autoFitScale;
+          const hookY = -parseFloat(results.liftHeight) * PIXELS_PER_METER * autoFitScale;
           
-          // The Y of the hook is determined by the boom tip
-          const hookGroundY = 0; // Relative to ground
-          const hookY = hookGroundY - (parseFloat(results.liftHeight) * PIXELS_PER_METER * autoFitScale);
-
           ctx.beginPath();
           ctx.moveTo(boomTipX, boomTipY);
           ctx.lineTo(hookX, hookY);
           ctx.strokeStyle = '#333';
+          ctx.lineWidth = 2;
           ctx.stroke();
           
-          const loadWeightValue = parseFloat(loadWeight.toString()) || 0;
+          const loadWeightValue = loadWeight;
           if (loadWeightValue > 0) {
               const loadSizePx = LOAD_SIZE_M * PIXELS_PER_METER * autoFitScale;
               ctx.fillStyle = '#38a169';
               ctx.fillRect(hookX - loadSizePx / 2, hookY, loadSizePx, loadSizePx);
               ctx.fillStyle = '#fff';
-              const actualFontSizeLoad = Math.max(8, FONT_SIZE_LOAD_PX / autoFitScale);
+              const actualFontSizeLoad = Math.max(8, FONT_SIZE_LOAD_PX);
               ctx.font = `${actualFontSizeLoad}px Inter`;
               ctx.textAlign = 'center';
-              ctx.fillText(`${loadWeightValue}t`, hookX, hookY + loadSizePx / 2 + 5 * autoFitScale);
+              ctx.fillText(`${loadWeightValue}t`, hookX, hookY + loadSizePx / 2 + 5);
           }
 
           // --- Radius Label ---
@@ -312,7 +299,7 @@ export default function LiftingPlanPage() {
           ctx.font = `${actualFontSizeLabel}px Inter`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(`Radius: ${currentRadiusM} m`, hookX, 20 / autoFitScale);
+          ctx.fillText(`Radius: ${radius} m`, hookX, 20);
           
           ctx.restore();
         };
