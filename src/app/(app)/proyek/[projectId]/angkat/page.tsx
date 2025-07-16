@@ -102,10 +102,9 @@ export default function LiftingPlanPage() {
         
         const boomAngleRad = angle * Math.PI / 180;
 
-        // The load hangs from the middle of the boom now.
-        const effectiveBoomLengthForLoad = boom / 2;
-        const radius = effectiveBoomLengthForLoad * Math.cos(boomAngleRad);
-        const liftHeight = effectiveBoomLengthForLoad * Math.sin(boomAngleRad);
+        // Calculate radius and lift height based on boom length and angle
+        const radius = boom * Math.cos(boomAngleRad);
+        const liftHeight = boom * Math.sin(boomAngleRad);
         
         const loadMoment = (weight * radius);
         const ratedCapacity = getRatedCapacity(craneType, boom, radius);
@@ -253,39 +252,55 @@ export default function LiftingPlanPage() {
           
           ctx.restore();
 
-          // --- Hook Line and Load ---
+          // --- Hook Line and Load (Corrected Physics) ---
           const boomAngleRad = boomAngle * Math.PI / 180;
-          const boomTipX = (pivotX * autoFitScale) + totalBoomLengthPixels * Math.cos(boomAngleRad);
-          const boomTipY = (pivotY * autoFitScale) - totalBoomLengthPixels * Math.sin(boomAngleRad);
           
-          const hookX = (pivotX * autoFitScale) + (parseFloat(results.radius) * PIXELS_PER_METER * autoFitScale);
-          const hookY = -parseFloat(results.liftHeight) * PIXELS_PER_METER * autoFitScale;
-          
+          // Position of the boom tip
+          const boomTipXPx = (pivotX * autoFitScale) + (boomLength * PIXELS_PER_METER * autoFitScale) * Math.cos(boomAngleRad);
+          const boomTipYPx = (pivotY * autoFitScale) - (boomLength * PIXELS_PER_METER * autoFitScale) * Math.sin(boomAngleRad);
+
+          // The hook hangs vertically down from the boom tip.
+          // Its horizontal position is the same as the boom tip.
+          const hookXPx = boomTipXPx; 
+          // Its vertical position is calculated from lift height relative to the ground
+          const hookYPx = -parseFloat(results.liftHeight) * PIXELS_PER_METER * autoFitScale;
+
+          // Draw the lifting line from boom tip to the hook position
           ctx.beginPath();
-          ctx.moveTo(boomTipX, boomTipY);
-          ctx.lineTo(hookX, hookY);
+          ctx.moveTo(boomTipXPx, boomTipYPx);
+          ctx.lineTo(hookXPx, hookYPx);
           ctx.strokeStyle = '#333';
           ctx.lineWidth = 2;
           ctx.stroke();
-          
+
+          // Draw the load at the hook's position
           const loadWeightValue = loadWeight;
           if (loadWeightValue > 0) {
               const loadSizePx = LOAD_SIZE_M * PIXELS_PER_METER * autoFitScale;
               ctx.fillStyle = '#38a169';
-              ctx.fillRect(hookX - loadSizePx / 2, hookY, loadSizePx, loadSizePx);
+              ctx.fillRect(hookXPx - loadSizePx / 2, hookYPx, loadSizePx, loadSizePx);
               ctx.fillStyle = '#fff';
               const actualFontSizeLoad = Math.max(8, FONT_SIZE_LOAD_PX);
               ctx.font = `${actualFontSizeLoad}px Inter`;
               ctx.textAlign = 'center';
-              ctx.fillText(`${loadWeightValue}t`, hookX, hookY + loadSizePx / 2 + 5);
+              ctx.fillText(`${loadWeightValue}t`, hookXPx, hookYPx + loadSizePx / 2 + 5);
           }
-
-          // --- Radius Label ---
+          
+          // Draw the radius line and label
+          ctx.strokeStyle = '#e53e3e'; // Red for radius line
+          ctx.lineWidth = 1;
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          ctx.moveTo(pivotX * autoFitScale, 0);
+          ctx.lineTo(hookXPx, 0);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          
           ctx.fillStyle = '#000000';
           ctx.font = `${actualFontSizeLabel}px Inter`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(`Radius: ${results.radius} m`, hookX, 20);
+          ctx.fillText(`Radius: ${results.radius} m`, (pivotX * autoFitScale + hookXPx) / 2, -15);
           
           ctx.restore();
         };
