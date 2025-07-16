@@ -18,8 +18,8 @@ import { usePerformance } from '@/contexts/performance-context';
 
 // Constants for visualization, based on user's original detailed script
 const PIXELS_PER_METER = 10;
-const PADDING_HORIZONTAL = 100;
-const PADDING_VERTICAL = 120;
+const PADDING_HORIZONTAL = 20; // Reduced padding to make crane larger
+const PADDING_VERTICAL = 40;   // Reduced padding to make crane larger
 const CRANE_BODY_LENGTH_M = 12.8;
 const CRANE_BODY_HEIGHT_M = 4.0;
 const CHASSIS_WIDTH_M = CRANE_BODY_LENGTH_M * 0.9;
