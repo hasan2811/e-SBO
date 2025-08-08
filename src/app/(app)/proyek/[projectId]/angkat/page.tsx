@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { usePerformance } from '@/contexts/performance-context';
-import { BarChart, Gauge, SlidersHorizontal } from 'lucide-react';
+import { BarChart, Gauge, SlidersHorizontal, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Constants for visualization
@@ -64,6 +64,7 @@ export default function LiftingPlanPage() {
         safeCapacity: '--',
         status: '--',
         statusColor: '#374151', 
+        isSafe: false,
     });
     
     // ## HELPER FUNCTIONS FOR CALCULATIONS ##
@@ -93,7 +94,7 @@ export default function LiftingPlanPage() {
         if (isNaN(boom) || isNaN(rad) || isNaN(weight) || isNaN(sf) || boom <= 0 || sf < 1.0) {
             setResults({
                 boomAngle: '--', liftHeight: '--', loadMoment: 'Invalid Input', ratedCapacity: '--',
-                safeCapacity: 'Invalid Input', status: 'Check input', statusColor: '#e53e3e',
+                safeCapacity: 'Invalid Input', status: 'CHECK INPUT', statusColor: '#e53e3e', isSafe: false,
             });
             return;
         }
@@ -101,7 +102,7 @@ export default function LiftingPlanPage() {
         if (rad > boom) {
             setResults({
                 boomAngle: 'Impossible', liftHeight: '0.00', loadMoment: '--', ratedCapacity: '0.00',
-                safeCapacity: '0.00', status: 'Radius > Boom', statusColor: '#e53e3e',
+                safeCapacity: '0.00', status: 'RADIUS > BOOM', statusColor: '#e53e3e', isSafe: false,
             });
             return;
         }
@@ -115,6 +116,7 @@ export default function LiftingPlanPage() {
         const ratedCapacity = getRatedCapacity(craneType, boom, rad);
         const safeCapacity = ratedCapacity / sf;
         const isOverload = weight > safeCapacity;
+        const isSafe = !isOverload && weight > 0;
 
         setResults({
             boomAngle: boomAngleDeg.toFixed(2),
@@ -122,8 +124,9 @@ export default function LiftingPlanPage() {
             loadMoment: loadMoment.toFixed(2),
             ratedCapacity: ratedCapacity.toFixed(2),
             safeCapacity: safeCapacity.toFixed(2),
-            status: isOverload ? 'OVERLOAD! UNSAFE' : 'SAFE',
-            statusColor: isOverload ? '#e53e3e' : '#22c55e',
+            status: isOverload ? 'OVERLOAD! UNSAFE' : (weight > 0 ? 'SAFE' : 'IDLE'),
+            statusColor: isOverload ? '#e53e3e' : (weight > 0 ? '#22c55e' : '#6b7280'),
+            isSafe: isSafe,
         });
     }, [boomLength, radius, loadWeight, safetyFactor, craneType, getRatedCapacity]);
     
@@ -300,17 +303,14 @@ export default function LiftingPlanPage() {
           // --- Draw Calculation Results on top of everything ---
           ctx.save();
           ctx.textAlign = 'left';
-          
-          const col1X = PADDING_HORIZONTAL;
-          const col2X = col1X + 150; // Adjust spacing as needed
+
+          const resultsX = clientWidth - 200;
           let yOffset = PADDING_VERTICAL + 10;
           
-          const resultItemsCol1 = [
+          const resultItems = [
             `Boom Angle: ${results.boomAngle}°`,
             `Lift Height: ${results.liftHeight} m`,
             `Load Moment: ${results.loadMoment} t-m`,
-          ];
-          const resultItemsCol2 = [
             `Rated Capacity: ${results.ratedCapacity} t`,
             `Safe Capacity: ${results.safeCapacity} t`,
           ];
@@ -318,21 +318,54 @@ export default function LiftingPlanPage() {
           ctx.font = `normal ${FONT_SIZE_LABEL_PX - 2}px Inter`;
           ctx.fillStyle = '#111827';
           
-          resultItemsCol1.forEach(item => {
-              ctx.fillText(item, col1X, yOffset);
-              yOffset += 18;
-          });
-          
-          yOffset = PADDING_VERTICAL + 10; // Reset Y for second column
-          resultItemsCol2.forEach(item => {
-              ctx.fillText(item, col2X, yOffset);
+          resultItems.forEach(item => {
+              ctx.fillText(item, resultsX, yOffset);
               yOffset += 18;
           });
 
-          yOffset += 8; // Add space before status
+          yOffset += 4; // Add space before status
+          
           ctx.font = `bold ${FONT_SIZE_LABEL_PX + 2}px Inter`;
           ctx.fillStyle = results.statusColor;
-          ctx.fillText(`Status: ${results.status}`, col1X, yOffset);
+          const statusText = `Status: ${results.status}`;
+          const statusTextWidth = ctx.measureText(statusText).width;
+          ctx.fillText(statusText, resultsX, yOffset);
+
+          // Draw icon next to status
+          const iconSize = FONT_SIZE_LABEL_PX + 4;
+          const iconX = resultsX + statusTextWidth + 8;
+          const iconY = yOffset + iconSize / 2;
+          
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = results.statusColor;
+          ctx.fillStyle = results.statusColor;
+
+          if(results.isSafe) { // Checkmark
+              ctx.beginPath();
+              ctx.arc(iconX, iconY - (iconSize/2) + (iconSize/2), iconSize/2, 0, 2 * Math.PI);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(iconX - 4, iconY);
+              ctx.lineTo(iconX - 1, iconY + 3);
+              ctx.lineTo(iconX + 4, iconY - 3);
+              ctx.strokeStyle = '#fff';
+              ctx.stroke();
+          } else if (results.status !== 'IDLE' && results.status !== 'CHECK INPUT') { // Alert triangle
+              ctx.beginPath();
+              ctx.moveTo(iconX - iconSize/2, iconY + iconSize/2);
+              ctx.lineTo(iconX + iconSize/2, iconY + iconSize/2);
+              ctx.lineTo(iconX, iconY - iconSize/2);
+              ctx.closePath();
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(iconX, iconY - 1);
+              ctx.lineTo(iconX, iconY + 2);
+              ctx.strokeStyle = '#fff';
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.arc(iconX, iconY + 4, 1, 0, 2 * Math.PI);
+              ctx.fill();
+          }
 
           ctx.restore();
         };
@@ -421,7 +454,7 @@ export default function LiftingPlanPage() {
                         <CardContent className="p-2 sm:p-4">
                             <canvas 
                                 ref={canvasRef} 
-                                className="w-full aspect-[4/3] sm:aspect-video bg-muted/50 border rounded-md"
+                                className="w-full aspect-square sm:aspect-video bg-muted/50 border rounded-md"
                             ></canvas>
                         </CardContent>
                     </Card>
