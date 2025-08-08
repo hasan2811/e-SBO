@@ -295,8 +295,9 @@ export default function LiftingPlanPage() {
           ctx.textBaseline = 'top';
           ctx.fillText(`Radius: ${radius.toFixed(2)} m`, (pivotX * autoFitScale + hookXPx) / 2, 5);
           
-          ctx.restore();
+          ctx.restore(); // This restore pairs with the main ctx.save() at the top
 
+          // --- Draw Calculation Results on top of everything ---
           ctx.save();
           ctx.font = `bold ${FONT_SIZE_LABEL_PX}px Inter`;
           ctx.fillStyle = '#111827';
@@ -327,7 +328,7 @@ export default function LiftingPlanPage() {
           
           ctx.restore();
         };
-
+        
         draw();
 
     }, [results, boomLength, radius, loadWeight, craneType, isFastConnection, craneConfig]);
@@ -494,5 +495,3 @@ export default function LiftingPlanPage() {
         </motion.div>
     );
 }
-
-    
