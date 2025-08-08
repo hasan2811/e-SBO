@@ -184,7 +184,7 @@ export default function LiftingPlanPage() {
           };
           const drawArc = (x: number, y: number, r: number, start: number, end: number) => {
               ctx.beginPath();
-              ctx.arc(x * autoFitScale, y * autoFitScale, r * autoFitScale, start, end);
+              ctx.arc(x * autoFitScale, y * autoFitScale, r * autoFitScale, 0, end);
               ctx.fill();
           };
 
@@ -377,17 +377,17 @@ export default function LiftingPlanPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <motion.div variants={itemVariants} className="lg:col-span-2">
-                     <Card className="h-full">
+                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <BarChart/>
                                 Crane Visualization
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-2 sm:p-4 h-full">
+                        <CardContent className="p-2 sm:p-4">
                             <canvas 
                                 ref={canvasRef} 
-                                className="w-full h-full min-h-[400px] md:min-h-[500px] bg-muted/50 border rounded-md"
+                                className="w-full min-h-[400px] md:min-h-[500px] bg-muted/50 border rounded-md"
                             ></canvas>
                         </CardContent>
                     </Card>
