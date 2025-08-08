@@ -163,7 +163,7 @@ export default function LiftingPlanPage() {
           
           const scaleX = clientWidth / (maxDrawingWidthM * PIXELS_PER_METER);
           const scaleY = clientHeight / (maxDrawingHeightM * PIXELS_PER_METER);
-          const autoFitScale = Math.max(0.01, Math.min(scaleX, scaleY));
+          const autoFitScale = Math.max(0.01, Math.min(scaleX, scaleY)) * 1.1; // Increase scale by 10%
 
           const groundYPx = clientHeight - PADDING_VERTICAL;
           const craneBaseXPx = PADDING_HORIZONTAL + (COUNTERWEIGHT_LENGTH_M * PIXELS_PER_METER * autoFitScale);
@@ -242,7 +242,7 @@ export default function LiftingPlanPage() {
           ctx.fillRect(0, -boomThicknessPx / 2, totalBoomLengthPixels, boomThicknessPx);
           ctx.strokeRect(0, -boomThicknessPx / 2, totalBoomLengthPixels, boomThicknessPx);
           
-          const actualFontSizeLabel = Math.max(10, FONT_SIZE_LABEL_PX); 
+          const actualFontSizeLabel = Math.max(10, FONT_SIZE_LABEL_PX * autoFitScale * 0.8);
           ctx.font = `bold ${actualFontSizeLabel}px Inter`;
           ctx.fillStyle = '#000000';
           ctx.textAlign = 'center';
@@ -278,7 +278,7 @@ export default function LiftingPlanPage() {
               ctx.fillStyle = '#38a169';
               ctx.fillRect(hookXPx - loadSizePx / 2, hookYPx, loadSizePx, loadSizePx);
               ctx.fillStyle = '#fff';
-              const actualFontSizeLoad = Math.max(8, FONT_SIZE_LOAD_PX);
+              const actualFontSizeLoad = Math.max(8, FONT_SIZE_LOAD_PX * autoFitScale * 0.8);
               ctx.font = `bold ${actualFontSizeLoad}px Inter`;
               ctx.textAlign = 'center';
               ctx.fillText(`${loadWeightValue}t`, hookXPx, hookYPx + loadSizePx / 2 + 5);
@@ -296,8 +296,8 @@ export default function LiftingPlanPage() {
           ctx.fillStyle = '#000000';
           ctx.font = `bold ${actualFontSizeLabel}px Inter`;
           ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
-          ctx.fillText(`Radius: ${radius.toFixed(2)} m`, (pivotX * autoFitScale + hookXPx) / 2, -5);
+          ctx.textBaseline = 'top';
+          ctx.fillText(`Radius: ${radius.toFixed(2)} m`, (pivotX * autoFitScale + hookXPx) / 2, 5);
           
           ctx.restore(); 
         };
