@@ -34,7 +34,7 @@ const SUPERSTRUCTURE_HEIGHT_M = CRANE_BODY_HEIGHT_M * 0.4;
 const COUNTERWEIGHT_LENGTH_M = CRANE_BODY_LENGTH_M * 0.15;
 const BOOM_THICKNESS_BASE_M = CRANE_BODY_HEIGHT_M * 0.1;
 const LOAD_SIZE_M = BOOM_THICKNESS_BASE_M * 3.0;
-const SLING_LENGTH_RATIO = 0.25; // Sling length as a percentage of boom length
+const SLING_LENGTH_RATIO = 0.5; // Sling length as a percentage of boom length
 const FONT_SIZE_LABEL_PX = 14;
 const FONT_SIZE_LOAD_PX = 16;
 
