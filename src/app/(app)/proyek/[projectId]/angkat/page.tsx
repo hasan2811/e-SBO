@@ -34,8 +34,8 @@ const SUPERSTRUCTURE_WIDTH_M = CRANE_BODY_LENGTH_M * 0.3;
 const SUPERSTRUCTURE_HEIGHT_M = CRANE_BODY_HEIGHT_M * 0.4;
 const COUNTERWEIGHT_LENGTH_M = CRANE_BODY_LENGTH_M * 0.15;
 const BOOM_THICKNESS_BASE_M = CRANE_BODY_HEIGHT_M * 0.1;
-const LOAD_SIZE_M = BOOM_THICKNESS_BASE_M * 3.0;
-const SLING_LENGTH_RATIO = 0.5; // Sling length as a percentage of boom length
+const LOAD_SIZE_M = BOOM_THICKNESS_BASE_M * 4.0;
+const SLING_LENGTH_RATIO = 0.5; 
 const FONT_SIZE_LABEL_PX = 14;
 const FONT_SIZE_LOAD_PX = 16;
 
@@ -99,7 +99,7 @@ export default function LiftingPlanPage() {
             return;
         }
 
-        if (rad > boom) {
+        if (rad >= boom) {
             setResults({
                 boomAngle: 'Impossible', liftHeight: '0.00', loadMoment: '--', ratedCapacity: '0.00',
                 safeCapacity: '0.00', status: 'RADIUS > BOOM', statusColor: '#e53e3e', isSafe: false,
@@ -260,7 +260,6 @@ export default function LiftingPlanPage() {
 
           const hookXPx = boomTipXPx; 
           
-          // NEW DYNAMIC SLING LOGIC
           const dynamicSlingLength = boomLength * SLING_LENGTH_RATIO * PIXELS_PER_METER * autoFitScale;
           const hookYPx = boomTipYPx + dynamicSlingLength;
 
@@ -295,82 +294,70 @@ export default function LiftingPlanPage() {
           ctx.fillStyle = '#000000';
           ctx.font = `bold ${actualFontSizeLabel}px Inter`;
           ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillText(`Radius: ${radius.toFixed(2)} m`, (pivotX * autoFitScale + hookXPx) / 2, 5);
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(`Radius: ${radius.toFixed(2)} m`, (pivotX * autoFitScale + hookXPx) / 2, -5);
           
-          ctx.restore(); // This restore pairs with the main ctx.save() at the top
-          
+          ctx.restore(); 
         };
-
         draw();
 
         // --- Draw Calculation Results on top of everything ---
         ctx.save();
-        const resultsX = clientWidth - 200;
-        let yOffset = PADDING_VERTICAL + 10;
+        const resultsX = clientWidth - 250;
+        const resultsY = 20;
+        const cardWidth = 230;
+        const cardHeight = 150;
+
+        // Draw translucent card background
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.lineWidth = 1;
         
-        ctx.font = `normal ${FONT_SIZE_LABEL_PX - 2}px Inter`;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+            ctx.roundRect(resultsX, resultsY, cardWidth, cardHeight, 8);
+        } else {
+            // Fallback for older browsers
+            ctx.rect(resultsX, resultsY, cardWidth, cardHeight);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        let yOffset = resultsY + 20;
+        
+        ctx.font = `bold 14px Inter`;
         ctx.fillStyle = '#111827';
+        ctx.fillText("Calculation Results", resultsX + 15, yOffset);
+        
+        yOffset += 25;
+        ctx.font = `normal 12px Inter`;
         
         const resultItems = [
-          `Boom Angle: ${results.boomAngle}°`,
-          `Lift Height: ${results.liftHeight} m`,
-          `Load Moment: ${results.loadMoment} t-m`,
-          `Rated Capacity: ${results.ratedCapacity} t`,
-          `Safe Capacity: ${results.safeCapacity} t`,
+          { label: "Boom Angle", value: `${results.boomAngle}°` },
+          { label: "Lift Height", value: `${results.liftHeight} m` },
+          { label: "Load Moment", value: `${results.loadMoment} t-m` },
+          { label: "Rated Capacity", value: `${results.ratedCapacity} t` },
+          { label: "Safe Capacity", value: `${results.safeCapacity} t` },
         ];
 
-        resultItems.forEach(item => {
-            ctx.fillText(item, resultsX, yOffset);
-            yOffset += 18;
+        const col1X = resultsX + 15;
+        const col2X = resultsX + cardWidth / 2 + 10;
+        
+        ctx.fillStyle = '#374151';
+
+        resultItems.forEach((item, index) => {
+            const xPos = index < 3 ? col1X : col2X;
+            const yPos = resultsY + 45 + (index % 3) * 20;
+            ctx.fillText(`${item.label}: ${item.value}`, xPos, yPos);
         });
 
-        yOffset += 4;
+        yOffset = resultsY + cardHeight - 30;
         
-        ctx.font = `bold ${FONT_SIZE_LABEL_PX + 2}px Inter`;
+        ctx.font = `bold 16px Inter`;
         ctx.fillStyle = results.statusColor;
         const statusText = `Status: ${results.status}`;
-        const statusTextWidth = ctx.measureText(statusText).width;
-        ctx.fillText(statusText, resultsX, yOffset);
-
-        // Draw icon next to status
-        const iconSize = FONT_SIZE_LABEL_PX + 4;
-        const iconX = resultsX + statusTextWidth + 8;
-        const iconY = yOffset + iconSize / 2;
-        
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = results.statusColor;
-        ctx.fillStyle = results.statusColor;
-
-        if(results.isSafe) { // Checkmark
-            ctx.beginPath();
-            ctx.arc(iconX, iconY - (iconSize/2) + (iconSize/2), iconSize/2, 0, 2 * Math.PI);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(iconX - 4, iconY);
-            ctx.lineTo(iconX - 1, iconY + 3);
-            ctx.lineTo(iconX + 4, iconY - 3);
-            ctx.strokeStyle = '#fff';
-            ctx.stroke();
-        } else if (results.status !== 'IDLE' && results.status !== 'CHECK INPUT') { // Alert triangle
-            ctx.beginPath();
-            ctx.moveTo(iconX - iconSize/2, iconY + iconSize/2);
-            ctx.lineTo(iconX + iconSize/2, iconY + iconSize/2);
-            ctx.lineTo(iconX, iconY - iconSize/2);
-            ctx.closePath();
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(iconX, iconY - 1);
-            ctx.lineTo(iconX, iconY + 2);
-            ctx.strokeStyle = '#fff';
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(iconX, iconY + 4, 1, 0, 2 * Math.PI);
-            ctx.fill();
-        }
-
+        ctx.fillText(statusText, resultsX + 15, yOffset);
         ctx.restore();
-
     }, [results, boomLength, radius, loadWeight, craneType, isFastConnection, craneConfig]);
 
     React.useEffect(() => {
