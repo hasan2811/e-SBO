@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { usePerformance } from '@/contexts/performance-context';
-import { BarChart, Gauge, SlidersHorizontal, Ship } from 'lucide-react';
+import { BarChart, Gauge, SlidersHorizontal } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Constants for visualization
@@ -299,36 +299,44 @@ export default function LiftingPlanPage() {
 
           // --- Draw Calculation Results on top of everything ---
           ctx.save();
-          ctx.font = `bold ${FONT_SIZE_LABEL_PX}px Inter`;
-          ctx.fillStyle = '#111827';
           ctx.textAlign = 'left';
           
-          let yOffset = PADDING_VERTICAL;
-          ctx.fillText('Calculation Results:', PADDING_HORIZONTAL, yOffset);
-          yOffset += 24;
-          ctx.font = `normal ${FONT_SIZE_LABEL_PX - 2}px Inter`;
+          const col1X = PADDING_HORIZONTAL;
+          const col2X = col1X + 150; // Adjust spacing as needed
+          let yOffset = PADDING_VERTICAL + 10;
           
-          const resultItems = [
-            `Boom Angle: ${results.boomAngle} °`,
+          const resultItemsCol1 = [
+            `Boom Angle: ${results.boomAngle}°`,
             `Lift Height: ${results.liftHeight} m`,
             `Load Moment: ${results.loadMoment} t-m`,
+          ];
+          const resultItemsCol2 = [
             `Rated Capacity: ${results.ratedCapacity} t`,
             `Safe Capacity: ${results.safeCapacity} t`,
           ];
+
+          ctx.font = `normal ${FONT_SIZE_LABEL_PX - 2}px Inter`;
+          ctx.fillStyle = '#111827';
           
-          resultItems.forEach(item => {
-            ctx.fillText(item, PADDING_HORIZONTAL, yOffset);
-            yOffset += 18;
+          resultItemsCol1.forEach(item => {
+              ctx.fillText(item, col1X, yOffset);
+              yOffset += 18;
           });
           
-          yOffset += 8;
-          ctx.font = `bold ${FONT_SIZE_LABEL_PX}px Inter`;
+          yOffset = PADDING_VERTICAL + 10; // Reset Y for second column
+          resultItemsCol2.forEach(item => {
+              ctx.fillText(item, col2X, yOffset);
+              yOffset += 18;
+          });
+
+          yOffset += 8; // Add space before status
+          ctx.font = `bold ${FONT_SIZE_LABEL_PX + 2}px Inter`;
           ctx.fillStyle = results.statusColor;
-          ctx.fillText(`Status: ${results.status}`, PADDING_HORIZONTAL, yOffset);
-          
+          ctx.fillText(`Status: ${results.status}`, col1X, yOffset);
+
           ctx.restore();
         };
-        
+
         draw();
 
     }, [results, boomLength, radius, loadWeight, craneType, isFastConnection, craneConfig]);
