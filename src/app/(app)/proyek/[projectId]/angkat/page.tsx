@@ -141,8 +141,9 @@ export default function LiftingPlanPage() {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         
+        const { clientWidth, clientHeight } = canvas;
+        
         const draw = () => {
-          const { clientWidth, clientHeight } = canvas;
           canvas.width = clientWidth * window.devicePixelRatio;
           canvas.height = clientHeight * window.devicePixelRatio;
           ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
