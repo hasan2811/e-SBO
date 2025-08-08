@@ -387,7 +387,7 @@ export default function LiftingPlanPage() {
                         <CardContent className="p-2 sm:p-4">
                             <canvas 
                                 ref={canvasRef} 
-                                className="w-full min-h-[400px] md:min-h-[500px] bg-muted/50 border rounded-md"
+                                className="w-full min-h-80 md:min-h-96 bg-muted/50 border rounded-md"
                             ></canvas>
                         </CardContent>
                     </Card>
