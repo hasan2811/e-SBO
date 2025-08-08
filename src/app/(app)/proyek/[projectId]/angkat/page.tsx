@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { usePerformance } from '@/contexts/performance-context';
 import { BarChart, Gauge, SlidersHorizontal, CheckCircle2, AlertTriangle, GitCommitHorizontal, ArrowUpRight, Scale, ShieldCheck, Sigma, AlertCircle } from 'lucide-react';
@@ -39,6 +40,16 @@ const SLING_LENGTH_RATIO = 0.5;
 const FONT_SIZE_LABEL_PX = 14;
 const FONT_SIZE_LOAD_PX = 16;
 
+
+const DetailRow = ({ icon: Icon, label, value, unit }: { icon: React.ElementType, label: string, value: string, unit: string }) => (
+    <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2">
+            <Icon className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">{label}</span>
+        </div>
+        <span className="font-semibold text-foreground">{value} <span className="text-xs text-muted-foreground">{unit}</span></span>
+    </div>
+);
 
 export default function LiftingPlanPage() {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -67,7 +78,6 @@ export default function LiftingPlanPage() {
         isSafe: false,
     });
     
-    // ## HELPER FUNCTIONS FOR CALCULATIONS ##
     const getRatedCapacity = React.useCallback((type: string, boom: number, rad: number): number => {
         const chart: CraneLoadChartEntry[] = CRANE_DATA[type]?.loadChart;
         if (!chart) return 0;
@@ -130,7 +140,6 @@ export default function LiftingPlanPage() {
         });
     }, [boomLength, radius, loadWeight, safetyFactor, craneType, getRatedCapacity]);
     
-    // ## USEEFFECT TRIGGERS ##
     React.useEffect(() => {
         calculateLiftingPlan();
     }, [calculateLiftingPlan]);
@@ -169,7 +178,6 @@ export default function LiftingPlanPage() {
           ctx.lineTo(clientWidth, 0);
           ctx.stroke();
 
-          // --- Drawing functions ---
           const drawRect = (x: number, y: number, w: number, h: number) => {
               ctx.fillRect(x * autoFitScale, y * autoFitScale, w * autoFitScale, h * autoFitScale);
               ctx.strokeRect(x * autoFitScale, y * autoFitScale, w * autoFitScale, h * autoFitScale);
@@ -180,7 +188,6 @@ export default function LiftingPlanPage() {
               ctx.fill();
           };
 
-          // --- Crane Body (Chassis) ---
           ctx.fillStyle = '#FFA500';
           ctx.strokeStyle = '#333';
           ctx.lineWidth = 1;
@@ -189,7 +196,6 @@ export default function LiftingPlanPage() {
           const chassisX = -chassisWidthPx / 2;
           drawRect(chassisX, -chassisHeightPx, chassisWidthPx, chassisHeightPx);
 
-          // --- Driver's Cabin ---
           const cabinWidthPx = CABIN_WIDTH_M * PIXELS_PER_METER;
           const cabinHeightPx = CABIN_HEIGHT_M * PIXELS_PER_METER;
           const cabinX = chassisX + chassisWidthPx - cabinWidthPx;
@@ -198,7 +204,6 @@ export default function LiftingPlanPage() {
           ctx.fillStyle = '#ADD8E6';
           drawRect(cabinX + cabinWidthPx * 0.1, cabinY + cabinHeightPx * 0.1, cabinWidthPx * 0.8, cabinHeightPx * 0.5);
           
-          // --- Wheels ---
           ctx.fillStyle = '#2d3748';
           const wheelRadiusPx = WHEEL_RADIUS_M * PIXELS_PER_METER;
           const wheelYPx = -wheelRadiusPx;
@@ -207,7 +212,6 @@ export default function LiftingPlanPage() {
               drawArc(chassisX + chassisWidthPx * pos, wheelYPx, wheelRadiusPx, 0, Math.PI * 2);
           });
           
-          // --- Superstructure & Pivot ---
           const superstructureWidthPx = SUPERSTRUCTURE_WIDTH_M * PIXELS_PER_METER;
           const superstructureHeightPx = SUPERSTRUCTURE_HEIGHT_M * PIXELS_PER_METER;
           const superstructureXPx = -superstructureWidthPx / 2;
@@ -221,7 +225,6 @@ export default function LiftingPlanPage() {
           ctx.fillStyle = '#FFD700';
           drawRect(superstructureXPx, superstructureYPx, superstructureWidthPx, superstructureHeightPx);
           
-          // --- Counterweight ---
           const counterweightLengthPx = COUNTERWEIGHT_LENGTH_M * PIXELS_PER_METER;
           const counterweightHeightPx = SUPERSTRUCTURE_HEIGHT_M * PIXELS_PER_METER;
           const counterweightX = superstructureXPx - counterweightLengthPx;
@@ -229,7 +232,6 @@ export default function LiftingPlanPage() {
           drawRect(counterweightX, superstructureYPx, counterweightLengthPx, counterweightHeightPx);
           ctx.restore();
 
-          // --- Boom ---
           const boomAngleDeg = parseFloat(results.boomAngle) || 0;
           ctx.save();
           ctx.translate(pivotX * autoFitScale, pivotY * autoFitScale);
@@ -253,7 +255,6 @@ export default function LiftingPlanPage() {
           ctx.fill();
           ctx.restore();
 
-          // --- Hook Line and Load (Corrected Physics) ---
           const boomAngleRad = boomAngleDeg * Math.PI / 180;
           
           const boomTipXPx = (pivotX * autoFitScale) + (totalBoomLengthPixels) * Math.cos(boomAngleRad);
@@ -301,64 +302,6 @@ export default function LiftingPlanPage() {
           ctx.restore(); 
         };
         draw();
-
-        // --- Draw Calculation Results on top of everything ---
-        ctx.save();
-        const resultsX = clientWidth - 250;
-        const resultsY = 20;
-        const cardWidth = 230;
-        const cardHeight = 150;
-
-        // Draw translucent card background
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-        ctx.lineWidth = 1;
-        
-        ctx.beginPath();
-        if (ctx.roundRect) {
-            ctx.roundRect(resultsX, resultsY, cardWidth, cardHeight, 8);
-        } else {
-            // Fallback for older browsers
-            ctx.rect(resultsX, resultsY, cardWidth, cardHeight);
-        }
-        ctx.fill();
-        ctx.stroke();
-
-        let yOffset = resultsY + 20;
-        
-        ctx.font = `bold 14px Inter`;
-        ctx.fillStyle = '#111827';
-        ctx.fillText("Calculation Results", resultsX + 15, yOffset);
-        
-        yOffset += 25;
-        ctx.font = `normal 12px Inter`;
-        
-        const resultItems = [
-          { label: "Boom Angle", value: `${results.boomAngle}°` },
-          { label: "Lift Height", value: `${results.liftHeight} m` },
-          { label: "Load Moment", value: `${results.loadMoment} t-m` },
-          { label: "Rated Capacity", value: `${results.ratedCapacity} t` },
-          { label: "Safe Capacity", value: `${results.safeCapacity} t` },
-        ];
-
-        const col1X = resultsX + 15;
-        const col2X = resultsX + cardWidth / 2 + 10;
-        
-        ctx.fillStyle = '#374151';
-
-        resultItems.forEach((item, index) => {
-            const xPos = index < 3 ? col1X : col2X;
-            const yPos = resultsY + 45 + (index % 3) * 20;
-            ctx.fillText(`${item.label}: ${item.value}`, xPos, yPos);
-        });
-
-        yOffset = resultsY + cardHeight - 30;
-        
-        ctx.font = `bold 16px Inter`;
-        ctx.fillStyle = results.statusColor;
-        const statusText = `Status: ${results.status}`;
-        ctx.fillText(statusText, resultsX + 15, yOffset);
-        ctx.restore();
     }, [results, boomLength, radius, loadWeight, craneType, isFastConnection, craneConfig]);
 
     React.useEffect(() => {
@@ -415,6 +358,9 @@ export default function LiftingPlanPage() {
       setter(cleanValue);
     };
 
+    const statusAlertVariant = results.isSafe ? "default" : "destructive";
+    const StatusIcon = results.isSafe ? CheckCircle2 : AlertCircle;
+
     return (
         <motion.div 
             className="space-y-6"
@@ -429,8 +375,8 @@ export default function LiftingPlanPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
-                <motion.div variants={itemVariants}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <motion.div variants={itemVariants} className="lg:col-span-2">
                      <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -447,16 +393,33 @@ export default function LiftingPlanPage() {
                     </Card>
                 </motion.div>
 
-                <motion.div variants={itemVariants}>
+                <motion.div variants={itemVariants} className="lg:col-span-1 flex flex-col gap-6">
                     <Card>
-                        <Tabs defaultValue="controls">
-                             <CardHeader>
+                        <CardHeader>
+                            <CardTitle>Calculation Results</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                             <Alert variant={statusAlertVariant}>
+                                <StatusIcon className="h-4 w-4" />
+                                <AlertTitle>{results.status}</AlertTitle>
+                            </Alert>
+                            <DetailRow icon={GitCommitHorizontal} label="Boom Angle" value={results.boomAngle} unit="°" />
+                            <DetailRow icon={ArrowUpRight} label="Lift Height" value={results.liftHeight} unit="m" />
+                            <DetailRow icon={Sigma} label="Load Moment" value={results.loadMoment} unit="t-m" />
+                            <DetailRow icon={Scale} label="Rated Capacity" value={results.ratedCapacity} unit="t" />
+                            <DetailRow icon={ShieldCheck} label="Safe Capacity (SWL)" value={results.safeCapacity} unit="t" />
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <Tabs defaultValue="controls" className="w-full">
+                             <CardHeader className="p-4">
                                 <TabsList className="grid w-full grid-cols-2">
                                     <TabsTrigger value="controls"><SlidersHorizontal className="mr-2"/>Controls</TabsTrigger>
-                                    <TabsTrigger value="specs"><Gauge className="mr-2"/>Specifications</TabsTrigger>
+                                    <TabsTrigger value="specs"><Gauge className="mr-2"/>Specs</TabsTrigger>
                                 </TabsList>
                             </CardHeader>
-                            <TabsContent value="controls" className="px-6 pb-6">
+                            <TabsContent value="controls" className="px-4 pb-4">
                                 <div className="space-y-6">
                                     <div>
                                         <Label htmlFor="craneType" className="font-semibold">Mobile Crane Type</Label>
@@ -502,13 +465,13 @@ export default function LiftingPlanPage() {
                                     </div>
                                 </div>
                             </TabsContent>
-                            <TabsContent value="specs" className="px-6 pb-6">
+                            <TabsContent value="specs" className="px-4 pb-4">
                                 {currentSpecs ? (
-                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6 text-sm">
+                                     <div className="space-y-3 text-sm">
                                         {Object.entries(currentSpecs).map(([key, value]) => (
-                                            <div key={key} className="flex flex-col">
-                                                <span className="font-semibold text-muted-foreground">{key}</span> 
-                                                <span className="text-foreground">{value}</span>
+                                            <div key={key} className="flex justify-between items-center">
+                                                <span className="font-medium text-muted-foreground">{key}</span> 
+                                                <span className="text-foreground font-semibold">{value}</span>
                                             </div>
                                         ))}
                                     </div>
