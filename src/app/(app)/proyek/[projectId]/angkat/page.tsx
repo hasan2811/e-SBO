@@ -9,7 +9,7 @@ import {
   type CraneLoadChartEntry,
 } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,10 +18,10 @@ import { cn } from '@/lib/utils';
 import { usePerformance } from '@/contexts/performance-context';
 import { BarChart, Gauge, SlidersHorizontal } from 'lucide-react';
 
-// Constants for visualization, based on user's original detailed script
+// Constants for visualization
 const PIXELS_PER_METER = 10;
-const PADDING_HORIZONTAL = 20; 
-const PADDING_VERTICAL = 40;   
+const PADDING_HORIZONTAL = 40; 
+const PADDING_VERTICAL = 20;   
 const CRANE_BODY_LENGTH_M = 12.8;
 const CRANE_BODY_HEIGHT_M = 4.0;
 const CHASSIS_WIDTH_M = CRANE_BODY_LENGTH_M * 0.9;
@@ -29,19 +29,12 @@ const CHASSIS_HEIGHT_M = CRANE_BODY_HEIGHT_M * 0.25;
 const CABIN_WIDTH_M = CRANE_BODY_LENGTH_M * 0.1;
 const CABIN_HEIGHT_M = CRANE_BODY_HEIGHT_M * 0.3;
 const WHEEL_RADIUS_M = CRANE_BODY_HEIGHT_M * 0.08;
-const OUTRIGGER_H_LENGTH_M = CRANE_BODY_LENGTH_M * 0.1;
-const OUTRIGGER_V_HEIGHT_M = CRANE_BODY_HEIGHT_M * 0.1;
 const SUPERSTRUCTURE_WIDTH_M = CRANE_BODY_LENGTH_M * 0.3;
 const SUPERSTRUCTURE_HEIGHT_M = CRANE_BODY_HEIGHT_M * 0.4;
-const OPERATOR_CABIN_WIDTH_M = CRANE_BODY_LENGTH_M * 0.08;
-const OPERATOR_CABIN_HEIGHT_M = CRANE_BODY_HEIGHT_M * 0.25;
 const COUNTERWEIGHT_LENGTH_M = CRANE_BODY_LENGTH_M * 0.15;
-const COUNTERWEIGHT_HEIGHT_M = CRANE_BODY_HEIGHT_M * 0.15;
 const BOOM_THICKNESS_BASE_M = CRANE_BODY_HEIGHT_M * 0.1;
-const PULLEY_BLOCK_WIDTH_M = BOOM_THICKNESS_BASE_M * 1.2;
-const PULLEY_BLOCK_HEIGHT_M = BOOM_THICKNESS_BASE_M * 1.0;
-const HOOK_RADIUS_M = BOOM_THICKNESS_BASE_M * 0.3;
 const LOAD_SIZE_M = BOOM_THICKNESS_BASE_M * 3.0;
+const SLING_LENGTH_RATIO = 0.25; // Sling length as a percentage of boom length
 const FONT_SIZE_LABEL_PX = 14;
 const FONT_SIZE_LOAD_PX = 16;
 
@@ -69,7 +62,7 @@ export default function LiftingPlanPage() {
         ratedCapacity: '--',
         safeCapacity: '--',
         status: '--',
-        statusColor: '#374151', // equivalent to text-gray-700
+        statusColor: '#374151', 
     });
     
     // ## HELPER FUNCTIONS FOR CALCULATIONS ##
@@ -209,35 +202,27 @@ export default function LiftingPlanPage() {
               drawArc(chassisX + chassisWidthPx * pos, wheelYPx, wheelRadiusPx, 0, Math.PI * 2);
           });
           
-          // --- Superstructure ---
+          // --- Superstructure & Pivot ---
           const superstructureWidthPx = SUPERSTRUCTURE_WIDTH_M * PIXELS_PER_METER;
           const superstructureHeightPx = SUPERSTRUCTURE_HEIGHT_M * PIXELS_PER_METER;
           const superstructureXPx = -superstructureWidthPx / 2;
           const superstructureYPx = -chassisHeightPx - superstructureHeightPx;
-          ctx.fillStyle = '#FFD700';
-          drawRect(superstructureXPx, superstructureYPx, superstructureWidthPx, superstructureHeightPx);
-          
-          // --- Pivot Point ---
           const pivotX = 0;
           const pivotY = superstructureYPx + (superstructureHeightPx / 2);
           
-          // --- Operator Cabin ---
-          const operatorCabinWidthPx = OPERATOR_CABIN_WIDTH_M * PIXELS_PER_METER;
-          const operatorCabinHeightPx = OPERATOR_CABIN_HEIGHT_M * PIXELS_PER_METER;
-          const operatorCabinX = superstructureXPx + superstructureWidthPx - operatorCabinWidthPx;
-          const operatorCabinY = superstructureYPx - operatorCabinHeightPx;
-          ctx.fillStyle = '#FFA500';
-          drawRect(operatorCabinX, operatorCabinY, operatorCabinWidthPx, operatorCabinHeightPx);
-          ctx.fillStyle = '#ADD8E6';
-          drawRect(operatorCabinX + operatorCabinWidthPx * 0.1, operatorCabinY + operatorCabinHeightPx * 0.1, operatorCabinWidthPx * 0.8, operatorCabinHeightPx * 0.5);
-
+          ctx.save();
+          const superstructureRotation = 0; 
+          ctx.rotate(superstructureRotation);
+          ctx.fillStyle = '#FFD700';
+          drawRect(superstructureXPx, superstructureYPx, superstructureWidthPx, superstructureHeightPx);
+          
           // --- Counterweight ---
           const counterweightLengthPx = COUNTERWEIGHT_LENGTH_M * PIXELS_PER_METER;
-          const counterweightHeightPx = COUNTERWEIGHT_HEIGHT_M * PIXELS_PER_METER;
+          const counterweightHeightPx = SUPERSTRUCTURE_HEIGHT_M * PIXELS_PER_METER;
           const counterweightX = superstructureXPx - counterweightLengthPx;
-          const counterweightY = superstructureYPx + (superstructureHeightPx / 2) - (counterweightHeightPx / 2);
           ctx.fillStyle = '#718096';
-          drawRect(counterweightX, counterweightY, counterweightLengthPx, counterweightHeightPx);
+          drawRect(counterweightX, superstructureYPx, counterweightLengthPx, counterweightHeightPx);
+          ctx.restore();
 
           // --- Boom ---
           const boomAngleDeg = parseFloat(results.boomAngle) || 0;
@@ -261,23 +246,20 @@ export default function LiftingPlanPage() {
           ctx.arc(0, 0, boomThicknessPx * 0.8, 0, 2 * Math.PI);
           ctx.fillStyle = '#333';
           ctx.fill();
-          
           ctx.restore();
 
           // --- Hook Line and Load (Corrected Physics) ---
           const boomAngleRad = boomAngleDeg * Math.PI / 180;
           
-          // Position of the boom tip
-          const boomTipXPx = (pivotX * autoFitScale) + (boomLength * PIXELS_PER_METER * autoFitScale) * Math.cos(boomAngleRad);
-          const boomTipYPx = (pivotY * autoFitScale) - (boomLength * PIXELS_PER_METER * autoFitScale) * Math.sin(boomAngleRad);
+          const boomTipXPx = (pivotX * autoFitScale) + (totalBoomLengthPixels) * Math.cos(boomAngleRad);
+          const boomTipYPx = (pivotY * autoFitScale) - (totalBoomLengthPixels) * Math.sin(boomAngleRad);
 
-          // The hook hangs vertically down from the boom tip.
-          // Its horizontal position is the same as the boom tip.
           const hookXPx = boomTipXPx; 
-          // Its vertical position is calculated from lift height relative to the ground
-          const hookYPx = -parseFloat(results.liftHeight) * PIXELS_PER_METER * autoFitScale;
+          
+          // NEW DYNAMIC SLING LOGIC
+          const dynamicSlingLength = boomLength * SLING_LENGTH_RATIO * PIXELS_PER_METER * autoFitScale;
+          const hookYPx = boomTipYPx + dynamicSlingLength;
 
-          // Draw the lifting line from boom tip to the hook position
           ctx.beginPath();
           ctx.moveTo(boomTipXPx, boomTipYPx);
           ctx.lineTo(hookXPx, hookYPx);
@@ -285,7 +267,6 @@ export default function LiftingPlanPage() {
           ctx.lineWidth = 2;
           ctx.stroke();
 
-          // Draw the load at the hook's position
           const loadWeightValue = parseFloat(loadWeight) || 0;
           if (loadWeightValue > 0) {
               const loadSizePx = LOAD_SIZE_M * PIXELS_PER_METER * autoFitScale;
@@ -298,8 +279,7 @@ export default function LiftingPlanPage() {
               ctx.fillText(`${loadWeightValue}t`, hookXPx, hookYPx + loadSizePx / 2 + 5);
           }
           
-          // Draw the radius line and label
-          ctx.strokeStyle = '#e53e3e'; // Red for radius line
+          ctx.strokeStyle = '#e53e3e';
           ctx.lineWidth = 1;
           ctx.setLineDash([5, 5]);
           ctx.beginPath();
@@ -314,19 +294,16 @@ export default function LiftingPlanPage() {
           ctx.textBaseline = 'top';
           ctx.fillText(`Radius: ${radius.toFixed(2)} m`, (pivotX * autoFitScale + hookXPx) / 2, 5);
           
-          ctx.restore(); // Restore to origin before drawing text overlay
+          ctx.restore();
 
-          // --- Draw Text Overlay for Results ---
           ctx.save();
           ctx.font = `bold ${FONT_SIZE_LABEL_PX}px Inter`;
           ctx.fillStyle = '#111827';
           ctx.textAlign = 'left';
           
           let yOffset = PADDING_VERTICAL;
-          
           ctx.fillText('Calculation Results:', PADDING_HORIZONTAL, yOffset);
           yOffset += 24;
-          
           ctx.font = `normal ${FONT_SIZE_LABEL_PX - 2}px Inter`;
           
           const resultItems = [
@@ -342,7 +319,7 @@ export default function LiftingPlanPage() {
             yOffset += 18;
           });
           
-          yOffset += 8; // Add a bit of space before the status
+          yOffset += 8;
           ctx.font = `bold ${FONT_SIZE_LABEL_PX}px Inter`;
           ctx.fillStyle = results.statusColor;
           ctx.fillText(results.status, PADDING_HORIZONTAL, yOffset);
@@ -396,7 +373,7 @@ export default function LiftingPlanPage() {
       setter: (value: string) => void,
       allowDecimal: boolean = false
     ) => {
-      let cleanValue = value.replace(/[^0-9.]/g, ''); // Allow only numbers and dot
+      let cleanValue = value.replace(/[^0-9.]/g, ''); 
       if (allowDecimal) {
         const parts = cleanValue.split('.');
         if (parts.length > 2) {
