@@ -377,17 +377,17 @@ export default function LiftingPlanPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <motion.div variants={itemVariants} className="lg:col-span-2">
-                     <Card>
+                     <Card className="h-full">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <BarChart/>
                                 Crane Visualization
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-2 sm:p-4">
+                        <CardContent className="p-2 sm:p-4 h-full">
                             <canvas 
                                 ref={canvasRef} 
-                                className="w-full aspect-video bg-muted/50 border rounded-md"
+                                className="w-full h-full min-h-[400px] md:min-h-[500px] bg-muted/50 border rounded-md"
                             ></canvas>
                         </CardContent>
                     </Card>
