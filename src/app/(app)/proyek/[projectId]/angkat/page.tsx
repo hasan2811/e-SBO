@@ -16,7 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { usePerformance } from '@/contexts/performance-context';
-import { BarChart, Gauge, SlidersHorizontal } from 'lucide-react';
+import { BarChart, Gauge, SlidersHorizontal, Ship } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Constants for visualization
 const PIXELS_PER_METER = 10;
@@ -322,7 +323,7 @@ export default function LiftingPlanPage() {
           yOffset += 8;
           ctx.font = `bold ${FONT_SIZE_LABEL_PX}px Inter`;
           ctx.fillStyle = results.statusColor;
-          ctx.fillText(results.status, PADDING_HORIZONTAL, yOffset);
+          ctx.fillText(`Status: ${results.status}`, PADDING_HORIZONTAL, yOffset);
           
           ctx.restore();
         };
@@ -395,102 +396,103 @@ export default function LiftingPlanPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">2D Lifting Plan</h1>
-                    <p className="text-muted-foreground">2D Mobile Crane Lifting Plan</p>
+                    <p className="text-muted-foreground">Interactive 2D Mobile Crane Lifting Plan Simulator</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <motion.div variants={itemVariants} className="lg:col-span-1">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <SlidersHorizontal/>
-                                Input Parameters
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <Label htmlFor="craneType">Mobile Crane Type</Label>
-                                <Select value={craneType} onValueChange={setCraneType}>
-                                    <SelectTrigger id="craneType"><SelectValue/></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="SANYSTC250">SANY STC250 Truck Crane</SelectItem>
-                                        <SelectItem value="mobileCrane50T">Mobile Crane 50 Ton (Example)</SelectItem>
-                                        <SelectItem value="mobileCrane100T">Mobile Crane 100 Ton (Example)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label htmlFor="boomLength">Boom Length ({boomLength.toFixed(2)} m)</Label>
-                                <Slider id="boomLength" value={[boomLength]} min={craneConfig.boomMin} max={craneConfig.boomMax} step={0.1} onValueChange={(v) => setBoomLength(v[0])} />
-                            </div>
-                            <div>
-                                <Label htmlFor="radius">Working Radius ({radius.toFixed(2)} m)</Label>
-                                <Slider id="radius" value={[radius]} min={craneConfig.radiusMin} max={craneConfig.radiusMax} step={0.1} onValueChange={(v) => setRadius(v[0])} />
-                            </div>
-                            <div>
-                                <Label htmlFor="loadWeight">Load Weight (ton)</Label>
-                                <Input 
-                                    id="loadWeight" 
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={loadWeight} 
-                                    onChange={(e) => handleNumericInput(e.target.value, setLoadWeight, true)}
-                                />
-                            </div>
-                             <div>
-                                <Label htmlFor="safetyFactor">Safety Factor (e.g., 1.25 for 80%)</Label>
-                                <Input 
-                                    id="safetyFactor" 
-                                    type="text"
-                                    inputMode="decimal" 
-                                    value={safetyFactor} 
-                                    onChange={(e) => handleNumericInput(e.target.value, setSafetyFactor, true)}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="lg:col-span-2">
-                    <Card className="h-full">
+            <div className="grid grid-cols-1 gap-6">
+                <motion.div variants={itemVariants}>
+                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <BarChart/>
-                                2D Mobile Crane Visualization
+                                Crane Visualization
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-2 sm:p-4">
                             <canvas 
                                 ref={canvasRef} 
-                                className="w-full aspect-[3/4] bg-muted/50 border rounded-md"
+                                className="w-full aspect-[4/3] sm:aspect-video bg-muted/50 border rounded-md"
                             ></canvas>
                         </CardContent>
                     </Card>
                 </motion.div>
-            </div>
-            
-            <motion.div variants={itemVariants}>
-                {currentSpecs && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Gauge/>
-                                Crane Specifications: {craneType}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
-                            {Object.entries(currentSpecs).map(([key, value]) => (
-                                <div key={key} className="flex flex-col">
-                                    <span className="font-semibold text-muted-foreground">{key}</span> 
-                                    <span className="text-foreground">{value}</span>
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                )}
-            </motion.div>
 
+                <motion.div variants={itemVariants}>
+                    <Card>
+                        <Tabs defaultValue="controls">
+                             <CardHeader>
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="controls"><SlidersHorizontal className="mr-2"/>Controls</TabsTrigger>
+                                    <TabsTrigger value="specs"><Gauge className="mr-2"/>Specifications</TabsTrigger>
+                                </TabsList>
+                            </CardHeader>
+                            <TabsContent value="controls" className="px-6 pb-6">
+                                <div className="space-y-6">
+                                    <div>
+                                        <Label htmlFor="craneType" className="font-semibold">Mobile Crane Type</Label>
+                                        <Select value={craneType} onValueChange={setCraneType}>
+                                            <SelectTrigger id="craneType" className="mt-2"><SelectValue/></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="SANYSTC250">SANY STC250 Truck Crane</SelectItem>
+                                                <SelectItem value="mobileCrane50T">Mobile Crane 50 Ton (Example)</SelectItem>
+                                                <SelectItem value="mobileCrane100T">Mobile Crane 100 Ton (Example)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="boomLength">Boom Length ({boomLength.toFixed(2)} m)</Label>
+                                        <Slider id="boomLength" value={[boomLength]} min={craneConfig.boomMin} max={craneConfig.boomMax} step={0.1} onValueChange={(v) => setBoomLength(v[0])} />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="radius">Working Radius ({radius.toFixed(2)} m)</Label>
+                                        <Slider id="radius" value={[radius]} min={craneConfig.radiusMin} max={craneConfig.radiusMax} step={0.1} onValueChange={(v) => setRadius(v[0])} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <Label htmlFor="loadWeight">Load Weight (ton)</Label>
+                                            <Input 
+                                                id="loadWeight" 
+                                                type="text"
+                                                inputMode="decimal"
+                                                value={loadWeight} 
+                                                onChange={(e) => handleNumericInput(e.target.value, setLoadWeight, true)}
+                                            />
+                                        </div>
+                                         <div>
+                                            <Label htmlFor="safetyFactor">Safety Factor</Label>
+                                            <Input 
+                                                id="safetyFactor" 
+                                                type="text"
+                                                inputMode="decimal" 
+                                                value={safetyFactor} 
+                                                onChange={(e) => handleNumericInput(e.target.value, setSafetyFactor, true)}
+                                            />
+                                            <p className="text-xs text-muted-foreground mt-1">e.g., 1.25 for 80% capacity.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </TabsContent>
+                            <TabsContent value="specs" className="px-6 pb-6">
+                                {currentSpecs ? (
+                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6 text-sm">
+                                        {Object.entries(currentSpecs).map(([key, value]) => (
+                                            <div key={key} className="flex flex-col">
+                                                <span className="font-semibold text-muted-foreground">{key}</span> 
+                                                <span className="text-foreground">{value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ): (
+                                    <p className="text-muted-foreground text-center">No specifications available.</p>
+                                )}
+                            </TabsContent>
+                        </Tabs>
+                    </Card>
+                </motion.div>
+            </div>
         </motion.div>
     );
 }
+
+    
